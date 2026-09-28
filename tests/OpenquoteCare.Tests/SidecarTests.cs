@@ -105,6 +105,17 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Summarises_the_loaded_vault_on_request()
+    {
+        var loaded = await Post("/vault/load", Files(GoldenVault.Through(3)));
+
+        var summary = await Get("/summary");
+
+        Assert.True(JsonNode.DeepEquals(loaded, summary));
+        Assert.Contains(summary["reports"]!.AsArray(), r => r!["name"]!.GetValue<string>() == "monthly-topic" && r["version"]!.GetValue<int>() == 2);
+    }
+
+    [Fact]
     public async Task Names_the_subject_each_record_belongs_to()
     {
         await Post("/vault/load", Files(GoldenVault.Through(0)));

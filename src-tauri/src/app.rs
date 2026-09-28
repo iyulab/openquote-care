@@ -178,6 +178,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
     }
 
+    /// The open vault's summary, as [`App::open_vault`] returns it.
+    pub fn summary(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.summary()?))
+    }
+
     /// Every classification scheme version in the vault.
     pub fn schemes(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.schemes()?))
@@ -300,6 +305,7 @@ mod tests {
                     "fields": { "date": "2026-04-02", "topic": { "scheme": "topic", "version": 1, "code": "family" } } }),
         )
         .unwrap();
+        assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["name"] == "monthly-topic"));
         let schemes = app.schemes().unwrap();
         assert!(schemes.as_array().unwrap().iter().any(|s| s["scheme"] == "topic" && s["version"] == 1));
         assert_eq!(app.entities("session").unwrap()[0]["subject"], subject_id);

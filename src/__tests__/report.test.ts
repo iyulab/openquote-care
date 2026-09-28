@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest'
+import { lastMonth, layOut, type RunRecord } from '../report.js'
+import type { Entity, Scheme } from '../records.js'
+
+const topic: Scheme = {
+  scheme: 'topic',
+  version: 2,
+  items: [
+    { code: 'family', label: '가정', parent: null, suggest: true },
+    { code: 'relation', label: '관계', parent: null, suggest: true },
+    { code: 'relation-peer', label: '또래', parent: 'relation', suggest: true },
+    { code: 'learning', label: '학습', parent: null, suggest: true },
+  ],
+}
+const person = (id: string, name: string): Entity => ({ type: 'practitioner', id, subject: null, fields: { name }, conflicts: {} })
+const run: RunRecord = {
+  report: { report: 'monthly-topic', version: 2 },
+  schemes: { topic: { version: 2, crosswalks: ['1-2'] } },
+  period: { from: '2026-04-01', to: '2026-04-30' },
+  cells: [
+    { row: 'family', column: 'p2', count: 2, records: ['a', 'b'] },
+    { row: 'relation-peer', column: 'p1', count: 1, records: ['c'] },
+    { row: 'family', column: null, count: 1, records: ['d'] },
+  ],
+  pending: { count: 1, records: ['e'] },
+  unmapped: { count: 1, records: ['f'] },
+  total: { count: 6, records: ['a', 'b', 'c', 'd', 'e', 'f'] },
+}
+
+describe('layOut', () => {
+  const table = layOut(run, [topic], [person('p2', '나'), person('p1', '가')], '(없음)')
+
+  it('lists every leaf of the report version, in scheme order', () => {
+    expect(table.rows.map((r) => r.label)).toEqual(['가정', '관계 › 또래', '학습'])
+  })
+  it('puts practitioners in name order and the unassigned column last', () => {
+    expect(table.columns).toEqual([
+      { id: 'p1', label: '가' },
+      { id: 'p2', label: '나' },
+      { id: null, label: '(없음)' },
+    ])
+  })
+  it('keeps each cell\'s records and adds up rows and columns', () => {
+    const family = table.rows[0]
+    expect(family.cells.map((c) => c.count)).toEqual([0, 2, 1])
+    expect(family.cells[1].records).toEqual(['a', 'b'])
+    expect(family.total).toBe(3)
+    expect(table.columnTotals).toEqual([1, 2, 1])
+  })
+  it('balances: placed + pending + unmapped = total', () => {
+    expect(table.placed + table.pending.count + table.unmapped.count).toBe(table.total.count)
+  })
+})
+
+describe('lastMonth', () => {
+  it('steps back a month, across a year', () => {
+    expect(lastMonth(new Date(2026, 4, 3))).toEqual({ year: 2026, month: 4 })
+    expect(lastMonth(new Date(2026, 0, 15))).toEqual({ year: 2025, month: 12 })
+  })
+})

@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
-import { shell, type VaultSummary } from './shell.js'
+import { shell } from './shell.js'
 import { strings } from './strings.js'
 import './vault-view.js'
 
@@ -16,7 +16,7 @@ type Screen =
   | { name: 'create' }
   | { name: 'open' }
   | { name: 'kit'; key: string; folder: string }
-  | { name: 'vault'; folder: string; summary?: VaultSummary }
+  | { name: 'vault'; folder: string }
 
 @customElement('oc-app')
 export class OcApp extends LitElement {
@@ -155,8 +155,8 @@ export class OcApp extends LitElement {
     }
     const folder = this.folder
     await this.run(async () => {
-      const summary = await shell.openVault(folder, this.passphrase)
-      this.go({ name: 'vault', folder, summary })
+      await shell.openVault(folder, this.passphrase)
+      this.go({ name: 'vault', folder })
     })
   }
 
@@ -177,7 +177,6 @@ export class OcApp extends LitElement {
     if (s.name === 'vault') {
       return html`<oc-vault
         .folder=${s.folder}
-        .unreadable=${s.summary?.unreadable.length ?? 0}
         @oc-close=${() => void this.closeVault()}
       ></oc-vault>`
     }

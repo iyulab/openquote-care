@@ -157,6 +157,11 @@ impl Engine {
         self.call("GET", &format!("/entities/{entity_type}"), None)
     }
 
+    /// What the engine holds: counts, report forms, and files it could not read.
+    pub fn summary(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/summary", None)
+    }
+
     /// Every classification scheme version in the vault, with its items.
     pub fn schemes(&self) -> Result<Value, EngineError> {
         self.call("GET", "/schemes", None)

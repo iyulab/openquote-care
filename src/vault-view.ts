@@ -3,10 +3,11 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { describeError } from './errors.js'
 import { choices, labelOf, latest, newestFirst, text, today, type Entity, type Scheme } from './records.js'
-import { shell } from './shell.js'
+import { lastMonth, layOut, type Group, type RunRecord } from './report.js'
+import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
-type View = 'subjects' | 'practitioners'
+type View = 'subjects' | 'report' | 'practitioners'
 type Problem = keyof typeof strings.problems
 
 /** An open vault: its subjects and their sessions, and the practitioners sessions are kept by. */
@@ -129,6 +130,33 @@ export class OcVault extends LitElement {
     .error {
       color: var(--dc-color-danger, #b00020);
     }
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody th {
+      font-weight: 400;
+      color: inherit;
+    }
+    tfoot th,
+    tfoot td {
+      font-weight: 600;
+      border-top: 2px solid var(--dc-color-border, #e2e2e4);
+    }
+    .groups {
+      width: auto;
+    }
+    button.cell {
+      all: unset;
+      cursor: pointer;
+      padding: 0 var(--dc-space-1, 4px);
+      border-radius: var(--dc-radius-sm, 4px);
+      color: var(--dc-color-accent, #4a5bd4);
+      text-decoration: underline;
+    }
+    button.cell:focus-visible {
+      outline: 2px solid var(--dc-color-accent, #4a5bd4);
+    }
     .detail {
       font-size: 12px;
     }
@@ -137,8 +165,6 @@ export class OcVault extends LitElement {
   /** The folder the vault is in, shown under the heading. */
   @property() folder = ''
 
-  /** How many files the engine could not read when the vault opened. */
-  @property({ type: Number }) unreadable = 0
 
   @state() private view: View = 'subjects'
   @state() private sidebarOpen = true
@@ -146,6 +172,13 @@ export class OcVault extends LitElement {
   @state() private sessions: Entity[] = []
   @state() private practitioners: Entity[] = []
   @state() private schemes: Scheme[] = []
+  @state() private summary?: VaultSummary
+  @state() private reportKey = ''
+  @state() private year = lastMonth().year
+  @state() private month = lastMonth().month
+  /** The report on screen: the run record of the last 산출. */
+  @state() private result?: RunRecord
+  @state() private evidence?: { title: string; group: Group }
   @state() private selected?: string
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
@@ -163,12 +196,18 @@ export class OcVault extends LitElement {
   }
 
   private async load() {
-    const [subjects, sessions, practitioners, schemes] = await Promise.all([
+    const [subjects, sessions, practitioners, schemes, summary] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('practitioner'),
       shell.schemes(),
+      shell.summary(),
     ])
+    this.summary = summary
+    if (!this.reportKey && summary.reports.length > 0) {
+      const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
+      this.reportKey = `${newest.name}@${newest.version}`
+    }
     this.subjects = [...subjects].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
     this.sessions = sessions
     this.practitioners = practitioners
@@ -238,7 +277,8 @@ export class OcVault extends LitElement {
   }
 
   render() {
-    const heading = this.view === 'subjects' ? strings.subjects : strings.practitioners
+    const heading = { subjects: strings.subjects, report: strings.report, practitioners: strings.practitioners }[this.view]
+    const unreadable = this.summary?.unreadable.length ?? 0
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen}>
         <dp-sidebar
@@ -248,6 +288,7 @@ export class OcVault extends LitElement {
           active-id=${this.view}
           .items=${[
             { id: 'subjects', icon: '◉', label: strings.navSubjects },
+            { id: 'report', icon: '▦', label: strings.navReport },
             { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
@@ -265,8 +306,8 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>
-          ${this.unreadable > 0 ? html`<p class="error">${strings.unreadable(this.unreadable)}</p>` : nothing}
-          ${this.errorLine()} ${this.view === 'subjects' ? this.subjectsView() : this.practitionersView()}
+          ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.errorLine()}
+          ${this.view === 'subjects' ? this.subjectsView() : this.view === 'report' ? this.reportView() : this.practitionersView()}
         </dp-page>
       </dp-shell>
     `
@@ -408,6 +449,148 @@ export class OcVault extends LitElement {
         <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.recordSession(subjectId)}>${strings.recordSession}</dc-button>
       </div>
     </div>`
+  }
+
+  private async runReport() {
+    const [name, version] = this.reportKey.split('@')
+    await this.run(async () => {
+      this.result = await shell.runReport(name, Number(version), this.year, this.month)
+      this.evidence = undefined
+      await this.load()
+    })
+  }
+
+  private reportView() {
+    const reports = this.summary?.reports ?? []
+    if (reports.length === 0) return html`<p class="muted">${strings.noReports}</p>`
+    return html`<section>
+      <div class="row">
+        <label>
+          ${strings.reportForm}
+          <dc-select
+            aria-label=${strings.reportForm}
+            .options=${reports.map((r) => ({ value: `${r.name}@${r.version}`, label: strings.reportFormOption(r.label, r.version) }))}
+            .value=${this.reportKey}
+            ?disabled=${this.busy}
+            @change=${(e: Event) => (this.reportKey = (e.target as HTMLSelectElement).value)}
+          ></dc-select>
+        </label>
+        <label>
+          ${strings.year}
+          <dc-input
+            type="number"
+            aria-label=${strings.year}
+            min="2000"
+            max="2100"
+            .value=${String(this.year)}
+            ?disabled=${this.busy}
+            @input=${(e: Event) => (this.year = Number((e.target as HTMLInputElement).value))}
+          ></dc-input>
+        </label>
+        <label>
+          ${strings.month}
+          <dc-select
+            aria-label=${strings.month}
+            .options=${Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: strings.monthOption(i + 1) }))}
+            .value=${String(this.month)}
+            ?disabled=${this.busy}
+            @change=${(e: Event) => (this.month = Number((e.target as HTMLSelectElement).value))}
+          ></dc-select>
+        </label>
+        <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
+      </div>
+      ${this.result ? this.reportTable(this.result) : nothing}
+    </section>`
+  }
+
+  /** Shows what a count is made of, and brings the list into view: it sits below the table. */
+  private async showEvidence(title: string, group: Group) {
+    this.evidence = { title, group }
+    await this.updateComplete
+    this.renderRoot.querySelector('[data-role=evidence]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
+  private reportTable(result: RunRecord) {
+    const table = layOut(result, this.schemes, this.practitioners, strings.noPractitioner)
+    const count = (title: string, group: Group) =>
+      group.count === 0
+        ? html`<td class="num">0</td>`
+        : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(title, group)}>${group.count}</button></td>`
+    return html`
+      <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
+      <table class="report">
+        <thead>
+          <tr>
+            <th>${strings.reportRow}</th>
+            ${table.columns.map((c) => html`<th class="num">${c.label}</th>`)}
+            <th class="num">${strings.reportTotal}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${table.rows.map(
+            (r) => html`<tr data-row=${r.code}>
+              <th>${r.label}</th>
+              ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
+              <td class="num">${r.total}</td>
+            </tr>`,
+          )}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>${strings.reportTotal}</th>
+            ${table.columnTotals.map((n) => html`<td class="num">${n}</td>`)}
+            <td class="num" data-role="placed">${table.placed}</td>
+          </tr>
+        </tfoot>
+      </table>
+      <table class="groups">
+        <tbody>
+          <tr data-group="pending">
+            <th>${strings.pending}</th>
+            ${count(strings.pending, table.pending)}
+            <td class="muted">${strings.pendingHint}</td>
+          </tr>
+          <tr data-group="unmapped">
+            <th>${strings.unmapped}</th>
+            ${count(strings.unmapped, table.unmapped)}
+            <td class="muted">${strings.unmappedHint}</td>
+          </tr>
+          <tr data-group="total">
+            <th>${strings.grandTotal}</th>
+            ${count(strings.grandTotal, table.total)}
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+      ${this.evidence ? this.evidenceList(this.evidence.title, this.evidence.group) : html`<p class="muted">${strings.pickCell}</p>`}
+    `
+  }
+
+  private evidenceList(title: string, group: Group) {
+    const byId = new Map(this.sessions.map((s) => [s.id, s]))
+    const subjectNames = new Map(this.subjects.map((s) => [s.id, text(s, 'name')]))
+    const rows = newestFirst(group.records.map((id) => byId.get(id)).filter((s): s is Entity => !!s))
+    return html`<section data-role="evidence">
+      <h3>${strings.evidence(title, group.count)}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>${strings.sessionDate}</th>
+            <th>${strings.evidenceSubject}</th>
+            <th>${strings.sessionTopic}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(
+            (s) => html`<tr data-evidence=${s.id}>
+              <td>${text(s, 'date')}</td>
+              <td>${subjectNames.get(s.subject ?? '') ?? ''}</td>
+              <td>${labelOf(this.schemes, s.fields.topic)}</td>
+            </tr>`,
+          )}
+        </tbody>
+      </table>
+    </section>`
   }
 
   private practitionersView() {

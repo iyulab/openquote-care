@@ -249,6 +249,31 @@ const scenarios = {
     assert.ok(files.every((f) => f.endsWith('.age')), 'every record encrypted')
   },
 
+  async 'produces the monthly report and shows what each count is made of'(app, work) {
+    await app.click('button', '월 보고')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=period]')`, 'the report')
+    await app.noAlert()
+    const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(await row('family'), ['가정', '1', '1'], 'one family session, by 상담자 가')
+    assert.deepEqual(await row('relation'), ['관계', '1', '1'])
+    assert.deepEqual(await row('learning'), ['학습', '0', '0'], 'an empty row still shows')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '2')
+    const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
+    assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['0', '0', '2'])
+
+    await app.cdp.evaluate(`(() => { __e2e.one('tr[data-row=family] button.cell').click(); return true })()`)
+    await app.cdp.waitFor(`__e2e.all('tr[data-evidence]').length === 1`, 'the evidence')
+    const evidence = await app.cdp.evaluate(`[...__e2e.one('tr[data-evidence]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(evidence, ['2026-04-02', '가상 학생 1', '가정'])
+
+    const years = await readdir(join(work.vault, 'runs'))
+    assert.deepEqual(years, ['2026'], 'the run record is kept in the vault')
+    assert.equal((await readdir(join(work.vault, 'runs', '2026'))).length, 1)
+  },
+
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
     await app.click('dc-button', '볼트 열기')

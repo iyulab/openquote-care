@@ -62,6 +62,11 @@ fn entities(entity_type: String, app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn vault_summary(app: State<App>) -> CommandResult<Value> {
+    text(app.summary())
+}
+
+#[tauri::command]
 fn schemes(app: State<App>) -> CommandResult<Value> {
     text(app.schemes())
 }
@@ -112,6 +117,7 @@ pub fn run() {
             record,
             entities,
             schemes,
+            vault_summary,
             run_report
         ])
         .run(tauri::generate_context!())

@@ -57,6 +57,8 @@ internal static class Api
                 .OrderBy(e => e.Reference.Id, StringComparer.Ordinal)
                 .Select(EntityView));
 
+        app.MapGet("/summary", (VaultSession session) => Summary(session.Current));
+
         app.MapGet("/schemes", (VaultSession session) =>
             session.Current.Content.Schemes
                 .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
