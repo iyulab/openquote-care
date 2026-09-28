@@ -247,7 +247,7 @@ const scenarios = {
     await app.click('button', '대상자')
     await app.click('li button', '가상 학생 1')
     await app.setDate('날짜', '2026-04-02')
-    await app.choose('주제', 'family')
+    await app.choose('주제', 'learning')
     await app.choose('방법', 'special/school-violence')
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'one session')
@@ -258,7 +258,7 @@ const scenarios = {
     await app.noAlert()
     assert.deepEqual(await app.sessionRows(), [
       ['2026-04-09', '관계', '', '상담자 가'],
-      ['2026-04-02', '가정', '특별 › 학교폭력', '상담자 가'],
+      ['2026-04-02', '학습', '특별 › 학교폭력', '상담자 가'],
     ])
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal(subjects.length, 1, 'one subject folder')
@@ -275,17 +275,17 @@ const scenarios = {
     await app.cdp.waitFor(`!!__e2e.one('[data-role=period]')`, 'the report')
     await app.noAlert()
     const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
-    assert.deepEqual(await row('family'), ['가정', '1', '1'], 'one family session, by 상담자 가')
+    assert.deepEqual(await row('learning'), ['학습', '1', '1'], 'one learning session, by 상담자 가')
     assert.deepEqual(await row('relation'), ['관계', '1', '1'])
-    assert.deepEqual(await row('learning'), ['학습', '0', '0'], 'an empty row still shows')
+    assert.deepEqual(await row('family'), ['가정', '0', '0'], 'an empty row still shows')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '2')
     const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
     assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['0', '0', '2'])
 
-    await app.cdp.evaluate(`(() => { __e2e.one('tr[data-row=family] button.cell').click(); return true })()`)
+    await app.cdp.evaluate(`(() => { __e2e.one('tr[data-row=learning] button.cell').click(); return true })()`)
     await app.cdp.waitFor(`__e2e.all('tr[data-evidence]').length === 1`, 'the evidence')
     const evidence = await app.cdp.evaluate(`[...__e2e.one('tr[data-evidence]').children].map((c) => c.textContent.trim())`)
-    assert.deepEqual(evidence, ['2026-04-02', '가상 학생 1', '가정'])
+    assert.deepEqual(evidence, ['2026-04-02', '가상 학생 1', '학습'])
 
     const years = await readdir(join(work.vault, 'runs'))
     assert.deepEqual(years, ['2026'], 'the run record is kept in the vault')
@@ -293,7 +293,7 @@ const scenarios = {
   },
 
   async 'applies a classification revision and reports in it, holding back the split category'(app, work) {
-    // The test pack: topic v2 with a v1→v2 crosswalk and the report form in v2. "family" maps 1:1;
+    // The test pack: topic v2 with a v1→v2 crosswalk and the report form in v2. "learning" maps 1:1 to a new code, "academic";
     // "relation" splits in two, so its session waits for a person instead of being guessed.
     const pack = join(root, 'tests', 'golden', 'steps', '2')
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
@@ -304,7 +304,7 @@ const scenarios = {
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('tr[data-row=relation-peer]')`, 'the report in v2')
     const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
-    assert.deepEqual((await row('family')).slice(1), ['1', '1'], 'the 1:1 category carried over')
+    assert.deepEqual((await row('academic')).slice(1), ['1', '1'], 'the 1:1 category carried over to its new code')
     assert.deepEqual((await row('relation-peer')).slice(1), ['0', '0'], 'the split category is not guessed')
     const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
     assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['1', '0', '2'])
@@ -346,6 +346,18 @@ const scenarios = {
     assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '기록 수정', '재분류 대기', '또래관계 · 상담자 가'])
     const legend = await app.cdp.evaluate(`__e2e.all('[data-role=comparison-legend] dt').map((d) => d.textContent.trim())`)
     assert.deepEqual(legend, ['기록 수정'], 'the legend explains the kinds the table shows, and only those')
+
+    // Against the v1 run the revision itself shows: the learning session moved to its new code
+    // with no one touching it, while the split category's session was placed by a person.
+    const v1 = await app.cdp.evaluate(`[...__e2e.one('select[aria-label="이전 산출과 비교"]').options][1].value`)
+    await app.choose('이전 산출과 비교', v1)
+    await app.click('dc-button', '비교')
+    await app.cdp.waitFor(`__e2e.one('[data-role=comparison-counts]')?.textContent.includes('분류 개정 1')`, 'the comparison with v1')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=comparison-counts]').textContent.trim()`), '늦게 입력 0 · 빠짐 0 · 분류 개정 1 · 기록 수정 1 · 그대로 0')
+    const revised = await app.cdp.evaluate(`[...__e2e.one('tr[data-change=revised]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(revised, ['2026-04-02', '가상 학생 1', '분류 개정', '학습 · 상담자 가', '학업 · 상담자 가'])
+    const both = await app.cdp.evaluate(`__e2e.all('[data-role=comparison-legend] dt').map((d) => d.textContent.trim())`)
+    assert.deepEqual(both, ['분류 개정', '기록 수정'])
   },
 
   async 'brings this window forward instead of opening a second one'(app) {
