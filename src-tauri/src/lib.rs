@@ -112,16 +112,20 @@ fn pack_dir(handle: &tauri::AppHandle) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../packs/care-kr"))
 }
 
-/// The engine sidecar: `OPENQUOTE_SIDECAR_EXE` in development, otherwise next to the app.
-fn sidecar_path() -> PathBuf {
+/// The engine sidecar: `OPENQUOTE_SIDECAR_EXE` in development; in an installed app, the copy
+/// bundled with it (`src-tauri/tauri.bundle.conf.json`).
+fn sidecar_path(handle: &tauri::AppHandle) -> PathBuf {
     if let Ok(p) = std::env::var("OPENQUOTE_SIDECAR_EXE") {
         return PathBuf::from(p);
     }
+    let resources = handle.path().resource_dir().unwrap_or_default();
+    bundled_sidecar(&resources)
+}
+
+/// Where the installer puts the sidecar among the app's resources.
+fn bundled_sidecar(resources: &std::path::Path) -> PathBuf {
     let name = if cfg!(windows) { "openquote-care-sidecar.exe" } else { "openquote-care-sidecar" };
-    std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|d| d.join(name)))
-        .unwrap_or_else(|| PathBuf::from(name))
+    resources.join("sidecar").join(name)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -131,7 +135,7 @@ pub fn run() {
         .setup(|tauri_app| {
             let config = tauri_app.path().app_local_data_dir()?;
             let device = device_id(&config)?;
-            tauri_app.manage(App::new(sidecar_path(), device));
+            tauri_app.manage(App::new(sidecar_path(tauri_app.handle()), device));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -152,4 +156,15 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Openquote Care");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_bundled_sidecar_is_where_the_bundle_config_puts_it() {
+        let config: serde_json::Value = serde_json::from_str(include_str!("../tauri.bundle.conf.json")).unwrap();
+        let resources = config["bundle"]["resources"].as_object().unwrap();
+        let placed = resources.values().filter_map(|v| v.as_str()).find(|v| v.starts_with("sidecar/")).unwrap();
+        assert_eq!(super::bundled_sidecar(std::path::Path::new("")), std::path::Path::new(placed));
+    }
 }

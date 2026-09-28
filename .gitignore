@@ -27,5 +27,8 @@ claudedocs/
 # Rust
 target/
 
+# The self-contained sidecar the installer bundles (npm run publish:sidecar)
+sidecar/publish/
+
 # Tauri generated schemas
 src-tauri/gen/

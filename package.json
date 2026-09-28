@@ -10,12 +10,15 @@
   },
   "scripts": {
     "build:sidecar": "dotnet build sidecar/OpenquoteCare.Sidecar -c Release",
+    "publish:sidecar": "dotnet publish sidecar/OpenquoteCare.Sidecar -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o sidecar/publish",
+    "bundle": "npm run publish:sidecar && tauri build --config src-tauri/tauri.bundle.conf.json",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build:e2e": "tauri build --debug --no-bundle --config src-tauri/tauri.e2e.conf.json",
     "test:e2e": "node e2e/run.mjs",
+    "test:installed": "node e2e/installed.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
