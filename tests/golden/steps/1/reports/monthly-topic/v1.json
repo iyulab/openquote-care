@@ -6,5 +6,5 @@
   "counts": "session",
   "period": "month",
   "rows": { "scheme": "topic", "version": 1 },
-  "columns": { "field": "counselor" }
+  "columns": { "field": "practitioner" }
 }

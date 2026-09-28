@@ -11,7 +11,7 @@
   "base": [],
   "fields": {
     "case": "019d1d28-b3e0-7ae9-9cf8-5e31c84c4626",
-    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "practitioner": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
     "date": "2026-04-20",
     "client_type": {
       "scheme": "client-type",

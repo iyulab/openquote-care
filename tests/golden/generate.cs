@@ -53,7 +53,7 @@ foreach (var c in counselors)
 {
     var at = DateTimeOffset.Parse(c["created_at"]);
     var id = NewId(c["key"], at);
-    changes.Add(new Change(id, c["device"], at, "counselor", id, "create", [], "counselors",
+    changes.Add(new Change(id, c["device"], at, "practitioner", id, "create", [], "practitioners",
         new JsonObject { ["name"] = c["name"] }));
 }
 
@@ -87,7 +87,7 @@ foreach (var c in cases)
     changes.Add(new Change(id, c["device"], at, "case", id, "create", [], $"subjects/{IdOf(c["subject"])}", new JsonObject
     {
         ["subject"] = IdOf(c["subject"]),
-        ["counselor"] = IdOf(c["counselor"]),
+        ["practitioner"] = IdOf(c["counselor"]),
         ["opened"] = c["opened"],
     }));
 }
@@ -102,7 +102,7 @@ foreach (var s in sessions)
     changes.Add(new Change(id, s["device"], at, "session", id, "create", [], FolderOfSession(s["key"]), new JsonObject
     {
         ["case"] = IdOf(s["case"]),
-        ["counselor"] = IdOf(s["counselor"]),
+        ["practitioner"] = IdOf(s["counselor"]),
         ["date"] = s["date"],
         ["client_type"] = Coded("client-type", 1, s["client_type"]),
         ["method"] = s["method"] == "" ? null : Coded("method", 1, s["method"]),

@@ -4,7 +4,7 @@
   "device": "pc01",
   "at": "2026-03-01T09:00:00+09:00",
   "entity": {
-    "type": "counselor",
+    "type": "practitioner",
     "id": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b"
   },
   "op": "create",
