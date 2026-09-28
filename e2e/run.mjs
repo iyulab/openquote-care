@@ -314,6 +314,25 @@ const scenarios = {
     assert.deepEqual((await readdir(join(work.vault, 'schemes', 'topic'))).sort(), ['v1-v2.json.age', 'v1.json.age', 'v2.json.age'])
   },
 
+  async 'lets a person settle the split category, and the report counts it there'(app, work) {
+    await app.cdp.evaluate(`(() => { __e2e.one('tr[data-group=pending] button.cell').click(); return true })()`)
+    await app.cdp.waitFor(`__e2e.all('tr[data-pending]').length === 1`, 'the pending session')
+    const offered = await app.cdp.evaluate(`__e2e.all('tr[data-pending] dc-button').map((b) => b.textContent.trim())`)
+    assert.deepEqual(offered, ['또래관계', '교사관계'], 'only the codes the crosswalk allows')
+    await app.click('dc-button', '또래관계')
+    await app.cdp.waitFor(`__e2e.one('tr[data-pending]').textContent.includes('확정')`, 'the choice recorded')
+    await app.noAlert()
+
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`__e2e.one('tr[data-group=pending]')?.children[1].textContent.trim() === '0'`, 'nothing pending')
+    const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual((await row('relation-peer')).slice(1), ['1', '1'])
+    assert.equal(await app.cdp.evaluate(`__e2e.one('tr[data-group=total]').children[1].textContent.trim()`), '2', 'the total did not move')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').length`), 0, 'the "produce again" hint is gone once produced')
+    const subjects = await readdir(join(work.vault, 'subjects'))
+    assert.equal((await readdir(join(work.vault, 'subjects', subjects[0]))).length, 4, 'the choice is a new file; the session file is untouched')
+  },
+
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
     await app.click('dc-button', '볼트 열기')

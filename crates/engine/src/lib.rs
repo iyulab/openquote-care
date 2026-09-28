@@ -167,6 +167,12 @@ impl Engine {
         self.call("GET", "/schemes", None)
     }
 
+    /// Carries classification values to `target_version` of their scheme through the vault's
+    /// crosswalks: for each, where it lands, or the codes a person chooses from.
+    pub fn resolve(&self, target_version: u32, values: Value) -> Result<Value, EngineError> {
+        self.call("POST", "/classification/resolve", Some(json!({ "targetVersion": target_version, "values": values })))
+    }
+
     /// Asks the engine for a change file; `path` is one of the `/changes/…` routes.
     pub fn change(&self, path: &str, request: Value) -> Result<PlainFile, EngineError> {
         PlainFile::from_wire(&self.call("POST", path, Some(request))?)

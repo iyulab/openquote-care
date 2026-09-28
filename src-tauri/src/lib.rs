@@ -67,6 +67,11 @@ fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
 }
 
 #[tauri::command]
+fn resolve(target_version: u32, values: Value, app: State<App>) -> CommandResult<Value> {
+    text(app.resolve(target_version, values))
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -124,6 +129,7 @@ pub fn run() {
             schemes,
             vault_summary,
             apply_pack,
+            resolve,
             run_report
         ])
         .run(tauri::generate_context!())

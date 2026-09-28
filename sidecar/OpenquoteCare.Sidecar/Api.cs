@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Openquote.Classification;
 using Openquote.Records;
 using Openquote.Reports;
 using Openquote.Vault;
@@ -24,6 +25,8 @@ public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dicti
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
 
 public sealed record ReclassifyRequest(string Type, string Id, string Field, JsonNode Value);
+
+public sealed record ResolveRequest(int TargetVersion, IReadOnlyList<CodedValue> Values);
 
 public sealed record RunRequest(string Report, int Version, int Year, int Month);
 
@@ -68,6 +71,18 @@ internal static class Api
                     s.Version,
                     items = s.Items.Select(i => new { i.Code, i.Label, i.Parent, i.Suggest }),
                 }));
+
+        app.MapPost("/classification/resolve", (ResolveRequest request, VaultSession session) =>
+        {
+            var catalog = session.Current.Content.Catalog();
+            return request.Values.Select(v => catalog.Resolve(v, request.TargetVersion)).Select(r => new
+            {
+                kind = r.Kind.ToString().ToLowerInvariant(),
+                r.Code,
+                r.Candidates,
+                r.Crosswalks,
+            });
+        });
 
         app.MapPost("/changes/subject", (CreateSubjectRequest request) =>
             WireFile.From(writer.CreateSubject(request.Fields)));

@@ -116,6 +116,25 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Carries_values_to_a_later_version_and_names_the_candidates_of_a_split()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        JsonObject Topic(string code) => new() { ["scheme"] = "topic", ["version"] = 1, ["code"] = code };
+
+        var resolved = (await Post("/classification/resolve", new
+        {
+            targetVersion = 2,
+            values = new[] { Topic("family"), Topic("relation"), Topic("other") },
+        })).AsArray();
+
+        Assert.Equal("assigned", resolved[0]!["kind"]!.GetValue<string>());
+        Assert.Equal("family", resolved[0]!["code"]!.GetValue<string>());
+        Assert.Equal("pending", resolved[1]!["kind"]!.GetValue<string>());
+        Assert.Equal(["relation-peer", "relation-teacher"], resolved[1]!["candidates"]!.AsArray().Select(c => c!.GetValue<string>()));
+        Assert.Equal("unmapped", resolved[2]!["kind"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Names_the_subject_each_record_belongs_to()
     {
         await Post("/vault/load", Files(GoldenVault.Through(0)));

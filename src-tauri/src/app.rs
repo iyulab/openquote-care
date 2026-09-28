@@ -217,6 +217,11 @@ impl App {
         })
     }
 
+    /// Where each classification value lands in `target_version`, through the vault's crosswalks.
+    pub fn resolve(&self, target_version: u32, values: Value) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.resolve(target_version, values)?))
+    }
+
     /// The open vault's summary, as [`App::open_vault`] returns it.
     pub fn summary(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.summary()?))
@@ -393,6 +398,8 @@ mod tests {
         assert_eq!(added, ["reports/monthly-topic/v2.json", "schemes/topic/v1-v2.json", "schemes/topic/v2.json"]);
         assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["version"] == 2));
         assert!(app.apply_pack(&golden_step(2)).unwrap().is_empty(), "applying it again adds nothing");
+        let split = app.resolve(2, serde_json::json!([{ "scheme": "topic", "version": 1, "code": "relation" }])).unwrap();
+        assert_eq!(split[0]["candidates"], serde_json::json!(["relation-peer", "relation-teacher"]));
         assert!(app.apply_pack(&pack()).unwrap().is_empty(), "the pack the vault started from is already in it");
 
         let other = tempfile::tempdir().unwrap();

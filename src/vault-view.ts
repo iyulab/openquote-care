@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
-import { choices, definitionOf, labelOf, latest, newestFirst, text, today, type Entity, type Scheme } from './records.js'
+import { choices, classifiedField, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
 import { lastMonth, layOut, type Group, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
@@ -181,6 +181,9 @@ export class OcVault extends LitElement {
   @state() private result?: RunRecord
   @state() private evidence?: { title: string; group: Group }
   @state() private notice = ''
+  /** Pending records of the report on screen, each with the codes a person chooses from. */
+  @state() private pendingChoices?: { session: Entity; field: string; was: unknown; scheme: string; version: number; candidates: string[] }[]
+  @state() private reclassified = new Set<string>()
   @state() private selected?: string
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
@@ -486,6 +489,9 @@ export class OcVault extends LitElement {
     await this.run(async () => {
       this.result = await shell.runReport(name, Number(version), this.year, this.month)
       this.evidence = undefined
+      this.pendingChoices = undefined
+      this.reclassified = new Set()
+      this.notice = ''
       await this.load()
     })
   }
@@ -538,8 +544,94 @@ export class OcVault extends LitElement {
     </section>`
   }
 
+  /** Lists the report's pending records with the codes each may take, for a person to choose. */
+  private async showPending(result: RunRecord) {
+    const [scheme, { version }] = Object.entries(result.schemes)[0]
+    const byId = new Map(this.sessions.map((s) => [s.id, s]))
+    const rows = result.pending.records
+      .map((id) => byId.get(id))
+      .filter((s): s is Entity => !!s)
+      .map((session) => ({ session, found: classifiedField(session, scheme) }))
+      .filter((r): r is { session: Entity; found: [string, Classified] } => !!r.found)
+    await this.run(async () => {
+      const resolved = await shell.resolve(version, rows.map((r) => r.found[1]))
+      this.evidence = undefined
+      this.pendingChoices = rows.map((r, i) => ({
+        session: r.session,
+        field: r.found[0],
+        was: r.found[1],
+        scheme,
+        version,
+        candidates: resolved[i].candidates,
+      }))
+    })
+    await this.updateComplete
+    this.renderRoot.querySelector('[data-role=pending]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
+  private async reclassify(choice: NonNullable<OcVault['pendingChoices']>[number], code: string) {
+    await this.run(async () => {
+      await shell.record('/changes/reclassify', {
+        type: choice.session.type,
+        id: choice.session.id,
+        field: choice.field,
+        value: { scheme: choice.scheme, version: choice.version, code },
+      })
+      this.reclassified = new Set([...this.reclassified, choice.session.id])
+      this.notice = strings.reclassifiedNotice(this.reclassified.size)
+      await this.load()
+    })
+  }
+
+  private pendingList(choices: NonNullable<OcVault['pendingChoices']>) {
+    const subjectNames = new Map(this.subjects.map((s) => [s.id, text(s, 'name')]))
+    const labelIn = (scheme: string, version: number, code: string) => labelOf(this.schemes, { scheme, version, code })
+    return html`<section data-role="pending">
+      <h3>${strings.reclassifyTitle(choices.length)}</h3>
+      <p class="muted">${strings.reclassifyLead}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>${strings.sessionDate}</th>
+            <th>${strings.evidenceSubject}</th>
+            <th>${strings.reclassifyWas}</th>
+            <th>${strings.reclassifyTo}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${newestFirst(choices.map((c) => c.session)).map((session) => {
+            const c = choices.find((x) => x.session.id === session.id)!
+            const done = this.reclassified.has(session.id)
+            return html`<tr data-pending=${session.id}>
+              <td>${text(session, 'date')}</td>
+              <td>${subjectNames.get(session.subject ?? '') ?? ''}</td>
+              <td>${labelOf(this.schemes, c.was)}</td>
+              <td>
+                ${done
+                  ? html`<span class="muted">${strings.reclassified} · ${labelOf(this.schemes, session.fields[c.field])}</span>`
+                  : html`<div class="row">
+                      ${c.candidates.map(
+                        (code) => html`<dc-button
+                          size="sm"
+                          variant="secondary"
+                          data-code=${code}
+                          ?disabled=${this.busy}
+                          @click=${() => void this.reclassify(c, code)}
+                          >${labelIn(c.scheme, c.version, code)}</dc-button
+                        >`,
+                      )}
+                    </div>`}
+              </td>
+            </tr>`
+          })}
+        </tbody>
+      </table>
+    </section>`
+  }
+
   /** Shows what a count is made of, and brings the list into view: it sits below the table. */
   private async showEvidence(title: string, group: Group) {
+    this.pendingChoices = undefined
     this.evidence = { title, group }
     await this.updateComplete
     this.renderRoot.querySelector('[data-role=evidence]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -557,7 +649,9 @@ export class OcVault extends LitElement {
         <tbody>
           <tr data-group="pending">
             <th>${strings.pending}</th>
-            ${count(strings.pending, table.pending)}
+            ${table.pending.count === 0
+              ? html`<td class="num">0</td>`
+              : html`<td class="num"><button class="cell" @click=${() => void this.showPending(result)}>${table.pending.count}</button></td>`}
             <td class="muted">${strings.pendingHint}</td>
           </tr>
           <tr data-group="unmapped">
@@ -597,7 +691,11 @@ export class OcVault extends LitElement {
           </tr>
         </tfoot>
       </table>
-      ${this.evidence ? this.evidenceList(this.evidence.title, this.evidence.group) : html`<p class="muted">${strings.pickCell}</p>`}
+      ${this.pendingChoices
+        ? this.pendingList(this.pendingChoices)
+        : this.evidence
+          ? this.evidenceList(this.evidence.title, this.evidence.group)
+          : html`<p class="muted">${strings.pickCell}</p>`}
     `
   }
 

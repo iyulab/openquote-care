@@ -71,6 +71,21 @@ export function isClassified(value: unknown): value is Classified {
   return typeof v === 'object' && v !== null && typeof v.scheme === 'string' && typeof v.version === 'number' && typeof v.code === 'string'
 }
 
+/** Where a value lands in a later version: one code, codes a person chooses from, or none. */
+export interface Resolution {
+  kind: 'assigned' | 'pending' | 'unmapped'
+  code: string | null
+  candidates: string[]
+}
+
+/** The field of `entity` classified in `scheme`, if any: the one a report's rows count by. */
+export function classifiedField(entity: Entity, scheme: string): [string, Classified] | undefined {
+  for (const [field, value] of Object.entries(entity.fields)) {
+    if (isClassified(value) && value.scheme === scheme) return [field, value]
+  }
+  return undefined
+}
+
 /** A text field's value, or empty. */
 export function text(entity: Entity, field: string): string {
   const v = entity.fields[field]
