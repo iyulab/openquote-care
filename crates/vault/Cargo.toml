@@ -1,0 +1,16 @@
+[package]
+name = "openquote-care-vault"
+version = "0.1.0"
+description = "Vault storage for Openquote Care: age-encrypted change files, a passphrase-wrapped vault key and a recovery kit."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+age = { version = "0.12", features = ["armor"] }
+tauri-kit-fs = { git = "https://github.com/iyulab/tauri-kit", tag = "v0.2.0" }
+
+[dev-dependencies]
+tempfile = "3"
