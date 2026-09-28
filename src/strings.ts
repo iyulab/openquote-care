@@ -77,6 +77,8 @@ export const strings = {
   comparisonCounts: (late: number, removed: number, revised: number, moved: number, unchanged: number) =>
     `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
   changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', moved: '기록 수정' },
+  changeKindHeader: '구분',
+  noDifference: '두 산출의 기록이 모두 같은 자리에 있습니다.',
   changeKindHint: {
     late: '이전 산출 뒤에 입력된 기록입니다.',
     removed: '이전 산출 뒤에 지워졌거나 기간에서 벗어난 기록입니다.',

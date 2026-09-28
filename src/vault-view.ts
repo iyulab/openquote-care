@@ -166,6 +166,24 @@ export class OcVault extends LitElement {
     .detail {
       font-size: 12px;
     }
+    dl.legend {
+      display: grid;
+      gap: 2px;
+      margin: 0 0 8px;
+      font-size: 12px;
+    }
+    dl.legend div {
+      display: flex;
+      gap: 8px;
+    }
+    dl.legend dt {
+      font-weight: 600;
+      min-width: 5em;
+    }
+    dl.legend dd {
+      margin: 0;
+      color: var(--dc-color-text-secondary, #5e5c57);
+    }
   `
 
   /** The folder the vault is in, shown under the heading. */
@@ -613,34 +631,42 @@ export class OcVault extends LitElement {
       ...c.revised.map((id) => ({ id, kind: 'revised' as const })),
       ...c.moved.map((id) => ({ id, kind: 'moved' as const })),
     ]
+    const kinds = ['late', 'removed', 'revised', 'moved'] as const
     const date = (id: string) => (byId.get(id) ? text(byId.get(id)!, 'date') : '')
     changed.sort((a, b) => date(b.id).localeCompare(date(a.id)) || a.id.localeCompare(b.id))
     return html`<section data-role="comparison">
       <h3>${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}</h3>
       <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.revised.length, c.moved.length, c.unchanged.length)}</p>
-      <table>
-        <thead>
-          <tr>
-            <th>${strings.sessionDate}</th>
-            <th>${strings.evidenceSubject}</th>
-            <th></th>
-            <th>${strings.before}</th>
-            <th>${strings.after}</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${changed.map(({ id, kind }) => {
-            const session = byId.get(id)
-            return html`<tr data-change=${kind} data-id=${id}>
-              <td>${date(id)}</td>
-              <td>${session ? (subjectNames.get(session.subject ?? '') ?? '') : ''}</td>
-              <td title=${strings.changeKindHint[kind]}>${strings.changeKind[kind]}</td>
-              <td>${this.placeText(c.earlier, before.get(id))}</td>
-              <td>${this.placeText(c.later, after.get(id))}</td>
-            </tr>`
-          })}
-        </tbody>
-      </table>
+      ${changed.length === 0
+        ? html`<p class="muted">${strings.noDifference}</p>`
+        : html`<dl class="legend" data-role="comparison-legend">
+              ${kinds
+                .filter((k) => changed.some((ch) => ch.kind === k))
+                .map((k) => html`<div><dt>${strings.changeKind[k]}</dt><dd>${strings.changeKindHint[k]}</dd></div>`)}
+            </dl>
+            <table>
+              <thead>
+                <tr>
+                  <th>${strings.sessionDate}</th>
+                  <th>${strings.evidenceSubject}</th>
+                  <th>${strings.changeKindHeader}</th>
+                  <th>${strings.before}</th>
+                  <th>${strings.after}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${changed.map(({ id, kind }) => {
+                  const session = byId.get(id)
+                  return html`<tr data-change=${kind} data-id=${id}>
+                    <td>${date(id)}</td>
+                    <td>${session ? (subjectNames.get(session.subject ?? '') ?? '') : ''}</td>
+                    <td>${strings.changeKind[kind]}</td>
+                    <td>${this.placeText(c.earlier, before.get(id))}</td>
+                    <td>${this.placeText(c.later, after.get(id))}</td>
+                  </tr>`
+                })}
+              </tbody>
+            </table>`}
     </section>`
   }
 

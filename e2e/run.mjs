@@ -344,6 +344,8 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=comparison-counts]').textContent.trim()`), '늦게 입력 0 · 빠짐 0 · 분류 개정 0 · 기록 수정 1 · 그대로 1')
     const moved = await app.cdp.evaluate(`[...__e2e.one('tr[data-change=moved]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '기록 수정', '재분류 대기', '또래관계 · 상담자 가'])
+    const legend = await app.cdp.evaluate(`__e2e.all('[data-role=comparison-legend] dt').map((d) => d.textContent.trim())`)
+    assert.deepEqual(legend, ['기록 수정'], 'the legend explains the kinds the table shows, and only those')
   },
 
   async 'brings this window forward instead of opening a second one'(app) {
