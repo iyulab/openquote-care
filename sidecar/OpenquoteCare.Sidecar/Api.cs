@@ -22,6 +22,8 @@ public sealed record CreateSubjectRequest(Dictionary<string, JsonNode?> Fields);
 
 public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dictionary<string, JsonNode?> Fields);
 
+public sealed record DeviceNameRequest(string Name);
+
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
 
 public sealed record ReclassifyRequest(string Type, string Id, string Field, JsonNode Value);
@@ -42,13 +44,13 @@ internal static class Api
         var writer = new VaultWriter(device, clock);
 
         app.MapPost("/vault/load", (FilesRequest request, VaultSession session) =>
-            Summary(session.Load(request.Files.Select(f => f.ToVaultFile()))));
+            Summary(device, session.Load(request.Files.Select(f => f.ToVaultFile()))));
 
         app.MapPost("/vault/add", (FilesRequest request, VaultSession session) =>
         {
             try
             {
-                return Results.Ok(Summary(session.Add(request.Files.Select(f => f.ToVaultFile()))));
+                return Results.Ok(Summary(device, session.Add(request.Files.Select(f => f.ToVaultFile()))));
             }
             catch (InvalidOperationException e)
             {
@@ -62,7 +64,7 @@ internal static class Api
                 .OrderBy(e => e.Reference.Id, StringComparer.Ordinal)
                 .Select(EntityView));
 
-        app.MapGet("/summary", (VaultSession session) => Summary(session.Current));
+        app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
 
         app.MapGet("/schemes", (VaultSession session) =>
             session.Current.Content.Schemes
@@ -125,6 +127,15 @@ internal static class Api
         app.MapPost("/changes/in-subject", (CreateInSubjectRequest request) =>
             WireFile.From(writer.CreateInSubject(request.SubjectId, request.Type, request.Fields)));
 
+        // Names this device: renames the device entity it made, or makes one.
+        app.MapPost("/changes/device-name", (DeviceNameRequest request, VaultSession session) =>
+        {
+            var fields = new Dictionary<string, JsonNode?> { [DeviceNames.NameField] = request.Name.Trim() };
+            return WireFile.From(DeviceNames.EntityOf(session.Current.Entities.Values, device) is { } mine
+                ? writer.Update(mine, fields)
+                : writer.CreateDevice(fields));
+        });
+
         app.MapPost("/changes/update", (UpdateRequest request, VaultSession session) =>
             Find(session, request.Type, request.Id) is { } entity
                 ? Results.Ok(WireFile.From(writer.Update(entity, request.Fields)))
@@ -149,8 +160,10 @@ internal static class Api
     private static Entity? Find(VaultSession session, string type, string id) =>
         session.Current.Entities.GetValueOrDefault(new EntityRef(type, id));
 
-    private static object Summary(VaultSession.Snapshot s) => new
+    private static object Summary(string device, VaultSession.Snapshot s) => new
     {
+        device,
+        devices = DeviceNames.Of(s.Entities.Values),
         changes = s.Content.Changes.Count,
         entities = s.Entities.Count,
         conflicts = s.Entities.Values.Count(e => e.Conflicts.Count > 0),

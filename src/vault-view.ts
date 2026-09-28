@@ -8,7 +8,7 @@ import { comparable, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, 
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
-type View = 'subjects' | 'report' | 'practitioners'
+type View = 'subjects' | 'report' | 'practitioners' | 'devices'
 type Problem = keyof typeof strings.problems
 
 /** An open vault: its subjects and their sessions, and the practitioners sessions are kept by. */
@@ -200,6 +200,7 @@ export class OcVault extends LitElement {
 
   @state() private subjectName = ''
   @state() private practitionerName = ''
+  @state() private deviceName = ''
   @state() private date = today()
   @state() private topic = ''
   @state() private method = ''
@@ -238,6 +239,7 @@ export class OcVault extends LitElement {
       shell.summary(),
     ])
     this.summary = summary
+    this.deviceName = summary.devices[summary.device] ?? ''
     if (!this.reportKey && summary.reports.length > 0) {
       const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
       this.reportKey = `${newest.name}@${newest.version}`
@@ -286,6 +288,22 @@ export class OcVault extends LitElement {
     })
   }
 
+  private async saveDeviceName() {
+    this.notice = ''
+    await this.run(async () => {
+      await shell.record('/changes/device-name', { name: this.deviceName.trim() })
+      await this.load()
+      this.notice = strings.deviceNameSaved
+    })
+  }
+
+  /** How a device reads to a person: its name, and which one is this computer. */
+  private deviceLabel(device: string) {
+    const name = this.summary?.devices[device]
+    if (device === this.summary?.device) return name ? strings.thisDeviceNamed(name) : strings.thisDevice
+    return name ?? strings.unnamedDevice(device)
+  }
+
   private async recordSession(subjectId: string) {
     const topics = latest(this.schemes, 'topic')
     const methods = latest(this.schemes, 'method')
@@ -311,7 +329,7 @@ export class OcVault extends LitElement {
   }
 
   render() {
-    const heading = { subjects: strings.subjects, report: strings.report, practitioners: strings.practitioners }[this.view]
+    const heading = { subjects: strings.subjects, report: strings.report, practitioners: strings.practitioners, devices: strings.devices }[this.view]
     const unreadable = this.summary?.unreadable.length ?? 0
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen}>
@@ -324,10 +342,12 @@ export class OcVault extends LitElement {
             { id: 'subjects', icon: '◉', label: strings.navSubjects },
             { id: 'report', icon: '▦', label: strings.navReport },
             { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
+            { id: 'devices', icon: '▣', label: strings.navDevices },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
             this.error = undefined
+            this.notice = ''
           }}
         ></dp-sidebar>
         <dp-toolbar
@@ -342,7 +362,7 @@ export class OcVault extends LitElement {
         </dp-toolbar>
         <dp-page>
           ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.errorLine()}
-          ${this.view === 'subjects' ? this.subjectsView() : this.view === 'report' ? this.reportView() : this.practitionersView()}
+          ${{ subjects: () => this.subjectsView(), report: () => this.reportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
     `
@@ -465,7 +485,7 @@ export class OcVault extends LitElement {
               data-device=${h.device}
               ?disabled=${this.busy}
               @click=${() => void this.settle(session, field, h.value)}
-              >${this.valueText(field, h.value)} · ${strings.conflictFrom(h.device)}</dc-button
+              >${this.valueText(field, h.value)} · ${strings.conflictFrom(this.deviceLabel(h.device))}</dc-button
             >`,
           )}
         </div>`,
@@ -911,6 +931,25 @@ export class OcVault extends LitElement {
         ? html`<p class="muted">${strings.noPractitioners}</p>`
         : html`<ul class="plain" aria-label=${strings.practitioners}>
             ${this.practitioners.map((p) => html`<li>${text(p, 'name')}</li>`)}
+          </ul>`}
+    </section>`
+  }
+
+  private devicesView() {
+    const save = () => void this.saveDeviceName()
+    const named = Object.keys(this.summary?.devices ?? {}).sort((a, b) => this.deviceLabel(a).localeCompare(this.deviceLabel(b)))
+    return html`<section>
+      <p class="muted">${strings.devicesLead}</p>
+      <div class="row">
+        ${this.nameField(strings.deviceName, this.deviceName, (v) => (this.deviceName = v), save)}
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${save}>${strings.saveDeviceName}</dc-button>
+      </div>
+      ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
+      <h3>${strings.knownDevices}</h3>
+      ${named.length === 0
+        ? html`<p class="muted">${strings.noNamedDevices}</p>`
+        : html`<ul class="plain" aria-label=${strings.knownDevices}>
+            ${named.map((d) => html`<li data-device=${d}>${this.deviceLabel(d)}</li>`)}
           </ul>`}
     </section>`
   }

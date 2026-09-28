@@ -41,6 +41,7 @@ export const strings = {
   navSubjects: '대상자',
   navPractitioners: '담당자',
   navReport: '월 보고',
+  navDevices: '기기',
 
   report: '월 보고',
   reportForm: '양식',
@@ -114,8 +115,19 @@ export const strings = {
   conflictTitle: '두 기기에서 서로 모르게 고친 칸',
   conflictLead: '둘 다 보존되어 있습니다. 맞는 값을 고르면 모든 기기에서 그 값으로 정리됩니다.',
   conflictField: { topic: '주제', method: '방법', date: '날짜', practitioner: '담당자' } as Record<string, string>,
-  conflictFrom: (device: string) => `기기 ${device}`,
+  conflictFrom: (device: string) => device,
   conflictResolved: '동시 수정을 정리했습니다.',
+
+  devices: '기기',
+  devicesLead: '이 볼트에 쓰는 기기마다 이름을 붙여 두면, 두 기기에서 서로 모르게 고친 칸이 어느 기기의 것인지 이름으로 보입니다. 이름은 볼트에 기록되어 모든 기기가 봅니다.',
+  deviceName: '이 기기 이름',
+  saveDeviceName: '저장',
+  deviceNameSaved: '이 기기 이름을 저장했습니다.',
+  thisDevice: '이 기기',
+  thisDeviceNamed: (name: string) => `이 기기(${name})`,
+  unnamedDevice: (id: string) => `이름 없는 기기 ${id}`,
+  knownDevices: '이름이 붙은 기기',
+  noNamedDevices: '아직 이름이 붙은 기기가 없습니다.',
 
   practitioners: '담당자',
   noPractitioners: '담당자가 없습니다. 월 보고의 열은 담당자별로 나뉩니다.',

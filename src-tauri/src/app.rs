@@ -473,6 +473,16 @@ mod tests {
         devices.sort();
         assert_eq!(devices, ["pc01", "pc02"]);
 
+        // A device's name is kept in the vault, so the other device reads it too; naming again
+        // renames rather than adding a second name.
+        one.record("/changes/device-name", json!({ "name": "counselling room" })).unwrap();
+        one.record("/changes/device-name", json!({ "name": "front desk" })).unwrap();
+        two.refresh().unwrap();
+        let summary = two.summary().unwrap();
+        assert_eq!(summary["device"], "pc02");
+        assert_eq!(summary["devices"], json!({ "pc01": "front desk" }));
+        assert_eq!(two.entities("device").unwrap().as_array().unwrap().len(), 1);
+
         // A person picks one: a change that has seen both settles it, on every device.
         update(&one, "learning");
         two.refresh().unwrap();

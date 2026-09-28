@@ -358,6 +358,18 @@ const scenarios = {
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=comparison-counts]')`), 'and still shows what it showed')
   },
 
+  async 'names this device, and the name is what the vault shows for it'(app, work) {
+    await app.click('button', '기기')
+    await app.cdp.waitFor(`__e2e.all('p').some((p) => p.textContent.includes('아직 이름이 붙은 기기가 없습니다'))`, 'no device named yet')
+    await app.type('이 기기 이름', '상담실 PC')
+    await app.click('dc-button', '저장')
+    await app.cdp.waitFor(`__e2e.all('li[data-device]').some((li) => li.textContent.trim() === '이 기기(상담실 PC)')`, 'this device named')
+    await app.noAlert()
+    const devices = await readdir(join(work.vault, 'devices'))
+    assert.equal(devices.length, 1, 'the name is a change file in the vault, where every device reads it')
+    assert.match(devices[0], /\.json\.age$/)
+  },
+
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
     await app.click('dc-button', '볼트 열기')

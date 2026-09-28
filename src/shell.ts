@@ -6,6 +6,10 @@ import type { Comparison, KeptRun, RunRecord } from './report.js'
 export interface VaultSummary {
   unreadable: unknown[]
   reports: { name: string; version: number; label: string }[]
+  /** This computer's device id. */
+  device: string
+  /** Names people gave the devices writing to this vault, by device id. */
+  devices: Record<string, string>
   [key: string]: unknown
 }
 
