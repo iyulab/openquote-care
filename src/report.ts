@@ -4,6 +4,8 @@ import { choices, text, type Entity, type Scheme } from './records.js'
 
 /** The run record the engine keeps in the vault for every report it produces. */
 export interface RunRecord {
+  id: string
+  at: string
   report: { report: string; version: number }
   schemes: Record<string, { version: number; crosswalks: string[] }>
   period: { from: string; to: string }
@@ -84,6 +86,52 @@ export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[
     unmapped: run.unmapped,
     total: run.total,
   }
+}
+
+/** A kept run, as the engine lists them. */
+export interface KeptRun {
+  id: string
+  device: string
+  at: string
+  report: { name: string; version: number }
+  period: { from: string; to: string }
+  total: number
+}
+
+/** Why two runs differ, record by record, with both runs. */
+export interface Comparison {
+  earlier: RunRecord
+  later: RunRecord
+  late: string[]
+  removed: string[]
+  moved: string[]
+  unchanged: string[]
+}
+
+/** Where a run put one record. */
+export type Place = { kind: 'cell'; row: string; column: string | null } | { kind: 'pending' } | { kind: 'unmapped' }
+
+/** Every record of a run, with where the run put it. */
+export function placesOf(run: RunRecord): Map<string, Place> {
+  const places = new Map<string, Place>()
+  for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', row: cell.row, column: cell.column })
+  for (const id of run.pending.records) places.set(id, { kind: 'pending' })
+  for (const id of run.unmapped.records) places.set(id, { kind: 'unmapped' })
+  return places
+}
+
+/** The row scheme and version a run counted in. */
+export function rowSchemeOf(run: RunRecord): { scheme: string; version: number } {
+  const [scheme, { version }] = Object.entries(run.schemes)[0] ?? ['', { version: 0 }]
+  return { scheme, version }
+}
+
+/** Earlier runs of the same form name over the same period — what a run can be compared with. */
+export function comparable(runs: KeptRun[], run: RunRecord): KeptRun[] {
+  return runs
+    .filter((k) => k.id !== run.id && k.report.name === run.report.report && k.period.from === run.period.from && k.period.to === run.period.to)
+    .filter((k) => k.id < run.id)
+    .sort((a, b) => b.id.localeCompare(a.id))
 }
 
 /** The month before `now`'s, which is the one a monthly report is usually made for. */

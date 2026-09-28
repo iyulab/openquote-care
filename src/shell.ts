@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { Classified, Entity, Resolution, Scheme } from './records.js'
-import type { RunRecord } from './report.js'
+import type { Comparison, KeptRun, RunRecord } from './report.js'
 
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
@@ -22,6 +22,8 @@ export const shell = {
   summary: () => invoke<VaultSummary>('vault_summary'),
   /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
   applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
+  runs: () => invoke<KeptRun[]>('runs'),
+  compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
   /** Where each value lands in `targetVersion` of its scheme, through the vault's crosswalks. */
   resolve: (targetVersion: number, values: Classified[]) => invoke<Resolution[]>('resolve', { targetVersion, values }),
   /** Runs a monthly report; the engine keeps its run record in the vault. */

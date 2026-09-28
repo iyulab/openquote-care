@@ -28,6 +28,8 @@ public sealed record ReclassifyRequest(string Type, string Id, string Field, Jso
 
 public sealed record ResolveRequest(int TargetVersion, IReadOnlyList<CodedValue> Values);
 
+public sealed record CompareRequest(string Earlier, string Later);
+
 public sealed record RunRequest(string Report, int Version, int Year, int Month);
 
 /// <summary>The HTTP surface the shell calls. The sidecar never touches the disk: files come in as
@@ -84,6 +86,35 @@ internal static class Api
             });
         });
 
+        app.MapGet("/runs", (VaultSession session) =>
+            session.Current.Content.Runs.Select(k => new
+            {
+                k.Id,
+                k.Device,
+                at = k.At.ToString("yyyy-MM-dd'T'HH:mm:sszzz", System.Globalization.CultureInfo.InvariantCulture),
+                report = new { name = k.Run.Report.Name, version = k.Run.Report.Version },
+                period = new { from = k.Run.From.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture), to = k.Run.To.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) },
+                total = k.Run.Total.Count,
+            }));
+
+        app.MapPost("/runs/compare", (CompareRequest request, VaultSession session) =>
+        {
+            var runs = session.Current.Content.Runs;
+            if (runs.FirstOrDefault(k => k.Id == request.Earlier) is not { } earlier
+                || runs.FirstOrDefault(k => k.Id == request.Later) is not { } later)
+                return Results.NotFound();
+            var diff = ReportDiff.Compare(earlier.Run, later.Run);
+            return Results.Ok(new
+            {
+                earlier = RunView(earlier),
+                later = RunView(later),
+                diff.Late,
+                diff.Removed,
+                diff.Moved,
+                diff.Unchanged,
+            });
+        });
+
         app.MapPost("/changes/subject", (CreateSubjectRequest request) =>
             WireFile.From(writer.CreateSubject(request.Fields)));
 
@@ -125,6 +156,9 @@ internal static class Api
         reports = s.Content.Reports.Select(r => new { r.Name, r.Version, r.Label }),
         unreadable = s.Content.Unreadable.Select(u => new { u.Path, reason = u.Reason.ToString(), u.Detail }),
     };
+
+    // A kept run as its record reads: the same shape /reports/run answers with.
+    private static JsonNode RunView(KeptRun k) => JsonNode.Parse(ReportRunJson.Write(k.Run, k.Id, k.Device, k.At))!;
 
     private static object EntityView(Entity e) => new
     {

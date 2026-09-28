@@ -333,6 +333,19 @@ const scenarios = {
     assert.equal((await readdir(join(work.vault, 'subjects', subjects[0]))).length, 4, 'the choice is a new file; the session file is untouched')
   },
 
+  async 'explains how this report differs from the one before it'(app) {
+    const offered = await app.cdp.evaluate(`[...__e2e.one('select[aria-label="이전 산출과 비교"]').options].map((o) => o.textContent.trim())`)
+    assert.equal(offered.length, 2, 'the two earlier runs of April (v1, v2) and none of other periods or this one')
+    assert.match(offered[0], / · v2 · 전체 2$/, 'the most recent earlier run first')
+    assert.match(offered[1], / · v1 · 전체 2$/)
+    await app.click('dc-button', '비교')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=comparison-counts]')`, 'the comparison')
+    await app.noAlert()
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=comparison-counts]').textContent.trim()`), '늦게 입력 0 · 빠짐 0 · 자리 바뀜 1 · 그대로 1')
+    const moved = await app.cdp.evaluate(`[...__e2e.one('tr[data-change=moved]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '자리 바뀜', '재분류 대기', '또래관계 · 상담자 가'])
+  },
+
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
     await app.click('dc-button', '볼트 열기')

@@ -135,6 +135,31 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Lists_the_runs_it_keeps_and_explains_how_two_differ()
+    {
+        // The report as it stood after step 2, then after step 3 — the golden r2 and r3.
+        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        var r2 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        await Post("/vault/load", Files(GoldenVault.Through(3).Append(FileOf(r2["file"]!))));
+        var r3 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        await Post("/vault/add", new { files = new[] { r3["file"] } });
+
+        var runs = (await Get("/runs")).AsArray();
+        Assert.Equal(2, runs.Count);
+        Assert.Equal("2026-04-01", runs[0]!["period"]!["from"]!.GetValue<string>());
+
+        var compared = await Post("/runs/compare", new { earlier = runs[0]!["id"]!.GetValue<string>(), later = runs[1]!["id"]!.GetValue<string>() });
+
+        var expected = GoldenVault.Expected("diff-r2-r3");
+        foreach (var key in new[] { "late", "removed", "moved", "unchanged" })
+            Assert.True(JsonNode.DeepEquals(expected[key], compared[key]), key);
+        Assert.Equal(r3["record"]!["total"]!.ToJsonString(), compared["later"]!["total"]!.ToJsonString());
+    }
+
+    private static Openquote.Vault.VaultFile FileOf(JsonNode wire) =>
+        new(wire["path"]!.GetValue<string>(), Convert.FromBase64String(wire["content"]!.GetValue<string>()));
+
+    [Fact]
     public async Task Names_the_subject_each_record_belongs_to()
     {
         await Post("/vault/load", Files(GoldenVault.Through(0)));

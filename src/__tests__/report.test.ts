@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lastMonth, layOut, type RunRecord } from '../report.js'
+import { comparable, lastMonth, layOut, placesOf, type KeptRun, type RunRecord } from '../report.js'
 import type { Entity, Scheme } from '../records.js'
 
 const topic: Scheme = {
@@ -14,6 +14,8 @@ const topic: Scheme = {
 }
 const person = (id: string, name: string): Entity => ({ type: 'practitioner', id, subject: null, fields: { name }, conflicts: {} })
 const run: RunRecord = {
+  id: '5',
+  at: '2026-05-02T09:00:00+09:00',
   report: { report: 'monthly-topic', version: 2 },
   schemes: { topic: { version: 2, crosswalks: ['1-2'] } },
   period: { from: '2026-04-01', to: '2026-04-30' },
@@ -49,6 +51,27 @@ describe('layOut', () => {
   })
   it('balances: placed + pending + unmapped = total', () => {
     expect(table.placed + table.pending.count + table.unmapped.count).toBe(table.total.count)
+  })
+})
+
+describe('placesOf', () => {
+  it('says where the run put each record', () => {
+    const places = placesOf(run)
+    expect(places.get('a')).toEqual({ kind: 'cell', row: 'family', column: 'p2' })
+    expect(places.get('d')).toEqual({ kind: 'cell', row: 'family', column: null })
+    expect(places.get('e')).toEqual({ kind: 'pending' })
+    expect(places.get('f')).toEqual({ kind: 'unmapped' })
+  })
+})
+
+describe('comparable', () => {
+  const kept = (id: string, name: string, from: string): KeptRun => ({
+    id, device: 'pc', at: '', report: { name, version: 1 }, period: { from, to: from.replace('01', '30') }, total: 0,
+  })
+  it('offers earlier runs of the same form and period, newest first, in any version', () => {
+    const runs = [kept('1', 'monthly-topic', '2026-04-01'), kept('3', 'monthly-topic', '2026-04-01'), kept('2', 'other', '2026-04-01'),
+      kept('4', 'monthly-topic', '2026-03-01'), kept('5', 'monthly-topic', '2026-04-01'), kept('6', 'monthly-topic', '2026-04-01')]
+    expect(comparable(runs, run).map((k) => k.id)).toEqual(['3', '1'])
   })
 })
 

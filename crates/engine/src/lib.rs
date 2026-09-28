@@ -173,6 +173,16 @@ impl Engine {
         self.call("POST", "/classification/resolve", Some(json!({ "targetVersion": target_version, "values": values })))
     }
 
+    /// The run records the vault keeps, oldest first.
+    pub fn runs(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/runs", None)
+    }
+
+    /// Why two kept runs differ, record by record, with both runs.
+    pub fn compare_runs(&self, earlier: &str, later: &str) -> Result<Value, EngineError> {
+        self.call("POST", "/runs/compare", Some(json!({ "earlier": earlier, "later": later })))
+    }
+
     /// Asks the engine for a change file; `path` is one of the `/changes/…` routes.
     pub fn change(&self, path: &str, request: Value) -> Result<PlainFile, EngineError> {
         PlainFile::from_wire(&self.call("POST", path, Some(request))?)

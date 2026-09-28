@@ -222,6 +222,16 @@ impl App {
         self.with_open(|open| Ok(open.engine.resolve(target_version, values)?))
     }
 
+    /// The run records the vault keeps.
+    pub fn runs(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.runs()?))
+    }
+
+    /// Why two kept runs differ.
+    pub fn compare_runs(&self, earlier: &str, later: &str) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.compare_runs(earlier, later)?))
+    }
+
     /// The open vault's summary, as [`App::open_vault`] returns it.
     pub fn summary(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.summary()?))
@@ -362,6 +372,11 @@ mod tests {
         assert_eq!(summary["unreadable"], json!([]));
         let again = app.run_report("monthly-topic", 1, 2026, 4).unwrap();
         assert_eq!(again["cells"], first["cells"]);
+        let runs = app.runs().unwrap();
+        assert_eq!(runs.as_array().unwrap().len(), 2, "both runs are kept and read back");
+        let compared = app.compare_runs(runs[0]["id"].as_str().unwrap(), runs[1]["id"].as_str().unwrap()).unwrap();
+        assert_eq!(compared["moved"], serde_json::json!([]));
+        assert_eq!(compared["unchanged"].as_array().unwrap().len(), 1);
         assert!(matches!(app.open_vault(dir.path(), "nope".to_owned()), Err(AppError::Engine(EngineError::Vault(VaultError::WrongPassphrase)))));
     }
 

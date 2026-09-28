@@ -4,7 +4,7 @@ import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { choices, classifiedField, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
-import { lastMonth, layOut, type Group, type RunRecord } from './report.js'
+import { comparable, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
@@ -184,6 +184,9 @@ export class OcVault extends LitElement {
   /** Pending records of the report on screen, each with the codes a person chooses from. */
   @state() private pendingChoices?: { session: Entity; field: string; was: unknown; scheme: string; version: number; candidates: string[] }[]
   @state() private reclassified = new Set<string>()
+  @state() private keptRuns: KeptRun[] = []
+  @state() private compareWith = ''
+  @state() private comparison?: Comparison
   @state() private selected?: string
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
@@ -456,6 +459,96 @@ export class OcVault extends LitElement {
     </div>`
   }
 
+  private async loadRuns() {
+    this.keptRuns = await shell.runs()
+    const offered = this.result ? comparable(this.keptRuns, this.result) : []
+    this.compareWith = offered[0]?.id ?? ''
+    this.comparison = undefined
+  }
+
+  private async compareRuns() {
+    if (!this.result || !this.compareWith) return
+    const later = this.result.id
+    await this.run(async () => {
+      this.comparison = await shell.compareRuns(this.compareWith, later)
+      this.evidence = undefined
+      this.pendingChoices = undefined
+    })
+    await this.updateComplete
+    this.renderRoot.querySelector('[data-role=comparison]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }
+
+  /** A place in words: a row (in the version that run counted in) and a column, or a group. */
+  private placeText(run: RunRecord, place: Place | undefined): string {
+    if (!place) return strings.nowhere
+    if (place.kind === 'pending') return strings.pending
+    if (place.kind === 'unmapped') return strings.unmapped
+    const { scheme, version } = rowSchemeOf(run)
+    const row = labelOf(this.schemes, { scheme, version, code: place.row })
+    const names = new Map(this.practitioners.map((p) => [p.id, text(p, 'name')]))
+    const column = place.column === null ? strings.noPractitioner : (names.get(place.column) ?? place.column)
+    return `${row} · ${column}`
+  }
+
+  private compareControls(result: RunRecord) {
+    const offered = comparable(this.keptRuns, result)
+    if (offered.length === 0) return html`<p class="muted">${strings.noEarlierRun}</p>`
+    return html`<div class="row">
+      <label>
+        ${strings.compareWith}
+        <dc-select
+          aria-label=${strings.compareWith}
+          .options=${offered.map((k) => ({ value: k.id, label: strings.runOption(k.at, k.report.version, k.total) }))}
+          .value=${this.compareWith}
+          ?disabled=${this.busy}
+          @change=${(e: Event) => (this.compareWith = (e.target as HTMLSelectElement).value)}
+        ></dc-select>
+      </label>
+      <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.compareRuns()}>${strings.compare}</dc-button>
+    </div>`
+  }
+
+  private comparisonView(c: Comparison) {
+    const before = placesOf(c.earlier)
+    const after = placesOf(c.later)
+    const byId = new Map(this.sessions.map((s) => [s.id, s]))
+    const subjectNames = new Map(this.subjects.map((s) => [s.id, text(s, 'name')]))
+    const changed = [
+      ...c.late.map((id) => ({ id, kind: 'late' as const })),
+      ...c.removed.map((id) => ({ id, kind: 'removed' as const })),
+      ...c.moved.map((id) => ({ id, kind: 'moved' as const })),
+    ]
+    const date = (id: string) => (byId.get(id) ? text(byId.get(id)!, 'date') : '')
+    changed.sort((a, b) => date(b.id).localeCompare(date(a.id)) || a.id.localeCompare(b.id))
+    return html`<section data-role="comparison">
+      <h3>${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}</h3>
+      <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.moved.length, c.unchanged.length)}</p>
+      <table>
+        <thead>
+          <tr>
+            <th>${strings.sessionDate}</th>
+            <th>${strings.evidenceSubject}</th>
+            <th></th>
+            <th>${strings.before}</th>
+            <th>${strings.after}</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${changed.map(({ id, kind }) => {
+            const session = byId.get(id)
+            return html`<tr data-change=${kind} data-id=${id}>
+              <td>${date(id)}</td>
+              <td>${session ? (subjectNames.get(session.subject ?? '') ?? '') : ''}</td>
+              <td>${strings.changeKind[kind]}</td>
+              <td>${this.placeText(c.earlier, before.get(id))}</td>
+              <td>${this.placeText(c.later, after.get(id))}</td>
+            </tr>`
+          })}
+        </tbody>
+      </table>
+    </section>`
+  }
+
   private async pickPack() {
     const folder = await open({ directory: true, title: strings.applyPackTitle })
     if (typeof folder === 'string') await this.applyPack(folder)
@@ -493,6 +586,7 @@ export class OcVault extends LitElement {
       this.reclassified = new Set()
       this.notice = ''
       await this.load()
+      await this.loadRuns()
     })
   }
 
@@ -556,6 +650,7 @@ export class OcVault extends LitElement {
     await this.run(async () => {
       const resolved = await shell.resolve(version, rows.map((r) => r.found[1]))
       this.evidence = undefined
+      this.comparison = undefined
       this.pendingChoices = rows.map((r, i) => ({
         session: r.session,
         field: r.found[0],
@@ -632,6 +727,7 @@ export class OcVault extends LitElement {
   /** Shows what a count is made of, and brings the list into view: it sits below the table. */
   private async showEvidence(title: string, group: Group) {
     this.pendingChoices = undefined
+    this.comparison = undefined
     this.evidence = { title, group }
     await this.updateComplete
     this.renderRoot.querySelector('[data-role=evidence]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })
@@ -691,7 +787,10 @@ export class OcVault extends LitElement {
           </tr>
         </tfoot>
       </table>
-      ${this.pendingChoices
+      ${this.compareControls(result)}
+      ${this.comparison
+        ? this.comparisonView(this.comparison)
+        : this.pendingChoices
         ? this.pendingList(this.pendingChoices)
         : this.evidence
           ? this.evidenceList(this.evidence.title, this.evidence.group)

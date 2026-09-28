@@ -72,6 +72,16 @@ fn resolve(target_version: u32, values: Value, app: State<App>) -> CommandResult
 }
 
 #[tauri::command]
+fn runs(app: State<App>) -> CommandResult<Value> {
+    text(app.runs())
+}
+
+#[tauri::command]
+fn compare_runs(earlier: String, later: String, app: State<App>) -> CommandResult<Value> {
+    text(app.compare_runs(&earlier, &later))
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -130,6 +140,8 @@ pub fn run() {
             vault_summary,
             apply_pack,
             resolve,
+            runs,
+            compare_runs,
             run_report
         ])
         .run(tauri::generate_context!())
