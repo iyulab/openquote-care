@@ -1,0 +1,30 @@
+{
+  "format": "openquote.change/0",
+  "id": "019dbcc9-4400-7148-8af7-4f2588f48e8f",
+  "device": "pc02",
+  "at": "2026-04-24T09:00:00+09:00",
+  "entity": {
+    "type": "subject",
+    "id": "019dbcc9-4400-7148-8af7-4f2588f48e8f"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "mgmt_no": "2026-014",
+    "name": "가상 학생 14",
+    "birth": "2010-02-14",
+    "gender": "F",
+    "school_level": {
+      "scheme": "school-level",
+      "version": 1,
+      "code": "high"
+    },
+    "school": "예시고등학교",
+    "grade": "1",
+    "class": "5",
+    "guardian": "가상 보호자 14",
+    "guardian_phone": "010-0000-0114",
+    "phone": "010-0000-0014",
+    "referring_teacher": "가상 교사 14"
+  }
+}

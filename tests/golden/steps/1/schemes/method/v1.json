@@ -1,0 +1,27 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "method",
+  "version": 1,
+  "items": [
+    { "code": "interview", "label": "면담" },
+    { "code": "crisis", "label": "위기" },
+    { "code": "phone", "label": "전화" },
+    { "code": "consult", "label": "자문" },
+    { "code": "cyber", "label": "사이버" },
+    { "code": "group", "label": "대안(집단)" },
+    { "code": "special", "label": "특별" },
+    { "code": "special/school-violence", "label": "학교폭력", "parent": "special" },
+    { "code": "special/discipline", "label": "선도조치", "parent": "special" },
+    { "code": "special/teacher-rights", "label": "교권침해", "parent": "special" },
+    { "code": "deliberation", "label": "숙려" },
+    { "code": "assessment", "label": "검사" },
+    { "code": "link", "label": "연계" },
+    { "code": "link/hifive", "label": "하이파이브", "parent": "link" },
+    { "code": "link/psychiatrist", "label": "자문의", "parent": "link" },
+    { "code": "link/treatment-fund", "label": "치료비", "parent": "link" },
+    { "code": "link/hospital", "label": "병의원", "parent": "link" },
+    { "code": "link/center", "label": "상담센터", "parent": "link" },
+    { "code": "link/lecturer", "label": "외부강사", "parent": "link" },
+    { "code": "visiting", "label": "순회" }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d61e9-b740-79fb-99e2-92b60d894eca",
+  "device": "pc01",
+  "at": "2026-04-06T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019d61e9-b740-79fb-99e2-92b60d894eca"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019cdf5c-63e0-706e-a70c-1e775d9f7566",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-04-06",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "interview"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "relation"
+    }
+  }
+}

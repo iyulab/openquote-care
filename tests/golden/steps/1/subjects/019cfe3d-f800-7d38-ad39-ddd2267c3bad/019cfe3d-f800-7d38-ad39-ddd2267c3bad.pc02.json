@@ -1,0 +1,30 @@
+{
+  "format": "openquote.change/0",
+  "id": "019cfe3d-f800-7d38-ad39-ddd2267c3bad",
+  "device": "pc02",
+  "at": "2026-03-18T09:00:00+09:00",
+  "entity": {
+    "type": "subject",
+    "id": "019cfe3d-f800-7d38-ad39-ddd2267c3bad"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "mgmt_no": "2026-011",
+    "name": "가상 학생 11",
+    "birth": "2009-12-12",
+    "gender": "M",
+    "school_level": {
+      "scheme": "school-level",
+      "version": 1,
+      "code": "high"
+    },
+    "school": "예시고등학교",
+    "grade": "2",
+    "class": "4",
+    "guardian": "가상 보호자 11",
+    "guardian_phone": "010-0000-0111",
+    "phone": "010-0000-0011",
+    "referring_teacher": "가상 교사 11"
+  }
+}

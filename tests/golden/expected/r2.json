@@ -1,0 +1,154 @@
+{
+  "format": "openquote.run/0",
+  "report": {
+    "report": "monthly-topic",
+    "version": 2
+  },
+  "schemes": {
+    "topic": {
+      "version": 2,
+      "crosswalks": [
+        "1-2"
+      ]
+    }
+  },
+  "period": {
+    "from": "2026-04-01",
+    "to": "2026-04-30"
+  },
+  "cells": [
+    {
+      "row": "academic",
+      "column": "019ca6b2-c660-733b-b869-66d84b107ea2",
+      "count": 2,
+      "records": [
+        "019d85f6-3b40-7943-a898-47a56cfad978",
+        "019dbe9c-2f40-7e52-9153-24dfe6be819d"
+      ]
+    },
+    {
+      "row": "behavior",
+      "column": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+      "count": 1,
+      "records": [
+        "019d9569-4f40-725c-84a4-cef65416a021"
+      ]
+    },
+    {
+      "row": "behavior",
+      "column": "019ca6b2-c660-733b-b869-66d84b107ea2",
+      "count": 1,
+      "records": [
+        "019d7683-2740-7da5-9e98-ac7fdbca51e0"
+      ]
+    },
+    {
+      "row": "emotion",
+      "column": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+      "count": 4,
+      "records": [
+        "019d4d50-4740-7458-9333-9f5c0922ec93",
+        "019d8b1c-9740-7d69-86e9-b26f2ed2d686",
+        "019d8b25-bf00-7ff7-ac9a-26f0b7a78db6",
+        "019ddecb-ee40-769e-b422-9aad366638a3"
+      ]
+    },
+    {
+      "row": "emotion",
+      "column": "019ca6b2-c660-733b-b869-66d84b107ea2",
+      "count": 2,
+      "records": [
+        "019d5276-a340-7600-948b-2379b230f8b2",
+        "019d6710-1340-7b8b-934a-464da8b0542c"
+      ]
+    },
+    {
+      "row": "emotional-behavioral",
+      "column": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+      "count": 1,
+      "records": [
+        "019daa02-bf40-7a0a-b5ea-477234459e5d"
+      ]
+    },
+    {
+      "row": "family",
+      "column": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+      "count": 1,
+      "records": [
+        "019dce0f-4340-7690-9a05-3602b59c3c03"
+      ]
+    },
+    {
+      "row": "family",
+      "column": "019ca6b2-c660-733b-b869-66d84b107ea2",
+      "count": 1,
+      "records": [
+        "019e42e5-8a80-793e-b400-5086bce8ea94"
+      ]
+    },
+    {
+      "row": "school-violence",
+      "column": "019ca6b2-c660-733b-b869-66d84b107ea2",
+      "count": 2,
+      "records": [
+        "019d9a8f-ab40-7a2e-903b-c994b1bccb09",
+        "019dd335-9f40-7fdb-b6b7-a8f15d8d8de6"
+      ]
+    },
+    {
+      "row": "suicide",
+      "column": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+      "count": 1,
+      "records": [
+        "019db975-d340-7fec-8222-27bc65db5f98"
+      ]
+    }
+  ],
+  "pending": {
+    "count": 6,
+    "records": [
+      "019d61e9-b740-79fb-99e2-92b60d894eca",
+      "019d6c36-6f40-7b09-936f-7c6a81684547",
+      "019d715c-cb40-7142-abf4-520de40c2216",
+      "019d9042-f340-7ffe-ad1d-e648b6df8d47",
+      "019daf29-1b40-7367-ba3f-36e7cd81ca42",
+      "019db44f-7740-7352-9a80-adeed0a3f889"
+    ]
+  },
+  "unmapped": {
+    "count": 2,
+    "records": [
+      "019dd335-9f40-7649-95f0-328f1f422c46",
+      "019dd85b-fb40-7d97-9c5c-c43d2328e2f6"
+    ]
+  },
+  "total": {
+    "count": 24,
+    "records": [
+      "019d4d50-4740-7458-9333-9f5c0922ec93",
+      "019d5276-a340-7600-948b-2379b230f8b2",
+      "019d61e9-b740-79fb-99e2-92b60d894eca",
+      "019d6710-1340-7b8b-934a-464da8b0542c",
+      "019d6c36-6f40-7b09-936f-7c6a81684547",
+      "019d715c-cb40-7142-abf4-520de40c2216",
+      "019d7683-2740-7da5-9e98-ac7fdbca51e0",
+      "019d85f6-3b40-7943-a898-47a56cfad978",
+      "019d8b1c-9740-7d69-86e9-b26f2ed2d686",
+      "019d8b25-bf00-7ff7-ac9a-26f0b7a78db6",
+      "019d9042-f340-7ffe-ad1d-e648b6df8d47",
+      "019d9569-4f40-725c-84a4-cef65416a021",
+      "019d9a8f-ab40-7a2e-903b-c994b1bccb09",
+      "019daa02-bf40-7a0a-b5ea-477234459e5d",
+      "019daf29-1b40-7367-ba3f-36e7cd81ca42",
+      "019db44f-7740-7352-9a80-adeed0a3f889",
+      "019db975-d340-7fec-8222-27bc65db5f98",
+      "019dbe9c-2f40-7e52-9153-24dfe6be819d",
+      "019dce0f-4340-7690-9a05-3602b59c3c03",
+      "019dd335-9f40-7649-95f0-328f1f422c46",
+      "019dd335-9f40-7fdb-b6b7-a8f15d8d8de6",
+      "019dd85b-fb40-7d97-9c5c-c43d2328e2f6",
+      "019ddecb-ee40-769e-b422-9aad366638a3",
+      "019e42e5-8a80-793e-b400-5086bce8ea94"
+    ]
+  }
+}

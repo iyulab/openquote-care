@@ -1,0 +1,15 @@
+{
+  "format": "openquote.change/0",
+  "id": "019ca6b2-c660-733b-b869-66d84b107ea2",
+  "device": "pc01",
+  "at": "2026-03-01T09:01:00+09:00",
+  "entity": {
+    "type": "counselor",
+    "id": "019ca6b2-c660-733b-b869-66d84b107ea2"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "상담자 나"
+  }
+}

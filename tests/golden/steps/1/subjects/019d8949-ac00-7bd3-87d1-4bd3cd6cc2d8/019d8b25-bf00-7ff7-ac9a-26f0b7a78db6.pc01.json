@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d8b25-bf00-7ff7-ac9a-26f0b7a78db6",
+  "device": "pc01",
+  "at": "2026-04-14T17:40:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019d8b25-bf00-7ff7-ac9a-26f0b7a78db6"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019d894e-3fe0-7321-9b23-3df4d1e14e0c",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-04-14",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "parent"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "phone"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "anxiety"
+    }
+  }
+}

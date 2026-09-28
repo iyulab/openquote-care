@@ -1,0 +1,17 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d0368-e7e0-7900-abdb-3db13e08f9df",
+  "device": "pc01",
+  "at": "2026-03-19T09:05:00+09:00",
+  "entity": {
+    "type": "case",
+    "id": "019d0368-e7e0-7900-abdb-3db13e08f9df"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "subject": "019d0364-5400-7730-b7ea-f7cbe822437f",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "opened": "2026-03-19"
+  }
+}

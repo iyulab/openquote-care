@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019e259b-5f40-7b55-858b-c53578d44896",
+  "device": "pc02",
+  "at": "2026-05-14T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019e259b-5f40-7b55-858b-c53578d44896"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019d4135-37e0-7b0d-9760-29efa2516888",
+    "counselor": "019ca6b2-c660-733b-b869-66d84b107ea2",
+    "date": "2026-05-14",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "special/school-violence"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "school-violence"
+    }
+  }
+}

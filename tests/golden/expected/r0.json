@@ -1,0 +1,29 @@
+{
+  "format": "openquote.run/0",
+  "report": {
+    "report": "monthly-topic",
+    "version": 1
+  },
+  "schemes": {
+    "topic": {
+      "version": 1
+    }
+  },
+  "period": {
+    "from": "2026-02-01",
+    "to": "2026-02-28"
+  },
+  "cells": [],
+  "pending": {
+    "count": 0,
+    "records": []
+  },
+  "unmapped": {
+    "count": 0,
+    "records": []
+  },
+  "total": {
+    "count": 0,
+    "records": []
+  }
+}

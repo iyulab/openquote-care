@@ -1,0 +1,25 @@
+{
+  "format": "openquote.crosswalk/0",
+  "scheme": "topic",
+  "from": 1,
+  "to": 2,
+  "links": [
+    ["suicide", "suicide"],
+    ["self-harm", "self-harm"],
+    ["depression", "emotion"],
+    ["anxiety", "emotion"],
+    ["conduct", "behavior"],
+    ["anger", "behavior"],
+    ["anger", "anger-mgmt"],
+    ["attention", "attention"],
+    ["sexual", "sexual"],
+    ["psychosis", "psychosis"],
+    ["relation", "relation-peer"],
+    ["relation", "relation-teacher"],
+    ["school-violence", "school-violence"],
+    ["family", "family"],
+    ["learning", "academic"],
+    ["crisis", "crisis"],
+    ["emotional-behavioral", "emotional-behavioral"]
+  ]
+}

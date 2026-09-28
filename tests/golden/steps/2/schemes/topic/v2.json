@@ -1,0 +1,23 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "topic",
+  "version": 2,
+  "items": [
+    { "code": "suicide", "label": "자살", "suggest": false },
+    { "code": "self-harm", "label": "자해", "suggest": false },
+    { "code": "emotion", "label": "정서(우울·불안)", "suggest": true },
+    { "code": "behavior", "label": "행동", "suggest": true },
+    { "code": "anger-mgmt", "label": "분노조절", "suggest": true },
+    { "code": "attention", "label": "주의산만", "suggest": true },
+    { "code": "sexual", "label": "성", "suggest": true },
+    { "code": "psychosis", "label": "정신증", "suggest": false },
+    { "code": "relation-peer", "label": "또래관계", "suggest": true },
+    { "code": "relation-teacher", "label": "교사관계", "suggest": true },
+    { "code": "school-violence", "label": "학폭", "suggest": true },
+    { "code": "family", "label": "가정", "suggest": true },
+    { "code": "academic", "label": "학업", "suggest": true },
+    { "code": "crisis", "label": "위기", "suggest": false },
+    { "code": "emotional-behavioral", "label": "정서행동특성검사", "suggest": true },
+    { "code": "misc", "label": "기타", "suggest": true }
+  ]
+}

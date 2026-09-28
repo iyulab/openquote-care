@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019e018e-db40-7b8e-b34b-dd342630b848",
+  "device": "pc01",
+  "at": "2026-05-07T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019e018e-db40-7b8e-b34b-dd342630b848"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019db7a7-7be0-75d6-8799-d410de8a8167",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-05-07",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "crisis"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "suicide"
+    }
+  }
+}

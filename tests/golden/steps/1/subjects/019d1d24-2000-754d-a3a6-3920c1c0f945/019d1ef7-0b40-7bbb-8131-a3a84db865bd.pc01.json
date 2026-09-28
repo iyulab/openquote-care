@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d1ef7-0b40-7bbb-8131-a3a84db865bd",
+  "device": "pc01",
+  "at": "2026-03-24T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019d1ef7-0b40-7bbb-8131-a3a84db865bd"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019d1d28-b3e0-7ae9-9cf8-5e31c84c4626",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-03-24",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "assessment"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "emotional-behavioral"
+    }
+  }
+}

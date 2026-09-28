@@ -1,0 +1,30 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d653d-2800-77a3-8fa9-ccb4cc140f35",
+  "device": "pc02",
+  "at": "2026-04-07T09:00:00+09:00",
+  "entity": {
+    "type": "subject",
+    "id": "019d653d-2800-77a3-8fa9-ccb4cc140f35"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "mgmt_no": "2026-009",
+    "name": "가상 학생 09",
+    "birth": "2011-07-25",
+    "gender": "F",
+    "school_level": {
+      "scheme": "school-level",
+      "version": 1,
+      "code": "middle"
+    },
+    "school": "예시중학교",
+    "grade": "3",
+    "class": "2",
+    "guardian": "가상 보호자 09",
+    "guardian_phone": "010-0000-0109",
+    "phone": null,
+    "referring_teacher": "가상 교사 09"
+  }
+}

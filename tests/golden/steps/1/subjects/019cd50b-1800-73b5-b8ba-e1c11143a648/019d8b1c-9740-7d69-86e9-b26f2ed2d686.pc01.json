@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d8b1c-9740-7d69-86e9-b26f2ed2d686",
+  "device": "pc01",
+  "at": "2026-04-14T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019d8b1c-9740-7d69-86e9-b26f2ed2d686"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019cd50f-abe0-7552-b358-2355b9a563fd",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-04-14",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "interview"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "depression"
+    }
+  }
+}

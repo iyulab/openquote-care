@@ -1,0 +1,32 @@
+{
+  "format": "openquote.change/0",
+  "id": "019dce0f-4340-7690-9a05-3602b59c3c03",
+  "device": "pc01",
+  "at": "2026-04-27T17:30:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019dce0f-4340-7690-9a05-3602b59c3c03"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "case": "019dcc40-ebe0-7b88-9cbf-c9c819308f5f",
+    "counselor": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-04-27",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "parent"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "link/center"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "family"
+    }
+  }
+}

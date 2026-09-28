@@ -1,0 +1,11 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "school-level",
+  "version": 1,
+  "items": [
+    { "code": "elementary", "label": "초" },
+    { "code": "middle", "label": "중" },
+    { "code": "high", "label": "고" },
+    { "code": "other", "label": "기타" }
+  ]
+}
