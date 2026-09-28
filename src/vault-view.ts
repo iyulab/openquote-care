@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
+import { Latest } from './latest.js'
 import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
 import { comparable, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
@@ -271,7 +272,11 @@ export class OcVault extends LitElement {
     })
   }
 
+  private readonly loads = new Latest()
+
+  /** Reads everything the views show. A read overtaken by a newer one is dropped, not applied. */
   private async load() {
+    const current = this.loads.begin()
     const [subjects, sessions, practitioners, schemes, summary] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
@@ -279,6 +284,7 @@ export class OcVault extends LitElement {
       shell.schemes(),
       shell.summary(),
     ])
+    if (!current()) return
     // Keep a name the person is typing; follow the saved one otherwise.
     const savedName = this.summary?.devices[this.summary.device] ?? ''
     if (this.deviceName === savedName) this.deviceName = summary.devices[summary.device] ?? ''
