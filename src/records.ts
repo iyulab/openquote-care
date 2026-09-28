@@ -14,7 +14,15 @@ export interface Entity {
   /** The subject whose folder holds it; null for a practitioner. */
   subject: string | null
   fields: Record<string, unknown>
-  conflicts: Record<string, unknown[]>
+  /** Fields two devices changed without seeing each other: every value is kept. */
+  conflicts: Record<string, FieldHead[]>
+}
+
+/** One device's value for a field that was changed concurrently. */
+export interface FieldHead {
+  changeId: string
+  device: string
+  value: unknown
 }
 
 export interface SchemeItem {
@@ -84,6 +92,13 @@ export function classifiedField(entity: Entity, scheme: string): [string, Classi
     if (isClassified(value) && value.scheme === scheme) return [field, value]
   }
   return undefined
+}
+
+/** The fields of `entity` changed concurrently, each with the distinct values to choose from. */
+export function conflictsOf(entity: Entity): { field: string; heads: FieldHead[] }[] {
+  return Object.entries(entity.conflicts ?? {})
+    .filter(([, heads]) => heads.length > 1)
+    .map(([field, heads]) => ({ field, heads: [...heads].sort((a, b) => a.device.localeCompare(b.device)) }))
 }
 
 /** A text field's value, or empty. */

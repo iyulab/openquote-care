@@ -104,6 +104,12 @@ export const strings = {
   noMethod: '(없음)',
   recordSession: '회기 기록',
   sessionCount: (n: number) => `회기 ${n}건`,
+  conflict: '동시 수정',
+  conflictTitle: '두 기기에서 서로 모르게 고친 칸',
+  conflictLead: '둘 다 보존되어 있습니다. 맞는 값을 고르면 모든 기기에서 그 값으로 정리됩니다.',
+  conflictField: { topic: '주제', method: '방법', date: '날짜', practitioner: '담당자' } as Record<string, string>,
+  conflictFrom: (device: string) => `기기 ${device}`,
+  conflictResolved: '동시 수정을 정리했습니다.',
 
   practitioners: '담당자',
   noPractitioners: '담당자가 없습니다. 월 보고의 열은 담당자별로 나뉩니다.',

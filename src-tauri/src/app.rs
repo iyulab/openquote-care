@@ -438,6 +438,48 @@ mod tests {
         assert_eq!(from_one["cells"], from_two["cells"], "both devices count the same");
     }
 
+    #[test]
+    fn a_field_two_devices_changed_unseen_shows_both_values_until_a_person_picks_one() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
+        let topic = |code: &str| json!({ "scheme": "topic", "version": 1, "code": code });
+        let session = one
+            .record(
+                "/changes/in-subject",
+                json!({ "subjectId": subject.split('/').nth(1).unwrap(), "type": "session",
+                        "fields": { "date": "2026-04-02", "topic": topic("family") } }),
+            )
+            .unwrap();
+        let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
+        two.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        // Each device changes the topic without having seen the other's change.
+        let update = |app: &App, code: &str| {
+            app.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "topic": topic(code) } })).unwrap()
+        };
+        update(&one, "anxiety");
+        update(&two, "learning");
+        one.refresh().unwrap();
+        let conflicted = one.entities("session").unwrap()[0].clone();
+        let heads = conflicted["conflicts"]["topic"].as_array().unwrap();
+        assert_eq!(heads.len(), 2, "both values are kept");
+        let mut devices: Vec<&str> = heads.iter().map(|h| h["device"].as_str().unwrap()).collect();
+        devices.sort();
+        assert_eq!(devices, ["pc01", "pc02"]);
+
+        // A person picks one: a change that has seen both settles it, on every device.
+        update(&one, "learning");
+        two.refresh().unwrap();
+        let settled = two.entities("session").unwrap()[0].clone();
+        assert_eq!(settled["conflicts"], json!({}));
+        assert_eq!(settled["fields"]["topic"]["code"], "learning");
+    }
+
     fn golden_step(step: u32) -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../tests/golden/steps/{step}"))
     }

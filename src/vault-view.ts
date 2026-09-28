@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
-import { choices, classifiedField, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
+import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
 import { comparable, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
@@ -155,6 +155,11 @@ export class OcVault extends LitElement {
       color: var(--dc-color-accent, #4a5bd4);
       text-decoration: underline;
     }
+    button.conflict {
+      margin-left: var(--dc-space-2, 8px);
+      color: var(--dc-color-danger, #b00020);
+      font-size: 12px;
+    }
     button.cell:focus-visible {
       outline: 2px solid var(--dc-color-accent, #4a5bd4);
     }
@@ -181,6 +186,8 @@ export class OcVault extends LitElement {
   @state() private result?: RunRecord
   @state() private evidence?: { title: string; group: Group }
   @state() private notice = ''
+  /** The session whose concurrent changes are open for a person to settle. */
+  @state() private settling?: string
   /** Pending records of the report on screen, each with the codes a person chooses from. */
   @state() private pendingChoices?: { session: Entity; field: string; was: unknown; scheme: string; version: number; candidates: string[] }[]
   @state() private reclassified = new Set<string>()
@@ -392,6 +399,10 @@ export class OcVault extends LitElement {
     const names = new Map(this.practitioners.map((p) => [p.id, text(p, 'name')]))
     return html`
       <h2>${strings.sessions(text(subject, 'name'))}</h2>
+      ${(() => {
+        const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
+        return open ? this.conflictPanel(open) : nothing
+      })()}
       ${this.sessionForm(subject.id)}
       ${sessions.length === 0
         ? html`<p class="muted">${strings.noSessions}</p>`
@@ -408,7 +419,12 @@ export class OcVault extends LitElement {
               <tbody>
                 ${sessions.map(
                   (s) => html`<tr data-session=${s.id}>
-                    <td>${text(s, 'date')}</td>
+                    <td>
+                      ${text(s, 'date')}
+                      ${conflictsOf(s).length > 0
+                        ? html`<button class="cell conflict" data-role="conflict" @click=${() => (this.settling = s.id)}>${strings.conflict}</button>`
+                        : nothing}
+                    </td>
                     <td>${labelOf(this.schemes, s.fields.topic)}</td>
                     <td>${labelOf(this.schemes, s.fields.method)}</td>
                     <td>${names.get(text(s, 'practitioner')) ?? ''}</td>
@@ -417,6 +433,44 @@ export class OcVault extends LitElement {
               </tbody>
             </table>`}
     `
+  }
+
+  /** A value in words: a classification by its label, a practitioner by name, anything else as written. */
+  private valueText(field: string, value: unknown): string {
+    if (field === 'practitioner' && typeof value === 'string') {
+      return text(this.practitioners.find((p) => p.id === value) ?? ({ fields: {} } as Entity), 'name') || value
+    }
+    return labelOf(this.schemes, value) || (typeof value === 'string' ? value : JSON.stringify(value))
+  }
+
+  private async settle(session: Entity, field: string, value: unknown) {
+    await this.run(async () => {
+      await shell.record('/changes/update', { type: session.type, id: session.id, fields: { [field]: value } })
+      await this.load()
+      if (conflictsOf(this.sessions.find((s) => s.id === session.id) ?? session).length === 0) this.settling = undefined
+    })
+  }
+
+  private conflictPanel(session: Entity) {
+    return html`<div class="form" data-role="settle">
+      <h3>${strings.conflictTitle} · ${text(session, 'date')}</h3>
+      <p class="muted">${strings.conflictLead}</p>
+      ${conflictsOf(session).map(
+        ({ field, heads }) => html`<div class="row">
+          <span>${strings.conflictField[field] ?? field}</span>
+          ${heads.map(
+            (h) => html`<dc-button
+              size="sm"
+              variant="secondary"
+              data-device=${h.device}
+              ?disabled=${this.busy}
+              @click=${() => void this.settle(session, field, h.value)}
+              >${this.valueText(field, h.value)} · ${strings.conflictFrom(h.device)}</dc-button
+            >`,
+          )}
+        </div>`,
+      )}
+    </div>`
   }
 
   private sessionForm(subjectId: string) {

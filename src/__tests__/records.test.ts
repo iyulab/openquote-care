@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, classifiedField, definitionOf, labelOf, latest, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, newestFirst, today, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -70,6 +70,20 @@ describe('classifiedField', () => {
     }
     expect(classifiedField(e, 'topic')).toEqual(['topic', { scheme: 'topic', version: 1, code: 'relation' }])
     expect(classifiedField(e, 'school-level')).toBeUndefined()
+  })
+})
+
+describe('conflictsOf', () => {
+  it('lists each concurrently changed field with its values by device', () => {
+    const topic = (code: string) => ({ scheme: 'topic', version: 1, code })
+    const e: Entity = {
+      type: 'session', id: '1', subject: 's', fields: { topic: topic('learning') },
+      conflicts: { topic: [{ changeId: 'b', device: 'pc02', value: topic('learning') }, { changeId: 'a', device: 'pc01', value: topic('anxiety') }] },
+    }
+    expect(conflictsOf(e)).toEqual([
+      { field: 'topic', heads: [{ changeId: 'a', device: 'pc01', value: topic('anxiety') }, { changeId: 'b', device: 'pc02', value: topic('learning') }] },
+    ])
+    expect(conflictsOf({ ...e, conflicts: {} })).toEqual([])
   })
 })
 
