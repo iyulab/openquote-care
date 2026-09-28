@@ -1,0 +1,148 @@
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text.Json.Nodes;
+using Microsoft.AspNetCore.Builder;
+using OpenquoteCare.Sidecar;
+
+namespace OpenquoteCare.Tests;
+
+public sealed class SidecarTests : IAsyncLifetime
+{
+    private const string Token = "0123456789abcdef0123456789abcdef-test";
+    private WebApplication _app = null!;
+    private HttpClient _http = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        _app = SidecarHost.Build([], Token, "pc09", TimeProvider.System, port: 0);
+        await _app.StartAsync();
+        _http = new HttpClient { BaseAddress = new Uri(_app.Urls.First()) };
+        _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _http.Dispose();
+        await _app.DisposeAsync();
+    }
+
+    private static object Files(IEnumerable<Openquote.Vault.VaultFile> files) =>
+        new { files = files.Select(f => new { path = f.Path, content = Convert.ToBase64String(f.Content.Span) }) };
+
+    private async Task<JsonNode> Post(string path, object body, HttpStatusCode expect = HttpStatusCode.OK)
+    {
+        using var response = await _http.PostAsJsonAsync(path, body, TestContext.Current.CancellationToken);
+        Assert.Equal(expect, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        return text.Length == 0 ? new JsonObject() : JsonNode.Parse(text)!;
+    }
+
+    [Fact]
+    public void Listens_on_the_loopback_address_only()
+    {
+        Assert.Equal("127.0.0.1", new Uri(_app.Urls.First()).Host);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Bearer wrong")]
+    [InlineData("0123456789abcdef0123456789abcdef-test")]
+    public async Task Refuses_a_request_without_the_token(string? authorization)
+    {
+        using var client = new HttpClient { BaseAddress = _http.BaseAddress };
+        if (authorization is not null) client.DefaultRequestHeaders.TryAddWithoutValidation("Authorization", authorization);
+
+        using var response = await client.GetAsync("/entities/session", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Says_so_when_no_vault_is_loaded()
+    {
+        using var response = await _http.GetAsync("/entities/session", TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Loads_the_golden_vault_and_reproduces_its_run()
+    {
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(3)));
+        Assert.Equal(79, summary["changes"]!.GetValue<int>());
+        Assert.Equal(73, summary["entities"]!.GetValue<int>());
+        Assert.Equal(1, summary["conflicts"]!.GetValue<int>());
+        Assert.Empty(summary["unreadable"]!.AsArray());
+
+        var result = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+
+        var record = result["record"]!.AsObject();
+        Assert.Equal("pc09", record["device"]!.GetValue<string>());
+        foreach (var key in new[] { "id", "device", "at" }) record.Remove(key);
+        Assert.True(JsonNode.DeepEquals(GoldenVault.Expected("r3"), record));
+        Assert.Matches(@"^runs/\d{4}/[0-9a-f-]{36}\.pc09\.json$", result["file"]!["path"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Reports_unreadable_files_when_loading()
+    {
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));
+
+        Assert.Equal(2, summary["unreadable"]!.AsArray().Count);
+    }
+
+    [Fact]
+    public async Task Hands_back_every_change_as_a_file_and_takes_it_in_once_written()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(2)));
+
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "new subject" } });
+        var added = await Post("/vault/add", new { files = new[] { subjectFile } });
+        Assert.Equal(74, added["entities"]!.GetValue<int>());
+
+        // The same file cannot be added twice, just as it cannot be created twice on disk.
+        await Post("/vault/add", new { files = new[] { subjectFile } }, HttpStatusCode.Conflict);
+
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        var practitioner = GoldenVault.IdOf("A");
+        var sessionFile = await Post("/changes/in-subject", new
+        {
+            subjectId,
+            type = "session",
+            fields = new JsonObject
+            {
+                ["date"] = "2026-04-30",
+                ["practitioner"] = practitioner,
+                ["topic"] = new JsonObject { ["scheme"] = "topic", ["version"] = 1, ["code"] = "relation" },
+            },
+        });
+        await Post("/vault/add", new { files = new[] { sessionFile } });
+        var sessionId = sessionFile["path"]!.GetValue<string>().Split('/')[2].Split('.')[0];
+
+        var pending = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        Assert.Equal(7, pending["record"]!["pending"]!["count"]!.GetValue<int>()); // six from the scenario, plus this one
+
+        var reclassify = await Post("/changes/reclassify", new
+        {
+            type = "session",
+            id = sessionId,
+            field = "topic",
+            value = new JsonObject { ["scheme"] = "topic", ["version"] = 2, ["code"] = "relation-peer" },
+        });
+        await Post("/vault/add", new { files = new[] { reclassify } });
+
+        var after = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        Assert.Equal(6, after["record"]!["pending"]!["count"]!.GetValue<int>());
+        Assert.Equal(25, after["record"]!["total"]!["count"]!.GetValue<int>());
+    }
+
+    [Fact]
+    public async Task An_unknown_entity_or_report_is_not_found()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        await Post("/changes/update", new { type = "session", id = "nope", fields = new { note = "x" } }, HttpStatusCode.NotFound);
+        await Post("/reports/run", new { report = "monthly-topic", version = 9, year = 2026, month = 4 }, HttpStatusCode.NotFound);
+    }
+}

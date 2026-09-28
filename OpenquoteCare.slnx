@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/sidecar/">
+    <Project Path="sidecar/OpenquoteCare.Sidecar/OpenquoteCare.Sidecar.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/OpenquoteCare.Tests/OpenquoteCare.Tests.csproj" />
   </Folder>

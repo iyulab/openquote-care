@@ -9,8 +9,13 @@
 
   <ItemGroup>
     <PackageReference Include="Openquote" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\sidecar\OpenquoteCare.Sidecar\OpenquoteCare.Sidecar.csproj" />
   </ItemGroup>
 
   <ItemGroup>
