@@ -36,6 +36,7 @@ namespace OpenquoteCare.Sidecar
             builder.Logging.ClearProviders();
             if (port is { } p) builder.WebHost.ConfigureKestrel(k => k.Listen(System.Net.IPAddress.Loopback, p));
             builder.Services.AddSingleton<VaultSession>();
+            builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResolverChain.Insert(0, SidecarJson.Default));
 
             var app = builder.Build();
             var expected = Encoding.UTF8.GetBytes("Bearer " + token);

@@ -4,6 +4,9 @@
     <AssemblyName>openquote-care-sidecar</AssemblyName>
     <RootNamespace>OpenquoteCare.Sidecar</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Published ahead-of-time compiled: a small native executable that starts fast. Building with
+         this set also runs the trim and AOT analyzers, so a change that would break it fails the build. -->
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
