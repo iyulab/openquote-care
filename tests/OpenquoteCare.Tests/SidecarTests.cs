@@ -105,6 +105,9 @@ public sealed class SidecarTests : IAsyncLifetime
         await Post("/vault/add", new { files = new[] { subjectFile } }, HttpStatusCode.Conflict);
 
         var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        var practitionerFile = await Post("/changes/practitioner", new { fields = new { name = "new practitioner" } });
+        Assert.StartsWith("practitioners/", practitionerFile["path"]!.GetValue<string>(), StringComparison.Ordinal);
+        await Post("/vault/add", new { files = new[] { practitionerFile } });
         var practitioner = GoldenVault.IdOf("A");
         var sessionFile = await Post("/changes/in-subject", new
         {

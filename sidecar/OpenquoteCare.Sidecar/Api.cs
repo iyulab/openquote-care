@@ -18,6 +18,7 @@ public sealed record FilesRequest(IReadOnlyList<WireFile> Files);
 
 public sealed record CreateSubjectRequest(Dictionary<string, JsonNode?> Fields);
 
+
 public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dictionary<string, JsonNode?> Fields);
 
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
@@ -58,6 +59,9 @@ internal static class Api
 
         app.MapPost("/changes/subject", (CreateSubjectRequest request) =>
             WireFile.From(writer.CreateSubject(request.Fields)));
+
+        app.MapPost("/changes/practitioner", (CreateSubjectRequest request) =>
+            WireFile.From(writer.CreatePractitioner(request.Fields)));
 
         app.MapPost("/changes/in-subject", (CreateInSubjectRequest request) =>
             WireFile.From(writer.CreateInSubject(request.SubjectId, request.Type, request.Fields)));
