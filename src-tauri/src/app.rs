@@ -39,6 +39,31 @@ impl fmt::Display for AppError {
 
 impl std::error::Error for AppError {}
 
+impl AppError {
+    /// A stable identifier for the window to choose its own wording by. The `Display` text is
+    /// for logs; a person reads the window's translation of this code.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::NoVault => "no-vault",
+            Self::RecoveryKitNotConfirmed => "kit-not-confirmed",
+            Self::RecoveryKitMismatch => "kit-mismatch",
+            Self::Engine(EngineError::Vault(e)) => match e {
+                VaultError::AlreadyExists => "already-exists",
+                VaultError::NotAVault => "not-a-vault",
+                VaultError::NotEncrypted => "not-encrypted",
+                VaultError::WrongPassphrase => "wrong-passphrase",
+                VaultError::DamagedKeyFile => "damaged-key-file",
+                VaultError::InvalidRecoveryKey | VaultError::RecoveryKeyMismatch => "recovery-key",
+                VaultError::InvalidPath(_) => "invalid-path",
+                VaultError::Io(_) => "io",
+            },
+            Self::Engine(EngineError::Start(_)) => "engine-start",
+            Self::Engine(_) => "engine",
+            Self::Io(_) => "io",
+        }
+    }
+}
+
 impl From<EngineError> for AppError {
     fn from(e: EngineError) -> Self {
         Self::Engine(e)
@@ -257,6 +282,23 @@ mod tests {
         let again = app.run_report("monthly-topic", 1, 2026, 4).unwrap();
         assert_eq!(again["cells"], first["cells"]);
         assert!(matches!(app.open_vault(dir.path(), "nope".to_owned()), Err(AppError::Engine(EngineError::Vault(VaultError::WrongPassphrase)))));
+    }
+
+    #[test]
+    fn failures_carry_a_code_the_window_can_word() {
+        let dir = tempfile::tempdir().unwrap();
+        let not_a_vault = AppError::from(Vault::unlock(dir.path(), SecretString::from("pass".to_owned())).err().unwrap());
+        assert_eq!(not_a_vault.code(), "not-a-vault");
+
+        Vault::create(dir.path(), SecretString::from("pass".to_owned())).unwrap();
+        let wrong = AppError::from(Vault::unlock(dir.path(), SecretString::from("nope".to_owned())).err().unwrap());
+        assert_eq!(wrong.code(), "wrong-passphrase");
+        let again = AppError::from(Vault::create(dir.path(), SecretString::from("pass".to_owned())).err().unwrap());
+        assert_eq!(again.code(), "already-exists");
+
+        let app = App::new(PathBuf::from("unused"), "pc01".to_owned());
+        assert_eq!(app.entities("session").unwrap_err().code(), "no-vault");
+        assert_eq!(app.confirm_recovery_kit("abcdef").unwrap_err().code(), "no-vault");
     }
 
     #[test]

@@ -1,0 +1,5 @@
+import '@iyulab/desktop-patterns/page'
+import '@iyulab/desktop-compact/button'
+import '@iyulab/desktop-compact/input'
+import '@iyulab/desktop-compact/card'
+import './app.js'

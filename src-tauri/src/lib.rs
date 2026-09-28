@@ -4,15 +4,30 @@ mod app;
 
 use std::path::PathBuf;
 
+use serde::Serialize;
 use serde_json::Value;
 use tauri::{Manager, State};
 
 pub use app::{App, AppError, device_id};
 
-type CommandResult<T> = Result<T, String>;
+/// A failed command as the window receives it: a code to choose wording by, and the shell's own
+/// description for logs.
+#[derive(Debug, Serialize)]
+struct CommandError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<AppError> for CommandError {
+    fn from(e: AppError) -> Self {
+        CommandError { code: e.code(), message: e.to_string() }
+    }
+}
+
+type CommandResult<T> = Result<T, CommandError>;
 
 fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
-    r.map_err(|e| e.to_string())
+    r.map_err(CommandError::from)
 }
 
 #[tauri::command]
@@ -77,6 +92,7 @@ fn sidecar_path() -> PathBuf {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|tauri_app| {
             let config = tauri_app.path().app_local_data_dir()?;
             let device = device_id(&config)?;

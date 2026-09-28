@@ -1,0 +1,19 @@
+@import '@iyulab/desktop-compact/tokens.css';
+@import '@iyulab/desktop-patterns/tokens.css';
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--dc-color-bg);
+  color: var(--dc-color-text);
+  font-family: var(--dc-font-family, system-ui, sans-serif);
+}
+
+/* Printing the recovery kit prints the kit alone. */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

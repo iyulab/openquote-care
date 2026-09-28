@@ -169,10 +169,10 @@ impl Vault {
         check_declaration(root)?;
         let identity = x25519::Identity::from_str(secret_key.trim()).map_err(|_| VaultError::InvalidRecoveryKey)?;
         let vault = Vault::with_identity(root, identity);
-        if let Some(sample) = first_encrypted_file(root)? {
-            if age::decrypt(&vault.identity, &fs::read(&sample)?).is_err() {
-                return Err(VaultError::RecoveryKeyMismatch);
-            }
+        if let Some(sample) = first_encrypted_file(root)?
+            && age::decrypt(&vault.identity, &fs::read(&sample)?).is_err()
+        {
+            return Err(VaultError::RecoveryKeyMismatch);
         }
         Ok(vault)
     }
