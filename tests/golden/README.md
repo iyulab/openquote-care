@@ -75,3 +75,15 @@ written by hand in the `expect_v2` and `reclassify_to` columns. The generator do
 crosswalk itself. Before writing anything it compares its grouping with the hand-computed counts in
 `expected-totals.json` and stops if they disagree. When you change the scenario, update the counts by
 hand.
+
+## Tests
+
+`tests/OpenquoteCare.Tests` runs the engine over this vault and compares every run and diff with
+`expected/`:
+
+```
+dotnet test --solution OpenquoteCare.slnx
+```
+
+The tests reference the `Openquote` engine package. Until a version is published, pack it from the
+[openquote](https://github.com/iyulab/openquote) repository into a local NuGet source first.
