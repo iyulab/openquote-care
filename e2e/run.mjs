@@ -9,7 +9,7 @@
 // picker's result goes (the app element's `folder`). Everything after that is clicks and typing.
 
 import { spawn } from 'node:child_process'
-import { copyFile, mkdtemp, mkdir, readdir, rm } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -399,6 +399,32 @@ const scenarios = {
     await app.click('dc-button', '다시 읽기')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
     await app.noAlert()
+  },
+
+  async 'asks a second device sharing the vault to name itself'(app, work) {
+    // The same vault opened as another device: this app's device id is swapped between runs.
+    const idFile = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e', 'device-id')
+    const own = await readFile(idFile, 'utf8')
+    await app.quit()
+    await writeFile(idFile, 'e2esecond')
+    try {
+      const next = await App.launch()
+      app.child = next.child
+      app.cdp = next.cdp
+      await app.click('dc-button', '볼트 열기')
+      await app.pickFolder(work.vault)
+      await app.type('패스프레이즈', PASSPHRASE)
+      await app.click('dc-button', '열기')
+      await app.vaultOpen()
+      await app.cdp.waitFor(`!!__e2e.one('[data-role=name-hint]')`, 'the hint to name this device')
+      await app.click('[data-role=name-hint] dc-button', '이름 붙이기')
+      const listed = await app.cdp.waitFor(`(() => { const l = __e2e.all('li[data-device]').map((li) => li.textContent.trim()); return l.length && l })()`, 'the named devices')
+      assert.deepEqual(listed, ['상담실 PC'], 'the first device, by the name it gave itself')
+      assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=name-hint]')`), false, 'no hint on the page where the name is given')
+      await app.noAlert()
+    } finally {
+      await writeFile(idFile, own)
+    }
   },
 
   async 'says so when a folder is not a vault'(app, work) {

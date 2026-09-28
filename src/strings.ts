@@ -129,6 +129,8 @@ export const strings = {
   thisDeviceNamed: (name: string) => `이 기기(${name})`,
   unnamedDevice: (id: string) => `이름 없는 기기 ${id}`,
   knownDevices: '이름이 붙은 기기',
+  nameThisDevice: '이 볼트를 다른 기기와 함께 쓰고 있습니다. 이 기기에도 이름을 붙이면 누가 고친 칸인지 이름으로 보입니다.',
+  goNameThisDevice: '이름 붙이기',
   noNamedDevices: '아직 이름이 붙은 기기가 없습니다.',
 
   practitioners: '담당자',

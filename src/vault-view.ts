@@ -405,11 +405,21 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>
-          ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.errorLine()}
+          ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.nameHint()} ${this.errorLine()}
           ${{ subjects: () => this.subjectsView(), report: () => this.reportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
     `
+  }
+
+  /** Other devices already named themselves in this vault, but this one has no name yet. */
+  private nameHint() {
+    const s = this.summary
+    if (!s || this.view === 'devices' || Object.keys(s.devices).length === 0 || s.device in s.devices) return nothing
+    return html`<p class="row muted" role="status" data-role="name-hint">
+      ${strings.nameThisDevice}
+      <dc-button variant="ghost" size="sm" @click=${() => (this.view = 'devices')}>${strings.goNameThisDevice}</dc-button>
+    </p>`
   }
 
   private errorLine() {
