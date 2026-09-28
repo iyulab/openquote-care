@@ -1,0 +1,29 @@
+[package]
+name = "openquote-care"
+version = "0.0.0"
+description = "Counselling records that stay yours, and monthly reports that survive a change of categories"
+authors = ["iyulab"]
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+# A distinct lib name avoids a bin/lib name clash on Windows (rust-lang/cargo#8519).
+name = "openquote_care_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde_json = "1"
+getrandom = "0.3"
+openquote-care-engine = { path = "../crates/engine" }
+openquote-care-vault = { path = "../crates/vault" }
+age = "0.12"
+
+[dev-dependencies]
+tempfile = "3"
