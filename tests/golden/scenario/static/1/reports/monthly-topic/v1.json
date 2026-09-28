@@ -4,7 +4,7 @@
   "version": 1,
   "label": "월별 상담주제 현황",
   "counts": "session",
-  "period": "month",
-  "rows": { "scheme": "topic", "version": 1 },
+  "period": { "unit": "month", "field": "date" },
+  "rows": { "field": "topic", "scheme": "topic", "version": 1 },
   "columns": { "field": "practitioner" }
 }
