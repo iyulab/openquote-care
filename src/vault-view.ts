@@ -1,8 +1,9 @@
 import { LitElement, css, html, nothing } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
+import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
-import { choices, labelOf, latest, newestFirst, text, today, type Entity, type Scheme } from './records.js'
+import { choices, definitionOf, labelOf, latest, newestFirst, text, today, type Entity, type Scheme } from './records.js'
 import { lastMonth, layOut, type Group, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
@@ -179,6 +180,7 @@ export class OcVault extends LitElement {
   /** The report on screen: the run record of the last 산출. */
   @state() private result?: RunRecord
   @state() private evidence?: { title: string; group: Group }
+  @state() private notice = ''
   @state() private selected?: string
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
@@ -451,6 +453,34 @@ export class OcVault extends LitElement {
     </div>`
   }
 
+  private async pickPack() {
+    const folder = await open({ directory: true, title: strings.applyPackTitle })
+    if (typeof folder === 'string') await this.applyPack(folder)
+  }
+
+  /** Applies the data pack in `folder` (what the folder picker answers). */
+  async applyPack(folder: string) {
+    this.notice = ''
+    await this.run(async () => {
+      const added = await shell.applyPack(folder)
+      await this.load()
+      if (added.length === 0) {
+        this.notice = strings.packNothingNew
+        return
+      }
+      const names = added.map((p) => {
+        const d = definitionOf(p)
+        if (!d) return p
+        if (d.kind === 'crosswalk') return strings.definition.crosswalk(d.name, d.from, d.to)
+        return strings.definition[d.kind](d.name, d.version)
+      })
+      this.notice = strings.packAdded(names)
+      // A new form version is what the person came for: offer it.
+      const report = added.map(definitionOf).find((d) => d?.kind === 'report')
+      if (report?.kind === 'report') this.reportKey = `${report.name}@${report.version}`
+    })
+  }
+
   private async runReport() {
     const [name, version] = this.reportKey.split('@')
     await this.run(async () => {
@@ -462,7 +492,10 @@ export class OcVault extends LitElement {
 
   private reportView() {
     const reports = this.summary?.reports ?? []
-    if (reports.length === 0) return html`<p class="muted">${strings.noReports}</p>`
+    if (reports.length === 0)
+      return html`<p class="muted">${strings.noReports}</p>
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.pickPack()}>${strings.applyPack}</dc-button>
+        ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}`
     return html`<section>
       <div class="row">
         <label>
@@ -498,7 +531,9 @@ export class OcVault extends LitElement {
           ></dc-select>
         </label>
         <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.pickPack()}>${strings.applyPack}</dc-button>
       </div>
+      ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
       ${this.result ? this.reportTable(this.result) : nothing}
     </section>`
   }
@@ -518,6 +553,25 @@ export class OcVault extends LitElement {
         : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(title, group)}>${group.count}</button></td>`
     return html`
       <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
+      <table class="groups">
+        <tbody>
+          <tr data-group="pending">
+            <th>${strings.pending}</th>
+            ${count(strings.pending, table.pending)}
+            <td class="muted">${strings.pendingHint}</td>
+          </tr>
+          <tr data-group="unmapped">
+            <th>${strings.unmapped}</th>
+            ${count(strings.unmapped, table.unmapped)}
+            <td class="muted">${strings.unmappedHint}</td>
+          </tr>
+          <tr data-group="total">
+            <th>${strings.grandTotal}</th>
+            ${count(strings.grandTotal, table.total)}
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
       <table class="report">
         <thead>
           <tr>
@@ -542,25 +596,6 @@ export class OcVault extends LitElement {
             <td class="num" data-role="placed">${table.placed}</td>
           </tr>
         </tfoot>
-      </table>
-      <table class="groups">
-        <tbody>
-          <tr data-group="pending">
-            <th>${strings.pending}</th>
-            ${count(strings.pending, table.pending)}
-            <td class="muted">${strings.pendingHint}</td>
-          </tr>
-          <tr data-group="unmapped">
-            <th>${strings.unmapped}</th>
-            ${count(strings.unmapped, table.unmapped)}
-            <td class="muted">${strings.unmappedHint}</td>
-          </tr>
-          <tr data-group="total">
-            <th>${strings.grandTotal}</th>
-            ${count(strings.grandTotal, table.total)}
-            <td></td>
-          </tr>
-        </tbody>
       </table>
       ${this.evidence ? this.evidenceList(this.evidence.title, this.evidence.group) : html`<p class="muted">${strings.pickCell}</p>`}
     `

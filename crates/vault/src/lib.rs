@@ -217,6 +217,17 @@ impl Vault {
         write_new(&path, &ciphertext)
     }
 
+    /// Decrypts one record file, or returns `None` if the vault has no file at `relative`.
+    pub fn read(&self, relative: &str) -> Result<Option<Vec<u8>>, VaultError> {
+        let path = self.record_path(relative)?;
+        let ciphertext = match fs::read(&path) {
+            Ok(bytes) => bytes,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
+            Err(e) => return Err(e.into()),
+        };
+        age::decrypt(&self.identity, &ciphertext).map(Some).map_err(|e| VaultError::Io(io::Error::other(e)))
+    }
+
     /// Decrypts every record file in the vault. A file that fails to decrypt is reported and the
     /// rest are still returned.
     pub fn read_all(&self) -> Result<VaultContents, VaultError> {

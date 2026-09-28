@@ -47,6 +47,24 @@ const HELPERS = `window.__e2e = {
     const r = el.getBoundingClientRect()
     return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
   },
+  /**
+   * The box to click, once a click there would land on el and the box held still since the last
+   * poll: a smooth scroll still under way would move el between measuring and clicking.
+   */
+  target(el) {
+    const b = this.box(el)
+    const last = this.lastBox
+    this.lastBox = b
+    if (!last || last.x !== b.x || last.y !== b.y) return false
+    let hit = document.elementFromPoint(b.x, b.y)
+    while (hit?.shadowRoot) {
+      const inner = hit.shadowRoot.elementFromPoint(b.x, b.y)
+      if (!inner || inner === hit) break
+      hit = inner
+    }
+    for (let n = hit; n; n = n.parentNode ?? n.host) if (n === el) return b
+    return false
+  },
 }; true`
 
 const q = (s) => JSON.stringify(s)
@@ -83,7 +101,7 @@ class App {
   /** Clicks the element matching `selector` (and `text`, if given) with the mouse. */
   async click(selector, text) {
     const box = await this.cdp.waitFor(
-      `(() => { const el = __e2e.one(${q(selector)}, ${q(text)}); return el && !el.disabled && !el.hasAttribute('disabled') && __e2e.box(el) })()`,
+      `(() => { const el = __e2e.one(${q(selector)}, ${q(text)}); return el && !el.disabled && !el.hasAttribute('disabled') && __e2e.target(el) })()`,
       `${selector}${text ? ` "${text}"` : ''} to be clickable`,
     )
     await this.cdp.clickAt(box)
@@ -272,6 +290,28 @@ const scenarios = {
     const years = await readdir(join(work.vault, 'runs'))
     assert.deepEqual(years, ['2026'], 'the run record is kept in the vault')
     assert.equal((await readdir(join(work.vault, 'runs', '2026'))).length, 1)
+  },
+
+  async 'applies a classification revision and reports in it, holding back the split category'(app, work) {
+    // The test pack: topic v2 with a v1→v2 crosswalk and the report form in v2. "family" maps 1:1;
+    // "relation" splits in two, so its session waits for a person instead of being guessed.
+    const pack = join(root, 'tests', 'golden', 'steps', '2')
+    await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표 topic v1→v2'))`, 'the revision applied')
+    await app.noAlert()
+    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="양식"]').value`), 'monthly-topic@2', 'the new form is offered')
+
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('tr[data-row=relation-peer]')`, 'the report in v2')
+    const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual((await row('family')).slice(1), ['1', '1'], 'the 1:1 category carried over')
+    assert.deepEqual((await row('relation-peer')).slice(1), ['0', '0'], 'the split category is not guessed')
+    const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
+    assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['1', '0', '2'])
+
+    await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류·양식이 없습니다'))`, 'nothing new the second time')
+    assert.deepEqual((await readdir(join(work.vault, 'schemes', 'topic'))).sort(), ['v1-v2.json.age', 'v1.json.age', 'v2.json.age'])
   },
 
   async 'keeps the sessions across a restart'(app, work) {

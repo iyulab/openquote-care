@@ -62,6 +62,11 @@ fn entities(entity_type: String, app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
+    text(app.apply_pack(&PathBuf::from(folder)))
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -118,6 +123,7 @@ pub fn run() {
             entities,
             schemes,
             vault_summary,
+            apply_pack,
             run_report
         ])
         .run(tauri::generate_context!())

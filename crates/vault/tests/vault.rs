@@ -175,6 +175,16 @@ fn an_independent_age_tool_opens_a_record_with_the_recovery_kit() {
 }
 
 #[test]
+fn reads_one_file_back_or_says_it_is_not_there() {
+    let dir = tempfile::tempdir().unwrap();
+    let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();
+    vault.write_new("schemes/topic/v1.json", RECORD).unwrap();
+    assert_eq!(vault.read("schemes/topic/v1.json").unwrap().as_deref(), Some(RECORD));
+    assert_eq!(vault.read("schemes/topic/v2.json").unwrap(), None);
+    assert!(matches!(vault.read("../outside.json"), Err(VaultError::InvalidPath(_))));
+}
+
+#[test]
 fn a_prepared_vault_writes_nothing_until_asked() {
     let dir = tempfile::tempdir().unwrap();
     let new = Vault::prepare(dir.path(), pass("p")).unwrap();

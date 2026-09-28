@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, labelOf, latest, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, definitionOf, labelOf, latest, newestFirst, today, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -50,6 +50,15 @@ describe('newestFirst', () => {
   it('orders by the written date, then by id', () => {
     const sorted = newestFirst([session('1', '2026-04-01'), session('3', '2026-04-02'), session('2', '2026-04-02')])
     expect(sorted.map((s) => s.id)).toEqual(['3', '2', '1'])
+  })
+})
+
+describe('definitionOf', () => {
+  it('reads schemes, crosswalks and report forms from their paths', () => {
+    expect(definitionOf('schemes/topic/v2.json')).toEqual({ kind: 'scheme', name: 'topic', version: 2 })
+    expect(definitionOf('schemes/topic/v1-v2.json')).toEqual({ kind: 'crosswalk', name: 'topic', from: 1, to: 2 })
+    expect(definitionOf('reports/monthly-topic/v2.json')).toEqual({ kind: 'report', name: 'monthly-topic', version: 2 })
+    expect(definitionOf('subjects/x/y.json')).toBeUndefined()
   })
 })
 

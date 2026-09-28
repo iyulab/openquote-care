@@ -202,8 +202,16 @@ impl OpenVault {
     /// Creates `file` in the vault (encrypted, never replacing anything) and, once it is on disk,
     /// hands it to the engine.
     pub fn keep(&mut self, file: PlainFile) -> Result<Value, EngineError> {
-        self.vault.write_new(&file.path, &file.content)?;
-        let summary = self.engine.add(std::slice::from_ref(&file))?;
+        self.keep_all(vec![file])
+    }
+
+    /// Creates every file in the vault, then hands them to the engine together — for files that
+    /// only make sense as a set, such as a new scheme version with its crosswalk and report form.
+    pub fn keep_all(&mut self, files: Vec<PlainFile>) -> Result<Value, EngineError> {
+        for file in &files {
+            self.vault.write_new(&file.path, &file.content)?;
+        }
+        let summary = self.engine.add(&files)?;
         self.summary = summary.clone();
         Ok(summary)
     }

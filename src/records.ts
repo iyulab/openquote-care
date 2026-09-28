@@ -82,6 +82,23 @@ export function newestFirst(sessions: Entity[]): Entity[] {
   return [...sessions].sort((a, b) => text(b, 'date').localeCompare(text(a, 'date')) || b.id.localeCompare(a.id))
 }
 
+/** What a definition file added from a data pack is, in the pack's own terms. */
+export type Definition =
+  | { kind: 'scheme'; name: string; version: number }
+  | { kind: 'crosswalk'; name: string; from: number; to: number }
+  | { kind: 'report'; name: string; version: number }
+
+/** Reads a definition file's vault path (`schemes/topic/v2.json`, `schemes/topic/v1-v2.json`, `reports/x/v2.json`). */
+export function definitionOf(path: string): Definition | undefined {
+  const scheme = /^schemes\/([^/]+)\/v(\d+)\.json$/.exec(path)
+  if (scheme) return { kind: 'scheme', name: scheme[1], version: Number(scheme[2]) }
+  const crosswalk = /^schemes\/([^/]+)\/v(\d+)-v(\d+)\.json$/.exec(path)
+  if (crosswalk) return { kind: 'crosswalk', name: crosswalk[1], from: Number(crosswalk[2]), to: Number(crosswalk[3]) }
+  const report = /^reports\/([^/]+)\/v(\d+)\.json$/.exec(path)
+  if (report) return { kind: 'report', name: report[1], version: Number(report[2]) }
+  return undefined
+}
+
 /** Today as a calendar date (`YYYY-MM-DD`) on this computer's clock. */
 export function today(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0')

@@ -21,6 +21,10 @@ pub enum AppError {
     NoVault,
     RecoveryKitNotConfirmed,
     RecoveryKitMismatch,
+    /// The folder holds no scheme or report form to apply.
+    NotAPack,
+    /// The pack has a file the vault already holds with other content; nothing was applied.
+    PackConflict(Vec<String>),
     Engine(EngineError),
     Io(io::Error),
 }
@@ -31,6 +35,8 @@ impl fmt::Display for AppError {
             Self::NoVault => f.write_str("no vault is open"),
             Self::RecoveryKitNotConfirmed => f.write_str("confirm the recovery kit before using the new vault"),
             Self::RecoveryKitMismatch => f.write_str("that does not match the end of the recovery key"),
+            Self::NotAPack => f.write_str("the folder holds no scheme or report form"),
+            Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
             Self::Engine(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "{e}"),
         }
@@ -47,6 +53,8 @@ impl AppError {
             Self::NoVault => "no-vault",
             Self::RecoveryKitNotConfirmed => "kit-not-confirmed",
             Self::RecoveryKitMismatch => "kit-mismatch",
+            Self::NotAPack => "not-a-pack",
+            Self::PackConflict(_) => "pack-conflict",
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
@@ -176,6 +184,37 @@ impl App {
     /// The merged entities of one type.
     pub fn entities(&self, entity_type: &str) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
+    }
+
+    /// Adds a data pack's schemes, crosswalks and report forms to the open vault: the files it
+    /// does not have yet. A file it already has with the same content is left alone; one with
+    /// other content stops the whole pack, since definitions are never rewritten. Returns the
+    /// paths added.
+    pub fn apply_pack(&self, pack: &Path) -> Result<Vec<String>, AppError> {
+        let definitions: Vec<PlainFile> =
+            pack_files(pack)?.into_iter().filter(|f| f.path.starts_with("schemes/") || f.path.starts_with("reports/")).collect();
+        if definitions.is_empty() {
+            return Err(AppError::NotAPack);
+        }
+        self.with_open(|open| {
+            let mut new = Vec::new();
+            let mut conflicts = Vec::new();
+            for file in definitions {
+                match open.vault.read(&file.path)? {
+                    None => new.push(file),
+                    Some(existing) if existing == file.content => {}
+                    Some(_) => conflicts.push(file.path),
+                }
+            }
+            if !conflicts.is_empty() {
+                return Err(AppError::PackConflict(conflicts));
+            }
+            let added = new.iter().map(|f| f.path.clone()).collect();
+            if !new.is_empty() {
+                open.keep_all(new)?;
+            }
+            Ok(added)
+        })
     }
 
     /// The open vault's summary, as [`App::open_vault`] returns it.
@@ -336,6 +375,32 @@ mod tests {
         let app = App::new(PathBuf::from("unused"), "pc01".to_owned());
         assert_eq!(app.entities("session").unwrap_err().code(), "no-vault");
         assert_eq!(app.confirm_recovery_kit("abcdef").unwrap_err().code(), "no-vault");
+    }
+
+    fn golden_step(step: u32) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../tests/golden/steps/{step}"))
+    }
+
+    #[test]
+    fn a_pack_adds_only_the_definitions_the_vault_lacks() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+
+        let mut added = app.apply_pack(&golden_step(2)).unwrap();
+        added.sort();
+        assert_eq!(added, ["reports/monthly-topic/v2.json", "schemes/topic/v1-v2.json", "schemes/topic/v2.json"]);
+        assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["version"] == 2));
+        assert!(app.apply_pack(&golden_step(2)).unwrap().is_empty(), "applying it again adds nothing");
+        assert!(app.apply_pack(&pack()).unwrap().is_empty(), "the pack the vault started from is already in it");
+
+        let other = tempfile::tempdir().unwrap();
+        fs::create_dir_all(other.path().join("schemes/topic")).unwrap();
+        fs::write(other.path().join("schemes/topic/v2.json"), b"{}").unwrap();
+        assert_eq!(app.apply_pack(other.path()).unwrap_err().code(), "pack-conflict");
+        let empty = tempfile::tempdir().unwrap();
+        assert_eq!(app.apply_pack(empty.path()).unwrap_err().code(), "not-a-pack");
     }
 
     #[test]

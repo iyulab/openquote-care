@@ -20,6 +20,8 @@ export const shell = {
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
   schemes: () => invoke<Scheme[]>('schemes'),
   summary: () => invoke<VaultSummary>('vault_summary'),
+  /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
+  applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
   /** Runs a monthly report; the engine keeps its run record in the vault. */
   runReport: (report: string, version: number, year: number, month: number) =>
     invoke<RunRecord>('run_report', { report, version, year, month }),
