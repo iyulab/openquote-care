@@ -201,6 +201,25 @@ export class OcVault extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     void this.run(() => this.load())
+    window.addEventListener('focus', this.onFocus)
+  }
+
+  disconnectedCallback() {
+    window.removeEventListener('focus', this.onFocus)
+    super.disconnectedCallback()
+  }
+
+  /** Coming back to the window is when another device's records are most likely waiting. */
+  private onFocus = () => {
+    if (!this.busy) void this.refresh()
+  }
+
+  /** Reads the vault folder again: records other devices sharing it wrote come in. */
+  async refresh() {
+    await this.run(async () => {
+      await shell.refresh()
+      await this.load()
+    })
   }
 
   private async load() {
@@ -311,6 +330,7 @@ export class OcVault extends LitElement {
           toggle-label=${strings.toggleSidebar}
           @dp-toolbar-toggle=${() => (this.sidebarOpen = !this.sidebarOpen)}
         >
+          <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${this.busy} @click=${() => void this.refresh()}>${strings.refresh}</dc-button>
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>

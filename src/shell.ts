@@ -20,6 +20,8 @@ export const shell = {
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
   schemes: () => invoke<Scheme[]>('schemes'),
   summary: () => invoke<VaultSummary>('vault_summary'),
+  /** Reads the vault again, taking in what other devices sharing its folder wrote. */
+  refresh: () => invoke<VaultSummary>('refresh'),
   /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
   applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
   runs: () => invoke<KeptRun[]>('runs'),

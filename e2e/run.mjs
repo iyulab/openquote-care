@@ -356,6 +356,9 @@ const scenarios = {
     await app.click('li button', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
     assert.equal((await app.sessionRows())[1][2], '특별 › 학교폭력')
+    await app.click('dc-button', '다시 읽기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
+    await app.noAlert()
   },
 
   async 'says so when a folder is not a vault'(app, work) {

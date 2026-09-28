@@ -232,6 +232,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.compare_runs(earlier, later)?))
     }
 
+    /// Reads the open vault again, taking in what other devices sharing its folder wrote.
+    pub fn refresh(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.reload()?))
+    }
+
     /// The open vault's summary, as [`App::open_vault`] returns it.
     pub fn summary(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.summary()?))
@@ -395,6 +400,42 @@ mod tests {
         let app = App::new(PathBuf::from("unused"), "pc01".to_owned());
         assert_eq!(app.entities("session").unwrap_err().code(), "no-vault");
         assert_eq!(app.confirm_recovery_kit("abcdef").unwrap_err().code(), "no-vault");
+    }
+
+    #[test]
+    fn two_devices_sharing_a_folder_see_each_others_records() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap().to_owned();
+        let session = |app: &App, date: &str| {
+            app.record(
+                "/changes/in-subject",
+                json!({ "subjectId": subject_id, "type": "session",
+                        "fields": { "date": date, "topic": { "scheme": "topic", "version": 1, "code": "family" } } }),
+            )
+            .unwrap()
+        };
+        let first = session(&one, "2026-04-02");
+
+        // The second device opens the same folder while the first still has it open.
+        two.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        assert_eq!(two.entities("session").unwrap().as_array().unwrap().len(), 1);
+        let second = session(&two, "2026-04-03");
+        assert!(first.ends_with(".pc01.json") && second.ends_with(".pc02.json"), "each device names its own files");
+
+        assert_eq!(one.entities("session").unwrap().as_array().unwrap().len(), 1, "not seen until read again");
+        one.refresh().unwrap();
+        assert_eq!(one.entities("session").unwrap().as_array().unwrap().len(), 2);
+        let from_one = one.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        two.refresh().unwrap();
+        let from_two = two.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        assert_eq!(from_one["total"]["count"], 2);
+        assert_eq!(from_one["cells"], from_two["cells"], "both devices count the same");
     }
 
     fn golden_step(step: u32) -> PathBuf {

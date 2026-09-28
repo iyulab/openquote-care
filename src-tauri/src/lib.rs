@@ -82,6 +82,11 @@ fn compare_runs(earlier: String, later: String, app: State<App>) -> CommandResul
 }
 
 #[tauri::command]
+fn refresh(app: State<App>) -> CommandResult<Value> {
+    text(app.refresh())
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -141,6 +146,7 @@ pub fn run() {
             apply_pack,
             resolve,
             runs,
+            refresh,
             compare_runs,
             run_report
         ])

@@ -35,6 +35,7 @@ export const strings = {
   unreadable: (n: number) => `읽지 못한 파일 ${n}개 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다.`,
   closeVault: '볼트 닫기',
   cancel: '취소',
+  refresh: '다시 읽기',
   toggleSidebar: '사이드바 접기/펼치기',
   navLabel: '탐색',
   navSubjects: '대상자',

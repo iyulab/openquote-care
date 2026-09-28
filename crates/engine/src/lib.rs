@@ -215,6 +215,16 @@ impl OpenVault {
         Ok(OpenVault { vault, engine, undecryptable: contents.undecryptable, summary })
     }
 
+    /// Reads the vault again and hands the engine everything in it: what other devices sharing
+    /// the folder wrote since it was opened comes in, and the engine's merge decides the rest.
+    pub fn reload(&mut self) -> Result<Value, EngineError> {
+        let contents = self.vault.read_all()?;
+        let files: Vec<PlainFile> = contents.files.into_iter().map(|(path, content)| PlainFile { path, content }).collect();
+        self.summary = self.engine.load(&files)?;
+        self.undecryptable = contents.undecryptable;
+        Ok(self.summary.clone())
+    }
+
     /// Creates `file` in the vault (encrypted, never replacing anything) and, once it is on disk,
     /// hands it to the engine.
     pub fn keep(&mut self, file: PlainFile) -> Result<Value, EngineError> {
