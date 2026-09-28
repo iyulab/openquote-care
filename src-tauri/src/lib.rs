@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 use serde::Serialize;
 use serde_json::Value;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 pub use app::{App, AppError, device_id};
 
@@ -140,6 +140,9 @@ fn bring_forward(handle: &tauri::AppHandle) {
     }
 }
 
+/// The event the window hears when another device (or a sync client) changed the open vault.
+const VAULT_CHANGED: &str = "vault-changed";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -151,7 +154,12 @@ pub fn run() {
         .setup(|tauri_app| {
             let config = tauri_app.path().app_local_data_dir()?;
             let device = device_id(&config)?;
-            tauri_app.manage(App::new(sidecar_path(tauri_app.handle()), device));
+            let handle = tauri_app.handle().clone();
+            let app = App::new(sidecar_path(tauri_app.handle()), device)
+                .on_outside_change(move || {
+                    let _ = handle.emit(VAULT_CHANGED, ());
+                });
+            tauri_app.manage(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

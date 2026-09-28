@@ -228,11 +228,34 @@ export class OcVault extends LitElement {
     super.connectedCallback()
     void this.run(() => this.load())
     window.addEventListener('focus', this.onFocus)
+    this.unlisten = shell.onVaultChanged(() => this.onOutsideChange())
   }
 
   disconnectedCallback() {
     window.removeEventListener('focus', this.onFocus)
+    void this.unlisten?.then((stop) => stop())
     super.disconnectedCallback()
+  }
+
+  private unlisten?: Promise<() => void>
+  private outsideChangeWaiting = false
+
+  /**
+   * Another device wrote to the vault: take it in without getting in the way — no busy state, no
+   * cleared message, and not in the middle of the person's own action (it waits for that to end).
+   */
+  private async onOutsideChange() {
+    if (this.busy) {
+      this.outsideChangeWaiting = true
+      return
+    }
+    this.outsideChangeWaiting = false
+    try {
+      await shell.refresh()
+      await this.load()
+    } catch {
+      // Coming back to the window, or the refresh button, reads the vault again.
+    }
   }
 
   /** Coming back to the window is when another device's records are most likely waiting. */
@@ -256,8 +279,10 @@ export class OcVault extends LitElement {
       shell.schemes(),
       shell.summary(),
     ])
+    // Keep a name the person is typing; follow the saved one otherwise.
+    const savedName = this.summary?.devices[this.summary.device] ?? ''
+    if (this.deviceName === savedName) this.deviceName = summary.devices[summary.device] ?? ''
     this.summary = summary
-    this.deviceName = summary.devices[summary.device] ?? ''
     if (!this.reportKey && summary.reports.length > 0) {
       const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
       this.reportKey = `${newest.name}@${newest.version}`
@@ -278,6 +303,7 @@ export class OcVault extends LitElement {
       this.error = describeError(e)
     } finally {
       this.busy = false
+      if (this.outsideChangeWaiting) void this.onOutsideChange()
     }
   }
 

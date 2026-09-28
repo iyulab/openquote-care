@@ -205,3 +205,24 @@ fn a_prepared_vault_does_not_overwrite_one_made_meanwhile() {
     assert!(matches!(new.write(), Err(VaultError::AlreadyExists)));
     assert!(Vault::unlock(dir.path(), pass("second")).is_ok());
 }
+
+#[test]
+fn a_watch_hears_what_another_device_wrote_and_not_its_own_writes() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (here, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    let there = Vault::unlock(dir.path(), pass("correct horse")).unwrap();
+    let (tx, rx) = mpsc::channel();
+    let _watcher = here.watch(move || tx.send(()).unwrap()).unwrap();
+
+    // Its own record, and a file that is not a record (a sync client's, an editor's): nothing.
+    here.write_new("subjects/s1/0001.pc01.json", RECORD).unwrap();
+    fs::write(dir.path().join("desktop.ini"), b"[.ShellClassInfo]").unwrap();
+    assert!(rx.recv_timeout(Duration::from_millis(1500)).is_err(), "its own write is not reported");
+
+    // Another device's record in the same folder is.
+    there.write_new("subjects/s1/0002.pc02.json", RECORD).unwrap();
+    rx.recv_timeout(Duration::from_secs(10)).expect("the other device's write is reported");
+}

@@ -5,11 +5,11 @@ use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
-use openquote_care_vault::{NewVault, Vault, VaultError};
+use openquote_care_vault::{NewVault, Vault, VaultError, Watcher};
 use serde_json::Value;
 
 /// How many trailing characters of the recovery key a person types back to show they kept it.
@@ -96,7 +96,9 @@ enum Stage {
     /// memory until it is: skipping the kit is not an option, and a vault abandoned at this
     /// point leaves nothing behind that could be opened without it.
     AwaitingKit { new: NewVault, pack: PathBuf, tail: String },
-    Open(OpenVault),
+    /// An open vault, and the watch that hears other devices' writes to its folder — none when
+    /// the folder cannot be watched (some network shares), which still refreshes on request.
+    Open { open: Box<OpenVault>, _watch: Option<Watcher> },
 }
 
 /// The shell's state: at most one open vault, and how to start the engine.
@@ -104,11 +106,26 @@ pub struct App {
     sidecar: PathBuf,
     device: String,
     stage: Mutex<Stage>,
+    outside_change: Arc<dyn Fn() + Send + Sync>,
 }
 
 impl App {
     pub fn new(sidecar: PathBuf, device: String) -> App {
-        App { sidecar, device, stage: Mutex::new(Stage::Closed) }
+        App { sidecar, device, stage: Mutex::new(Stage::Closed), outside_change: Arc::new(|| {}) }
+    }
+
+    /// Calls `f`, on a watcher thread, whenever something other than this app changes the open
+    /// vault's record files — another device sharing the folder, or a sync client. [`App::refresh`]
+    /// takes the change in.
+    pub fn on_outside_change(mut self, f: impl Fn() + Send + Sync + 'static) -> App {
+        self.outside_change = Arc::new(f);
+        self
+    }
+
+    fn opened(&self, open: OpenVault) -> Stage {
+        let notify = Arc::clone(&self.outside_change);
+        let watch = open.vault.watch(move || notify()).ok();
+        Stage::Open { open: Box::new(open), _watch: watch }
     }
 
     /// Prepares a vault for `folder` and returns the recovery key to show the person. Nothing is
@@ -141,7 +158,7 @@ impl App {
                 for file in pack_files(&pack)? {
                     open.keep(file)?;
                 }
-                *stage = Stage::Open(open);
+                *stage = self.opened(open);
                 Ok(())
             }
             Stage::AwaitingKit { new, pack, tail } => {
@@ -161,7 +178,7 @@ impl App {
         let vault = Vault::unlock(folder, SecretString::from(passphrase))?;
         let open = OpenVault::open(vault, Engine::start(&self.sidecar, &self.device)?)?;
         let summary = open.summary.clone();
-        *self.stage.lock().unwrap() = Stage::Open(open);
+        *self.stage.lock().unwrap() = self.opened(open);
         Ok(summary)
     }
 
@@ -258,7 +275,7 @@ impl App {
 
     fn with_open<T>(&self, f: impl FnOnce(&mut OpenVault) -> Result<T, AppError>) -> Result<T, AppError> {
         match &mut *self.stage.lock().unwrap() {
-            Stage::Open(open) => f(open),
+            Stage::Open { open, .. } => f(open),
             Stage::AwaitingKit { .. } => Err(AppError::RecoveryKitNotConfirmed),
             Stage::Closed => Err(AppError::NoVault),
         }
@@ -489,6 +506,34 @@ mod tests {
         let settled = two.entities("session").unwrap()[0].clone();
         assert_eq!(settled["conflicts"], json!({}));
         assert_eq!(settled["fields"]["topic"]["code"], "learning");
+    }
+
+    #[test]
+    fn the_app_hears_when_another_device_writes_to_its_vault() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let tx = Mutex::new(tx);
+        let one = App::new(PathBuf::from(&exe), "pc01".to_owned()).on_outside_change(move || {
+            let _ = tx.lock().unwrap().send(());
+        });
+        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        two.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        one.record("/changes/subject", json!({ "fields": { "name": "mine" } })).unwrap();
+        assert!(rx.recv_timeout(std::time::Duration::from_millis(1500)).is_err(), "its own record is not news");
+
+        two.record("/changes/subject", json!({ "fields": { "name": "theirs" } })).unwrap();
+        rx.recv_timeout(std::time::Duration::from_secs(10)).expect("the other device's record is");
+        one.refresh().unwrap();
+        assert_eq!(one.entities("subject").unwrap().as_array().unwrap().len(), 2);
+
+        one.close_vault();
+        while rx.try_recv().is_ok() {}
+        two.record("/changes/subject", json!({ "fields": { "name": "later" } })).unwrap();
+        assert!(rx.recv_timeout(std::time::Duration::from_millis(1500)).is_err(), "a closed vault is no longer watched");
     }
 
     fn golden_step(step: u32) -> PathBuf {

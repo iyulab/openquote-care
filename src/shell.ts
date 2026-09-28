@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { Classified, Entity, Resolution, Scheme } from './records.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 
@@ -26,6 +27,8 @@ export const shell = {
   summary: () => invoke<VaultSummary>('vault_summary'),
   /** Reads the vault again, taking in what other devices sharing its folder wrote. */
   refresh: () => invoke<VaultSummary>('refresh'),
+  /** Calls `f` when another device (or a sync client) changed the open vault's files. */
+  onVaultChanged: (f: () => void): Promise<UnlistenFn> => listen('vault-changed', () => f()),
   /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
   applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
   runs: () => invoke<KeptRun[]>('runs'),

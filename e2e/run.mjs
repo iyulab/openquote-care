@@ -9,7 +9,7 @@
 // picker's result goes (the app element's `folder`). Everything after that is clicks and typing.
 
 import { spawn } from 'node:child_process'
-import { mkdtemp, mkdir, readdir, rm } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, readdir, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -370,6 +370,20 @@ const scenarios = {
     const devices = await readdir(join(work.vault, 'devices'))
     assert.equal(devices.length, 1, 'the name is a change file in the vault, where every device reads it')
     assert.match(devices[0], /\.json\.age$/)
+  },
+
+  async 'takes in what another program writes to the vault folder, without being asked'(app, work) {
+    // A file arriving from outside (here: a copy under a name its content does not match, so the
+    // engine reports it as unreadable) shows up with no refresh button and no window focus.
+    const subjects = join(work.vault, 'subjects')
+    const folder = join(subjects, (await readdir(subjects))[0])
+    const source = (await readdir(folder)).find((f) => f.endsWith('.json.age'))
+    const stray = join(folder, '01900000-0000-7000-8000-000000000001.pc99.json.age')
+    await copyFile(join(folder, source), stray)
+    await app.cdp.waitFor(`__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일 1개'))`, 'the outside file noticed')
+    await rm(stray)
+    await app.cdp.waitFor(`!__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일'))`, 'its removal noticed')
+    await app.noAlert()
   },
 
   async 'keeps the sessions across a restart'(app, work) {

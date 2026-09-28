@@ -18,6 +18,9 @@ use std::str::FromStr;
 
 use age::secrecy::{ExposeSecret, SecretString};
 use age::{scrypt, x25519};
+use tauri_kit_watch::{OwnWrites, Watch};
+
+pub use tauri_kit_watch::Watcher;
 
 /// The vault declaration, readable before the vault is unlocked.
 pub const VAULT_FILE: &str = "vault.json";
@@ -142,6 +145,8 @@ pub struct Vault {
     root: PathBuf,
     identity: x25519::Identity,
     recipient: x25519::Recipient,
+    /// What this vault wrote, so a watch of its folder reports only what others wrote.
+    own: OwnWrites,
 }
 
 impl Vault {
@@ -214,7 +219,20 @@ impl Vault {
     pub fn write_new(&self, relative: &str, plaintext: &[u8]) -> Result<(), VaultError> {
         let path = self.record_path(relative)?;
         let ciphertext = age::encrypt(&self.recipient, plaintext).map_err(|e| VaultError::Io(io::Error::other(e)))?;
-        write_new(&path, &ciphertext)
+        self.own.record(&path, &ciphertext);
+        let written = write_new(&path, &ciphertext);
+        if written.is_err() {
+            self.own.forget(&path);
+        }
+        written
+    }
+
+    /// Watches the vault folder and calls `on_change` when record files appear, change or go away
+    /// by any hand but this vault's own — another device sharing the folder, a sync client. Also
+    /// called when the platform lost track of changes. Watching stops when the returned watcher is
+    /// dropped.
+    pub fn watch(&self, mut on_change: impl FnMut() + Send + 'static) -> io::Result<Watcher> {
+        Watch::new(&self.root).ignore(|path| !is_record_file(path)).own_writes(&self.own).start(move |_| on_change())
     }
 
     /// Decrypts one record file, or returns `None` if the vault has no file at `relative`.
@@ -254,7 +272,7 @@ impl Vault {
 
     fn with_identity(root: &Path, identity: x25519::Identity) -> Vault {
         let recipient = identity.to_public();
-        Vault { root: root.to_path_buf(), identity, recipient }
+        Vault { root: root.to_path_buf(), identity, recipient, own: OwnWrites::new() }
     }
 
     fn record_path(&self, relative: &str) -> Result<PathBuf, VaultError> {
@@ -276,6 +294,12 @@ impl Vault {
         path.push(format!("{}{ENCRYPTED_EXTENSION}", parts[parts.len() - 1]));
         Ok(path)
     }
+}
+
+/// Whether `relative` (a path inside the vault) names an encrypted record file: not the
+/// declaration, not the key, and not a sync client's or editor's stray file.
+fn is_record_file(relative: &Path) -> bool {
+    relative.extension().is_some_and(|e| e == "age") && !relative.starts_with("keys")
 }
 
 fn check_declaration(root: &Path) -> Result<(), VaultError> {
