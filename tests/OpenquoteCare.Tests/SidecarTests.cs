@@ -38,6 +38,13 @@ public sealed class SidecarTests : IAsyncLifetime
         return text.Length == 0 ? new JsonObject() : JsonNode.Parse(text)!;
     }
 
+    private async Task<JsonNode> Get(string path)
+    {
+        using var response = await _http.GetAsync(path, TestContext.Current.CancellationToken);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+    }
+
     [Fact]
     public void Listens_on_the_loopback_address_only()
     {
@@ -82,6 +89,36 @@ public sealed class SidecarTests : IAsyncLifetime
         foreach (var key in new[] { "id", "device", "at" }) record.Remove(key);
         Assert.True(JsonNode.DeepEquals(GoldenVault.Expected("r3"), record));
         Assert.Matches(@"^runs/\d{4}/[0-9a-f-]{36}\.pc09\.json$", result["file"]!["path"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Lists_every_scheme_version_with_its_items()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(2)));
+
+        var schemes = await Get("/schemes");
+
+        var topics = schemes.AsArray().Where(s => s!["scheme"]!.GetValue<string>() == "topic").ToList();
+        Assert.Equal([1, 2], topics.Select(t => t!["version"]!.GetValue<int>()));
+        var item = topics[1]!["items"]!.AsArray().First(i => i!["code"]!.GetValue<string>() == "relation-peer")!;
+        Assert.False(string.IsNullOrEmpty(item["label"]!.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task Names_the_subject_each_record_belongs_to()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(0)));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { subjectFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        var sessionFile = await Post("/changes/in-subject", new { subjectId, type = "session", fields = new { date = "2026-04-01" } });
+        await Post("/vault/add", new { files = new[] { sessionFile } });
+
+        var sessions = (await Get("/entities/session")).AsArray();
+
+        var mine = sessions.Where(s => s!["subject"]?.GetValue<string>() == subjectId).ToList();
+        Assert.Single(mine);
+        Assert.Equal("2026-04-01", mine[0]!["fields"]!["date"]!.GetValue<string>());
     }
 
     [Fact]

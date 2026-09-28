@@ -178,6 +178,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
     }
 
+    /// Every classification scheme version in the vault.
+    pub fn schemes(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.schemes()?))
+    }
+
     /// Runs a monthly report and keeps its run record in the vault.
     pub fn run_report(&self, report: &str, version: u32, year: i32, month: u32) -> Result<Value, AppError> {
         self.with_open(|open| {
@@ -295,6 +300,9 @@ mod tests {
                     "fields": { "date": "2026-04-02", "topic": { "scheme": "topic", "version": 1, "code": "family" } } }),
         )
         .unwrap();
+        let schemes = app.schemes().unwrap();
+        assert!(schemes.as_array().unwrap().iter().any(|s| s["scheme"] == "topic" && s["version"] == 1));
+        assert_eq!(app.entities("session").unwrap()[0]["subject"], subject_id);
         let first = app.run_report("monthly-topic", 1, 2026, 4).unwrap();
         assert_eq!(first["total"]["count"], 1);
         app.close_vault();

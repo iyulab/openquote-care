@@ -157,6 +157,11 @@ impl Engine {
         self.call("GET", &format!("/entities/{entity_type}"), None)
     }
 
+    /// Every classification scheme version in the vault, with its items.
+    pub fn schemes(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/schemes", None)
+    }
+
     /// Asks the engine for a change file; `path` is one of the `/changes/…` routes.
     pub fn change(&self, path: &str, request: Value) -> Result<PlainFile, EngineError> {
         PlainFile::from_wire(&self.call("POST", path, Some(request))?)

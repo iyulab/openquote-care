@@ -57,6 +57,16 @@ internal static class Api
                 .OrderBy(e => e.Reference.Id, StringComparer.Ordinal)
                 .Select(EntityView));
 
+        app.MapGet("/schemes", (VaultSession session) =>
+            session.Current.Content.Schemes
+                .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
+                .Select(s => new
+                {
+                    scheme = s.Name,
+                    s.Version,
+                    items = s.Items.Select(i => new { i.Code, i.Label, i.Parent, i.Suggest }),
+                }));
+
         app.MapPost("/changes/subject", (CreateSubjectRequest request) =>
             WireFile.From(writer.CreateSubject(request.Fields)));
 
@@ -103,6 +113,7 @@ internal static class Api
     {
         e.Reference.Type,
         e.Reference.Id,
+        e.Subject,
         fields = e.Fields.ToDictionary(f => f.Key, f => f.Value),
         conflicts = e.Conflicts.ToDictionary(c => c.Key, c => c.Value.Select(h => new { h.ChangeId, h.Device, value = h.Value })),
     };

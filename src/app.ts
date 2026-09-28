@@ -5,6 +5,7 @@ import { describeError } from './errors.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
+import './vault-view.js'
 
 /**
  * Where the window is. A new vault passes through `kit` before it can be used: the shell keeps it
@@ -159,6 +160,7 @@ export class OcApp extends LitElement {
     })
   }
 
+  /** Closes the vault, or drops a new one still waiting on its kit: nothing of it was written. */
   private async closeVault() {
     await this.run(async () => {
       await shell.closeVault()
@@ -171,6 +173,14 @@ export class OcApp extends LitElement {
   }
 
   render() {
+    const s = this.screen
+    if (s.name === 'vault') {
+      return html`<oc-vault
+        .folder=${s.folder}
+        .unreadable=${s.summary?.unreadable.length ?? 0}
+        @oc-close=${() => void this.closeVault()}
+      ></oc-vault>`
+    }
     return html`<dp-page><div class="center">${this.body()}${this.errorLine()}</div></dp-page>`
   }
 
@@ -194,7 +204,7 @@ export class OcApp extends LitElement {
       case 'kit':
         return this.kit(s.key, s.folder)
       case 'vault':
-        return this.vault(s.folder, s.summary)
+        return nothing
     }
   }
 
@@ -291,22 +301,11 @@ export class OcApp extends LitElement {
       </label>
       <div class="row no-print">
         <dc-button variant="primary" ?disabled=${this.busy} @click=${submit}>${strings.kitConfirm}</dc-button>
+        <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => void this.closeVault()}>${strings.cancel}</dc-button>
       </div>
     `
   }
 
-  private vault(folder: string, summary?: VaultSummary) {
-    const unreadable = summary?.unreadable.length ?? 0
-    return html`
-      <h2>${strings.vaultOpen}</h2>
-      <p class="folder">${folder}</p>
-      ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing}
-      <p class="muted">${strings.vaultReady}</p>
-      <div class="row">
-        <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.closeVault()}>${strings.closeVault}</dc-button>
-      </div>
-    `
-  }
 }
 
 declare global {

@@ -35,7 +35,11 @@ const HELPERS = `window.__e2e = {
     return found
   },
   one(selector, text) {
-    const matches = (el) => el.textContent.replace(/\\s+/g, ' ').trim() === text
+    // An item's text may lead with an icon ("◉ 대상자"); the label is what follows.
+    const matches = (el) => {
+      const t = el.textContent.replace(/\\s+/g, ' ').trim()
+      return t === text || t.endsWith(' ' + text)
+    }
     return this.all(selector).find((el) => text === undefined || matches(el))
   },
   box(el) {
@@ -99,6 +103,33 @@ class App {
     return this.cdp.evaluate(`(() => { document.querySelector('oc-app').folder = ${q(path)}; return true })()`)
   }
 
+  /** Picks an option in the dropdown labelled `label`, the way a person's choice reports it. */
+  async choose(label, value) {
+    await this.cdp.waitFor(
+      `(() => { const el = __e2e.one(${q(`select[aria-label="${label}"]`)}); if (!el || el.disabled || ![...el.options].some((o) => o.value === ${q(value)})) return false
+        el.value = ${q(value)}; el.dispatchEvent(new Event('change', { bubbles: true, composed: true })); return true })()`,
+      `dropdown "${label}" to offer "${value}"`,
+    )
+  }
+
+  /** Sets the date field labelled `label` (a native date input: typing into it depends on the locale). */
+  async setDate(label, value) {
+    await this.cdp.waitFor(
+      `(() => { const el = __e2e.one(${q(`input[aria-label="${label}"]`)}); if (!el || el.disabled) return false
+        el.value = ${q(value)}; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      `date "${label}"`,
+    )
+  }
+
+  vaultOpen() {
+    return this.cdp.waitFor(`!!__e2e.one('oc-vault')`, 'the open vault', { timeoutMs: 60_000 })
+  }
+
+  /** The rows of the sessions table, as cell texts. */
+  sessionRows() {
+    return this.cdp.evaluate(`__e2e.all('tr[data-session]').map((tr) => [...tr.children].map((td) => td.textContent.trim()))`)
+  }
+
   heading(text) {
     return this.cdp.waitFor(`__e2e.all('h1, h2').some((el) => el.textContent.trim() === ${q(text)})`, `heading "${text}"`, { timeoutMs: 60_000 })
   }
@@ -158,7 +189,7 @@ const scenarios = {
 
     await app.type('보관했는지 확인: 볼트 키의 마지막 묶음(6자)을 입력하세요', work.key.slice(-6).toLowerCase())
     await app.click('dc-button', '확인')
-    await app.heading('볼트가 열렸습니다')
+    await app.vaultOpen()
     await app.noAlert()
     assert.ok((await readdir(work.vault)).length > 0, 'the vault is on disk once confirmed')
     const keyStillShown = await app.cdp.evaluate(`__e2e.all('*').some((el) => el.textContent?.includes(${q(work.key.slice(16, 28))}))`)
@@ -179,8 +210,55 @@ const scenarios = {
   async 'opens the vault again with its passphrase'(app, work) {
     await app.type('패스프레이즈', PASSPHRASE)
     await app.click('dc-button', '열기')
-    await app.heading('볼트가 열렸습니다')
+    await app.vaultOpen()
     await app.noAlert()
+  },
+
+  async 'asks for a practitioner before a session can be recorded'(app) {
+    await app.type('대상자 이름', '가상 학생 1')
+    await app.click('dc-button', '대상자 추가')
+    await app.cdp.waitFor(`__e2e.all('p').some((p) => p.textContent.includes('담당자를 먼저 추가하세요'))`, 'the practitioner hint')
+    await app.click('button', '담당자')
+    await app.type('담당자 이름', '상담자 가')
+    await app.click('dc-button', '담당자 추가')
+    await app.cdp.waitFor(`__e2e.all('li').some((li) => li.textContent.trim() === '상담자 가')`, 'the practitioner listed')
+    await app.noAlert()
+  },
+
+  async 'records sessions under a subject, newest first'(app, work) {
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 1')
+    await app.setDate('날짜', '2026-04-02')
+    await app.choose('주제', 'family')
+    await app.choose('방법', 'special/school-violence')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'one session')
+    await app.setDate('날짜', '2026-04-09')
+    await app.choose('주제', 'relation')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'two sessions')
+    await app.noAlert()
+    assert.deepEqual(await app.sessionRows(), [
+      ['2026-04-09', '관계', '', '상담자 가'],
+      ['2026-04-02', '가정', '특별 › 학교폭력', '상담자 가'],
+    ])
+    const subjects = await readdir(join(work.vault, 'subjects'))
+    assert.equal(subjects.length, 1, 'one subject folder')
+    const files = await readdir(join(work.vault, 'subjects', subjects[0]))
+    assert.equal(files.length, 3, 'the subject and two sessions, one file each')
+    assert.ok(files.every((f) => f.endsWith('.age')), 'every record encrypted')
+  },
+
+  async 'keeps the sessions across a restart'(app, work) {
+    await app.restart()
+    await app.click('dc-button', '볼트 열기')
+    await app.pickFolder(work.vault)
+    await app.type('패스프레이즈', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.click('li button', '가상 학생 1')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
+    assert.equal((await app.sessionRows())[1][2], '특별 › 학교폭력')
   },
 
   async 'says so when a folder is not a vault'(app, work) {
