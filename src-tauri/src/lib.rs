@@ -128,9 +128,25 @@ fn bundled_sidecar(resources: &std::path::Path) -> PathBuf {
     resources.join("sidecar").join(name)
 }
 
+/// Brings the running window forward when the app is started again. One window per device: a
+/// second window would write changes under the same device id as the first without either seeing
+/// the other's unsaved state.
+#[cfg(desktop)]
+fn bring_forward(handle: &tauri::AppHandle) {
+    if let Some(window) = handle.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Registered first, so a second start ends before anything else runs.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|handle, _args, _cwd| bring_forward(handle)));
+    builder
         .plugin(tauri_plugin_dialog::init())
         .setup(|tauri_app| {
             let config = tauri_app.path().app_local_data_dir()?;

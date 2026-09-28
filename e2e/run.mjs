@@ -346,6 +346,18 @@ const scenarios = {
     assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '기록 수정', '재분류 대기', '또래관계 · 상담자 가'])
   },
 
+  async 'brings this window forward instead of opening a second one'(app) {
+    // A second start hands over to the running app and ends; this window keeps its state.
+    const second = spawn(exe, [], { stdio: 'ignore', env: { ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar } })
+    const code = await new Promise((done, fail) => {
+      const timer = setTimeout(() => fail(new Error('the second start is still running')), 15000)
+      second.once('exit', (c) => (clearTimeout(timer), done(c)))
+    }).finally(() => second.exitCode === null && second.kill())
+    assert.equal(code, 0)
+    assert.equal(app.child.exitCode, null, 'the first app still runs')
+    assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=comparison-counts]')`), 'and still shows what it showed')
+  },
+
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
     await app.click('dc-button', '볼트 열기')
