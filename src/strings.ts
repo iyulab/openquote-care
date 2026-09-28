@@ -73,9 +73,15 @@ export const strings = {
   noEarlierRun: '같은 양식·기간의 이전 산출 기록이 없습니다.',
   runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · v${version} · 전체 ${total}`,
   comparisonTitle: (earlierVersion: number, laterVersion: number) => `이전 산출(v${earlierVersion})과 지금 산출(v${laterVersion})의 차이`,
-  comparisonCounts: (late: number, removed: number, moved: number, unchanged: number) =>
-    `늦게 입력 ${late} · 빠짐 ${removed} · 자리 바뀜 ${moved} · 그대로 ${unchanged}`,
-  changeKind: { late: '늦게 입력', removed: '빠짐', moved: '자리 바뀜' },
+  comparisonCounts: (late: number, removed: number, revised: number, moved: number, unchanged: number) =>
+    `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
+  changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', moved: '기록 수정' },
+  changeKindHint: {
+    late: '이전 산출 뒤에 입력된 기록입니다.',
+    removed: '이전 산출 뒤에 지워졌거나 기간에서 벗어난 기록입니다.',
+    revised: '기록은 그대로이고, 분류 체계 개정의 연계표가 새 자리로 옮겼습니다.',
+    moved: '기록의 분류나 담당자를 사람이 고쳐 자리가 바뀌었습니다.',
+  },
   before: '이전',
   after: '지금',
   nowhere: '—',

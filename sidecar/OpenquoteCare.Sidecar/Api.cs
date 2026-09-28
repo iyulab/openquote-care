@@ -103,13 +103,14 @@ internal static class Api
             if (runs.FirstOrDefault(k => k.Id == request.Earlier) is not { } earlier
                 || runs.FirstOrDefault(k => k.Id == request.Later) is not { } later)
                 return Results.NotFound();
-            var diff = ReportDiff.Compare(earlier.Run, later.Run);
+            var diff = ReportDiff.Compare(earlier.Run, later.Run, session.Current.Content.Catalog());
             return Results.Ok(new
             {
                 earlier = RunView(earlier),
                 later = RunView(later),
                 diff.Late,
                 diff.Removed,
+                diff.Revised,
                 diff.Moved,
                 diff.Unchanged,
             });

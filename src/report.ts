@@ -104,6 +104,7 @@ export interface Comparison {
   later: RunRecord
   late: string[]
   removed: string[]
+  revised: string[]
   moved: string[]
   unchanged: string[]
 }

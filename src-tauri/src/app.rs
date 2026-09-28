@@ -380,6 +380,7 @@ mod tests {
         let runs = app.runs().unwrap();
         assert_eq!(runs.as_array().unwrap().len(), 2, "both runs are kept and read back");
         let compared = app.compare_runs(runs[0]["id"].as_str().unwrap(), runs[1]["id"].as_str().unwrap()).unwrap();
+        assert_eq!(compared["revised"], serde_json::json!([]));
         assert_eq!(compared["moved"], serde_json::json!([]));
         assert_eq!(compared["unchanged"].as_array().unwrap().len(), 1);
         assert!(matches!(app.open_vault(dir.path(), "nope".to_owned()), Err(AppError::Engine(EngineError::Vault(VaultError::WrongPassphrase)))));

@@ -58,7 +58,7 @@ else: a change file cut off halfway through, and a complete change file whose na
 its content says `pc01`.
 
 `expected/diff-r1-r2.json` separates the one late entry from the records that moved because of the
-revision. `expected/keys.json` maps every id back to its row in `scenario/`.
+revision (`revised`); `expected/diff-r2-r3.json` holds the records a person reclassified (`moved`). `expected/keys.json` maps every id back to its row in `scenario/`.
 
 ## Regenerating
 

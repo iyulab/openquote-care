@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Openquote.Classification;
 using Openquote.Reports;
 using Openquote.Vault;
 
@@ -17,6 +18,9 @@ public class GoldenVaultTests
         var report = content.Reports.Single(r => r.Name == "monthly-topic" && r.Version == reportVersion);
         return ReportRunner.RunMonth(report, 2026, month, GoldenVault.Entities(content).Values, content.Catalog());
     }
+
+    private static SchemeCatalog CatalogThrough(int step) =>
+        VaultReader.Read(GoldenVault.Through(step)).Catalog();
 
     private static JsonObject RunRecord(ReportRun run)
     {
@@ -44,12 +48,13 @@ public class GoldenVaultTests
     [InlineData("r2-r3", 2, 2, 3, 2)]
     public void Tells_late_entries_from_reclassified_records(string name, int stepA, int versionA, int stepB, int versionB)
     {
-        var diff = ReportDiff.Compare(Run(stepA, versionA, 4), Run(stepB, versionB, 4));
+        var diff = ReportDiff.Compare(Run(stepA, versionA, 4), Run(stepB, versionB, 4), CatalogThrough(stepB));
         var expected = GoldenVault.Expected($"diff-{name}");
 
         string[] Ids(string key) => [.. expected[key]!.AsArray().Select(n => n!.GetValue<string>())];
         Assert.Equal(Ids("late"), diff.Late);
         Assert.Equal(Ids("removed"), diff.Removed);
+        Assert.Equal(Ids("revised"), diff.Revised);
         Assert.Equal(Ids("moved"), diff.Moved);
         Assert.Equal(Ids("unchanged"), diff.Unchanged);
     }
@@ -57,7 +62,7 @@ public class GoldenVaultTests
     [Fact]
     public void The_late_entry_is_the_session_entered_after_the_april_run()
     {
-        var diff = ReportDiff.Compare(Run(1, 1, 4), Run(2, 2, 4));
+        var diff = ReportDiff.Compare(Run(1, 1, 4), Run(2, 2, 4), CatalogThrough(2));
 
         Assert.Equal([GoldenVault.IdOf("Q22")], diff.Late);
     }

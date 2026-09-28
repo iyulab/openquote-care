@@ -11,6 +11,7 @@
 // hand) and checked against the hand-computed counts in expected-totals.json; any disagreement fails
 // the run instead of writing files.
 
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -18,6 +19,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 
 var root = Path.GetDirectoryName(Path.GetFullPath(AppContext.GetData("EntryPointFilePath") as string ?? "generate.cs"))!;
+var inv = CultureInfo.InvariantCulture;
+DateTimeOffset At(string text) => DateTimeOffset.Parse(text, inv);
+DateOnly Day(string text) => DateOnly.Parse(text, inv);
 var scenario = Path.Combine(root, "scenario");
 var stepsDir = Path.Combine(root, "steps");
 var expectedDir = Path.Combine(root, "expected");
@@ -26,9 +30,9 @@ var invalidDir = Path.Combine(root, "invalid");
 // Report runs close each step: a change belongs to the first step whose run it precedes.
 DateTimeOffset[] runAt =
 [
-    DateTimeOffset.Parse("2026-05-04T09:00:00+09:00"), // r1, end of step 1
-    DateTimeOffset.Parse("2026-06-01T09:00:00+09:00"), // r2, end of step 2
-    DateTimeOffset.Parse("2026-06-04T09:00:00+09:00"), // r3, end of step 3
+    At("2026-05-04T09:00:00+09:00"), // r1, end of step 1
+    At("2026-06-01T09:00:00+09:00"), // r2, end of step 2
+    At("2026-06-04T09:00:00+09:00"), // r3, end of step 3
 ];
 int StepOf(DateTimeOffset at)
 {
@@ -51,7 +55,7 @@ var changes = new List<Change>();
 
 foreach (var c in counselors)
 {
-    var at = DateTimeOffset.Parse(c["created_at"]);
+    var at = At(c["created_at"]);
     var id = NewId(c["key"], at);
     changes.Add(new Change(id, c["device"], at, "practitioner", id, "create", [], "practitioners",
         new JsonObject { ["name"] = c["name"] }));
@@ -59,7 +63,7 @@ foreach (var c in counselors)
 
 foreach (var s in subjects)
 {
-    var at = DateTimeOffset.Parse(s["created_at"]);
+    var at = At(s["created_at"]);
     var id = NewId(s["key"], at);
     changes.Add(new Change(id, s["device"], at, "subject", id, "create", [], $"subjects/{id}", new JsonObject
     {
@@ -81,7 +85,7 @@ foreach (var s in subjects)
 var subjectOfCase = new Dictionary<string, string>();
 foreach (var c in cases)
 {
-    var at = DateTimeOffset.Parse(c["opened"] + "T09:05:00+09:00");
+    var at = At(c["opened"] + "T09:05:00+09:00");
     var id = NewId(c["key"], at);
     subjectOfCase[c["key"]] = c["subject"];
     changes.Add(new Change(id, c["device"], at, "case", id, "create", [], $"subjects/{IdOf(c["subject"])}", new JsonObject
@@ -97,7 +101,7 @@ string FolderOfSession(string sessionKey) =>
 
 foreach (var s in sessions)
 {
-    var at = DateTimeOffset.Parse(s["entered_at"]);
+    var at = At(s["entered_at"]);
     var id = NewId(s["key"], at);
     changes.Add(new Change(id, s["device"], at, "session", id, "create", [], FolderOfSession(s["key"]), new JsonObject
     {
@@ -111,7 +115,7 @@ foreach (var s in sessions)
 
     if (s["reclassify_to"] != "")
     {
-        var rat = DateTimeOffset.Parse(s["reclassify_at"]);
+        var rat = At(s["reclassify_at"]);
         var rid = NewId(s["key"] + "#reclassify", rat);
         changes.Add(new Change(rid, s["reclassify_device"], rat, "session", id, "reclassify", [id], FolderOfSession(s["key"]),
             new JsonObject { ["topic"] = Coded("topic", 2, s["reclassify_to"]) }));
@@ -121,7 +125,7 @@ foreach (var s in sessions)
 // Each edit was written without seeing the other: both name only the create as their base.
 foreach (var e in edits)
 {
-    var at = DateTimeOffset.Parse(e["at"]);
+    var at = At(e["at"]);
     var id = NewId(e["key"], at);
     var target = IdOf(e["session"]);
     changes.Add(new Change(id, e["device"], at, "session", target, "update", [target], FolderOfSession(e["session"]),
@@ -135,7 +139,7 @@ var problems = new List<string>();
 
 JsonObject Report(string name, int reportVersion, string month, int step)
 {
-    var from = DateOnly.Parse(month + "-01");
+    var from = Day(month + "-01");
     var to = from.AddMonths(1).AddDays(-1);
     var cells = new SortedDictionary<(string Row, string Column), List<string>>();
     var pending = new List<string>();
@@ -143,15 +147,15 @@ JsonObject Report(string name, int reportVersion, string month, int step)
 
     foreach (var s in sessions)
     {
-        var date = DateOnly.Parse(s["date"]);
+        var date = Day(s["date"]);
         if (date < from || date > to) continue;
-        if (StepOf(DateTimeOffset.Parse(s["entered_at"])) > step) continue;
+        if (StepOf(At(s["entered_at"])) > step) continue;
 
         string row;
         if (reportVersion == 1) row = s["topic_v1"];
         else
         {
-            var reclassified = s["reclassify_to"] != "" && StepOf(DateTimeOffset.Parse(s["reclassify_at"])) <= step;
+            var reclassified = s["reclassify_to"] != "" && StepOf(At(s["reclassify_at"])) <= step;
             row = reclassified ? s["reclassify_to"] : s["expect_v2"];
         }
 
@@ -194,7 +198,7 @@ JsonObject Report(string name, int reportVersion, string month, int step)
         ["format"] = "openquote.run/0",
         ["report"] = new JsonObject { ["report"] = "monthly-topic", ["version"] = reportVersion },
         ["schemes"] = new JsonObject { ["topic"] = schemeRef },
-        ["period"] = new JsonObject { ["from"] = from.ToString("yyyy-MM-dd"), ["to"] = to.ToString("yyyy-MM-dd") },
+        ["period"] = new JsonObject { ["from"] = from.ToString("yyyy-MM-dd", inv), ["to"] = to.ToString("yyyy-MM-dd", inv) },
         ["cells"] = new JsonArray(cells.Select(kv => (JsonNode)new JsonObject
         {
             ["row"] = kv.Key.Row,
@@ -219,7 +223,7 @@ string SessionKey(string id) => ids.First(kv => kv.Value == id).Key;
 // Months other than the report scenarios, checked by count only.
 foreach (var (month, n) in hand["months_v1_step1"]!.AsObject())
 {
-    var got = sessions.Count(s => s["date"].StartsWith(month) && StepOf(DateTimeOffset.Parse(s["entered_at"])) == 1);
+    var got = sessions.Count(s => s["date"].StartsWith(month, StringComparison.Ordinal) && StepOf(At(s["entered_at"])) == 1);
     Expect("months_v1_step1", month, n!.GetValue<int>(), got);
 }
 
@@ -246,7 +250,15 @@ JsonObject Diff(string a, string b)
     var pb = Placement(reports[b]);
     var late = pb.Keys.Except(pa.Keys).ToList();
     var removed = pa.Keys.Except(pb.Keys).ToList();
-    var moved = pa.Keys.Intersect(pb.Keys).Where(k => pa[k] != pb[k]).ToList();
+    // A record whose place changed moved because of the revision unless a person reclassified it
+    // between the two runs — read from the scenario, not from the crosswalk.
+    var stepA = hand[a]!["step"]!.GetValue<int>();
+    var stepB = hand[b]!["step"]!.GetValue<int>();
+    bool ReclassifiedBetween(string id) => sessions.Any(s => IdOf(s["key"]) == id && s["reclassify_to"] != ""
+        && StepOf(At(s["reclassify_at"])) is var at && at > stepA && at <= stepB);
+    var differ = pa.Keys.Intersect(pb.Keys).Where(k => pa[k] != pb[k]).ToList();
+    var revised = differ.Where(k => !ReclassifiedBetween(k)).ToList();
+    var moved = differ.Where(ReclassifiedBetween).ToList();
     var unchanged = pa.Keys.Intersect(pb.Keys).Where(k => pa[k] == pb[k]).ToList();
     return new JsonObject
     {
@@ -254,6 +266,7 @@ JsonObject Diff(string a, string b)
         ["to"] = b,
         ["late"] = Ids(late),
         ["removed"] = Ids(removed),
+        ["revised"] = Ids(revised),
         ["moved"] = Ids(moved),
         ["unchanged"] = Ids(unchanged),
     };
@@ -289,7 +302,7 @@ foreach (var dir in new[] { stepsDir, expectedDir, invalidDir })
     if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true);
 
 foreach (var stepStatic in Directory.GetDirectories(Path.Combine(scenario, "static")))
-    CopyTree(stepStatic, Path.Combine(stepsDir, StepDir(int.Parse(Path.GetFileName(stepStatic)))));
+    CopyTree(stepStatic, Path.Combine(stepsDir, StepDir(int.Parse(Path.GetFileName(stepStatic), inv))));
 
 foreach (var c in changes.OrderBy(c => c.Id, StringComparer.Ordinal))
 {
@@ -309,7 +322,7 @@ Write(Path.Combine(expectedDir, "keys.json"),
 {
     var sample = changes.First(c => c.Entity == "session");
     var json = Serialize(sample.ToJson());
-    var badAt = DateTimeOffset.Parse("2026-04-30T12:00:00+09:00");
+    var badAt = At("2026-04-30T12:00:00+09:00");
     var truncatedId = Uuid7.Deterministic(badAt, "openquote-golden:invalid-truncated");
     File.WriteAllText(EnsureDir(Path.Combine(invalidDir, sample.Folder, $"{truncatedId}.pc01.json")), json[..(json.Length / 2)]);
     var mismatchId = Uuid7.Deterministic(badAt, "openquote-golden:invalid-name-mismatch");
@@ -358,7 +371,7 @@ static void CopyTree(string from, string to)
     }
 }
 
-record Change(string Id, string Device, DateTimeOffset At, string Entity, string EntityId, string Op,
+sealed record Change(string Id, string Device, DateTimeOffset At, string Entity, string EntityId, string Op,
     string[] Base, string Folder, JsonObject Fields)
 {
     public JsonObject ToJson() => new()
@@ -366,7 +379,7 @@ record Change(string Id, string Device, DateTimeOffset At, string Entity, string
         ["format"] = "openquote.change/0",
         ["id"] = Id,
         ["device"] = Device,
-        ["at"] = At.ToString("yyyy-MM-dd'T'HH:mm:sszzz"),
+        ["at"] = At.ToString("yyyy-MM-dd'T'HH:mm:sszzz", CultureInfo.InvariantCulture),
         ["entity"] = new JsonObject { ["type"] = Entity, ["id"] = EntityId },
         ["op"] = Op,
         ["base"] = new JsonArray(Base.Select(b => (JsonNode)JsonValue.Create(b)!).ToArray()),

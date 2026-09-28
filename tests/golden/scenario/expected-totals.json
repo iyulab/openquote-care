@@ -48,8 +48,8 @@
     "pending": 2, "unmapped": 2, "total": 24
   },
   "diffs": {
-    "r1-r2": { "late": ["Q22"], "unchanged": ["Q07", "Q10", "Q11", "Q20", "Q23"], "moved": 18 },
-    "r2-r3": { "late": [], "moved": ["Q02", "Q03", "Q08", "Q16"] }
+    "r1-r2": { "late": ["Q22"], "unchanged": ["Q07", "Q10", "Q11", "Q20", "Q23"], "revised": 18, "moved": 0 },
+    "r2-r3": { "late": [], "revised": [], "moved": ["Q02", "Q03", "Q08", "Q16"] }
   },
   "months_v1_step1": { "2026-03": 10 }
 }

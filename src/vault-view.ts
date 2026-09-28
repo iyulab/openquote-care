@@ -590,13 +590,14 @@ export class OcVault extends LitElement {
     const changed = [
       ...c.late.map((id) => ({ id, kind: 'late' as const })),
       ...c.removed.map((id) => ({ id, kind: 'removed' as const })),
+      ...c.revised.map((id) => ({ id, kind: 'revised' as const })),
       ...c.moved.map((id) => ({ id, kind: 'moved' as const })),
     ]
     const date = (id: string) => (byId.get(id) ? text(byId.get(id)!, 'date') : '')
     changed.sort((a, b) => date(b.id).localeCompare(date(a.id)) || a.id.localeCompare(b.id))
     return html`<section data-role="comparison">
       <h3>${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}</h3>
-      <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.moved.length, c.unchanged.length)}</p>
+      <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.revised.length, c.moved.length, c.unchanged.length)}</p>
       <table>
         <thead>
           <tr>
@@ -613,7 +614,7 @@ export class OcVault extends LitElement {
             return html`<tr data-change=${kind} data-id=${id}>
               <td>${date(id)}</td>
               <td>${session ? (subjectNames.get(session.subject ?? '') ?? '') : ''}</td>
-              <td>${strings.changeKind[kind]}</td>
+              <td title=${strings.changeKindHint[kind]}>${strings.changeKind[kind]}</td>
               <td>${this.placeText(c.earlier, before.get(id))}</td>
               <td>${this.placeText(c.later, after.get(id))}</td>
             </tr>`

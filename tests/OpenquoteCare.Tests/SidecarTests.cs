@@ -151,7 +151,7 @@ public sealed class SidecarTests : IAsyncLifetime
         var compared = await Post("/runs/compare", new { earlier = runs[0]!["id"]!.GetValue<string>(), later = runs[1]!["id"]!.GetValue<string>() });
 
         var expected = GoldenVault.Expected("diff-r2-r3");
-        foreach (var key in new[] { "late", "removed", "moved", "unchanged" })
+        foreach (var key in new[] { "late", "removed", "revised", "moved", "unchanged" })
             Assert.True(JsonNode.DeepEquals(expected[key], compared[key]), key);
         Assert.Equal(r3["record"]!["total"]!.ToJsonString(), compared["later"]!["total"]!.ToJsonString());
     }

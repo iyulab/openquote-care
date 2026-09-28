@@ -341,9 +341,9 @@ const scenarios = {
     await app.click('dc-button', '비교')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=comparison-counts]')`, 'the comparison')
     await app.noAlert()
-    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=comparison-counts]').textContent.trim()`), '늦게 입력 0 · 빠짐 0 · 자리 바뀜 1 · 그대로 1')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=comparison-counts]').textContent.trim()`), '늦게 입력 0 · 빠짐 0 · 분류 개정 0 · 기록 수정 1 · 그대로 1')
     const moved = await app.cdp.evaluate(`[...__e2e.one('tr[data-change=moved]').children].map((c) => c.textContent.trim())`)
-    assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '자리 바뀜', '재분류 대기', '또래관계 · 상담자 가'])
+    assert.deepEqual(moved, ['2026-04-09', '가상 학생 1', '기록 수정', '재분류 대기', '또래관계 · 상담자 가'])
   },
 
   async 'keeps the sessions across a restart'(app, work) {
