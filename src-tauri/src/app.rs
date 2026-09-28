@@ -9,7 +9,7 @@ use std::sync::Mutex;
 
 use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
-use openquote_care_vault::{Vault, VaultError};
+use openquote_care_vault::{NewVault, Vault, VaultError};
 use serde_json::Value;
 
 /// How many trailing characters of the recovery key a person types back to show they kept it.
@@ -84,9 +84,10 @@ impl From<io::Error> for AppError {
 
 enum Stage {
     Closed,
-    /// A new vault whose recovery kit has been shown but not yet confirmed. Nothing can be
-    /// recorded until it is: skipping the kit is not an option.
-    AwaitingKit { open: OpenVault, tail: String },
+    /// A new vault whose recovery kit has been shown but not yet confirmed. It exists only in
+    /// memory until it is: skipping the kit is not an option, and a vault abandoned at this
+    /// point leaves nothing behind that could be opened without it.
+    AwaitingKit { new: NewVault, pack: PathBuf, tail: String },
     Open(OpenVault),
 }
 
@@ -102,31 +103,41 @@ impl App {
         App { sidecar, device, stage: Mutex::new(Stage::Closed) }
     }
 
-    /// Creates a vault in `folder`, copies the data pack in `pack` into it, and returns the
-    /// recovery key to show the person. The vault stays locked for use until
-    /// [`App::confirm_recovery_kit`] succeeds.
+    /// Prepares a vault for `folder` and returns the recovery key to show the person. Nothing is
+    /// written until [`App::confirm_recovery_kit`] succeeds; then the vault is created and the
+    /// data pack in `pack` copied into it.
     pub fn create_vault(&self, folder: &Path, passphrase: String, pack: &Path) -> Result<String, AppError> {
-        let (vault, kit) = Vault::create(folder, SecretString::from(passphrase))?;
-        let mut open = OpenVault::open(vault, Engine::start(&self.sidecar, &self.device)?)?;
-        for file in pack_files(pack)? {
-            open.keep(file)?;
-        }
-        let key = kit.secret_key().to_owned();
+        let new = Vault::prepare(folder, SecretString::from(passphrase))?;
+        let key = new.recovery_kit().secret_key().to_owned();
         let tail = key[key.len() - KIT_CONFIRMATION_LENGTH..].to_owned();
-        *self.stage.lock().unwrap() = Stage::AwaitingKit { open, tail };
+        *self.stage.lock().unwrap() = Stage::AwaitingKit { new, pack: pack.to_owned(), tail };
         Ok(key)
     }
 
-    /// Unlocks the new vault once the person types back the end of its recovery key.
+    /// Once the person types back the end of the recovery key, writes the new vault, fills it
+    /// from the data pack, and opens it.
     pub fn confirm_recovery_kit(&self, typed: &str) -> Result<(), AppError> {
         let mut stage = self.stage.lock().unwrap();
         match std::mem::replace(&mut *stage, Stage::Closed) {
-            Stage::AwaitingKit { open, tail } if typed.trim().eq_ignore_ascii_case(&tail) => {
+            Stage::AwaitingKit { new, pack, tail } if typed.trim().eq_ignore_ascii_case(&tail) => {
+                // Start the engine before writing, so a failure to start leaves nothing on disk
+                // and the kit screen can simply be confirmed again.
+                let engine = match Engine::start(&self.sidecar, &self.device) {
+                    Ok(engine) => engine,
+                    Err(e) => {
+                        *stage = Stage::AwaitingKit { new, pack, tail };
+                        return Err(e.into());
+                    }
+                };
+                let mut open = OpenVault::open(new.write()?, engine)?;
+                for file in pack_files(&pack)? {
+                    open.keep(file)?;
+                }
                 *stage = Stage::Open(open);
                 Ok(())
             }
-            Stage::AwaitingKit { open, tail } => {
-                *stage = Stage::AwaitingKit { open, tail };
+            Stage::AwaitingKit { new, pack, tail } => {
+                *stage = Stage::AwaitingKit { new, pack, tail };
                 Err(AppError::RecoveryKitMismatch)
             }
             other => {
@@ -248,6 +259,7 @@ mod tests {
 
         let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         assert!(key.starts_with("AGE-SECRET-KEY-1"));
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0, "nothing written before the kit is confirmed");
 
         assert!(matches!(app.entities("session"), Err(AppError::RecoveryKitNotConfirmed)));
         assert!(matches!(app.confirm_recovery_kit("WRONG1"), Err(AppError::RecoveryKitMismatch)));
@@ -255,6 +267,17 @@ mod tests {
 
         app.confirm_recovery_kit(&key[key.len() - 6..].to_lowercase()).unwrap();
         assert_eq!(app.entities("session").unwrap(), json!([]));
+        assert!(Vault::recover(dir.path(), &key).is_ok(), "the kit opens the written vault");
+    }
+
+    #[test]
+    fn a_vault_abandoned_before_its_kit_is_confirmed_leaves_nothing() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.close_vault();
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
+        assert_eq!(app.open_vault(dir.path(), "pass".to_owned()).unwrap_err().code(), "not-a-vault");
     }
 
     #[test]

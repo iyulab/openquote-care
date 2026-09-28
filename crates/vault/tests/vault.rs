@@ -173,3 +173,25 @@ fn an_independent_age_tool_opens_a_record_with_the_recovery_kit() {
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     assert_eq!(out.stdout, RECORD);
 }
+
+#[test]
+fn a_prepared_vault_writes_nothing_until_asked() {
+    let dir = tempfile::tempdir().unwrap();
+    let new = Vault::prepare(dir.path(), pass("p")).unwrap();
+    let kit = new.recovery_kit();
+    assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0, "nothing on disk before write");
+
+    let vault = new.write().unwrap();
+    vault.write_new("a.json", b"{}").unwrap();
+    assert!(Vault::unlock(dir.path(), pass("p")).is_ok());
+    assert!(Vault::recover(dir.path(), kit.secret_key()).is_ok());
+}
+
+#[test]
+fn a_prepared_vault_does_not_overwrite_one_made_meanwhile() {
+    let dir = tempfile::tempdir().unwrap();
+    let new = Vault::prepare(dir.path(), pass("first")).unwrap();
+    Vault::create(dir.path(), pass("second")).unwrap();
+    assert!(matches!(new.write(), Err(VaultError::AlreadyExists)));
+    assert!(Vault::unlock(dir.path(), pass("second")).is_ok());
+}

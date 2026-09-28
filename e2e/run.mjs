@@ -59,6 +59,14 @@ class App {
     return app
   }
 
+  /** Ends the app the hard way and starts it again, in this same App. */
+  async restart() {
+    await this.quit()
+    const next = await App.launch()
+    this.child = next.child
+    this.cdp = next.cdp
+  }
+
   async quit() {
     this.cdp?.close()
     const child = this.child
@@ -106,6 +114,18 @@ class App {
 }
 
 const scenarios = {
+  async 'leaves nothing behind when the app ends at the recovery kit'(app, work) {
+    await app.click('dc-button', '새 볼트 만들기')
+    await app.pickFolder(work.vault)
+    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('패스프레이즈 다시 입력', PASSPHRASE)
+    await app.click('dc-button', '만들기')
+    await app.heading('복구 키트')
+    await app.restart()
+    assert.deepEqual(await readdir(work.vault), [], 'no vault to open without its kit')
+    await app.heading('Openquote Care')
+  },
+
   async 'refuses a short passphrase before touching the disk'(app, work) {
     await app.click('dc-button', '새 볼트 만들기')
     await app.heading('새 볼트 만들기')
@@ -126,8 +146,7 @@ const scenarios = {
     work.key = shown.replaceAll(/\s+/g, '')
     assert.equal(shown.trim().split(/\s+/).at(-1), work.key.slice(-6), 'the last group is what gets typed back')
     assert.match(work.key, /^AGE-SECRET-KEY-1[0-9A-Z]{58}$/, 'the whole key, in groups')
-    const files = await readdir(work.vault)
-    assert.ok(files.length > 0, 'the vault is on disk')
+    assert.deepEqual(await readdir(work.vault), [], 'nothing written before the kit is confirmed')
     await app.noAlert()
   },
 
@@ -141,6 +160,7 @@ const scenarios = {
     await app.click('dc-button', '확인')
     await app.heading('볼트가 열렸습니다')
     await app.noAlert()
+    assert.ok((await readdir(work.vault)).length > 0, 'the vault is on disk once confirmed')
     const keyStillShown = await app.cdp.evaluate(`__e2e.all('*').some((el) => el.textContent?.includes(${q(work.key.slice(16, 28))}))`)
     assert.equal(keyStillShown, false, 'the key is gone from the window')
   },

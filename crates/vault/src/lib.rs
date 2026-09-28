@@ -95,6 +95,29 @@ impl RecoveryKit {
     }
 }
 
+/// A vault whose key exists only in memory. See [`Vault::prepare`].
+pub struct NewVault {
+    root: PathBuf,
+    identity: x25519::Identity,
+    key_file: String,
+}
+
+impl NewVault {
+    /// The recovery kit for the vault this will become.
+    pub fn recovery_kit(&self) -> RecoveryKit {
+        RecoveryKit { secret_key: self.identity.to_string() }
+    }
+
+    /// Writes the vault to disk and returns it unlocked. Fails with
+    /// [`VaultError::AlreadyExists`] if a vault appeared in the folder meanwhile.
+    pub fn write(self) -> Result<Vault, VaultError> {
+        // The declaration goes last: a folder with a declaration always has its key.
+        write_new(&self.root.join(KEY_FILE), self.key_file.as_bytes())?;
+        write_new(&self.root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes())?;
+        Ok(Vault::with_identity(&self.root, self.identity))
+    }
+}
+
 /// A file the vault could not decrypt. The rest of the vault is still read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UndecryptableFile {
@@ -124,8 +147,17 @@ pub struct Vault {
 impl Vault {
     /// Creates a vault in `root` (which may already exist, but must not hold a vault) and returns
     /// it unlocked, together with its recovery kit. The kit is the only copy of the unwrapped key:
-    /// the caller must make the person keep it before going on.
+    /// the caller must make the person keep it before going on. To show the kit before anything
+    /// is written, use [`Vault::prepare`].
     pub fn create(root: &Path, passphrase: SecretString) -> Result<(Vault, RecoveryKit), VaultError> {
+        let new = Vault::prepare(root, passphrase)?;
+        let kit = new.recovery_kit();
+        Ok((new.write()?, kit))
+    }
+
+    /// Makes a vault key for `root` and wraps it with the passphrase, without touching the disk.
+    /// Nothing exists until [`NewVault::write`]: a vault abandoned before then leaves no trace.
+    pub fn prepare(root: &Path, passphrase: SecretString) -> Result<NewVault, VaultError> {
         if root.join(VAULT_FILE).exists() || root.join(KEY_FILE).exists() {
             return Err(VaultError::AlreadyExists);
         }
@@ -136,12 +168,7 @@ impl Vault {
         let key_file = age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes())
             .map_err(|e| VaultError::Io(io::Error::other(e)))?;
 
-        // The declaration goes last: a folder with a declaration always has its key.
-        write_new(&root.join(KEY_FILE), key_file.as_bytes())?;
-        write_new(&root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes())?;
-
-        let kit = RecoveryKit { secret_key: identity.to_string() };
-        Ok((Vault::with_identity(root, identity), kit))
+        Ok(NewVault { root: root.to_path_buf(), identity, key_file })
     }
 
     /// Unlocks the vault in `root` with its passphrase.
