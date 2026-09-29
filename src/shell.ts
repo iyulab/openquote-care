@@ -30,6 +30,8 @@ export const shell = {
   /** Sets a new passphrase for the open vault; the old one stops opening it on every device. */
   changePassphrase: (passphrase: string) => invoke<void>('change_passphrase', { passphrase }),
   closeVault: () => invoke<void>('close_vault'),
+  /** Whether this installation reports the app's own errors (content-free; see docs/privacy.md). */
+  diagnosticsEnabled: () => invoke<boolean>('diagnostics_enabled'),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
   record: (route: string, request: object) => invoke<string>('record', { route, request }),
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),

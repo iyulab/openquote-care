@@ -4,6 +4,8 @@ import type { FileKind } from './files.js'
 export const strings = {
   appName: 'Openquote Care',
   tagline: '분류가 바뀌어도 다시 세지 않는 상담 기록',
+  diagnosticsNotice:
+    '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·볼트 이름은 보내지 않으며, 인터넷이 없으면 보내지 않고 버립니다.',
 
   createVault: '새 볼트 만들기',
   openVault: '볼트 열기',

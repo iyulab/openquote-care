@@ -197,6 +197,11 @@ fn agent() -> ureq::Agent {
 
 static REPORTER: OnceLock<Diagnostics> = OnceLock::new();
 
+/// Whether this run reports errors — so the window can say so.
+pub fn enabled() -> bool {
+    REPORTER.get().is_some()
+}
+
 /// Turns reporting on for this run when a connection is configured, including a report of any
 /// panic. Does nothing otherwise.
 pub fn install() {

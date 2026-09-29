@@ -109,6 +109,11 @@ fn refresh(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn diagnostics_enabled() -> bool {
+    diagnostics::enabled()
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -201,6 +206,7 @@ pub fn run() {
             entities,
             schemes,
             vault_summary,
+            diagnostics_enabled,
             apply_pack,
             resolve,
             runs,

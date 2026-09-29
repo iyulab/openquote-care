@@ -71,10 +71,10 @@ const HELPERS = `window.__e2e = {
 const q = (s) => JSON.stringify(s)
 
 class App {
-  /** Starts the app and waits for its window. */
-  static async launch() {
+  /** Starts the app, with `env` added to its environment, and waits for its window. */
+  static async launch(env = {}) {
     const app = new App()
-    app.child = spawn(exe, [], { stdio: 'ignore', env: { ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar } })
+    app.child = spawn(exe, [], { stdio: 'ignore', env: { ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, ...env } })
     const page = await findPage(PORT)
     app.cdp = await Cdp.connect(page.webSocketDebuggerUrl)
     await app.cdp.waitFor(`customElements.get('oc-app') && !!document.querySelector('oc-app')`, 'the app')
@@ -83,9 +83,9 @@ class App {
   }
 
   /** Ends the app the hard way and starts it again, in this same App. */
-  async restart() {
+  async restart(env = {}) {
     await this.quit()
-    const next = await App.launch()
+    const next = await App.launch(env)
     this.child = next.child
     this.cdp = next.cdp
   }
@@ -170,6 +170,15 @@ class App {
 }
 
 const scenarios = {
+  async 'says on the first screen when this installation reports errors'(app) {
+    // A collector nothing listens on: the notice depends on the configuration, not on delivery.
+    await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://127.0.0.1:9/' })
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="diagnostics"]')`, 'the diagnostics notice')
+    await app.restart()
+    await app.heading('Openquote Care')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
+  },
+
   async 'leaves nothing behind when the app ends at the recovery kit'(app, work) {
     await app.click('dc-button', '새 볼트 만들기')
     await app.pickFolder(work.vault)

@@ -102,11 +102,17 @@ export class OcApp extends LitElement {
   @state() private recoveryKey = ''
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
+  /** Whether this installation reports the app's own errors; the first screen says so. */
+  @state() private diagnostics = false
   private idle?: IdleWatch
   private readonly touch = () => this.idle?.touch()
 
   connectedCallback() {
     super.connectedCallback()
+    shell.diagnosticsEnabled().then(
+      (on) => (this.diagnostics = on),
+      () => {},
+    )
     for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.addEventListener(type, this.touch, { passive: true })
   }
 
@@ -261,6 +267,7 @@ export class OcApp extends LitElement {
         <dc-button variant="primary" @click=${() => this.go({ name: 'create' })}>${strings.createVault}</dc-button>
         <dc-button variant="secondary" @click=${() => this.go({ name: 'open' })}>${strings.openVault}</dc-button>
       </div>
+      ${this.diagnostics ? html`<p class="muted detail" data-role="diagnostics">${strings.diagnosticsNotice}</p>` : nothing}
     `
   }
 
