@@ -11,7 +11,7 @@
 // it starts and that the engine it carries works.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -22,9 +22,11 @@ const here = dirname(fileURLToPath(import.meta.url))
 const bundleDir = join(here, '..', 'target', 'release', 'bundle', 'nsis')
 const root = join(here, '..')
 
+/** The installer for this version — installers of earlier versions may still sit beside it. */
 function installer() {
-  const found = existsSync(bundleDir) ? readdirSync(bundleDir).filter((f) => f.endsWith('-setup.exe')) : []
-  if (found.length !== 1) throw new Error(`expected one installer in ${bundleDir} — run \`npm run bundle\` first`)
+  const { version } = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
+  const found = existsSync(bundleDir) ? readdirSync(bundleDir).filter((f) => f.endsWith(`_${version}_x64-setup.exe`)) : []
+  if (found.length !== 1) throw new Error(`expected the ${version} installer in ${bundleDir} — run \`npm run bundle\` first`)
   return join(bundleDir, found[0])
 }
 
