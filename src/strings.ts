@@ -34,6 +34,11 @@ export const strings = {
 
   unreadable: (n: number) => `읽지 못한 파일 ${n}개 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다.`,
   closeVault: '볼트 닫기',
+  lockNow: '지금 잠그기',
+  locked: '볼트를 잠갔습니다. 계속하려면 패스프레이즈를 입력하세요. 기록하지 않은 입력은 남지 않습니다.',
+  idleLock: '자동 잠금',
+  idleOption: (minutes: number) => (minutes === 0 ? '사용 안 함' : `${minutes}분 동안 사용하지 않으면`),
+  idleLockLead: '이 컴퓨터에만 적용됩니다. 잠기면 볼트 키가 메모리에서 지워지고 패스프레이즈로 다시 엽니다.',
   cancel: '취소',
   refresh: '다시 읽기',
   toggleSidebar: '사이드바 접기/펼치기',

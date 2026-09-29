@@ -6,6 +6,7 @@ import { describeError } from './errors.js'
 import { Latest } from './latest.js'
 import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
 import { toTsv, type ExportTable } from './export.js'
+import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from './idle.js'
 import { atSession, headingOf } from './subject-fields.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from './subject-import.js'
 import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
@@ -253,6 +254,7 @@ export class OcVault extends LitElement {
   @state() private error?: { text: string; detail?: string }
 
   @state() private subjectName = ''
+  @state() private idleChoice = idleMinutes()
   /** Pasted subject rows, planned but not yet written. */
   @state() private importPlan?: ImportPlan
   @state() private practitionerName = ''
@@ -524,6 +526,16 @@ export class OcVault extends LitElement {
     this.dispatchEvent(new Event('oc-close', { bubbles: true, composed: true }))
   }
 
+  private lockNow() {
+    this.dispatchEvent(new Event('oc-lock', { bubbles: true, composed: true }))
+  }
+
+  private chooseIdle(minutes: number) {
+    setIdleMinutes(minutes)
+    this.idleChoice = minutes
+    this.dispatchEvent(new Event('oc-idle-changed', { bubbles: true, composed: true }))
+  }
+
   render() {
     const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices }[this.view]
     const unreadable = this.summary?.unreadable.length ?? 0
@@ -556,6 +568,7 @@ export class OcVault extends LitElement {
           @dp-toolbar-toggle=${() => (this.sidebarOpen = !this.sidebarOpen)}
         >
           <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${this.busy} @click=${() => void this.refresh()}>${strings.refresh}</dc-button>
+          <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${this.busy} @click=${() => this.lockNow()}>${strings.lockNow}</dc-button>
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>
@@ -1375,8 +1388,22 @@ export class OcVault extends LitElement {
         : html`<ul class="plain" aria-label=${strings.knownDevices}>
             ${named.map((d) => html`<li data-device=${d}>${this.deviceLabel(d)}</li>`)}
           </ul>`}
+      <h3>${strings.idleLock}</h3>
+      <div class="row" data-role="idle-lock">
+        <label>
+          ${strings.idleLock}
+          <dc-select
+            aria-label=${strings.idleLock}
+            .options=${IDLE_CHOICES.map((m) => ({ value: String(m), label: strings.idleOption(m) }))}
+            .value=${String(this.idleChoice)}
+            @change=${(e: Event) => this.chooseIdle(Number((e.target as HTMLSelectElement).value))}
+          ></dc-select>
+        </label>
+      </div>
+      <p class="muted">${strings.idleLockLead}</p>
     </section>`
   }
+
 }
 
 declare global {

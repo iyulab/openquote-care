@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
+import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell } from './shell.js'
 import { strings } from './strings.js'
@@ -14,7 +15,7 @@ import './vault-view.js'
 type Screen =
   | { name: 'welcome' }
   | { name: 'create' }
-  | { name: 'open' }
+  | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
   | { name: 'vault'; folder: string }
 
@@ -98,6 +99,40 @@ export class OcApp extends LitElement {
   @state() private tail = ''
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
+  private idle?: IdleWatch
+  private readonly touch = () => this.idle?.touch()
+
+  connectedCallback() {
+    super.connectedCallback()
+    for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.addEventListener(type, this.touch, { passive: true })
+  }
+
+  disconnectedCallback() {
+    for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.removeEventListener(type, this.touch)
+    this.idle?.stop()
+    super.disconnectedCallback()
+  }
+
+  /** Watches for an idle window while a vault is open, with this computer's idle lock. */
+  private armIdle() {
+    this.idle?.stop()
+    this.idle = this.screen.name === 'vault' ? new IdleWatch(idleMinutes(), () => void this.lock()) : undefined
+  }
+
+  /**
+   * Locks the open vault: the shell drops its key and the engine's copy of every record, as when
+   * closing, and the window asks for the passphrase again for the same folder. Whatever was being
+   * typed and not yet recorded is lost, as it would be on closing.
+   */
+  private async lock() {
+    if (this.screen.name !== 'vault') return
+    const folder = this.screen.folder
+    await this.run(async () => {
+      await shell.closeVault()
+      this.go({ name: 'open', locked: true })
+      this.folder = folder
+    })
+  }
 
   private go(screen: Screen) {
     this.screen = screen
@@ -106,6 +141,7 @@ export class OcApp extends LitElement {
     this.again = ''
     this.tail = ''
     this.error = undefined
+    this.armIdle()
   }
 
   private async pickFolder(title: string) {
@@ -178,6 +214,8 @@ export class OcApp extends LitElement {
       return html`<oc-vault
         .folder=${s.folder}
         @oc-close=${() => void this.closeVault()}
+        @oc-lock=${() => void this.lock()}
+        @oc-idle-changed=${() => this.armIdle()}
       ></oc-vault>`
     }
     return html`<dp-page><div class="center">${this.body()}${this.errorLine()}</div></dp-page>`
@@ -264,6 +302,7 @@ export class OcApp extends LitElement {
     const submit = () => void this.openVault()
     return html`
       <h2>${strings.openVault}</h2>
+      ${this.screen.name === 'open' && this.screen.locked ? html`<p class="muted" role="status" data-role="locked">${strings.locked}</p>` : nothing}
       ${this.folderField(strings.pickOpenFolderTitle)}
       ${this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
       ${this.actions(strings.open, submit)}

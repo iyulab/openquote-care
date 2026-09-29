@@ -414,6 +414,16 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'locks on request, forgetting the key until the passphrase is typed again'(app, work) {
+    await app.click('dc-button', '지금 잠그기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=locked]')`, 'the locked screen')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('oc-vault')`), false, 'no record is on screen')
+    assert.ok(await app.cdp.evaluate(`__e2e.all('.folder').some((el) => el.textContent.includes(${q(work.vault)}))`), 'the same folder, ready to open')
+    await app.type('패스프레이즈', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.noAlert()
+  },
   async 'records a group session once and counts each person who took part'(app, work) {
     await app.type('대상자 이름', '가상 학생 2')
     await app.click('dc-button', '대상자 추가')
