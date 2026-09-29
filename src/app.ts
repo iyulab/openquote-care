@@ -97,6 +97,9 @@ export class OcApp extends LitElement {
   @state() private passphrase = ''
   @state() private again = ''
   @state() private tail = ''
+  /** Whether the open screen takes the recovery key instead of the passphrase. */
+  @state() private withKey = false
+  @state() private recoveryKey = ''
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
   private idle?: IdleWatch
@@ -140,6 +143,8 @@ export class OcApp extends LitElement {
     this.passphrase = ''
     this.again = ''
     this.tail = ''
+    this.withKey = false
+    this.recoveryKey = ''
     this.error = undefined
     this.armIdle()
   }
@@ -191,7 +196,8 @@ export class OcApp extends LitElement {
     }
     const folder = this.folder
     await this.run(async () => {
-      await shell.openVault(folder, this.passphrase)
+      if (this.withKey) await shell.openVaultWithKey(folder, this.recoveryKey)
+      else await shell.openVault(folder, this.passphrase)
       this.go({ name: 'vault', folder })
     })
   }
@@ -304,8 +310,25 @@ export class OcApp extends LitElement {
       <h2>${strings.openVault}</h2>
       ${this.screen.name === 'open' && this.screen.locked ? html`<p class="muted" role="status" data-role="locked">${strings.locked}</p>` : nothing}
       ${this.folderField(strings.pickOpenFolderTitle)}
-      ${this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
+      ${this.withKey
+        ? html`<label>
+              ${strings.recoveryKey}
+              <dc-input
+                aria-label=${strings.recoveryKey}
+                .value=${this.recoveryKey}
+                ?disabled=${this.busy}
+                @input=${(e: Event) => (this.recoveryKey = (e.target as HTMLInputElement).value)}
+                @keydown=${(e: KeyboardEvent) => this.onEnter(e, submit)}
+              ></dc-input>
+            </label>
+            <p class="muted">${strings.recoveryKeyHint}</p>`
+        : this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
       ${this.actions(strings.open, submit)}
+      <div class="row">
+        <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => (this.withKey = !this.withKey)}
+          >${this.withKey ? strings.openWithPassphrase : strings.openWithKey}</dc-button
+        >
+      </div>
     `
   }
 

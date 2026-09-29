@@ -47,6 +47,11 @@ fn open_vault(folder: String, passphrase: String, app: State<App>) -> CommandRes
 }
 
 #[tauri::command]
+fn open_vault_with_key(folder: String, recovery_key: String, app: State<App>) -> CommandResult<Value> {
+    text(app.open_vault_with_key(&PathBuf::from(folder), &recovery_key))
+}
+
+#[tauri::command]
 fn close_vault(app: State<App>) {
     app.close_vault();
 }
@@ -171,6 +176,7 @@ pub fn run() {
             create_vault,
             confirm_recovery_kit,
             open_vault,
+            open_vault_with_key,
             close_vault,
             record,
             entities,

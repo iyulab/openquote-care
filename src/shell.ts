@@ -24,6 +24,8 @@ export const shell = {
   createVault: (folder: string, passphrase: string) => invoke<string>('create_vault', { folder, passphrase }),
   confirmRecoveryKit: (typed: string) => invoke<void>('confirm_recovery_kit', { typed }),
   openVault: (folder: string, passphrase: string) => invoke<VaultSummary>('open_vault', { folder, passphrase }),
+  /** Opens with the recovery key from the kit, for a forgotten passphrase. */
+  openVaultWithKey: (folder: string, recoveryKey: string) => invoke<VaultSummary>('open_vault_with_key', { folder, recoveryKey }),
   closeVault: () => invoke<void>('close_vault'),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
   record: (route: string, request: object) => invoke<string>('record', { route, request }),

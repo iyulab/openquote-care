@@ -176,7 +176,17 @@ impl App {
     /// Opens the vault in `folder` with its passphrase. Returns the engine's summary, which lists
     /// any file it could not read.
     pub fn open_vault(&self, folder: &Path, passphrase: String) -> Result<Value, AppError> {
-        let vault = Vault::unlock(folder, SecretString::from(passphrase))?;
+        self.open_unlocked(Vault::unlock(folder, SecretString::from(passphrase))?)
+    }
+
+    /// Opens the vault in `folder` with its recovery key, for when the passphrase is forgotten.
+    /// The key may be typed as the kit shows it: in groups, in either case.
+    pub fn open_vault_with_key(&self, folder: &Path, recovery_key: &str) -> Result<Value, AppError> {
+        let key: String = recovery_key.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
+        self.open_unlocked(Vault::recover(folder, &key)?)
+    }
+
+    fn open_unlocked(&self, vault: Vault) -> Result<Value, AppError> {
         let open = OpenVault::open(vault, Engine::start(&self.sidecar, &self.device)?)?;
         let summary = open.summary.clone();
         *self.stage.lock().unwrap() = self.opened(open);
@@ -410,6 +420,28 @@ mod tests {
         assert_eq!(compared["moved"], serde_json::json!([]));
         assert_eq!(compared["unchanged"].as_array().unwrap().len(), 1);
         assert!(matches!(app.open_vault(dir.path(), "nope".to_owned()), Err(AppError::Engine(EngineError::Vault(VaultError::WrongPassphrase)))));
+    }
+
+    #[test]
+    fn the_recovery_key_opens_the_vault_as_the_kit_shows_it() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        app.close_vault();
+
+        let grouped = key.as_bytes().chunks(6).map(|c| std::str::from_utf8(c).unwrap()).collect::<Vec<_>>().join(" ").to_lowercase();
+        let summary = app.open_vault_with_key(dir.path(), &format!("  {grouped}
+")).unwrap();
+        assert_eq!(summary["unreadable"], json!([]));
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+        app.close_vault();
+
+        let other = Vault::prepare(tempfile::tempdir().unwrap().path(), SecretString::from("x".to_owned())).unwrap();
+        let wrong = app.open_vault_with_key(dir.path(), other.recovery_kit().secret_key()).unwrap_err();
+        assert_eq!(wrong.code(), "recovery-key");
+        assert_eq!(app.open_vault_with_key(dir.path(), "not a key").unwrap_err().code(), "recovery-key");
     }
 
     #[test]

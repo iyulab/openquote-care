@@ -231,6 +231,25 @@ const scenarios = {
     await app.alert('패스프레이즈가 맞지 않습니다.')
   },
 
+  async 'opens the vault with the recovery key when the passphrase is forgotten'(app, work) {
+    await app.click('dc-button', '패스프레이즈를 잊었나요? 복구 키 입력')
+    await app.type('복구 키', 'AGE-SECRET-KEY-1NOTTHEKEY')
+    await app.click('dc-button', '열기')
+    await app.alert('복구 키가 맞지 않습니다.')
+    // Typed off the printed kit: in its groups, in lower case.
+    await app.type('복구 키', work.key.match(/.{1,6}/g).join(' ').toLowerCase())
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.noAlert()
+
+    await app.click('dc-button', '볼트 닫기')
+    await app.heading('Openquote Care')
+    await app.click('dc-button', '볼트 열기')
+    await app.heading('볼트 열기')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('input[aria-label="패스프레이즈"]')`), true, 'the passphrase is asked again by default')
+    await app.pickFolder(work.vault)
+  },
+
   async 'opens the vault again with its passphrase'(app, work) {
     await app.type('패스프레이즈', PASSPHRASE)
     await app.click('dc-button', '열기')
