@@ -94,7 +94,7 @@ Everything works without a network. Apart from error diagnostics (below), the on
 
 ## Building and testing
 
-The commands are collected in `CLAUDE.md` at the root of this repository:
+`npm run verify` runs these in order and stops at the first failure (`-- --e2e` adds the window scenarios, `-- --installed` the installer check); `CLAUDE.md` at the root of this repository lists them:
 
 ```sh
 npm run typecheck && npm test               # screens (vitest)
@@ -108,7 +108,7 @@ npm run build:sidecar && npm run build:e2e && npm run test:e2e
 - The shell finds the sidecar through `OPENQUOTE_SIDECAR_EXE` during development; an installed app uses the copy bundled with it. Rust tests that need the sidecar are skipped when the variable is not set.
 - `npm run test:e2e` drives the real app window over the Chrome DevTools Protocol (WebView2's debugging port) against a fresh temporary folder and checks the files it leaves on disk. The native folder picker is the one step the scenarios set directly.
 - `npm run bundle` builds the installer, with the sidecar published ahead-of-time as a single native executable; `npm run test:installed` installs it for the current user (no administrator rights), starts the installed app, runs the shell's command-layer tests against the sidecar the installer bundled, and uninstalls it.
-- Releases are built by the `Release` workflow, run by hand after the local checks above pass. It builds the engine package from the tag matching the version `Directory.Packages.props` names, signs the engine sidecar, the app and the installer (Authenticode), checks every signature, and attaches the installer to a draft release. Only this build embeds the error-diagnostics connection string.
+- Releases are built by the `Release` workflow, run by hand after `npm run verify -- --e2e --installed` passes. It builds the engine package from the tag matching the version `Directory.Packages.props` names, signs the engine sidecar, the app and the installer (Authenticode), checks every signature, and attaches the installer to a draft release. Only this build embeds the error-diagnostics connection string.
 
 ## Not yet built
 

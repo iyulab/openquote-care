@@ -19,6 +19,7 @@
     "build:e2e": "tauri build --debug --no-bundle --config src-tauri/tauri.e2e.conf.json",
     "test:e2e": "node e2e/run.mjs",
     "test:installed": "node e2e/installed.mjs",
+    "verify": "node scripts/verify.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

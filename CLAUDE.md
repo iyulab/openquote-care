@@ -17,6 +17,14 @@ A desktop app (Tauri 2 shell in Rust, a .NET engine sidecar, a Lit UI) built on 
 ## Build and test
 
 ```sh
+npm run verify                  # every check below, in order, stopping at the first failure
+npm run verify -- --e2e         # and the real window over CDP
+npm run verify -- --installed   # and the installer: bundle, install, run, uninstall
+```
+
+The checks it runs:
+
+```sh
 npm run typecheck && npm test            # UI
 dotnet test --solution OpenquoteCare.slnx
 npm run build                            # the shell embeds dist/
