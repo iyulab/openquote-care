@@ -3144,6 +3144,8 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tempfile",
  "ureq",
+ "webview2-com",
+ "windows-core",
 ]
 
 [[package]]

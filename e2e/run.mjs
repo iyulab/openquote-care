@@ -9,7 +9,7 @@
 // picker's result goes (the app element's `folder`). Everything after that is clicks and typing.
 
 import { spawn } from 'node:child_process'
-import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -637,6 +637,51 @@ const scenarios = {
     await app.click('dc-button', '열기')
     await app.alert('이 폴더는 볼트가 아닙니다.')
   },
+
+  // Last: it ends the app, so the web view writes out its profile before the scan.
+  async 'leaves no record, key or passphrase outside the vault'(app, work) {
+    await app.quit()
+    const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
+    const needles = [PASSPHRASE, NEW_PASSPHRASE, work.key, work.key.toLowerCase(), typedKey,
+      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC']
+    const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
+    assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
+    const inAppData = await filesHolding(appData, needles)
+    // Everything this run wrote to the temporary folder, except the vault itself.
+    const inTemp = await filesHolding(tmpdir(), needles, (path, stats) =>
+      stats.mtimeMs >= work.started && !path.startsWith(work.vault))
+    assert.deepEqual([...inAppData, ...inTemp], [], 'nothing typed or shown is kept outside the vault')
+  },
+}
+
+/**
+ * Files under `dir` (recursively) that contain any of `needles` in UTF-8 or UTF-16, as
+ * `path: needle` lines. `keep(path, stats)` narrows which files are read; unreadable entries
+ * (locked, gone, no access) are passed over.
+ */
+async function filesHolding(dir, needles, keep = () => true) {
+  const patterns = needles.flatMap((n) => [Buffer.from(n, 'utf8'), Buffer.from(n, 'utf16le')].map((b) => [n, b]))
+  const found = []
+  const walk = async (d) => {
+    let entries
+    try { entries = await readdir(d, { withFileTypes: true }) } catch { return }
+    for (const entry of entries) {
+      const path = join(d, entry.name)
+      if (entry.isDirectory()) { await walk(path); continue }
+      if (!entry.isFile()) continue
+      let content
+      try {
+        const stats = await stat(path)
+        if (stats.size > 64 * 1024 * 1024 || !keep(path, stats)) continue
+        content = await readFile(path)
+      } catch { continue }
+      for (const [needle, bytes] of patterns) {
+        if (content.includes(bytes)) { found.push(`${path}: ${needle}`); break }
+      }
+    }
+  }
+  await walk(dir)
+  return found
 }
 
 /** With E2E_SCREENSHOTS=<dir>, each passed scenario leaves a picture of the window. */
@@ -651,7 +696,7 @@ async function main() {
   if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
   if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
   const temp = await mkdtemp(join(tmpdir(), 'openquote-care-e2e-'))
-  const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty') }
+  const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty'), started: Date.now() }
   await mkdir(work.vault)
   await mkdir(work.empty)
 

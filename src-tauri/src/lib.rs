@@ -2,6 +2,7 @@
 
 mod app;
 mod diagnostics;
+mod window;
 
 use std::path::PathBuf;
 
@@ -165,7 +166,7 @@ fn bundled_sidecar(resources: &std::path::Path) -> PathBuf {
 /// the other's unsaved state.
 #[cfg(desktop)]
 fn bring_forward(handle: &tauri::AppHandle) {
-    if let Some(window) = handle.get_webview_window("main") {
+    if let Some(window) = handle.get_webview_window(window::MAIN) {
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
@@ -185,6 +186,7 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_dialog::init())
         .setup(|tauri_app| {
+            window::build_main(tauri_app)?;
             let config = tauri_app.path().app_local_data_dir()?;
             let device = device_id(&config)?;
             let handle = tauri_app.handle().clone();

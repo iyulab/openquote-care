@@ -4,7 +4,7 @@ Openquote Care keeps counseling records on the devices and folders you choose. T
 
 ## Records
 
-The app writes records, encrypted, only to the vault folder you choose — which may be a shared network or sync folder you set up. It sends record content, file paths, vault names and anything that identifies a person nowhere else. The app has no account and needs no server; every feature works offline.
+The app writes records, encrypted, only to the vault folder you choose — which may be a shared network or sync folder you set up. It sends record content, file paths, vault names and anything that identifies a person nowhere else. Nor does it keep them anywhere else on the device: the window does not remember what is typed into it (form autofill is off, and entries an earlier version kept are cleared when the app starts). The app has no account and needs no server; every feature works offline.
 
 ## Error diagnostics
 
