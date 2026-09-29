@@ -10,7 +10,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - **Classifications change; records stay.** A revised classification is linked to the old one. Values that map one way are carried over automatically; a category that was split waits for a person to choose — nothing is guessed.
 - **People decide.** The app never settles a conflict, a split category or anything else on its own.
 
-> Status: early development. Nothing is released yet. The first release targets Windows.
+> Status: early development. Windows installers are on the [Releases](https://github.com/iyulab/openquote-care/releases) page.
 
 ## What it does today
 
@@ -26,6 +26,24 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Two Windows installers per release, both for the current user without administrator rights: the regular one, and an offline one that also carries the WebView2 runtime installer for a computer that has neither the runtime nor an internet connection
 
 How it is built: [docs/architecture.md](docs/architecture.md). What it will and will not become, and how changes are decided: [docs/CONSTITUTION.md](docs/CONSTITUTION.md). The record format belongs to the [Openquote engine](https://github.com/iyulab/openquote).
+
+## Building
+
+You need Node.js 22, Rust (on Windows the MSVC toolchain), the .NET 10 SDK and, on Windows, the WebView2 runtime. The app's engine sidecar uses the [Openquote engine](https://github.com/iyulab/openquote) package, which is not on nuget.org yet — pack it from the tag matching the `Openquote` version in `Directory.Packages.props` into a local package source:
+
+```sh
+git clone --branch v0.2.0 https://github.com/iyulab/openquote
+dotnet pack openquote/src/Openquote/Openquote.csproj -c Release -o ../openquote-packages
+dotnet nuget add source "$(cd ../openquote-packages && pwd)" --name openquote-local
+```
+
+Then:
+
+```sh
+npm ci
+npm run verify          # UI, engine sidecar, shell and vault tests, lints — see docs/architecture.md
+npm run tauri dev       # the app, with OPENQUOTE_SIDECAR_EXE set to the sidecar npm run build:sidecar built
+```
 
 ## License
 

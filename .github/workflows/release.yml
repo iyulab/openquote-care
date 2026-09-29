@@ -43,7 +43,6 @@ jobs:
         with:
           repository: iyulab/openquote
           ref: v${{ steps.versions.outputs.engine }}
-          token: ${{ secrets.RELEASE_TOKEN }}
           path: engine
 
       - uses: actions/setup-dotnet@v6
@@ -73,7 +72,8 @@ jobs:
 
       # The sidecar ships as a bundle resource, which Tauri does not sign, so it is signed here.
       - name: Sign the engine sidecar
-        uses: iyulab/code-sign@main
+        # Pinned to a commit: this job holds an OIDC token that can sign as iyulab.
+        uses: iyulab/code-sign@693f7261b2e4aef517ff8972db7d07eb53ffc623 # main, 2026-09-30
         with:
           files: sidecar/publish/openquote-care-sidecar.exe
 
