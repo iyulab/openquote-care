@@ -719,6 +719,70 @@ cut off").unwrap();
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../tests/golden/steps/{step}"))
     }
 
+    /// Every file in the vault but the wrapped key (the one file a vault replaces), by its path.
+    fn vault_files(root: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
+        fn walk(root: &Path, dir: &Path, out: &mut std::collections::BTreeMap<String, Vec<u8>>) {
+            for entry in fs::read_dir(dir).unwrap() {
+                let path = entry.unwrap().path();
+                let relative = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
+                if path.is_dir() {
+                    walk(root, &path, out);
+                } else if !relative.starts_with("keys/") {
+                    out.insert(relative, fs::read(&path).unwrap());
+                }
+            }
+        }
+        let mut out = std::collections::BTreeMap::new();
+        walk(root, root, &mut out);
+        out
+    }
+
+    #[test]
+    fn no_file_once_written_changes_through_editing_revising_and_reporting() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        let topic = |version: u32, code: &str| json!({ "scheme": "topic", "version": version, "code": code });
+        let session = app
+            .record(
+                "/changes/in-subject",
+                json!({ "subjectId": subject.split('/').nth(1).unwrap(), "type": "session",
+                        "fields": { "date": "2026-04-02", "topic": topic(1, "relation") } }),
+            )
+            .unwrap();
+        let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
+        app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+
+        let mut kept = vault_files(dir.path());
+        let mut step = |what: &str, act: &dyn Fn()| {
+            act();
+            let now = vault_files(dir.path());
+            for (path, bytes) in &kept {
+                assert_eq!(now.get(path), Some(bytes), "{what}: {path} was changed or removed");
+            }
+            assert!(now.len() > kept.len(), "{what} added its own file");
+            kept = now;
+        };
+        step("editing a session", &|| {
+            app.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "date": "2026-04-03" } })).unwrap();
+        });
+        step("applying a revised classification", &|| {
+            app.apply_pack(&golden_step(2)).unwrap();
+        });
+        step("reclassifying a split category", &|| {
+            app.record("/changes/reclassify", json!({ "type": "session", "id": id, "field": "topic", "value": topic(2, "relation-peer") })).unwrap();
+        });
+        step("running the revised report", &|| {
+            app.run_report("monthly-topic", 2, 2026, 4).unwrap();
+        });
+        step("changing the passphrase and naming the device", &|| {
+            app.change_passphrase("pass again".to_owned()).unwrap();
+            app.record("/changes/device-name", json!({ "name": "counseling room" })).unwrap();
+        });
+    }
+
     #[test]
     fn a_pack_adds_only_the_definitions_the_vault_lacks() {
         let Some(app) = app() else { return };
