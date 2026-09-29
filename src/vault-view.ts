@@ -109,18 +109,6 @@ export class OcVault extends LitElement {
       font-size: 13px;
       flex: 1 1 160px;
     }
-    /* TODO(upstream: claudedocs/issues/awaiting-release/ISSUE-desktop-compact-20260928-date-input-type.md)
-       A native date input until dc-input with type="date" is published; styled to match it. */
-    input[type='date'] {
-      box-sizing: border-box;
-      width: 100%;
-      padding: var(--dc-space-2, 8px) var(--dc-space-3, 12px);
-      border: 1px solid var(--dc-color-border, #e2e2e4);
-      border-radius: var(--dc-radius-md, 6px);
-      background: var(--dc-color-bg, #fff);
-      color: inherit;
-      font: inherit;
-    }
     .form {
       display: flex;
       flex-direction: column;
@@ -564,13 +552,13 @@ export class OcVault extends LitElement {
       <div class="row">
         <label>
           ${strings.sessionDate}
-          <input
+          <dc-input
             type="date"
             aria-label=${strings.sessionDate}
             .value=${this.date}
             ?disabled=${this.busy}
             @input=${(e: Event) => (this.date = (e.target as HTMLInputElement).value)}
-          />
+          ></dc-input>
         </label>
         <label>
           ${strings.sessionPractitioner}
