@@ -7,7 +7,8 @@ import type { FormEntry } from './forms.js'
 
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
-  unreadable: unknown[]
+  /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
+  unreadable: { path: string; reason: string; detail: string }[]
   reports: FormEntry[]
   exports: FormEntry[]
   /** Scheme versions no crosswalk leads to from an earlier version. */

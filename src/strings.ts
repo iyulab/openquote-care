@@ -37,6 +37,14 @@ export const strings = {
   kitConfirm: '확인',
 
   unreadable: (n: number) => `읽지 못한 파일 ${n}개 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다.`,
+  unreadableReason: {
+    Undecryptable: '풀 수 없음 — 동기화 중 잘렸거나 다른 볼트의 파일일 수 있습니다',
+    Malformed: '내용이 끊김 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다',
+    UnknownFormat: '이 버전의 앱이 모르는 형식입니다',
+    Invalid: '필요한 값이 없거나 잘못되었습니다',
+    NameMismatch: '이름이 내용과 맞지 않음 — 동기화 프로그램이 만든 충돌 사본일 수 있습니다. 원본과 비교해 필요 없으면 지우세요',
+    DuplicateId: '같은 기록 ID의 서로 다른 파일이 있습니다',
+  } as Record<string, string>,
   closeVault: '볼트 닫기',
   lockNow: '지금 잠그기',
   locked: '볼트를 잠갔습니다. 계속하려면 패스프레이즈를 입력하세요. 기록하지 않은 입력은 남지 않습니다.',

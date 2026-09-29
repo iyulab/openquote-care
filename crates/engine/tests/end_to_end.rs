@@ -111,6 +111,18 @@ fn record_report_close_reopen_same_numbers() {
     // the run record kept earlier is there to compare against.
     let reopened = OpenVault::open(Vault::unlock(dir.path(), passphrase()).unwrap(), Engine::start(&exe, "pc01").unwrap()).unwrap();
     assert!(reopened.undecryptable.is_empty());
+
+    // A record file that cannot be decrypted (cut off while syncing, say) is shown, not dropped.
+    let cut = dir.path().join("practitioners").join("01900000-0000-7000-8000-00000000abcd.pc02.json.age");
+    fs::write(&cut, b"age-encryption.org/v1\n").unwrap();
+    let mut reopened = reopened;
+    let summary = reopened.reload().unwrap();
+    let listed: Vec<_> = summary["unreadable"].as_array().unwrap().iter().filter(|u| u["reason"] == "Undecryptable").collect();
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0]["path"], "practitioners/01900000-0000-7000-8000-00000000abcd.pc02.json.age");
+    assert_eq!(reopened.current_summary().unwrap()["unreadable"], summary["unreadable"]);
+    fs::remove_file(&cut).unwrap();
+    reopened.reload().unwrap();
     let (again, _) = reopened.engine.run_report("monthly-topic", 1, 2026, 4).unwrap();
     assert_eq!(without_stamp(again), without_stamp(april.clone()));
     let kept = reopened.vault.read_all().unwrap().files.into_iter().find(|(p, _)| *p == run_path).unwrap();

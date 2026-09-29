@@ -539,7 +539,6 @@ export class OcVault extends LitElement {
 
   render() {
     const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices }[this.view]
-    const unreadable = this.summary?.unreadable.length ?? 0
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen}>
         <dp-sidebar
@@ -573,7 +572,7 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>
-          ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.nameHint()} ${this.errorLine()}
+          ${this.unreadableView()} ${this.nameHint()} ${this.errorLine()}
           ${{ subjects: () => this.subjectsView(), groups: () => this.groupsView(), report: () => this.reportView(), export: () => this.exportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
@@ -1169,6 +1168,22 @@ export class OcVault extends LitElement {
       ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
       ${this.result ? this.reportTable(this.result) : nothing}
     </section>`
+  }
+
+  /** The files that could not be read, each with why — folded under the count. */
+  private unreadableView() {
+    const files = this.summary?.unreadable ?? []
+    if (files.length === 0) return nothing
+    return html`<details class="unreadable" data-role="unreadable">
+      <summary><span class="error">${strings.unreadable(files.length)}</span></summary>
+      <ul>
+        ${files.map(
+          (f) => html`<li data-reason=${f.reason}>
+            <code>${f.path}</code> — ${strings.unreadableReason[f.reason] ?? f.detail}
+          </li>`,
+        )}
+      </ul>
+    </details>`
   }
 
   /** Says so when the chosen form classifies by a scheme version older than the vault's latest. */

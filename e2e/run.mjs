@@ -423,17 +423,28 @@ const scenarios = {
     const source = (await readdir(folder)).find((f) => f.endsWith('.json.age'))
     const stray = join(folder, '01900000-0000-7000-8000-000000000001.pc99.json.age')
     await copyFile(join(folder, source), stray)
-    await app.cdp.waitFor(`__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일 1개'))`, 'the outside file noticed')
+    const listed = (reason) => `__e2e.all('[data-role=unreadable] li[data-reason=${reason}]').length === 1`
+    const gone = `!__e2e.one('[data-role=unreadable]')`
+    await app.cdp.waitFor(listed('NameMismatch'), 'the outside file noticed, with its reason')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=unreadable] summary').textContent`), /읽지 못한 파일 1개/)
     await rm(stray)
-    await app.cdp.waitFor(`!__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일'))`, 'its removal noticed')
+    await app.cdp.waitFor(gone, 'its removal noticed')
 
     // A sync client's copy of a scheme (the losing side of a conflict) is shown, not dropped.
     const schemes = join(work.vault, 'schemes', 'topic')
     const conflicted = join(schemes, 'v1.json (conflicted copy 2026-04-02).age')
     await copyFile(join(schemes, 'v1.json.age'), conflicted)
-    await app.cdp.waitFor(`__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일 1개'))`, 'the conflicted copy noticed')
+    await app.cdp.waitFor(listed('NameMismatch'), 'the conflicted copy noticed')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=unreadable] li').textContent`), /충돌 사본/)
     await rm(conflicted)
-    await app.cdp.waitFor(`!__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일'))`, 'its removal noticed')
+    await app.cdp.waitFor(gone, 'its removal noticed')
+
+    // A record file cut off while syncing cannot be decrypted: it is listed, not dropped.
+    const cut = join(folder, '01900000-0000-7000-8000-00000000abcd.pc99.json.age')
+    await writeFile(cut, 'age-encryption.org/v1\n')
+    await app.cdp.waitFor(listed('Undecryptable'), 'the undecryptable file noticed')
+    await rm(cut)
+    await app.cdp.waitFor(gone, 'its removal noticed')
     await app.noAlert()
   },
 

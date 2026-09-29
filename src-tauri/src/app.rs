@@ -267,7 +267,7 @@ impl App {
 
     /// The open vault's summary, as [`App::open_vault`] returns it.
     pub fn summary(&self) -> Result<Value, AppError> {
-        self.with_open(|open| Ok(open.engine.summary()?))
+        self.with_open(|open| Ok(open.current_summary()?))
     }
 
     /// Every classification scheme version in the vault.
