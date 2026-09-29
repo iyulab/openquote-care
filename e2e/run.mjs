@@ -445,6 +445,28 @@ const scenarios = {
     const row = await app.cdp.evaluate(`[...__e2e.one('tr[data-row=relation-peer]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual(row.slice(1), ['2 (2명)', '2 (2명)'], 'the settled session and the group session; the first student counted once')
   },
+  async 'adds and updates subjects from rows pasted out of a spreadsheet'(app) {
+    await app.click('button', '대상자')
+    const paste = ['이름\t학년\t반', '가상 학생 1\t2\t3', '가상 학생 3\t1\t4', ''].join('\n')
+    await app.cdp.evaluate(`(() => {
+      const zone = __e2e.one('dc-paste-rows-zone').shadowRoot.querySelector('textarea')
+      const data = new DataTransfer(); data.setData('text/plain', ${q(paste)})
+      zone.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }))
+      return true })()`)
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=import-tally]')`, 'the pasted rows planned')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=import-tally]').textContent.trim()`), '추가 1 · 갱신 1 · 그대로 0 · 문제 0')
+    await app.click('dc-button', '가져오기 (추가 1 · 갱신 1)')
+    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.textContent.trim() === '가상 학생 3')`, 'the new subject listed')
+    await app.noAlert()
+
+    // A session keeps the grade and class of the day it was recorded.
+    await app.click('li button', '가상 학생 3')
+    await app.setDate('날짜', '2026-04-20')
+    await app.choose('주제', 'family')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the session of the new subject')
+    await app.noAlert()
+  },
   async 'lists the sessions of a month in an export form, ready to paste'(app) {
     // The export form came with the vault, from the pack it was made with.
     await app.click('button', '기록 목록')
@@ -452,14 +474,15 @@ const scenarios = {
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
-    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 3`, 'three sessions listed')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 4`, 'four sessions listed')
     await app.noAlert()
     const rows = await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => [...tr.children].map((td) => td.textContent.trim()))`)
-    assert.deepEqual(rows.map((r) => [r[0], r[1], r[2], r[3]]), [
-      ['2026-04-02', '2026', '가상 학생 1', '1'],
-      ['2026-04-09', '2026', '가상 학생 1', '1'],
-      ['2026-04-16', '2026', '가상 학생 1, 가상 학생 2', '2'],
-    ], 'in date order, the group session once with both attendees')
+    assert.deepEqual(rows.map((r) => [r[0], r[1], r[2], r[3], r[4], r[5]]), [
+      ['2026-04-02', '2026', '가상 학생 1', '1', '', ''],
+      ['2026-04-09', '2026', '가상 학생 1', '1', '', ''],
+      ['2026-04-16', '2026', '가상 학생 1, 가상 학생 2', '2', '', ''],
+      ['2026-04-20', '2026', '가상 학생 3', '1', '1', '4'],
+    ], 'in date order, the group session once with both attendees, and the grade and class a session kept')
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
   },

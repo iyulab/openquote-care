@@ -6,6 +6,8 @@ import { describeError } from './errors.js'
 import { Latest } from './latest.js'
 import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
 import { toTsv, type ExportTable } from './export.js'
+import { atSession, headingOf } from './subject-fields.js'
+import { planImport, tally, type ImportPlan, type PlannedRow } from './subject-import.js'
 import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
@@ -251,6 +253,8 @@ export class OcVault extends LitElement {
   @state() private error?: { text: string; detail?: string }
 
   @state() private subjectName = ''
+  /** Pasted subject rows, planned but not yet written. */
+  @state() private importPlan?: ImportPlan
   @state() private practitionerName = ''
   @state() private deviceName = ''
   @state() private date = today()
@@ -364,6 +368,64 @@ export class OcVault extends LitElement {
     })
   }
 
+  private async importSubjects(plan: ImportPlan) {
+    if (!plan.ready) return
+    this.notice = ''
+    await this.run(async () => {
+      for (const row of plan.rows) {
+        if (row.kind === 'create') await shell.record('/changes/subject', { fields: row.fields })
+        else if (row.kind === 'update') await shell.record('/changes/update', { type: 'subject', id: row.subject, fields: row.fields })
+      }
+      const counts = tally(plan)
+      this.importPlan = undefined
+      await this.load()
+      this.notice = strings.imported(counts.create, counts.update)
+    })
+  }
+
+  private importPreview(plan: ImportPlan) {
+    const counts = tally(plan)
+    const status = (r: PlannedRow) =>
+      r.kind === 'problem'
+        ? r.problem.kind === 'no-name'
+          ? strings.importNoName
+          : r.problem.kind === 'repeated'
+            ? strings.importRepeated(r.problem.line)
+            : strings.importAmbiguous(r.problem.name)
+        : { create: strings.importCreate, update: strings.importUpdate, same: strings.importSame }[r.kind]
+    const shown = (r: PlannedRow) =>
+      r.kind === 'create' || r.kind === 'update'
+        ? Object.entries(r.fields).map(([k, v]) => `${headingOf(k)} ${v}`).join(' · ')
+        : r.kind === 'same'
+          ? text(this.subjects.find((s) => s.id === r.subject) ?? ({ fields: {} } as Entity), 'name')
+          : ''
+    return html`<div class="form" data-role="import">
+      <h3>${strings.importTitle}</h3>
+      <p class="muted" data-role="import-tally">${strings.importTally(counts.create, counts.update, counts.same, counts.problem)}</p>
+      ${plan.missingName ? html`<p class="error">${strings.importMissingName}</p>` : nothing}
+      ${plan.unknownHeadings.length > 0 ? html`<p class="muted">${strings.importUnknown(plan.unknownHeadings)}</p>` : nothing}
+      <div class="scroll">
+        <table>
+          <tbody>
+            ${plan.rows.map(
+              (r) => html`<tr data-import-row=${r.line} data-kind=${r.kind}>
+                <td class="num">${r.line}</td>
+                <td class=${r.kind === 'problem' ? 'error' : ''}>${status(r)}</td>
+                <td>${shown(r)}</td>
+              </tr>`,
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div class="row">
+        <dc-button variant="primary" ?disabled=${this.busy || !plan.ready || counts.create + counts.update === 0} @click=${() => void this.importSubjects(plan)}
+          >${strings.importApply(counts.create, counts.update)}</dc-button
+        >
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => (this.importPlan = undefined)}>${strings.cancel}</dc-button>
+      </div>
+    </div>`
+  }
+
   private async addGroup() {
     const name = this.groupName.trim()
     if (!name) return this.problem('no-name')
@@ -423,7 +485,9 @@ export class OcVault extends LitElement {
     if (!this.date) return this.problem('no-date')
     if (!topics || !this.topic) return this.problem('no-topic')
     if (!this.practitioner) return this.problem('no-practitioner')
+    const subject = holder.kind === 'subject' ? this.subjects.find((s) => s.id === holder.id) : undefined
     const fields: Record<string, unknown> = {
+      ...(subject ? atSession(subject) : {}),
       date: this.date,
       practitioner: this.practitioner,
       topic: { scheme: 'topic', version: topics.version, code: this.topic },
@@ -542,6 +606,14 @@ export class OcVault extends LitElement {
           ${this.nameField(strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
           <dc-button variant="secondary" ?disabled=${this.busy} @click=${addSubject}>${strings.addSubject}</dc-button>
         </div>
+        <dc-paste-rows-zone
+          placeholder=${strings.importPaste}
+          @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
+            this.notice = ''
+            this.importPlan = planImport(e.detail.rows, this.subjects)
+          }}
+        ></dc-paste-rows-zone>
+        ${this.notice && this.view === 'subjects' ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
         ${this.subjects.length === 0
           ? html`<p class="muted">${strings.noSubjects}</p>`
           : html`<ul aria-label=${strings.subjects}>
@@ -554,7 +626,13 @@ export class OcVault extends LitElement {
               )}
             </ul>`}
       </section>
-      <section>${subject ? this.subjectDetail(subject) : html`<p class="muted">${strings.pickSubject}</p>`}</section>
+      <section>
+        ${this.importPlan
+          ? this.importPreview(this.importPlan)
+          : subject
+            ? this.subjectDetail(subject)
+            : html`<p class="muted">${strings.pickSubject}</p>`}
+      </section>
     </div>`
   }
 

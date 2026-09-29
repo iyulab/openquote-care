@@ -28,11 +28,11 @@
     },
     {
       "label": "학년",
-      "person": "grade"
+      "field": "grade"
     },
     {
       "label": "반",
-      "person": "class"
+      "field": "class"
     },
     {
       "label": "성별",
