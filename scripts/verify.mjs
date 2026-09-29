@@ -2,7 +2,8 @@
 //
 //   npm run verify                        screens, sidecar, shell and vault tests, clippy
 //   npm run verify -- --e2e               and the real app window over CDP
-//   npm run verify -- --installed         and the installer: bundle, install, run, uninstall
+//   npm run verify -- --installed         and the installer: bundle, install, run, uninstall, and
+//                                         the update over the latest published version
 //
 // The sidecar is built first so the shell's tests that need it run instead of being skipped.
 import { spawnSync } from 'node:child_process'
@@ -28,7 +29,7 @@ const steps = [
   ['clippy', 'cargo clippy --workspace --all-targets -- -D warnings'],
 ]
 if (args.has('--e2e')) steps.push(['window build', 'npm run build:e2e'], ['window scenarios', 'npm run test:e2e'])
-if (args.has('--installed')) steps.push(['installer', 'npm run bundle'], ['installed app', 'npm run test:installed'])
+if (args.has('--installed')) steps.push(['installer', 'npm run bundle'], ['installed app', 'npm run test:installed'], ['update over the published version', 'npm run test:upgrade'])
 
 for (const [name, command] of steps) {
   console.log(`\n▶ ${name}: ${command}`)

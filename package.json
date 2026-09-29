@@ -1,6 +1,6 @@
 {
   "name": "openquote-care",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Counselling records that stay yours, and monthly reports that survive a change of categories",
   "license": "AGPL-3.0-only",
@@ -19,6 +19,7 @@
     "build:e2e": "tauri build --debug --no-bundle --config src-tauri/tauri.e2e.conf.json",
     "test:e2e": "node e2e/run.mjs",
     "test:installed": "node e2e/installed.mjs",
+    "test:upgrade": "node e2e/upgrade.mjs",
     "verify": "node scripts/verify.mjs",
     "tauri": "tauri"
   },
