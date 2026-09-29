@@ -1,4 +1,6 @@
 // Every user-facing string lives here, so a change of UI language touches one file.
+import type { FileKind } from './files.js'
+
 export const strings = {
   appName: 'Openquote Care',
   tagline: '분류가 바뀌어도 다시 세지 않는 상담 기록',
@@ -37,6 +39,30 @@ export const strings = {
   kitConfirm: '확인',
 
   unreadable: (n: number) => `읽지 못한 파일 ${n}개 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다.`,
+  unreadableWhat: (f: FileKind): string | undefined => {
+    switch (f.kind) {
+      case 'subject':
+        return f.name ? `대상자 ${f.name}의 기록` : '이름을 읽지 못한 대상자의 기록'
+      case 'group':
+        return f.name ? `집단 ${f.name}의 기록` : '이름을 읽지 못한 집단의 기록'
+      case 'practitioners':
+        return '담당자 기록'
+      case 'devices':
+        return '기기 이름 기록'
+      case 'scheme':
+        return `분류 ${f.scheme} ${f.version}판`
+      case 'crosswalk':
+        return `분류 ${f.scheme} ${f.from}판→${f.to}판 연계표`
+      case 'report':
+        return `보고 양식 ${f.report} ${f.version}판`
+      case 'export':
+        return `내보내기 양식 ${f.form} ${f.version}판`
+      case 'run':
+        return `${f.year}년 보고 산출 기록`
+      case 'other':
+        return undefined
+    }
+  },
   unreadableReason: {
     Undecryptable: '풀 수 없음 — 동기화 중 잘렸거나 다른 볼트의 파일일 수 있습니다',
     Malformed: '내용이 끊김 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다',
@@ -228,7 +254,7 @@ export const strings = {
     'not-a-vault': '이 폴더는 볼트가 아닙니다.',
     'newer-format': '이 볼트는 더 새 버전의 앱으로 만들어졌습니다. 앱을 업데이트한 뒤 여세요.',
     'not-encrypted': '암호화되지 않은 볼트는 아직 열 수 없습니다.',
-    'wrong-passphrase': '패스프레이즈가 맞지 않습니다.',
+    'wrong-passphrase': '패스프레이즈가 맞지 않습니다. 다른 기기에서 바꿨다면 새 패스프레이즈를 입력하세요.',
     'damaged-key-file': '볼트 키 파일이 손상되었습니다. 복구 키트로 열어야 합니다.',
     'recovery-key': '복구 키가 맞지 않습니다.',
     'invalid-path': '볼트 밖의 경로입니다.',

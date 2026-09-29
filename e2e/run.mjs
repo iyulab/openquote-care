@@ -229,7 +229,7 @@ const scenarios = {
     await app.pickFolder(work.vault)
     await app.type('패스프레이즈', 'not the passphrase')
     await app.click('dc-button', '열기')
-    await app.alert('패스프레이즈가 맞지 않습니다.')
+    await app.alert('패스프레이즈가 맞지 않습니다. 다른 기기에서 바꿨다면 새 패스프레이즈를 입력하세요.')
   },
 
   async 'opens the vault with the recovery key when the passphrase is forgotten, and sets a new one'(app, work) {
@@ -267,7 +267,7 @@ const scenarios = {
       await app.click('dc-button', '열기')
     }
     await reopen(PASSPHRASE)
-    await app.alert('패스프레이즈가 맞지 않습니다.')
+    await app.alert('패스프레이즈가 맞지 않습니다. 다른 기기에서 바꿨다면 새 패스프레이즈를 입력하세요.')
     await app.type('패스프레이즈', NEW_PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
@@ -459,6 +459,8 @@ const scenarios = {
     const gone = `!__e2e.one('[data-role=unreadable]')`
     await app.cdp.waitFor(listed('NameMismatch'), 'the outside file noticed, with its reason')
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=unreadable] summary').textContent`), /읽지 못한 파일 1개/)
+    const what = () => app.cdp.evaluate(`__e2e.one('[data-role=unreadable] [data-role=what]')?.textContent`)
+    assert.match(await what(), /^대상자 가상 학생 \d의 기록$/, 'named by the subject it belongs to, not by its folder id')
     await rm(stray)
     await app.cdp.waitFor(gone, 'its removal noticed')
 
@@ -468,6 +470,7 @@ const scenarios = {
     await copyFile(join(schemes, 'v1.json.age'), conflicted)
     await app.cdp.waitFor(listed('NameMismatch'), 'the conflicted copy noticed')
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=unreadable] li').textContent`), /충돌 사본/)
+    assert.equal(await what(), '분류 topic 1판')
     await rm(conflicted)
     await app.cdp.waitFor(gone, 'its removal noticed')
 
@@ -475,6 +478,7 @@ const scenarios = {
     const cut = join(folder, '01900000-0000-7000-8000-00000000abcd.pc99.json.age')
     await writeFile(cut, 'age-encryption.org/v1\n')
     await app.cdp.waitFor(listed('Undecryptable'), 'the undecryptable file noticed')
+    assert.match(await what(), /^대상자 가상 학생 \d의 기록$/)
     await rm(cut)
     await app.cdp.waitFor(gone, 'its removal noticed')
     await app.noAlert()

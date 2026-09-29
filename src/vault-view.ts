@@ -15,6 +15,7 @@ import { leftBehind, type FormEntry } from './forms.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 import { MIN_PASSPHRASE, passphraseProblem } from './flow.js'
+import { fileKind } from './files.js'
 
 type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
 /** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
@@ -1205,14 +1206,20 @@ export class OcVault extends LitElement {
   private unreadableView() {
     const files = this.summary?.unreadable ?? []
     if (files.length === 0) return nothing
+    const names = {
+      subjects: new Map(this.subjects.map((s) => [s.id, text(s, 'name')])),
+      groups: new Map(this.groups.map((g) => [g.id, text(g, 'name')])),
+    }
     return html`<details class="unreadable" data-role="unreadable">
       <summary><span class="error">${strings.unreadable(files.length)}</span></summary>
       <ul>
-        ${files.map(
-          (f) => html`<li data-reason=${f.reason}>
-            <code>${f.path}</code> — ${strings.unreadableReason[f.reason] ?? f.detail}
-          </li>`,
-        )}
+        ${files.map((f) => {
+          const what = strings.unreadableWhat(fileKind(f.path, names))
+          return html`<li data-reason=${f.reason}>
+            ${what ? html`<span data-role="what">${what}</span> — ` : nothing}${strings.unreadableReason[f.reason] ?? f.detail}
+            <br /><code class="muted">${f.path}</code>
+          </li>`
+        })}
       </ul>
     </details>`
   }
