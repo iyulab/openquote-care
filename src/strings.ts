@@ -113,6 +113,10 @@ export const strings = {
   applyPackTitle: '적용할 분류 자료(데이터 팩) 폴더 선택',
   packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}`,
   packNothingNew: '이 자료에는 볼트에 없는 새 분류·양식이 없습니다.',
+  packFormsBehind: (forms: string[]) =>
+    `새 분류 버전에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 버전 양식이 든 자료를 적용하세요.`,
+  formBehind: (lags: { scheme: string; version: number; latest: number }[]) =>
+    `이 양식은 ${lags.map((l) => `분류 ${l.scheme} v${l.version}`).join(', ')} 기준입니다(볼트에는 ${lags.map((l) => `v${l.latest}`).join(', ')}). 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 버전 양식으로 내세요.`,
   definition: {
     scheme: (name: string, version: number) => `분류 ${name} v${version}`,
     crosswalk: (name: string, from: number, to: number) => `연계표 ${name} v${from}→v${to}`,

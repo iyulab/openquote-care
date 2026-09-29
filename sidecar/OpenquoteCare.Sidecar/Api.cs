@@ -54,7 +54,10 @@ public sealed record SummaryView(
     IReadOnlyList<ExportView> Exports,
     IReadOnlyList<UnreadableView> Unreadable);
 
-public sealed record ExportView(string Name, int Version, string Label);
+public sealed record ExportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
+
+/// <summary>A scheme a form classifies by, at a version older than the latest one the vault holds.</summary>
+public sealed record SchemeLagView(string Scheme, int Version, int Latest);
 
 public sealed record ExportRowView(string Record, IReadOnlyList<string> Cells);
 
@@ -68,7 +71,7 @@ public sealed record ExportTableView(
     IReadOnlyList<string> Pending,
     IReadOnlyList<string> Unmapped);
 
-public sealed record ReportView(string Name, int Version, string Label);
+public sealed record ReportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
 
 public sealed record UnreadableView(string Path, string Reason, string Detail);
 
@@ -242,15 +245,30 @@ internal static class Api
     private static Entity? Find(VaultSession session, string type, string id) =>
         session.Current.Entities.GetValueOrDefault(new EntityRef(type, id));
 
-    private static SummaryView Summary(string device, VaultSession.Snapshot s) => new(
-        device,
-        DeviceNames.Of(s.Entities.Values),
-        s.Content.Changes.Count,
-        s.Entities.Count,
-        s.Entities.Values.Count(e => e.Conflicts.Count > 0),
-        [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label))],
-        [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label))],
-        [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail))]);
+    private static SummaryView Summary(string device, VaultSession.Snapshot s)
+    {
+        var latest = s.Content.Schemes
+            .GroupBy(x => x.Name, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Max(x => x.Version), StringComparer.Ordinal);
+        return new(
+            device,
+            DeviceNames.Of(s.Entities.Values),
+            s.Content.Changes.Count,
+            s.Entities.Count,
+            s.Entities.Values.Count(e => e.Conflicts.Count > 0),
+            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label, Behind([(r.RowScheme, r.RowVersion)], latest)))],
+            [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label,
+                Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest)))],
+            [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail))]);
+    }
+
+    // A form classifies by fixed scheme versions; after a revision, values recorded in the new
+    // version may not carry back to it, so a form left behind reads new records as empty or pending.
+    private static SchemeLagView[] Behind(IEnumerable<(string Scheme, int Version)> uses, Dictionary<string, int> latest) =>
+        [.. uses.Distinct()
+            .Where(u => latest.TryGetValue(u.Scheme, out var l) && l > u.Version)
+            .OrderBy(u => u.Scheme, StringComparer.Ordinal)
+            .Select(u => new SchemeLagView(u.Scheme, u.Version, latest[u.Scheme]))];
 
     // A kept run as its record reads: the same shape /reports/run answers with.
     private static JsonNode RunView(KeptRun k) => JsonNode.Parse(ReportRunJson.Write(k.Run, k.Id, k.Device, k.At))!;

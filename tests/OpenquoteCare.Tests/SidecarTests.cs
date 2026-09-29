@@ -116,6 +116,25 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Names_the_forms_left_behind_a_scheme_revision()
+    {
+        const string form = """
+            {"format":"openquote.export/0","export":"list","version":1,"label":"List","rows":"session","period":{"field":"date"},
+             "columns":[{"label":"date","field":"date"},{"label":"topic","field":"topic","scheme":"topic","version":1},{"label":"method","field":"method","scheme":"method","version":1}]}
+            """;
+        var exportFile = new Openquote.Vault.VaultFile("exports/list/v1.json", System.Text.Encoding.UTF8.GetBytes(form));
+
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(3).Append(exportFile)));
+
+        var reports = summary["reports"]!.AsArray().ToDictionary(r => r!["version"]!.GetValue<int>(), r => r!["behind"]!.AsArray());
+        var lag = reports[1].Single()!;
+        Assert.Equal(("topic", 1, 2), (lag["scheme"]!.GetValue<string>(), lag["version"]!.GetValue<int>(), lag["latest"]!.GetValue<int>()));
+        Assert.Empty(reports[2]);
+        var exportLag = summary["exports"]!.AsArray().Single()!["behind"]!.AsArray().Single()!;
+        Assert.Equal("topic", exportLag["scheme"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Carries_values_to_a_later_version_and_names_the_candidates_of_a_split()
     {
         await Post("/vault/load", Files(GoldenVault.Through(2)));

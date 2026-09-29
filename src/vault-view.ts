@@ -10,6 +10,7 @@ import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from './idle.js'
 import { atSession, headingOf } from './subject-fields.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from './subject-import.js'
 import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
+import { leftBehind, type FormEntry } from './forms.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
@@ -1006,6 +1007,8 @@ export class OcVault extends LitElement {
         return strings.definition[d.kind](d.name, d.version)
       })
       this.notice = strings.packAdded(names)
+      const behind = leftBehind([...(this.summary?.reports ?? []), ...(this.summary?.exports ?? [])])
+      if (behind.length > 0) this.notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
       // A new form version is what the person came for: offer it.
       const report = added.map(definitionOf).find((d) => d?.kind === 'report')
       if (report?.kind === 'report') this.reportKey = `${report.name}@${report.version}`
@@ -1089,6 +1092,7 @@ export class OcVault extends LitElement {
           ? html`<dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`
           : nothing}
       </div>
+      ${this.formBehind(forms, this.exportKey)}
       ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
       ${table ? this.exportTableView(table) : nothing}
     </section>`
@@ -1159,9 +1163,17 @@ export class OcVault extends LitElement {
         <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
         <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.pickPack()}>${strings.applyPack}</dc-button>
       </div>
+      ${this.formBehind(reports, this.reportKey)}
       ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
       ${this.result ? this.reportTable(this.result) : nothing}
     </section>`
+  }
+
+  /** Says so when the chosen form classifies by a scheme version older than the vault's latest. */
+  private formBehind(forms: FormEntry[], key: string) {
+    const chosen = forms.find((f) => `${f.name}@${f.version}` === key)
+    if (!chosen || chosen.behind.length === 0) return nothing
+    return html`<p class="muted" data-form-behind>${strings.formBehind(chosen.behind)}</p>`
   }
 
   /** Lists the report's pending records with the codes each may take, for a person to choose. */

@@ -3,12 +3,13 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { Classified, Entity, Resolution, Scheme } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
+import type { FormEntry } from './forms.js'
 
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
   unreadable: unknown[]
-  reports: { name: string; version: number; label: string }[]
-  exports: { name: string; version: number; label: string }[]
+  reports: FormEntry[]
+  exports: FormEntry[]
   /** This computer's device id. */
   device: string
   /** Names people gave the devices writing to this vault, by device id. */
