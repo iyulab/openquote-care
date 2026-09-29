@@ -94,12 +94,18 @@ jobs:
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
         run: npx tauri build --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json
 
+      # Tauri signs the app it puts in the installer and then restores the unsigned build output,
+      # so the signatures are checked on an installed copy.
       - name: Check signatures
         id: installer
         shell: pwsh
         run: |
           $installer = Get-Item "target/release/bundle/nsis/*_${{ steps.versions.outputs.app }}_x64-setup.exe"
-          $files = @($installer.FullName, 'target/release/openquote-care.exe', 'sidecar/publish/openquote-care-sidecar.exe')
+          $target = Join-Path $env:RUNNER_TEMP 'installed'
+          # NSIS: /S is silent, /D= must come last and unquoted.
+          $process = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$target" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "The installer exited with $($process.ExitCode)" }
+          $files = @($installer.FullName, (Join-Path $target 'openquote-care.exe'), (Join-Path $target 'sidecar/openquote-care-sidecar.exe'))
           foreach ($file in $files) {
             $signature = Get-AuthenticodeSignature $file
             if ($signature.Status -ne 'Valid') { throw "$file is not validly signed: $($signature.Status)" }
