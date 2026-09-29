@@ -505,6 +505,24 @@ const scenarios = {
     assert.equal((await app.sessionRows())[1][2], '특별 › 학교폭력')
     await app.click('dc-button', '다시 읽기')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
+
+    // A sync client's copy of every record file, under the names sync clients give one, is the
+    // same record again: read, not listed as unreadable and not counted twice.
+    const subjects = join(work.vault, 'subjects')
+    const copies = []
+    for (const folder of await readdir(subjects)) {
+      for (const file of (await readdir(join(subjects, folder))).filter((f) => f.endsWith('.json.age'))) {
+        const name = file.slice(0, -'.age'.length)
+        for (const copy of [`${name} (conflicted copy 2026-04-02).age`, `${name}-LAPTOP.age`]) {
+          copies.push(join(subjects, folder, copy))
+          await copyFile(join(subjects, folder, file), copies.at(-1))
+        }
+      }
+    }
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+    assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 2, 'still two sessions')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=unreadable]')`), false, 'no copy listed as unreadable')
+    for (const copy of copies) await rm(copy)
     await app.noAlert()
   },
 
