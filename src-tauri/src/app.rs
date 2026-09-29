@@ -676,14 +676,30 @@ cut off").unwrap();
     /// Not a check but a measurement: writes `OPENQUOTE_MEASURE_RECORDS` sessions (default 2000, about a
     /// year of one counselor's work), then times opening the vault in a fresh engine process, which
     /// is the first build of its cache. Run with `cargo test --release -- --ignored --nocapture measure`.
+    ///
+    /// `OPENQUOTE_MEASURE_VAULT=<folder>` keeps the vault there (passphrase `pass`): a folder without
+    /// one gets it written and kept; a folder with one is only opened — to time a vault after its
+    /// files changed state in between (a sync client's online-only files, a network share).
     #[test]
     #[ignore = "measurement"]
     fn measure_opening_a_vault_of_a_years_records() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let records: usize = std::env::var("OPENQUOTE_MEASURE_RECORDS").ok().and_then(|n| n.parse().ok()).unwrap_or(2000);
-        let dir = shared_folder();
+        let kept = std::env::var_os("OPENQUOTE_MEASURE_VAULT").map(PathBuf::from);
+        let temp = if kept.is_none() { Some(shared_folder()) } else { None };
+        let folder = kept.clone().unwrap_or_else(|| temp.as_ref().unwrap().path().to_path_buf());
+        if kept.as_ref().is_some_and(|k| k.join("vault.json").exists()) {
+            let reader = App::new(exe.clone(), "pc03".to_owned());
+            let started = std::time::Instant::now();
+            reader.open_vault(&folder, "pass".to_owned()).unwrap();
+            let opening = started.elapsed();
+            let sessions = reader.entities("session").unwrap().as_array().unwrap().len();
+            eprintln!("measure: opened a kept vault of {sessions} sessions with first cache build {opening:.2?}");
+            return;
+        }
+        std::fs::create_dir_all(&folder).unwrap();
         let writer = App::new(exe.clone(), "pc01".to_owned());
-        let key = writer.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        let key = writer.create_vault(&folder, "pass".to_owned(), &pack()).unwrap();
         writer.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = writer.record("/changes/subject", json!({ "fields": { "name": "measured" } })).unwrap();
         let subject_id = subject.split('/').nth(1).unwrap().to_owned();
@@ -702,7 +718,7 @@ cut off").unwrap();
 
         let reader = App::new(exe.clone(), "pc02".to_owned());
         let started = std::time::Instant::now();
-        reader.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        reader.open_vault(&folder, "pass".to_owned()).unwrap();
         let opening = started.elapsed();
         assert_eq!(reader.entities("session").unwrap().as_array().unwrap().len(), records);
         let started = std::time::Instant::now();
