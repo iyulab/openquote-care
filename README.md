@@ -21,6 +21,8 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Applying a data pack: classification schemes, crosswalks between their versions, report and export forms. A Korean school counseling pack is included
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time
+- Opening the vault with the recovery kit when the passphrase is forgotten, and changing the passphrase — the old one then stops opening the vault on every device
+- Files the app cannot read (a sync client's conflict copy, a file cut off mid-sync) listed by the record they hold and why, never silently skipped
 
 How it is built: [docs/architecture.md](docs/architecture.md). What it will and will not become, and how changes are decided: [docs/CONSTITUTION.md](docs/CONSTITUTION.md). The record format belongs to the [Openquote engine](https://github.com/iyulab/openquote).
 
