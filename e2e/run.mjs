@@ -760,11 +760,12 @@ async function main() {
       try {
         await run(app, work)
         console.log(`  ✓ ${name}`)
-        if (process.env.E2E_SCREENSHOTS) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, name)
+        // A scenario may end with the app quit (the last one looks through what it left behind).
+        if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, name)
       } catch (e) {
         failed++
         console.log(`  ✗ ${name}\n    ${e.message.replaceAll('\n', '\n    ')}`)
-        if (process.env.E2E_SCREENSHOTS) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, `FAILED ${name}`)
+        if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, `FAILED ${name}`).catch(() => {})
         break
       }
     }
