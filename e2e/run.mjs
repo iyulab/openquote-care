@@ -647,19 +647,17 @@ const scenarios = {
     const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
     assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
     const inAppData = await filesHolding(appData, needles)
-    // Everything this run wrote to the temporary folder, except the vault itself.
-    const inTemp = await filesHolding(tmpdir(), needles, (path, stats) =>
-      stats.mtimeMs >= work.started && !path.startsWith(work.vault))
+    // The app and its engine were given their own temporary folder for this run.
+    const inTemp = await filesHolding(work.appTemp, needles)
     assert.deepEqual([...inAppData, ...inTemp], [], 'nothing typed or shown is kept outside the vault')
   },
 }
 
 /**
  * Files under `dir` (recursively) that contain any of `needles` in UTF-8 or UTF-16, as
- * `path: needle` lines. `keep(path, stats)` narrows which files are read; unreadable entries
- * (locked, gone, no access) are passed over.
+ * `path: needle` lines. Unreadable entries (locked, gone, no access) are passed over.
  */
-async function filesHolding(dir, needles, keep = () => true) {
+async function filesHolding(dir, needles) {
   const patterns = needles.flatMap((n) => [Buffer.from(n, 'utf8'), Buffer.from(n, 'utf16le')].map((b) => [n, b]))
   const found = []
   const walk = async (d) => {
@@ -672,7 +670,7 @@ async function filesHolding(dir, needles, keep = () => true) {
       let content
       try {
         const stats = await stat(path)
-        if (stats.size > 64 * 1024 * 1024 || !keep(path, stats)) continue
+        if (stats.size > 64 * 1024 * 1024) continue
         content = await readFile(path)
       } catch { continue }
       for (const [needle, bytes] of patterns) {
@@ -696,9 +694,13 @@ async function main() {
   if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
   if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
   const temp = await mkdtemp(join(tmpdir(), 'openquote-care-e2e-'))
-  const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty'), started: Date.now() }
+  const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty'), appTemp: join(temp, 'app-temp') }
   await mkdir(work.vault)
   await mkdir(work.empty)
+  await mkdir(work.appTemp)
+  // Every app started from here on (and the engine it starts) writes its temporary files where
+  // the last scenario can look through all of them.
+  process.env.TEMP = process.env.TMP = work.appTemp
 
   let app
   let failed = 0

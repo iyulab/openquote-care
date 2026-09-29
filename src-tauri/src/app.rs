@@ -460,6 +460,28 @@ mod tests {
     }
 
     #[test]
+    fn a_damaged_key_file_is_named_and_the_recovery_key_restores_it() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        app.close_vault();
+        let key_file = dir.path().join(openquote_care_vault::KEY_FILE);
+        std::fs::write(&key_file, b"-----BEGIN AGE ENCRYPTED FILE-----
+cut off").unwrap();
+
+        assert_eq!(app.open_vault(dir.path(), "pass".to_owned()).unwrap_err().code(), "damaged-key-file");
+        app.open_vault_with_key(dir.path(), &key).unwrap();
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+        app.change_passphrase("pass again".to_owned()).unwrap();
+        app.close_vault();
+
+        app.open_vault(dir.path(), "pass again".to_owned()).unwrap();
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+    }
+
+    #[test]
     fn a_vault_opened_with_its_recovery_key_takes_a_new_passphrase() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
