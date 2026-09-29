@@ -309,6 +309,8 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="양식"]').value`), 'monthly-topic@2', 'the new form is offered')
     assert.ok(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류 버전에 맞춘 양식이 없습니다'))`),
       'the pack brought no export form for topic v2: the list form left behind is named')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표가 없는 분류'))`), false,
+      'topic v2 came with its v1→v2 crosswalk: no scheme is left unlinked')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-form-behind]')`), false, 'the chosen report form is in the latest version')
 
     await app.click('dc-button', '산출')
@@ -506,6 +508,18 @@ const scenarios = {
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /v1 기준/, 'the form says which scheme version it lags')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
   },
+  async 'names a scheme version no crosswalk leads to when its pack is applied'(app, work) {
+    // A relabel-only revision still needs a crosswalk; without one every earlier value is unmapped there.
+    const pack = join(dirname(work.vault), 'relabel-pack')
+    await mkdir(join(pack, 'schemes', 'method'), { recursive: true })
+    await writeFile(join(pack, 'schemes', 'method', 'v2.json'),
+      JSON.stringify({ format: 'openquote.scheme/0', scheme: 'method', version: 2, items: [{ code: 'interview', label: '개인 면담' }] }))
+    await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표가 없는 분류가 있습니다: 분류 method v2'))`,
+      'the unlinked version named')
+    await app.noAlert()
+  },
+
   async 'asks a second device sharing the vault to name itself'(app, work) {
     // The same vault opened as another device: this app's device id is swapped between runs.
     const idFile = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e', 'device-id')

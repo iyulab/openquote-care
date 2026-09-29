@@ -10,6 +10,8 @@ export interface VaultSummary {
   unreadable: unknown[]
   reports: FormEntry[]
   exports: FormEntry[]
+  /** Scheme versions no crosswalk leads to from an earlier version. */
+  unlinked: { scheme: string; version: number }[]
   /** This computer's device id. */
   device: string
   /** Names people gave the devices writing to this vault, by device id. */

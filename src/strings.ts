@@ -115,6 +115,8 @@ export const strings = {
   packNothingNew: '이 자료에는 볼트에 없는 새 분류·양식이 없습니다.',
   packFormsBehind: (forms: string[]) =>
     `새 분류 버전에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 버전 양식이 든 자료를 적용하세요.`,
+  packSchemeUnlinked: (versions: string[]) =>
+    `이전 버전에서 이어지는 연계표가 없는 분류가 있습니다: ${versions.join(', ')}. 이름만 바꾼 개정이어도 연계표가 있어야 예전 기록이 새 버전으로 옮겨집니다 — 없으면 새 버전 양식에서 '연계 없음'이 됩니다.`,
   formBehind: (lags: { scheme: string; version: number; latest: number }[]) =>
     `이 양식은 ${lags.map((l) => `분류 ${l.scheme} v${l.version}`).join(', ')} 기준입니다(볼트에는 ${lags.map((l) => `v${l.latest}`).join(', ')}). 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 버전 양식으로 내세요.`,
   definition: {

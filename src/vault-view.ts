@@ -1009,6 +1009,8 @@ export class OcVault extends LitElement {
       this.notice = strings.packAdded(names)
       const behind = leftBehind([...(this.summary?.reports ?? []), ...(this.summary?.exports ?? [])])
       if (behind.length > 0) this.notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
+      const unlinked = this.summary?.unlinked ?? []
+      if (unlinked.length > 0) this.notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(u.scheme, u.version)))
       // A new form version is what the person came for: offer it.
       const report = added.map(definitionOf).find((d) => d?.kind === 'report')
       if (report?.kind === 'report') this.reportKey = `${report.name}@${report.version}`

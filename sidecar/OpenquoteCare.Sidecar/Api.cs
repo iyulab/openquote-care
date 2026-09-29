@@ -52,7 +52,11 @@ public sealed record SummaryView(
     int Conflicts,
     IReadOnlyList<ReportView> Reports,
     IReadOnlyList<ExportView> Exports,
+    IReadOnlyList<SchemeVersionView> Unlinked,
     IReadOnlyList<UnreadableView> Unreadable);
+
+/// <summary>A scheme version no crosswalk leads to from an earlier version of the same scheme.</summary>
+public sealed record SchemeVersionView(string Scheme, int Version);
 
 public sealed record ExportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
 
@@ -259,8 +263,18 @@ internal static class Api
             [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label, Behind([(r.RowScheme, r.RowVersion)], latest)))],
             [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest)))],
+            Unlinked(s.Content),
             [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail))]);
     }
+
+    // Values are carried to a new version only through crosswalks; a version none leads to — even one
+    // that only relabels — leaves every value recorded in an earlier version unmapped there.
+    private static SchemeVersionView[] Unlinked(VaultContent content) =>
+        [.. content.Schemes
+            .Where(s => content.Schemes.Any(e => e.Name == s.Name && e.Version < s.Version)
+                && !content.Crosswalks.Any(c => c.Scheme == s.Name && c.To == s.Version && c.From < s.Version))
+            .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
+            .Select(s => new SchemeVersionView(s.Name, s.Version))];
 
     // A form classifies by fixed scheme versions; after a revision, values recorded in the new
     // version may not carry back to it, so a form left behind reads new records as empty or pending.

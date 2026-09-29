@@ -116,6 +116,20 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Names_a_scheme_version_no_crosswalk_leads_to()
+    {
+        var linked = await Post("/vault/load", Files(GoldenVault.Through(3)));
+        Assert.Empty(linked["unlinked"]!.AsArray());
+
+        const string relabelled = """{"format":"openquote.scheme/0","scheme":"method","version":2,"items":[{"code":"individual","label":"Individual"}]}""";
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(3).Append(
+            new Openquote.Vault.VaultFile("schemes/method/v2.json", System.Text.Encoding.UTF8.GetBytes(relabelled)))));
+
+        var unlinked = summary["unlinked"]!.AsArray().Single()!;
+        Assert.Equal(("method", 2), (unlinked["scheme"]!.GetValue<string>(), unlinked["version"]!.GetValue<int>()));
+    }
+
+    [Fact]
     public async Task Names_the_forms_left_behind_a_scheme_revision()
     {
         const string form = """
