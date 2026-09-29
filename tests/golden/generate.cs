@@ -46,6 +46,7 @@ var subjects = Csv.Read(Path.Combine(scenario, "subjects.csv"));
 var cases = Csv.Read(Path.Combine(scenario, "cases.csv"));
 var sessions = Csv.Read(Path.Combine(scenario, "sessions.csv"));
 var edits = Csv.Read(Path.Combine(scenario, "edits.csv"));
+var groups = Csv.Read(Path.Combine(scenario, "groups.csv"));
 
 var ids = new Dictionary<string, string>();
 string IdOf(string key) => ids[key];
@@ -82,6 +83,13 @@ foreach (var s in subjects)
     }));
 }
 
+foreach (var g in groups)
+{
+    var at = At(g["created_at"]);
+    var id = NewId(g["key"], at);
+    changes.Add(new Change(id, g["device"], at, "group", id, "create", [], $"groups/{id}", new JsonObject { ["name"] = g["name"] }));
+}
+
 var subjectOfCase = new Dictionary<string, string>();
 foreach (var c in cases)
 {
@@ -96,22 +104,33 @@ foreach (var c in cases)
     }));
 }
 
-string FolderOfSession(string sessionKey) =>
-    $"subjects/{IdOf(subjectOfCase[sessions.Single(r => r["key"] == sessionKey)["case"]])}";
+// A group session is kept in its group's folder and names its attendees; any other session is kept
+// in the folder of its case's subject.
+string FolderOfSession(string sessionKey)
+{
+    var s = sessions.Single(r => r["key"] == sessionKey);
+    return s["group"] != "" ? $"groups/{IdOf(s["group"])}" : $"subjects/{IdOf(subjectOfCase[s["case"]])}";
+}
+
+// The subjects a session is about: its attendees, or its case's subject.
+string[] PeopleOf(Dictionary<string, string> s) =>
+    s["group"] != "" ? [.. s["attendees"].Split(' ').Select(IdOf)] : [IdOf(subjectOfCase[s["case"]])];
 
 foreach (var s in sessions)
 {
     var at = At(s["entered_at"]);
     var id = NewId(s["key"], at);
-    changes.Add(new Change(id, s["device"], at, "session", id, "create", [], FolderOfSession(s["key"]), new JsonObject
+    var fields = new JsonObject();
+    if (s["case"] != "") fields["case"] = IdOf(s["case"]);
+    if (s["group"] != "") fields["attendees"] = Ids(PeopleOf(s));
+    changes.Add(new Change(id, s["device"], at, "session", id, "create", [], FolderOfSession(s["key"]), Merge(fields, new JsonObject
     {
-        ["case"] = IdOf(s["case"]),
         ["practitioner"] = IdOf(s["counselor"]),
         ["date"] = s["date"],
         ["client_type"] = Coded("client-type", 1, s["client_type"]),
         ["method"] = s["method"] == "" ? null : Coded("method", 1, s["method"]),
         ["topic"] = Coded("topic", 1, s["topic_v1"]),
-    }));
+    })));
 
     if (s["reclassify_to"] != "")
     {
@@ -144,6 +163,7 @@ JsonObject Report(string name, int reportVersion, string month, int step)
     var cells = new SortedDictionary<(string Row, string Column), List<string>>();
     var pending = new List<string>();
     var unmapped = new List<string>();
+    var people = new Dictionary<string, string[]>();
 
     foreach (var s in sessions)
     {
@@ -160,6 +180,7 @@ JsonObject Report(string name, int reportVersion, string month, int step)
         }
 
         var id = IdOf(s["key"]);
+        people[id] = PeopleOf(s);
         switch (row)
         {
             case "pending": pending.Add(id); break;
@@ -189,6 +210,7 @@ JsonObject Report(string name, int reportVersion, string month, int step)
     Expect(name, "pending", h["pending"]!.GetValue<int>(), pending.Count);
     Expect(name, "unmapped", h["unmapped"]!.GetValue<int>(), unmapped.Count);
     Expect(name, "total", h["total"]!.GetValue<int>(), total);
+    Expect(name, "people", h["people"]!.GetValue<int>(), people.Values.SelectMany(p => p).Distinct().Count());
 
     var schemeRef = new JsonObject { ["version"] = reportVersion };
     if (reportVersion == 2) schemeRef["crosswalks"] = new JsonArray("1-2");
@@ -209,6 +231,8 @@ JsonObject Report(string name, int reportVersion, string month, int step)
         ["pending"] = Set(pending),
         ["unmapped"] = Set(unmapped),
         ["total"] = Set(cells.Values.SelectMany(l => l).Concat(pending).Concat(unmapped).ToList()),
+        ["people"] = new JsonObject(people.OrderBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)Ids(kv.Value)))),
     };
 }
 
@@ -338,6 +362,12 @@ static string StepDir(int step) => $"{step}";
 
 static JsonObject Coded(string scheme, int version, string code) =>
     new() { ["scheme"] = scheme, ["version"] = version, ["code"] = code };
+
+static JsonObject Merge(JsonObject first, JsonObject then)
+{
+    foreach (var (key, value) in then) first[key] = value?.DeepClone();
+    return first;
+}
 
 static JsonNode? Optional(string value) => value == "" ? null : JsonValue.Create(value);
 

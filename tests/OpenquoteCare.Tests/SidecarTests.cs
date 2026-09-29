@@ -77,8 +77,8 @@ public sealed class SidecarTests : IAsyncLifetime
     public async Task Loads_the_golden_vault_and_reproduces_its_run()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(3)));
-        Assert.Equal(79, summary["changes"]!.GetValue<int>());
-        Assert.Equal(73, summary["entities"]!.GetValue<int>());
+        Assert.Equal(81, summary["changes"]!.GetValue<int>());
+        Assert.Equal(75, summary["entities"]!.GetValue<int>());
         Assert.Equal(1, summary["conflicts"]!.GetValue<int>());
         Assert.Empty(summary["unreadable"]!.AsArray());
 
@@ -191,7 +191,7 @@ public sealed class SidecarTests : IAsyncLifetime
 
         var subjectFile = await Post("/changes/subject", new { fields = new { name = "new subject" } });
         var added = await Post("/vault/add", new { files = new[] { subjectFile } });
-        Assert.Equal(74, added["entities"]!.GetValue<int>());
+        Assert.Equal(76, added["entities"]!.GetValue<int>());
 
         // The same file cannot be added twice, just as it cannot be created twice on disk.
         await Post("/vault/add", new { files = new[] { subjectFile } }, HttpStatusCode.Conflict);
@@ -229,7 +229,7 @@ public sealed class SidecarTests : IAsyncLifetime
 
         var after = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
         Assert.Equal(6, after["record"]!["pending"]!["count"]!.GetValue<int>());
-        Assert.Equal(25, after["record"]!["total"]!["count"]!.GetValue<int>());
+        Assert.Equal(26, after["record"]!["total"]!["count"]!.GetValue<int>());
     }
 
     [Fact]

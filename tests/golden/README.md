@@ -28,12 +28,13 @@ It also includes:
 - two devices editing the same field of one session without seeing each other's change (both
   changes name only the session's creation as their base)
 - a second case for the same subject
+- a group session (three subjects in one session, kept in the group's folder): one record, three people
 
 ## Layout
 
 ```
 scenario/            the hand-written source
-  *.csv              counsellors, subjects, cases, sessions, concurrent edits
+  *.csv              counsellors, subjects, groups, cases, sessions, concurrent edits
   static/<step>/     hand-written schemes, crosswalk and report definitions
   expected-totals.json  hand-computed report counts and diffs
 generate.cs          turns scenario/ into steps/ and expected/
@@ -49,9 +50,9 @@ report runs happen:
 | Run | Report | Period | Vault | Expected result |
 |---|---|---|---|---|
 | r0 | monthly topic v1 | February | steps 1 | no records |
-| r1 | monthly topic v1 | April | steps 1 | 23 records |
-| r2 | monthly topic v2 | April | steps 1–2 | 24 records: 16 in rows, 6 pending, 2 unmapped |
-| r3 | monthly topic v2 | April | steps 1–3 | 4 pending records reclassified: 20 in rows, 2 pending, 2 unmapped |
+| r1 | monthly topic v1 | April | steps 1 | 24 records, 13 people |
+| r2 | monthly topic v2 | April | steps 1–2 | 25 records (14 people): 17 in rows, 6 pending, 2 unmapped |
+| r3 | monthly topic v2 | April | steps 1–3 | 4 pending records reclassified: 21 in rows, 2 pending, 2 unmapped |
 
 `invalid/` holds two files that a reader must report as unreadable while still reading everything
 else: a change file cut off halfway through, and a complete change file whose name says `pc02` while

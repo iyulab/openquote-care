@@ -1,0 +1,36 @@
+{
+  "format": "openquote.change/0",
+  "id": "019db97e-fb00-7ec0-9a91-0488e421cba4",
+  "device": "pc01",
+  "at": "2026-04-23T17:40:00+09:00",
+  "entity": {
+    "type": "session",
+    "id": "019db97e-fb00-7ec0-9a91-0488e421cba4"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "attendees": [
+      "019cd50b-1800-73b5-b8ba-e1c11143a648",
+      "019cf917-9c00-7b6b-8b88-f5b0dff9e0bb",
+      "019d0364-5400-7730-b7ea-f7cbe822437f"
+    ],
+    "practitioner": "019ca6b1-dc00-71ef-96f6-3a3386e49a8b",
+    "date": "2026-04-23",
+    "client_type": {
+      "scheme": "client-type",
+      "version": 1,
+      "code": "student"
+    },
+    "method": {
+      "scheme": "method",
+      "version": 1,
+      "code": "group"
+    },
+    "topic": {
+      "scheme": "topic",
+      "version": 1,
+      "code": "emotional-behavioral"
+    }
+  }
+}

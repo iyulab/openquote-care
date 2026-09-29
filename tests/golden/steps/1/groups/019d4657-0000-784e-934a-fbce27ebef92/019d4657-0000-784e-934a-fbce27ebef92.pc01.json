@@ -1,0 +1,15 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d4657-0000-784e-934a-fbce27ebef92",
+  "device": "pc01",
+  "at": "2026-04-01T09:00:00+09:00",
+  "entity": {
+    "type": "group",
+    "id": "019d4657-0000-784e-934a-fbce27ebef92"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "가상 또래관계 집단"
+  }
+}
