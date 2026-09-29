@@ -22,7 +22,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time
 
-How it is built: [docs/architecture.md](docs/architecture.md). The record format belongs to the [Openquote engine](https://github.com/iyulab/openquote).
+How it is built: [docs/architecture.md](docs/architecture.md). What it will and will not become, and how changes are decided: [docs/CONSTITUTION.md](docs/CONSTITUTION.md). The record format belongs to the [Openquote engine](https://github.com/iyulab/openquote).
 
 ## License
 
