@@ -80,6 +80,7 @@ Classification schemes, crosswalks between scheme versions, report forms and exp
 - **A new vault starts from the bundled pack.** Its files are copied into the vault as ordinary encrypted files when the vault is created. From then on the vault holds its own copy; neither the pack nor the app is needed to interpret it.
 - **Applying a pack adds, never changes.** A person can apply another pack folder to an open vault. Only files the vault lacks are added. A file the vault already holds with the same content is skipped; one with different content stops the whole pack and nothing is added, since definitions are never rewritten.
 - **Lagging forms are flagged.** When the newest version of a report or export form still classifies by an older version of a scheme than the latest one in the vault, the app warns after a pack is applied and again when that form is chosen. Older form versions lag by design, since they serve the months before a revision, so only a form's newest version is checked.
+- **Unlinked versions are flagged.** Values reach a new scheme version only through a crosswalk. When a scheme version has no crosswalk from an earlier version of the same scheme — even one that only relabels its items — the app names it after a pack is applied, since every value recorded earlier would be unmapped in forms of that version.
 
 User-facing strings in the app are Korean and live in one file, `src/strings.ts`. Pack contents carry their own labels.
 
