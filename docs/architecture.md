@@ -88,7 +88,9 @@ User-facing strings in the app are Korean and live in one file, `src/strings.ts`
 
 ## Offline
 
-Everything works without a network. The app makes no network calls: the only HTTP traffic is between the shell and its own sidecar on the loopback address. The web view's content security policy allows loading only the app's own resources (`default-src 'self'`). There is no account, no telemetry and no update check.
+Everything works without a network. Apart from error diagnostics (below), the only HTTP traffic is between the shell and its own sidecar on the loopback address. The web view's content security policy allows loading only the app's own resources (`default-src 'self'`). There is no account, no usage tracking and no update check.
+
+**Error diagnostics** are content-free by construction. When the shell panics, or a command fails through the app's own fault (the engine not starting or answering with an error, a file operation failing — not a wrong passphrase or a folder that is not a vault), the shell can report that it happened. A report holds only an event name (`app.panic` or `command.failed`), the shell's failure code, the place in the app's own source (`file:line`; a place inside a dependency is reported as `dependency`), the engine's HTTP status if it answered, and the app version, operating system and architecture. The report types have no field for record values, file paths, vault names or error messages, so there is nothing to scrub. Reports go to an Application Insights collector the publisher owns, in the background, at most ten per run; one that cannot be delivered is dropped, never stored or retried. Reporting is off unless a connection string is configured (`OPENQUOTE_DIAGNOSTICS_CONNECTION` at run time, or embedded at build time under the same name); development and test builds send nothing. TLS uses the operating system's certificate store.
 
 ## Building and testing
 

@@ -1,6 +1,7 @@
 //! The desktop shell: Tauri commands over the vault and the engine sidecar.
 
 mod app;
+mod diagnostics;
 
 use std::path::PathBuf;
 
@@ -26,8 +27,19 @@ impl From<AppError> for CommandError {
 
 type CommandResult<T> = Result<T, CommandError>;
 
+/// Hands a command's outcome to the window. A failure that is the app's own fault is also
+/// reported (see [`diagnostics`]), naming the command by where it called this.
+#[track_caller]
 fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
-    r.map_err(CommandError::from)
+    let at = std::panic::Location::caller();
+    r.map_err(|e| {
+        let status = match &e {
+            AppError::Engine(openquote_care_engine::EngineError::Status(status, _)) => Some(*status),
+            _ => None,
+        };
+        diagnostics::command_failed(e.code(), at, status);
+        CommandError::from(e)
+    })
 }
 
 #[tauri::command]
@@ -160,6 +172,7 @@ const VAULT_CHANGED: &str = "vault-changed";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    diagnostics::install();
     let builder = tauri::Builder::default();
     // Registered first, so a second start ends before anything else runs.
     #[cfg(desktop)]
