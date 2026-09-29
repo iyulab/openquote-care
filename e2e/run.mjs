@@ -426,6 +426,14 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일 1개'))`, 'the outside file noticed')
     await rm(stray)
     await app.cdp.waitFor(`!__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일'))`, 'its removal noticed')
+
+    // A sync client's copy of a scheme (the losing side of a conflict) is shown, not dropped.
+    const schemes = join(work.vault, 'schemes', 'topic')
+    const conflicted = join(schemes, 'v1.json (conflicted copy 2026-04-02).age')
+    await copyFile(join(schemes, 'v1.json.age'), conflicted)
+    await app.cdp.waitFor(`__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일 1개'))`, 'the conflicted copy noticed')
+    await rm(conflicted)
+    await app.cdp.waitFor(`!__e2e.all('p.error').some((p) => p.textContent.includes('읽지 못한 파일'))`, 'its removal noticed')
     await app.noAlert()
   },
 
