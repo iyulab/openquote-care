@@ -647,6 +647,37 @@ const scenarios = {
     }
   },
 
+  async 'shows a field two edits changed without seeing each other, until a person picks one'(app, work) {
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 1')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length > 0`, 'the sessions')
+    const id = await app.cdp.evaluate(`__e2e.one('tr[data-session]').dataset.session`)
+    const date = (await app.sessionRows())[0][0].slice(0, 8) // the month of the first session, 'YYYY-MM-'
+    // Two edits that did not see each other, made through the window's own commands: the first
+    // is taken out of the folder while the second is made, as when a sync client delivers late.
+    const edit = (day) => app.cdp.evaluate(`window.__TAURI_INTERNALS__.invoke('record', { route: '/changes/update',
+      request: { type: 'session', id: ${q(id)}, fields: { date: ${q(date + day)} } } })`)
+    const first = join(work.vault, ...(await edit('20')).split('/')) + '.age'
+    const aside = join(work.empty, 'late.age')
+    await copyFile(first, aside)
+    await rm(first)
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+    await edit('21')
+    await copyFile(aside, first)
+    await rm(aside)
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+
+    await app.click('[data-role=conflict]')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=settle]')`, 'the panel to settle it')
+    const offered = await app.cdp.evaluate(`__e2e.all('[data-role=settle] dc-button').map((b) => b.textContent.trim().split(' · ')[0]).sort()`)
+    assert.deepEqual(offered, [date + '20', date + '21'], 'both values, each from where it was made')
+    const pick = await app.cdp.waitFor(`(() => { const b = __e2e.all('[data-role=settle] dc-button').find((b) => b.textContent.trim().startsWith(${q(offered[1])})); return b && __e2e.target(b) })()`, 'the value to pick')
+    await app.cdp.clickAt(pick)
+    await app.cdp.waitFor(`!__e2e.one('[data-role=conflict]') && !__e2e.one('[data-role=settle]')`, 'the field settled')
+    assert.ok((await app.sessionRows()).some((row) => row[0] === date + '21'), 'the value the person picked')
+    await app.noAlert()
+  },
+
   async 'says so when a folder is not a vault'(app, work) {
     await app.click('dc-button', '볼트 닫기')
     await app.click('dc-button', '볼트 열기')
