@@ -2,7 +2,7 @@
 //! classification and report form, record sessions, run a monthly report and keep the run record,
 //! then close everything, reopen from the passphrase alone and get the same numbers back.
 //!
-//! Needs a built sidecar: set OPENQUOTE_SIDECAR_EXE to its executable. Skipped otherwise.
+//! Needs a built sidecar (`npm run build:sidecar`, or OPENQUOTE_SIDECAR_EXE); fails without one.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -11,16 +11,6 @@ use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, OpenVault, PlainFile};
 use openquote_care_vault::Vault;
 use serde_json::{Value, json};
-
-fn sidecar() -> Option<PathBuf> {
-    match std::env::var("OPENQUOTE_SIDECAR_EXE") {
-        Ok(p) => Some(PathBuf::from(p)),
-        Err(_) => {
-            eprintln!("skipped: set OPENQUOTE_SIDECAR_EXE to a built openquote-care-sidecar executable");
-            None
-        }
-    }
-}
 
 /// The scheme and report-form files a data pack would copy into a new vault.
 fn pack_files() -> Vec<PlainFile> {
@@ -53,7 +43,7 @@ fn cell_counts(record: &Value) -> Vec<(String, u64)> {
 
 #[test]
 fn record_report_close_reopen_same_numbers() {
-    let Some(exe) = sidecar() else { return };
+    let Some(exe) = openquote_care_test_support::sidecar() else { return };
     let dir = tempfile::tempdir().unwrap();
     let passphrase = || SecretString::from("a passphrase for the test".to_owned());
 
@@ -138,7 +128,7 @@ fn record_report_close_reopen_same_numbers() {
 
 #[test]
 fn a_file_the_vault_refuses_never_reaches_the_engine() {
-    let Some(exe) = sidecar() else { return };
+    let Some(exe) = openquote_care_test_support::sidecar() else { return };
     let dir = tempfile::tempdir().unwrap();
     let (vault, _) = Vault::create(dir.path(), SecretString::from("p".to_owned())).unwrap();
     let mut open = OpenVault::open(vault, Engine::start(&exe, "pc01").unwrap()).unwrap();

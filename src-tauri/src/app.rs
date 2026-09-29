@@ -349,11 +349,7 @@ mod tests {
     use serde_json::json;
 
     fn app() -> Option<App> {
-        let Ok(exe) = std::env::var("OPENQUOTE_SIDECAR_EXE") else {
-            eprintln!("skipped: set OPENQUOTE_SIDECAR_EXE to a built openquote-care-sidecar executable");
-            return None;
-        };
-        Some(App::new(PathBuf::from(exe), "pc01".to_owned()))
+        Some(App::new(openquote_care_test_support::sidecar()?, "pc01".to_owned()))
     }
 
     fn pack() -> PathBuf {
@@ -520,10 +516,10 @@ cut off").unwrap();
 
     #[test]
     fn two_devices_sharing_a_folder_see_each_others_records() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
-        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let one = App::new(exe.clone(), "pc01".to_owned());
+        let two = App::new(exe.clone(), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
@@ -556,10 +552,10 @@ cut off").unwrap();
 
     #[test]
     fn a_field_two_devices_changed_unseen_shows_both_values_until_a_person_picks_one() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
-        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let one = App::new(exe.clone(), "pc01".to_owned());
+        let two = App::new(exe.clone(), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
@@ -608,10 +604,10 @@ cut off").unwrap();
 
     #[test]
     fn two_devices_writing_at_the_same_time_lose_nothing() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
-        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let one = App::new(exe.clone(), "pc01".to_owned());
+        let two = App::new(exe.clone(), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         two.open_vault(dir.path(), "pass".to_owned()).unwrap();
@@ -651,14 +647,14 @@ cut off").unwrap();
 
     #[test]
     fn the_app_hears_when_another_device_writes_to_its_vault() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
         let (tx, rx) = std::sync::mpsc::channel();
         let tx = Mutex::new(tx);
-        let one = App::new(PathBuf::from(&exe), "pc01".to_owned()).on_outside_change(move || {
+        let one = App::new(exe.clone(), "pc01".to_owned()).on_outside_change(move || {
             let _ = tx.lock().unwrap().send(());
         });
-        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let two = App::new(exe.clone(), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         two.open_vault(dir.path(), "pass".to_owned()).unwrap();
@@ -683,10 +679,10 @@ cut off").unwrap();
     #[test]
     #[ignore = "measurement"]
     fn measure_opening_a_vault_of_a_years_records() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let records: usize = std::env::var("OPENQUOTE_MEASURE_RECORDS").ok().and_then(|n| n.parse().ok()).unwrap_or(2000);
         let dir = shared_folder();
-        let writer = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let writer = App::new(exe.clone(), "pc01".to_owned());
         let key = writer.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         writer.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = writer.record("/changes/subject", json!({ "fields": { "name": "measured" } })).unwrap();
@@ -704,7 +700,7 @@ cut off").unwrap();
         let writing = started.elapsed();
         writer.close_vault();
 
-        let reader = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let reader = App::new(exe.clone(), "pc02".to_owned());
         let started = std::time::Instant::now();
         reader.open_vault(dir.path(), "pass".to_owned()).unwrap();
         let opening = started.elapsed();
@@ -721,9 +717,9 @@ cut off").unwrap();
 
     #[test]
     fn a_fresh_engine_rebuilds_the_same_state_from_the_files_alone() {
-        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let first = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let first = App::new(exe.clone(), "pc01".to_owned());
         let key = first.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
         first.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = first.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
@@ -749,7 +745,7 @@ cut off").unwrap();
         let before = state(&first);
         first.close_vault();
 
-        let fresh = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let fresh = App::new(exe.clone(), "pc01".to_owned());
         fresh.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert_eq!(state(&fresh), before);
     }

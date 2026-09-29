@@ -1,0 +1,9 @@
+[package]
+name = "openquote-care-test-support"
+version = "0.1.0"
+description = "Finds the engine sidecar for the tests that run it."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false

@@ -30,6 +30,7 @@ age = "0.12"
 ureq = { version = "3", default-features = false, features = ["json", "native-tls"] }
 
 [dev-dependencies]
+openquote-care-test-support = { path = "../crates/test-support" }
 tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]

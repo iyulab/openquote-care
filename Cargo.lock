@@ -3135,6 +3135,7 @@ dependencies = [
  "age",
  "getrandom 0.3.4",
  "openquote-care-engine",
+ "openquote-care-test-support",
  "openquote-care-vault",
  "serde",
  "serde_json",
@@ -3155,12 +3156,17 @@ dependencies = [
  "age",
  "base64 0.22.1",
  "getrandom 0.3.4",
+ "openquote-care-test-support",
  "openquote-care-vault",
  "serde_json",
  "tauri-kit-sidecar",
  "tempfile",
  "ureq",
 ]
+
+[[package]]
+name = "openquote-care-test-support"
+version = "0.1.0"
 
 [[package]]
 name = "openquote-care-vault"

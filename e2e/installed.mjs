@@ -65,7 +65,7 @@ async function main() {
     const summary = (tests.stdout.match(/test result: .*/g) ?? []).join(' / ')
     assert.equal(tests.status, 0, `the shell's tests pass against the bundled engine: ${summary}
 ${tests.stdout.slice(-2000)}`)
-    assert.ok(!/skipped: set OPENQUOTE_SIDECAR_EXE/.test(tests.stderr), 'no test skipped for want of the engine')
+    assert.ok(!/skipped: no engine sidecar/.test(tests.stderr), 'no test skipped for want of the engine')
     console.log(`  ✓ the shell's commands work with the bundled engine (${summary})`)
   } finally {
     if (child) {

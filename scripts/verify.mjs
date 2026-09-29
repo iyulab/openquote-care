@@ -5,7 +5,7 @@
 //   npm run verify -- --installed         and the installer: bundle, install, run, uninstall, and
 //                                         the update over the latest published version
 //
-// The sidecar is built first so the shell's tests that need it run instead of being skipped.
+// The sidecar is built first: the shell's tests that need it fail without one.
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 
