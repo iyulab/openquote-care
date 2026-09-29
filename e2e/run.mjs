@@ -445,6 +445,24 @@ const scenarios = {
     const row = await app.cdp.evaluate(`[...__e2e.one('tr[data-row=relation-peer]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual(row.slice(1), ['2 (2명)', '2 (2명)'], 'the settled session and the group session; the first student counted once')
   },
+  async 'lists the sessions of a month in an export form, ready to paste'(app) {
+    // The export form came with the vault, from the pack it was made with.
+    await app.click('button', '기록 목록')
+    await app.cdp.waitFor(`!!__e2e.one('select[aria-label="목록 양식"]')`, 'the export form offered')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 3`, 'three sessions listed')
+    await app.noAlert()
+    const rows = await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => [...tr.children].map((td) => td.textContent.trim()))`)
+    assert.deepEqual(rows.map((r) => [r[0], r[1], r[2], r[3]]), [
+      ['2026-04-02', '2026', '가상 학생 1', '1'],
+      ['2026-04-09', '2026', '가상 학생 1', '1'],
+      ['2026-04-16', '2026', '가상 학생 1, 가상 학생 2', '2'],
+    ], 'in date order, the group session once with both attendees')
+    assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
+  },
   async 'asks a second device sharing the vault to name itself'(app, work) {
     // The same vault opened as another device: this app's device id is swapped between runs.
     const idFile = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e', 'device-id')

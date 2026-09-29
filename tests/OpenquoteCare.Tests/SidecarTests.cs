@@ -212,6 +212,27 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Lays_a_month_out_as_an_export_forms_rows()
+    {
+        const string form = """
+            {"format":"openquote.export/0","export":"list","version":1,"label":"List","rows":"session","period":{"field":"date"},
+             "columns":[{"label":"date","field":"date"},{"label":"people","people":"count"},{"label":"topic","field":"topic","scheme":"topic","version":1}]}
+            """;
+        var exportFile = new Openquote.Vault.VaultFile("exports/list/v1.json", System.Text.Encoding.UTF8.GetBytes(form));
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Append(exportFile)));
+        Assert.Equal("list", summary["exports"]!.AsArray().Single()!["name"]!.GetValue<string>());
+
+        var table = await Post("/exports/run", new { export = "list", version = 1, year = 2026, month = 4 });
+
+        Assert.Equal(["date", "people", "topic"], table["columns"]!.AsArray().Select(c => c!.GetValue<string>()));
+        var rows = table["rows"]!.AsArray();
+        Assert.Equal(24, rows.Count);
+        var group = rows.Single(r => r!["record"]!.GetValue<string>() == GoldenVault.IdOf("Q25"))!;
+        Assert.Equal("3", group["cells"]![1]!.GetValue<string>());
+        Assert.Equal(rows.Select(r => r!["cells"]![0]!.GetValue<string>()).Order(StringComparer.Ordinal), rows.Select(r => r!["cells"]![0]!.GetValue<string>()));
+    }
+
+    [Fact]
     public async Task Reports_unreadable_files_when_loading()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));

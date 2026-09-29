@@ -1,0 +1,66 @@
+{
+  "format": "openquote.export/0",
+  "export": "session-list",
+  "version": 1,
+  "label": "상담 기록 목록",
+  "rows": "session",
+  "period": {
+    "field": "date"
+  },
+  "columns": [
+    {
+      "label": "상담일자",
+      "field": "date"
+    },
+    {
+      "label": "학년도",
+      "year": "date",
+      "startMonth": 3
+    },
+    {
+      "label": "대상자",
+      "person": "name",
+      "all": true
+    },
+    {
+      "label": "상담인원",
+      "people": "count"
+    },
+    {
+      "label": "학년",
+      "person": "grade"
+    },
+    {
+      "label": "반",
+      "person": "class"
+    },
+    {
+      "label": "성별",
+      "person": "gender"
+    },
+    {
+      "label": "주제(대)",
+      "field": "topic",
+      "scheme": "topic",
+      "version": 1,
+      "part": "top"
+    },
+    {
+      "label": "주제",
+      "field": "topic",
+      "scheme": "topic",
+      "version": 1
+    },
+    {
+      "label": "방법",
+      "field": "method",
+      "scheme": "method",
+      "version": 1
+    },
+    {
+      "label": "담당자",
+      "field": "practitioner",
+      "ref": "name"
+    }
+  ]
+}

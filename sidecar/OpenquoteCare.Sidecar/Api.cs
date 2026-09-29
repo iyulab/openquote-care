@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using Openquote.Classification;
+using Openquote.Exports;
 using Openquote.Records;
 using Openquote.Reports;
 using Openquote.Vault;
@@ -38,6 +39,8 @@ public sealed record CompareRequest(string Earlier, string Later);
 
 public sealed record RunRequest(string Report, int Version, int Year, int Month);
 
+public sealed record ExportRequest(string Export, int Version, int Year, int Month);
+
 // Responses. Typed rather than anonymous so the JSON contract is source-generated (SidecarJson):
 // no reflection at run time, which is what lets the sidecar be published ahead-of-time compiled.
 
@@ -48,7 +51,22 @@ public sealed record SummaryView(
     int Entities,
     int Conflicts,
     IReadOnlyList<ReportView> Reports,
+    IReadOnlyList<ExportView> Exports,
     IReadOnlyList<UnreadableView> Unreadable);
+
+public sealed record ExportView(string Name, int Version, string Label);
+
+public sealed record ExportRowView(string Record, IReadOnlyList<string> Cells);
+
+public sealed record ExportTableView(
+    string Export,
+    int Version,
+    string From,
+    string To,
+    IReadOnlyList<string> Columns,
+    IReadOnlyList<ExportRowView> Rows,
+    IReadOnlyList<string> Pending,
+    IReadOnlyList<string> Unmapped);
 
 public sealed record ReportView(string Name, int Version, string Label);
 
@@ -199,6 +217,26 @@ internal static class Api
             var file = writer.RunRecord(run);
             return Results.Ok(new RunResult(JsonNode.Parse(file.Content.Span), WireFile.From(file)));
         });
+
+        // Lays one month's records out as an export form's rows. Nothing is kept: the rows go to
+        // the person, who takes them to the outside form.
+        app.MapPost("/exports/run", (ExportRequest request, VaultSession session) =>
+        {
+            var snapshot = session.Current;
+            var export = snapshot.Content.Exports.SingleOrDefault(e => e.Name == request.Export && e.Version == request.Version);
+            if (export is null) return Results.NotFound();
+            var from = new DateOnly(request.Year, request.Month, 1);
+            var table = ExportRunner.Run(export, from, from.AddMonths(1).AddDays(-1), snapshot.Entities.Values, snapshot.Content.Catalog());
+            return Results.Ok(new ExportTableView(
+                export.Name,
+                export.Version,
+                table.From.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                table.To.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                [.. export.Columns.Select(c => c.Label)],
+                [.. table.Rows.Select(r => new ExportRowView(r.Record, r.Cells))],
+                table.Pending,
+                table.Unmapped));
+        });
     }
 
     private static Entity? Find(VaultSession session, string type, string id) =>
@@ -211,6 +249,7 @@ internal static class Api
         s.Entities.Count,
         s.Entities.Values.Count(e => e.Conflicts.Count > 0),
         [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label))],
+        [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label))],
         [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail))]);
 
     // A kept run as its record reads: the same shape /reports/run answers with.
@@ -240,6 +279,8 @@ internal static class Api
 [JsonSerializable(typeof(ResolveRequest))]
 [JsonSerializable(typeof(CompareRequest))]
 [JsonSerializable(typeof(RunRequest))]
+[JsonSerializable(typeof(ExportRequest))]
+[JsonSerializable(typeof(ExportTableView))]
 [JsonSerializable(typeof(SummaryView))]
 [JsonSerializable(typeof(EntityView[]))]
 [JsonSerializable(typeof(SchemeView[]))]

@@ -97,6 +97,11 @@ fn schemes(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn run_export(export: String, version: u32, year: i32, month: u32, app: State<App>) -> CommandResult<Value> {
+    text(app.run_export(&export, version, year, month))
+}
+
+#[tauri::command]
 fn run_report(report: String, version: u32, year: i32, month: u32, app: State<App>) -> CommandResult<Value> {
     text(app.run_report(&report, version, year, month))
 }
@@ -176,7 +181,8 @@ pub fn run() {
             runs,
             refresh,
             compare_runs,
-            run_report
+            run_report,
+            run_export,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Openquote Care");

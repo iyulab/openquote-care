@@ -5,11 +5,12 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { Latest } from './latest.js'
 import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
+import { toTsv, type ExportTable } from './export.js'
 import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
-type View = 'subjects' | 'groups' | 'report' | 'practitioners' | 'devices'
+type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
 /** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
 type Holder = { kind: 'subject'; id: string } | { kind: 'group'; id: string }
 type Problem = keyof typeof strings.problems
@@ -81,6 +82,13 @@ export class OcVault extends LitElement {
     }
     li button:focus-visible {
       outline: 2px solid var(--dc-color-accent, #4a5bd4);
+    }
+    .scroll {
+      overflow-x: auto;
+    }
+    table.export td,
+    table.export th {
+      white-space: nowrap;
     }
     fieldset.picker {
       border: none;
@@ -226,6 +234,8 @@ export class OcVault extends LitElement {
   @state() private month = lastMonth().month
   /** The report on screen: the run record of the last 산출. */
   @state() private result?: RunRecord
+  @state() private exportKey = ''
+  @state() private exportTable?: ExportTable
   @state() private evidence?: { title: string; group: Group }
   @state() private notice = ''
   /** The session whose concurrent changes are open for a person to settle. */
@@ -313,6 +323,7 @@ export class OcVault extends LitElement {
     const savedName = this.summary?.devices[this.summary.device] ?? ''
     if (this.deviceName === savedName) this.deviceName = summary.devices[summary.device] ?? ''
     this.summary = summary
+    if (!this.exportKey && summary.exports.length > 0) this.exportKey = `${summary.exports[0].name}@${summary.exports[0].version}`
     if (!this.reportKey && summary.reports.length > 0) {
       const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
       this.reportKey = `${newest.name}@${newest.version}`
@@ -450,7 +461,7 @@ export class OcVault extends LitElement {
   }
 
   render() {
-    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, practitioners: strings.practitioners, devices: strings.devices }[this.view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices }[this.view]
     const unreadable = this.summary?.unreadable.length ?? 0
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen}>
@@ -463,6 +474,7 @@ export class OcVault extends LitElement {
             { id: 'subjects', icon: '◉', label: strings.navSubjects },
             { id: 'groups', icon: '◈', label: strings.navGroups },
             { id: 'report', icon: '▦', label: strings.navReport },
+            { id: 'export', icon: '▤', label: strings.navExport },
             { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
             { id: 'devices', icon: '▣', label: strings.navDevices },
           ]}
@@ -484,7 +496,7 @@ export class OcVault extends LitElement {
         </dp-toolbar>
         <dp-page>
           ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.nameHint()} ${this.errorLine()}
-          ${{ subjects: () => this.subjectsView(), groups: () => this.groupsView(), report: () => this.reportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
+          ${{ subjects: () => this.subjectsView(), groups: () => this.groupsView(), report: () => this.reportView(), export: () => this.exportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
     `
@@ -920,6 +932,97 @@ export class OcVault extends LitElement {
       await this.load()
       await this.loadRuns()
     })
+  }
+
+  private async runExport() {
+    const [name, version] = this.exportKey.split('@')
+    if (!name) return
+    this.notice = ''
+    await this.run(async () => {
+      this.exportTable = await shell.runExport(name, Number(version), this.year, this.month)
+    })
+  }
+
+  private async copyExport(table: ExportTable) {
+    this.notice = ''
+    await this.run(async () => {
+      await navigator.clipboard.writeText(toTsv(table))
+      this.notice = strings.exportCopied(table.rows.length)
+    })
+  }
+
+  private exportView() {
+    const forms = this.summary?.exports ?? []
+    if (forms.length === 0)
+      return html`<p class="muted">${strings.noExports}</p>
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.pickPack()}>${strings.applyPack}</dc-button>
+        ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}`
+    const table = this.exportTable
+    return html`<section>
+      <p class="muted">${strings.exportLead}</p>
+      <div class="row">
+        <label>
+          ${strings.exportForm}
+          <dc-select
+            aria-label=${strings.exportForm}
+            .options=${forms.map((f) => ({ value: `${f.name}@${f.version}`, label: strings.reportFormOption(f.label, f.version) }))}
+            .value=${this.exportKey}
+            ?disabled=${this.busy}
+            @change=${(e: Event) => (this.exportKey = (e.target as HTMLSelectElement).value)}
+          ></dc-select>
+        </label>
+        <label>
+          ${strings.year}
+          <dc-input
+            type="number"
+            aria-label=${strings.year}
+            min="2000"
+            max="2100"
+            .value=${String(this.year)}
+            ?disabled=${this.busy}
+            @input=${(e: Event) => (this.year = Number((e.target as HTMLInputElement).value))}
+          ></dc-input>
+        </label>
+        <label>
+          ${strings.month}
+          <dc-select
+            aria-label=${strings.month}
+            .options=${Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: strings.monthOption(i + 1) }))}
+            .value=${String(this.month)}
+            ?disabled=${this.busy}
+            @change=${(e: Event) => (this.month = Number((e.target as HTMLSelectElement).value))}
+          ></dc-select>
+        </label>
+        <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
+        ${table && table.rows.length > 0
+          ? html`<dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`
+          : nothing}
+      </div>
+      ${this.notice ? html`<p role="status" class="muted">${this.notice}</p>` : nothing}
+      ${table ? this.exportTableView(table) : nothing}
+    </section>`
+  }
+
+  private exportTableView(table: ExportTable) {
+    const gaps = table.pending.length + table.unmapped.length
+    return html`
+      <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
+      ${gaps > 0 ? html`<p class="error" data-role="export-gaps">${strings.exportGaps(table.pending.length, table.unmapped.length)}</p>` : nothing}
+      ${table.rows.length === 0
+        ? html`<p class="muted">${strings.exportEmpty}</p>`
+        : html`<div class="scroll">
+            <table class="export">
+              <thead>
+                <tr>
+                  ${table.columns.map((c) => html`<th>${c}</th>`)}
+                </tr>
+              </thead>
+              <tbody>
+                ${table.rows.map((r) => html`<tr data-export-row=${r.record}>${r.cells.map((c) => html`<td>${c}</td>`)}</tr>`)}
+              </tbody>
+            </table>
+          </div>`}
+    `
   }
 
   private reportView() {

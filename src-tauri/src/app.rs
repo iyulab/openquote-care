@@ -204,13 +204,13 @@ impl App {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
     }
 
-    /// Adds a data pack's schemes, crosswalks and report forms to the open vault: the files it
+    /// Adds a data pack's schemes, crosswalks, report forms and export forms to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. Returns the
     /// paths added.
     pub fn apply_pack(&self, pack: &Path) -> Result<Vec<String>, AppError> {
         let definitions: Vec<PlainFile> =
-            pack_files(pack)?.into_iter().filter(|f| f.path.starts_with("schemes/") || f.path.starts_with("reports/")).collect();
+            pack_files(pack)?.into_iter().filter(|f| ["schemes/", "reports/", "exports/"].iter().any(|d| f.path.starts_with(d))).collect();
         if definitions.is_empty() {
             return Err(AppError::NotAPack);
         }
@@ -272,6 +272,11 @@ impl App {
             open.keep(file)?;
             Ok(record)
         })
+    }
+
+    /// Lays one month's records out as an export form's rows.
+    pub fn run_export(&self, export: &str, version: u32, year: i32, month: u32) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.run_export(export, version, year, month)?))
     }
 
     fn with_open<T>(&self, f: impl FnOnce(&mut OpenVault) -> Result<T, AppError>) -> Result<T, AppError> {
@@ -383,6 +388,9 @@ mod tests {
         )
         .unwrap();
         assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["name"] == "monthly-topic"));
+        let list = app.run_export("session-list", 1, 2026, 4).unwrap();
+        assert_eq!(list["rows"].as_array().unwrap().len(), 1, "the pack's export form lists the session");
+        assert_eq!(list["rows"][0]["cells"][2], "synthetic");
         let schemes = app.schemes().unwrap();
         assert!(schemes.as_array().unwrap().iter().any(|s| s["scheme"] == "topic" && s["version"] == 1));
         assert_eq!(app.entities("session").unwrap()[0]["subject"], subject_id);

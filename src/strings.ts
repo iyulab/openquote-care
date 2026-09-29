@@ -42,6 +42,7 @@ export const strings = {
   navGroups: '집단',
   navPractitioners: '담당자',
   navReport: '월 보고',
+  navExport: '기록 목록',
   navDevices: '기기',
 
   report: '월 보고',
@@ -55,6 +56,18 @@ export const strings = {
   reportPeriod: (from: string, to: string) => `기간 ${from} ~ ${to} · 산출 기록이 볼트에 남았습니다.`,
   reportRow: '분류',
   reportTotal: '계',
+
+  exportTitle: '기록 목록 내보내기',
+  exportLead: '한 달의 회기를 양식의 열 순서대로 늘어놓습니다. 표를 복사해 기관 업로드 엑셀이나 다른 양식에 붙여 넣으세요. 볼트에는 아무것도 남지 않습니다.',
+  exportForm: '목록 양식',
+  makeExport: '목록 만들기',
+  copyExport: '표 복사',
+  exportCopied: (n: number) => `${n}행과 제목 행을 복사했습니다. 엑셀에 붙여 넣으세요.`,
+  exportPeriod: (from: string, to: string, n: number) => `기간 ${from} ~ ${to} · ${n}행`,
+  exportEmpty: '이 기간에 기록한 회기가 없습니다.',
+  exportGaps: (pending: number, unmapped: number) =>
+    `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 버전에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 버전의 목록 양식을 쓰세요.`,
+  noExports: '이 볼트에는 목록 양식이 없습니다. 데이터 팩을 적용하면 생깁니다.',
   headCount: (n: number) => ` (${n}명)`,
   headCountHint: '건수 옆 괄호는 인원입니다 — 같은 사람은 한 번, 집단 상담은 참여자마다 셉니다.',
   noPractitioner: '(담당자 없음)',
