@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from '../flow.js'
+import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE, passphraseProblem } from '../flow.js'
 
 describe('createProblem', () => {
   const good = 'x'.repeat(MIN_PASSPHRASE)
@@ -11,6 +11,15 @@ describe('createProblem', () => {
   })
   it('refuses two different passphrases', () => expect(createProblem('C:/v', good, good + 'y')).toBe('passphrase-mismatch'))
   it('accepts a complete form', () => expect(createProblem('C:/v', good, good)).toBeUndefined())
+})
+
+describe('passphraseProblem', () => {
+  const good = 'x'.repeat(MIN_PASSPHRASE)
+  it('holds a new passphrase to the same rules as a new vault', () => {
+    expect(passphraseProblem('x'.repeat(MIN_PASSPHRASE - 1), '')).toBe('passphrase-short')
+    expect(passphraseProblem(good, good + 'y')).toBe('passphrase-mismatch')
+    expect(passphraseProblem(good, good)).toBeUndefined()
+  })
 })
 
 describe('groupKey', () => {

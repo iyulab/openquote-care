@@ -14,6 +14,7 @@ import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type C
 import { leftBehind, type FormEntry } from './forms.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
+import { MIN_PASSPHRASE, passphraseProblem } from './flow.js'
 
 type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
 /** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
@@ -208,6 +209,8 @@ export class OcVault extends LitElement {
 
   /** The folder the vault is in, shown under the heading. */
   @property() folder = ''
+  /** Opened with the recovery key: the person may have forgotten the passphrase. */
+  @property({ type: Boolean }) openedWithKey = false
 
 
   @state() private view: View = 'subjects'
@@ -251,6 +254,9 @@ export class OcVault extends LitElement {
   @state() private importPlan?: ImportPlan
   @state() private practitionerName = ''
   @state() private deviceName = ''
+  @state() private newPassphrase = ''
+  @state() private newPassphraseAgain = ''
+  @state() private passphraseNotice = ''
   @state() private date = today()
   @state() private topic = ''
   @state() private method = ''
@@ -466,6 +472,23 @@ export class OcVault extends LitElement {
     })
   }
 
+  private async changePassphrase() {
+    this.passphraseNotice = ''
+    const problem = passphraseProblem(this.newPassphrase, this.newPassphraseAgain)
+    if (problem) {
+      const words = strings.problems[problem]
+      this.error = { text: typeof words === 'function' ? words(MIN_PASSPHRASE) : words }
+      return
+    }
+    await this.run(async () => {
+      await shell.changePassphrase(this.newPassphrase)
+      this.newPassphrase = ''
+      this.newPassphraseAgain = ''
+      this.openedWithKey = false
+      this.passphraseNotice = strings.passphraseChanged
+    })
+  }
+
   /** How a device reads to a person: its name, and which one is this computer. */
   private deviceLabel(device: string) {
     const name = this.summary?.devices[device]
@@ -563,11 +586,20 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page>
-          ${this.unreadableView()} ${this.nameHint()} ${this.errorLine()}
+          ${this.unreadableView()} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           ${{ subjects: () => this.subjectsView(), groups: () => this.groupsView(), report: () => this.reportView(), export: () => this.exportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
     `
+  }
+
+  /** Opened with the recovery key: offer a new passphrase, in case the old one is forgotten. */
+  private keyHint() {
+    if (!this.openedWithKey || this.view === 'devices') return nothing
+    return html`<p class="row muted" role="status" data-role="key-hint">
+      ${strings.openedWithKey}
+      <dc-button variant="ghost" size="sm" @click=${() => (this.view = 'devices')}>${strings.goChangePassphrase}</dc-button>
+    </p>`
   }
 
   /** Other devices already named themselves in this vault, but this one has no name yet. */
@@ -592,6 +624,20 @@ export class OcVault extends LitElement {
     return html`<label>
       ${label}
       <dc-input
+        aria-label=${label}
+        .value=${value}
+        ?disabled=${this.busy}
+        @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
+        @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && !this.busy && submit()}
+      ></dc-input>
+    </label>`
+  }
+
+  private passphraseInput(label: string, value: string, set: (v: string) => void, submit: () => void) {
+    return html`<label>
+      ${label}
+      <dc-input
+        type="password"
         aria-label=${label}
         .value=${value}
         ?disabled=${this.busy}
@@ -1388,6 +1434,7 @@ export class OcVault extends LitElement {
 
   private devicesView() {
     const save = () => void this.saveDeviceName()
+    const change = () => void this.changePassphrase()
     const named = Object.keys(this.summary?.devices ?? {}).sort((a, b) => this.deviceLabel(a).localeCompare(this.deviceLabel(b)))
     return html`<section>
       <p class="muted">${strings.devicesLead}</p>
@@ -1415,6 +1462,16 @@ export class OcVault extends LitElement {
         </label>
       </div>
       <p class="muted">${strings.idleLockLead}</p>
+      <h3>${strings.changePassphrase}</h3>
+      ${this.openedWithKey ? html`<p class="muted" role="status">${strings.openedWithKey}</p>` : nothing}
+      <p class="muted">${strings.changePassphraseLead}</p>
+      <div class="row" data-role="change-passphrase">
+        ${this.passphraseInput(strings.newPassphrase, this.newPassphrase, (v) => (this.newPassphrase = v), change)}
+        ${this.passphraseInput(strings.newPassphraseAgain, this.newPassphraseAgain, (v) => (this.newPassphraseAgain = v), change)}
+        <dc-button variant="secondary" ?disabled=${this.busy} @click=${change}>${strings.changePassphrase}</dc-button>
+      </div>
+      <p class="muted">${strings.passphraseHint(MIN_PASSPHRASE)}</p>
+      ${this.passphraseNotice ? html`<p role="status" class="muted" data-role="passphrase-changed">${this.passphraseNotice}</p>` : nothing}
     </section>`
   }
 

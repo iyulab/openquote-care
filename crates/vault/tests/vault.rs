@@ -100,6 +100,36 @@ fn another_vaults_recovery_key_is_refused() {
 }
 
 #[test]
+fn a_new_passphrase_replaces_the_old_one_and_leaves_records_and_kit_alone() {
+    let dir = tempfile::tempdir().unwrap();
+    let (vault, kit) = Vault::create(dir.path(), pass("leaked")).unwrap();
+    vault.write_new("subjects/s1/0001.dev1.json", RECORD).unwrap();
+    let record_before = fs::read(dir.path().join("subjects/s1/0001.dev1.json.age")).unwrap();
+
+    vault.change_passphrase(pass("fresh")).unwrap();
+
+    assert!(matches!(Vault::unlock(dir.path(), pass("leaked")), Err(VaultError::WrongPassphrase)));
+    let reopened = Vault::unlock(dir.path(), pass("fresh")).unwrap();
+    assert_eq!(reopened.read_all().unwrap().files[0].1, RECORD);
+    assert_eq!(fs::read(dir.path().join("subjects/s1/0001.dev1.json.age")).unwrap(), record_before);
+    assert!(Vault::recover(dir.path(), kit.secret_key()).is_ok(), "the kit still opens the vault");
+    let keys: Vec<_> = fs::read_dir(dir.path().join("keys")).unwrap().map(|e| e.unwrap().file_name()).collect();
+    assert_eq!(keys, ["vault-key.age"], "no second key file and no temporary file is left");
+}
+
+#[test]
+fn a_vault_opened_with_its_kit_gets_a_passphrase_again() {
+    let dir = tempfile::tempdir().unwrap();
+    let (vault, kit) = Vault::create(dir.path(), pass("forgotten")).unwrap();
+    vault.write_new("subjects/s1/0001.dev1.json", RECORD).unwrap();
+    fs::remove_file(dir.path().join(KEY_FILE)).unwrap();
+
+    Vault::recover(dir.path(), kit.secret_key()).unwrap().change_passphrase(pass("remembered")).unwrap();
+
+    assert_eq!(Vault::unlock(dir.path(), pass("remembered")).unwrap().read_all().unwrap().files[0].1, RECORD);
+}
+
+#[test]
 fn nothing_is_ever_replaced() {
     let dir = tempfile::tempdir().unwrap();
     let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();

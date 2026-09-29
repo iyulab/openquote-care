@@ -6,14 +6,20 @@ export const MIN_PASSPHRASE = 8
 /** How many trailing characters of the vault key a person types back; matches the shell. */
 export const KIT_TAIL = 6
 
-export type CreateProblem = 'no-folder' | 'passphrase-short' | 'passphrase-mismatch'
+export type PassphraseProblem = 'passphrase-short' | 'passphrase-mismatch'
+export type CreateProblem = 'no-folder' | PassphraseProblem
+
+/** Why a new passphrase, typed twice, cannot be taken yet, or undefined when it can. */
+export function passphraseProblem(passphrase: string, again: string): PassphraseProblem | undefined {
+  if ([...passphrase].length < MIN_PASSPHRASE) return 'passphrase-short'
+  if (passphrase !== again) return 'passphrase-mismatch'
+  return undefined
+}
 
 /** Why the create form cannot be sent yet, or undefined when it can. */
 export function createProblem(folder: string | undefined, passphrase: string, again: string): CreateProblem | undefined {
   if (!folder) return 'no-folder'
-  if ([...passphrase].length < MIN_PASSPHRASE) return 'passphrase-short'
-  if (passphrase !== again) return 'passphrase-mismatch'
-  return undefined
+  return passphraseProblem(passphrase, again)
 }
 
 /**

@@ -6,7 +6,8 @@
 //! with a passphrase; the recovery kit is the unwrapped key, shown once when the vault is created.
 //!
 //! Plaintext never touches the disk: files are encrypted in memory and then written with
-//! create-new semantics, so an existing file is never replaced.
+//! create-new semantics, so an existing file is never replaced. The one exception is the key
+//! file, which [`Vault::change_passphrase`] replaces atomically.
 //!
 //! [age]: https://age-encryption.org/v1
 
@@ -171,12 +172,7 @@ impl Vault {
             return Err(VaultError::AlreadyExists);
         }
         let identity = x25519::Identity::generate();
-
-        let mut wrap = scrypt::Recipient::new(passphrase);
-        wrap.set_work_factor(WORK_FACTOR);
-        let key_file = age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes())
-            .map_err(|e| VaultError::Io(io::Error::other(e)))?;
-
+        let key_file = wrap_key(&identity, passphrase)?;
         Ok(NewVault { root: root.to_path_buf(), identity, key_file })
     }
 
@@ -211,6 +207,20 @@ impl Vault {
             return Err(VaultError::RecoveryKeyMismatch);
         }
         Ok(vault)
+    }
+
+    /// Wraps the vault key with a new passphrase and replaces the key file with it, so the old
+    /// passphrase stops opening the vault on every device sharing the folder. The key itself does
+    /// not change: record files stay as they are and the recovery kit stays valid. Also restores a
+    /// lost key file for a vault unlocked with its recovery key.
+    ///
+    /// The key file is the one file a vault replaces: keeping the old wrapping beside a new one
+    /// would leave the old passphrase working. The replacement is atomic — a crash leaves either
+    /// the old or the new key file.
+    pub fn change_passphrase(&self, passphrase: SecretString) -> Result<(), VaultError> {
+        let key_file = wrap_key(&self.identity, passphrase)?;
+        tauri_kit_fs::write_atomic(&self.root.join(KEY_FILE), key_file.as_bytes())?;
+        Ok(())
     }
 
     /// The vault key's public half, to which every record file is encrypted.
@@ -304,6 +314,13 @@ impl Vault {
 /// declaration, not the key, and not a sync client's or editor's stray file.
 fn is_record_file(relative: &Path) -> bool {
     relative.extension().is_some_and(|e| e == "age") && !relative.starts_with("keys")
+}
+
+/// The key file's content: the vault key wrapped with `passphrase`, ASCII-armored.
+fn wrap_key(identity: &x25519::Identity, passphrase: SecretString) -> Result<String, VaultError> {
+    let mut wrap = scrypt::Recipient::new(passphrase);
+    wrap.set_work_factor(WORK_FACTOR);
+    age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes()).map_err(|e| VaultError::Io(io::Error::other(e)))
 }
 
 fn check_declaration(root: &Path) -> Result<(), VaultError> {

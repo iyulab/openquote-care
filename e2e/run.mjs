@@ -26,6 +26,7 @@ const sidecar = resolve(
 )
 const PORT = 9224
 const PASSPHRASE = '상담 기록 볼트 2026'
+const NEW_PASSPHRASE = '새 볼트 암호 2026'
 
 /** In-page helpers: queries that pierce shadow roots, and element boxes for real clicks. */
 const HELPERS = `window.__e2e = {
@@ -231,7 +232,7 @@ const scenarios = {
     await app.alert('패스프레이즈가 맞지 않습니다.')
   },
 
-  async 'opens the vault with the recovery key when the passphrase is forgotten'(app, work) {
+  async 'opens the vault with the recovery key when the passphrase is forgotten, and sets a new one'(app, work) {
     await app.click('dc-button', '패스프레이즈를 잊었나요? 복구 키 입력')
     await app.type('복구 키', 'AGE-SECRET-KEY-1NOTTHEKEY')
     await app.click('dc-button', '열기')
@@ -242,12 +243,43 @@ const scenarios = {
     await app.vaultOpen()
     await app.noAlert()
 
-    await app.click('dc-button', '볼트 닫기')
-    await app.heading('Openquote Care')
-    await app.click('dc-button', '볼트 열기')
-    await app.heading('볼트 열기')
-    assert.equal(await app.cdp.evaluate(`!!__e2e.one('input[aria-label="패스프레이즈"]')`), true, 'the passphrase is asked again by default')
-    await app.pickFolder(work.vault)
+    // Opened with the kit, the window offers a new passphrase; the new one replaces the old.
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=key-hint]')`, 'the offer of a new passphrase')
+    await app.click('dc-button', '새 패스프레이즈 정하기')
+    await app.type('새 패스프레이즈', NEW_PASSPHRASE)
+    await app.type('새 패스프레이즈 다시 입력', NEW_PASSPHRASE + '!')
+    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.alert('두 패스프레이즈가 다릅니다.')
+    await app.type('새 패스프레이즈 다시 입력', NEW_PASSPHRASE)
+    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=key-hint]')`), false, 'the offer is gone once taken')
+
+    const reopen = async (passphrase) => {
+      await app.click('dc-button', '볼트 닫기')
+      await app.heading('Openquote Care')
+      await app.click('dc-button', '볼트 열기')
+      await app.heading('볼트 열기')
+      assert.equal(await app.cdp.evaluate(`!!__e2e.one('input[aria-label="패스프레이즈"]')`), true, 'the passphrase is asked again by default')
+      await app.pickFolder(work.vault)
+      if (!passphrase) return
+      await app.type('패스프레이즈', passphrase)
+      await app.click('dc-button', '열기')
+    }
+    await reopen(PASSPHRASE)
+    await app.alert('패스프레이즈가 맞지 않습니다.')
+    await app.type('패스프레이즈', NEW_PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.noAlert()
+
+    // Changed back while open with a passphrase, for the scenarios that follow.
+    await app.click('button', '기기')
+    await app.type('새 패스프레이즈', PASSPHRASE)
+    await app.type('새 패스프레이즈 다시 입력', PASSPHRASE)
+    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed back')
+    await reopen()
   },
 
   async 'opens the vault again with its passphrase'(app, work) {

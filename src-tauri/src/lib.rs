@@ -52,6 +52,11 @@ fn open_vault_with_key(folder: String, recovery_key: String, app: State<App>) ->
 }
 
 #[tauri::command]
+fn change_passphrase(passphrase: String, app: State<App>) -> CommandResult<()> {
+    text(app.change_passphrase(passphrase))
+}
+
+#[tauri::command]
 fn close_vault(app: State<App>) {
     app.close_vault();
 }
@@ -177,6 +182,7 @@ pub fn run() {
             confirm_recovery_kit,
             open_vault,
             open_vault_with_key,
+            change_passphrase,
             close_vault,
             record,
             entities,

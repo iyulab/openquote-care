@@ -10,7 +10,7 @@ A desktop app (Tauri 2 shell in Rust, a .NET engine sidecar, a Lit UI) built on 
 
 ## Rules
 
-- A vault file, once written, is never modified; the shell encrypts every record file (age) and the engine sees plaintext only.
+- A record file, once written, is never modified (the wrapped key file is the one exception, replaced atomically when the passphrase changes); the shell encrypts every record file (age) and the engine sees plaintext only.
 - Record content, file paths and identifying information never leave the device without the person's permission.
 - Public text describes observable behaviour and the conditions that trigger it — never where or how an issue was found.
 

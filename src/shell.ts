@@ -27,6 +27,8 @@ export const shell = {
   openVault: (folder: string, passphrase: string) => invoke<VaultSummary>('open_vault', { folder, passphrase }),
   /** Opens with the recovery key from the kit, for a forgotten passphrase. */
   openVaultWithKey: (folder: string, recoveryKey: string) => invoke<VaultSummary>('open_vault_with_key', { folder, recoveryKey }),
+  /** Sets a new passphrase for the open vault; the old one stops opening it on every device. */
+  changePassphrase: (passphrase: string) => invoke<void>('change_passphrase', { passphrase }),
   closeVault: () => invoke<void>('close_vault'),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
   record: (route: string, request: object) => invoke<string>('record', { route, request }),

@@ -37,7 +37,7 @@ Closing or locking the vault drops the shell's open-vault state, which stops the
 
 A vault is an ordinary folder. Its layout and file formats are specified by the engine: see the [vault format](https://github.com/iyulab/openquote/blob/main/docs/format.md).
 
-- **Every change is a new file.** Adding a subject, recording a session, correcting a field, reclassifying a value or running a report each creates one new file. Files are written with create-new semantics (an atomic write that fails rather than replace an existing file). The app never edits or deletes a file it wrote.
+- **Every change is a new file.** Adding a subject, recording a session, correcting a field, reclassifying a value or running a report each creates one new file. Files are written with create-new semantics (an atomic write that fails rather than replace an existing file). The app never edits or deletes a record file it wrote; the one file it replaces is the wrapped key, when the passphrase changes (below).
 - **Current state is derived.** The engine merges all change files into the current records each time the vault is loaded. Nothing derived is written back to the vault or anywhere else.
 - **File names carry the device.** Each change file is named `<id>.<device>.json`, with a time-ordered id, so two computers writing into the same folder never pick the same name.
 - **A subject is a folder.** Everything recorded about one subject alone lives under `subjects/<subject-id>/`, so handing a subject over means copying that folder.
@@ -68,8 +68,9 @@ Encryption is done by the shell (`crates/vault`) with [age](https://age-encrypti
 - **The vault key.** Each vault has one age X25519 key. Every record file is encrypted on its own to that key and stored as `<name>.age`. Plaintext is encrypted in memory before it is written; it never touches the disk.
 - **The passphrase.** The vault key is stored in the vault as `keys/vault-key.age`, wrapped with the passphrase using age's scrypt mode at a fixed cost (work factor 18), so a vault made on a fast computer still opens in reasonable time on a slow one. A key file demanding more than work factor 20 is refused as damaged. New passphrases must be at least 8 characters.
 - **The recovery kit.** When a vault is created, the app shows the unwrapped vault key (`AGE-SECRET-KEY-1…`) in groups for copying by hand, with instructions for opening files without the app. Nothing is written to the folder until the person types back the last 6 characters of the key. Until then the new vault exists only in memory: every other command is refused, and abandoning the screen leaves the folder untouched.
-- **Opening with the recovery key.** When the passphrase is forgotten, the open screen takes the recovery key instead, typed as the kit shows it (groups and letter case do not matter). The key is checked against a record file before the vault opens; the passphrase itself stays as it was.
+- **Opening with the recovery key.** When the passphrase is forgotten, the open screen takes the recovery key instead, typed as the kit shows it (groups and letter case do not matter). The key is checked against a record file before the vault opens; the passphrase itself stays as it was until the person sets a new one, which the window offers right after opening this way.
 - **Opening without the app.** With the recovery key saved to a file, the standard `age` tool decrypts any record file (`age -d -i key.txt <file>.age`) into the JSON the format document describes. `vault.json` is plaintext, since it has to be read before the vault is unlocked.
+- **Changing the passphrase.** In an open vault, the person can set a new passphrase (the same rules as a new vault's). The shell wraps the same vault key with it and replaces `keys/vault-key.age` in one atomic step, so the old passphrase stops opening the vault on every computer sharing the folder. Record files and the recovery kit are untouched. Keeping the old key file beside a new one would leave the old passphrase working, which is why this is the one file the app replaces. If two computers change the passphrase at nearly the same time, the last replacement wins; the recovery kit still opens the vault either way. A vault opened with the recovery key after its key file was lost gets a key file again this way.
 - **Idle lock and lock now.** The person can lock the vault at any moment, and the window locks it on its own after a chosen period with no keyboard or mouse use in the window (off, 5, 10, 15, 30 or 60 minutes; 10 by default). This is a setting of the computer, not of the vault. Locking closes the vault exactly as closing does: the shell drops the vault key and stops the sidecar, which discards its copy of every record. The window then asks for the passphrase again for the same folder. Input that was not yet recorded is lost.
 
 Every vault the app creates is encrypted. A vault whose declaration says it is not encrypted is refused when opening; the app has no unencrypted mode.
@@ -110,7 +111,6 @@ npm run build:sidecar && npm run build:e2e && npm run test:e2e
 
 The following are not implemented in the current code:
 
-- changing the passphrase
 - recording which pack version a vault was filled from
 - deleting records on request, and retention reminders
 - classification suggestions

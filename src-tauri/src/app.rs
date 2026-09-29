@@ -193,6 +193,12 @@ impl App {
         Ok(summary)
     }
 
+    /// Sets a new passphrase for the open vault. The old one stops opening it on every device
+    /// sharing the folder; the recovery kit and the records stay as they are.
+    pub fn change_passphrase(&self, passphrase: String) -> Result<(), AppError> {
+        self.with_open(|open| Ok(open.vault.change_passphrase(SecretString::from(passphrase))?))
+    }
+
     /// Closes the vault and stops the engine.
     pub fn close_vault(&self) {
         *self.stage.lock().unwrap() = Stage::Closed;
@@ -442,6 +448,26 @@ mod tests {
         let wrong = app.open_vault_with_key(dir.path(), other.recovery_kit().secret_key()).unwrap_err();
         assert_eq!(wrong.code(), "recovery-key");
         assert_eq!(app.open_vault_with_key(dir.path(), "not a key").unwrap_err().code(), "recovery-key");
+    }
+
+    #[test]
+    fn a_vault_opened_with_its_recovery_key_takes_a_new_passphrase() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "forgotten".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        app.close_vault();
+
+        app.open_vault_with_key(dir.path(), &key).unwrap();
+        app.change_passphrase("remembered".to_owned()).unwrap();
+        app.close_vault();
+
+        assert_eq!(app.open_vault(dir.path(), "forgotten".to_owned()).unwrap_err().code(), "wrong-passphrase");
+        app.open_vault(dir.path(), "remembered".to_owned()).unwrap();
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+        app.close_vault();
+        assert_eq!(app.change_passphrase("x".to_owned()).unwrap_err().code(), "no-vault");
     }
 
     #[test]
