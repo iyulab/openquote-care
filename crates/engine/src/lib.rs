@@ -142,9 +142,15 @@ impl Engine {
         json!({ "files": files.iter().map(PlainFile::to_wire).collect::<Vec<_>>() })
     }
 
-    /// Replaces the engine's view of the vault with `files`. Returns the engine's summary.
-    pub fn load(&self, files: &[PlainFile]) -> Result<Value, EngineError> {
-        self.call("POST", "/vault/load", Some(Self::files(files)))
+    /// Replaces the engine's view of the vault with `files`, listing `undecryptable` — files present
+    /// but not decrypted — with the ones it cannot use. Returns the engine's summary.
+    pub fn load(&self, files: &[PlainFile], undecryptable: &[UndecryptableFile]) -> Result<Value, EngineError> {
+        let mut body = Self::files(files);
+        body["undecryptable"] = undecryptable
+            .iter()
+            .map(|f| json!({ "path": f.path, "plain": f.plain_path, "detail": f.reason }))
+            .collect();
+        self.call("POST", "/vault/load", Some(body))
     }
 
     /// Hands the engine files that were just created in the vault.
@@ -212,21 +218,12 @@ pub struct OpenVault {
     pub summary: Value,
 }
 
-/// Adds the files the vault could not decrypt to the engine's `unreadable` list, so a person sees
-/// them next to the files the engine could not use (reason `Undecryptable`).
-fn with_undecryptable(mut summary: Value, undecryptable: &[UndecryptableFile]) -> Value {
-    if let Some(list) = summary.get_mut("unreadable").and_then(Value::as_array_mut) {
-        list.extend(undecryptable.iter().map(|f| serde_json::json!({ "path": f.path, "reason": "Undecryptable", "detail": f.reason })));
-    }
-    summary
-}
-
 impl OpenVault {
     /// Decrypts every record file of `vault` and hands them to `engine`.
     pub fn open(vault: Vault, engine: Engine) -> Result<OpenVault, EngineError> {
         let contents = vault.read_all()?;
         let files: Vec<PlainFile> = contents.files.into_iter().map(|(path, content)| PlainFile { path, content }).collect();
-        let summary = with_undecryptable(engine.load(&files)?, &contents.undecryptable);
+        let summary = engine.load(&files, &contents.undecryptable)?;
         Ok(OpenVault { vault, engine, undecryptable: contents.undecryptable, summary })
     }
 
@@ -236,13 +233,13 @@ impl OpenVault {
         let contents = self.vault.read_all()?;
         let files: Vec<PlainFile> = contents.files.into_iter().map(|(path, content)| PlainFile { path, content }).collect();
         self.undecryptable = contents.undecryptable;
-        self.summary = with_undecryptable(self.engine.load(&files)?, &self.undecryptable);
+        self.summary = self.engine.load(&files, &self.undecryptable)?;
         Ok(self.summary.clone())
     }
 
     /// The engine's current summary, with the files the vault could not decrypt.
     pub fn current_summary(&self) -> Result<Value, EngineError> {
-        Ok(with_undecryptable(self.engine.summary()?, &self.undecryptable))
+        self.engine.summary()
     }
 
     /// Creates `file` in the vault (encrypted, never replacing anything) and, once it is on disk,
@@ -257,7 +254,7 @@ impl OpenVault {
         for file in &files {
             self.vault.write_new(&file.path, &file.content)?;
         }
-        let summary = with_undecryptable(self.engine.add(&files)?, &self.undecryptable);
+        let summary = self.engine.add(&files)?;
         self.summary = summary.clone();
         Ok(summary)
     }

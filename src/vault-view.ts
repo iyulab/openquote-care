@@ -12,10 +12,9 @@ import { atSession, headingOf } from './subject-fields.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from './subject-import.js'
 import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { leftBehind, type FormEntry } from './forms.js'
-import { shell, type VaultSummary } from './shell.js'
+import { shell, type VaultFileKind, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 import { MIN_PASSPHRASE, passphraseProblem } from './flow.js'
-import { fileKind } from './files.js'
 
 type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
 /** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
@@ -1206,15 +1205,16 @@ export class OcVault extends LitElement {
   private unreadableView() {
     const files = this.summary?.unreadable ?? []
     if (files.length === 0) return nothing
-    const names = {
-      subjects: new Map(this.subjects.map((s) => [s.id, text(s, 'name')])),
-      groups: new Map(this.groups.map((g) => [g.id, text(g, 'name')])),
+    const holders = {
+      subject: new Map(this.subjects.map((s) => [s.id, text(s, 'name')])),
+      group: new Map(this.groups.map((g) => [g.id, text(g, 'name')])),
     }
+    const holder = (k: VaultFileKind) => ((k.kind === 'subject' || k.kind === 'group') && k.id && holders[k.kind].get(k.id)) || undefined
     return html`<details class="unreadable" data-role="unreadable">
       <summary><span class="error">${strings.unreadable(files.length)}</span></summary>
       <ul>
         ${files.map((f) => {
-          const what = strings.unreadableWhat(fileKind(f.path, names))
+          const what = strings.unreadableWhat(f.kind, holder(f.kind))
           return html`<li data-reason=${f.reason}>
             ${what ? html`<span data-role="what">${what}</span> — ` : nothing}${strings.unreadableReason[f.reason] ?? f.detail}
             <br /><code class="muted">${f.path}</code>

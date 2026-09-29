@@ -5,10 +5,23 @@ import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry } from './forms.js'
 
+/** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
+export interface VaultFileKind {
+  kind: 'subject' | 'group' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'run' | 'other'
+  /** The subject's or group's id. */
+  id?: string | null
+  /** The scheme, report form or export form. */
+  name?: string | null
+  version?: number | null
+  from?: number | null
+  to?: number | null
+  year?: number | null
+}
+
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
-  unreadable: { path: string; reason: string; detail: string }[]
+  unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
   reports: FormEntry[]
   exports: FormEntry[]
   /** Scheme versions no crosswalk leads to from an earlier version. */

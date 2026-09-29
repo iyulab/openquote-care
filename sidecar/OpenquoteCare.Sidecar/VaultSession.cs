@@ -11,15 +11,20 @@ internal sealed class VaultSession
 {
     private readonly Lock _gate = new();
     private readonly Dictionary<string, VaultFile> _files = new(StringComparer.Ordinal);
+    private IReadOnlyList<UndecryptableFile> _undecryptable = [];
     private Snapshot? _snapshot;
 
-    internal sealed record Snapshot(VaultContent Content, IReadOnlyDictionary<EntityRef, Entity> Entities);
+    internal sealed record Snapshot(
+        VaultContent Content,
+        IReadOnlyDictionary<EntityRef, Entity> Entities,
+        IReadOnlyList<UndecryptableFile> Undecryptable);
 
-    /// <summary>Replaces the whole vault.</summary>
-    public Snapshot Load(IEnumerable<VaultFile> files)
+    /// <summary>Replaces the whole vault, with the files the host could not decrypt.</summary>
+    public Snapshot Load(IEnumerable<VaultFile> files, IReadOnlyList<UndecryptableFile> undecryptable)
     {
         lock (_gate)
         {
+            _undecryptable = undecryptable;
             _files.Clear();
             foreach (var f in files) _files[f.Path] = f;
             return Rebuild();
@@ -50,6 +55,6 @@ internal sealed class VaultSession
     private Snapshot Rebuild()
     {
         var content = VaultReader.Read(_files.Values);
-        return _snapshot = new Snapshot(content, EntityMerger.Merge(content.Changes));
+        return _snapshot = new Snapshot(content, EntityMerger.Merge(content.Changes), _undecryptable);
     }
 }

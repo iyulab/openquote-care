@@ -1,5 +1,5 @@
 // Every user-facing string lives here, so a change of UI language touches one file.
-import type { FileKind } from './files.js'
+import type { VaultFileKind } from './shell.js'
 
 export const strings = {
   appName: 'Openquote Care',
@@ -41,24 +41,25 @@ export const strings = {
   kitConfirm: '확인',
 
   unreadable: (n: number) => `읽지 못한 파일 ${n}개 — 다른 기기에서 쓰는 중이거나 손상되었을 수 있습니다.`,
-  unreadableWhat: (f: FileKind): string | undefined => {
+  /** What an unreadable file held; `holder` is the subject's or group's name when the vault knows it. */
+  unreadableWhat: (f: VaultFileKind, holder?: string): string | undefined => {
     switch (f.kind) {
       case 'subject':
-        return f.name ? `대상자 ${f.name}의 기록` : '이름을 읽지 못한 대상자의 기록'
+        return holder ? `대상자 ${holder}의 기록` : '이름을 읽지 못한 대상자의 기록'
       case 'group':
-        return f.name ? `집단 ${f.name}의 기록` : '이름을 읽지 못한 집단의 기록'
+        return holder ? `집단 ${holder}의 기록` : '이름을 읽지 못한 집단의 기록'
       case 'practitioners':
         return '담당자 기록'
       case 'devices':
         return '기기 이름 기록'
       case 'scheme':
-        return `분류 ${f.scheme} ${f.version}판`
+        return `분류 ${f.name} ${f.version}판`
       case 'crosswalk':
-        return `분류 ${f.scheme} ${f.from}판→${f.to}판 연계표`
+        return `분류 ${f.name} ${f.from}판→${f.to}판 연계표`
       case 'report':
-        return `보고 양식 ${f.report} ${f.version}판`
+        return `보고 양식 ${f.name} ${f.version}판`
       case 'export':
-        return `내보내기 양식 ${f.form} ${f.version}판`
+        return `내보내기 양식 ${f.name} ${f.version}판`
       case 'run':
         return `${f.year}년 보고 산출 기록`
       case 'other':

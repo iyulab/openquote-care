@@ -270,7 +270,29 @@ public sealed class SidecarTests : IAsyncLifetime
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));
 
-        Assert.Equal(2, summary["unreadable"]!.AsArray().Count);
+        var unreadable = summary["unreadable"]!.AsArray();
+        Assert.Equal(2, unreadable.Count);
+        Assert.All(unreadable, u => Assert.NotNull(u!["kind"]!["kind"]));
+    }
+
+    [Fact]
+    public async Task Lists_the_files_the_host_could_not_decrypt_with_what_they_were_for_and_keeps_them_listed()
+    {
+        var files = GoldenVault.Through(1).Select(f => new { path = f.Path, content = Convert.ToBase64String(f.Content.Span) });
+        var undecryptable = new[] { new { path = "schemes/topic/v2.json.age", plain = "schemes/topic/v2.json", detail = "no identity matched" } };
+        var loaded = await Post("/vault/load", new { files, undecryptable });
+
+        var listed = Assert.Single(loaded["unreadable"]!.AsArray())!;
+        Assert.Equal("schemes/topic/v2.json.age", listed["path"]!.GetValue<string>());
+        Assert.Equal("Undecryptable", listed["reason"]!.GetValue<string>());
+        Assert.Equal("scheme", listed["kind"]!["kind"]!.GetValue<string>());
+        Assert.Equal("topic", listed["kind"]!["name"]!.GetValue<string>());
+        Assert.Equal(2, listed["kind"]!["version"]!.GetValue<int>());
+
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "new subject" } });
+        var added = await Post("/vault/add", new { files = new[] { subjectFile } });
+        Assert.Single(added["unreadable"]!.AsArray());
+        Assert.Single((await Get("/summary"))["unreadable"]!.AsArray());
     }
 
     [Fact]

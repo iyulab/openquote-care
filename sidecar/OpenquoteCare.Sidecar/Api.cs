@@ -18,7 +18,11 @@ public sealed record WireFile(string Path, string Content)
     internal static WireFile From(VaultFile f) => new(f.Path, Convert.ToBase64String(f.Content.Span));
 }
 
-public sealed record FilesRequest(IReadOnlyList<WireFile> Files);
+/// <param name="Undecryptable">On load: files the host found but could not decrypt, listed with the rest.</param>
+public sealed record FilesRequest(IReadOnlyList<WireFile> Files, IReadOnlyList<UndecryptableFile>? Undecryptable = null);
+
+/// <summary>A file the host could not decrypt: its path on disk, the vault path it would hold, and why.</summary>
+public sealed record UndecryptableFile(string Path, string Plain, string Detail);
 
 public sealed record CreateSubjectRequest(Dictionary<string, JsonNode?> Fields);
 
@@ -77,7 +81,8 @@ public sealed record ExportTableView(
 
 public sealed record ReportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
 
-public sealed record UnreadableView(string Path, string Reason, string Detail);
+/// <summary>A file that could not be used: why, and what it was for (read from its path).</summary>
+public sealed record UnreadableView(string Path, string Reason, string Detail, VaultFileKind Kind);
 
 public sealed record EntityView(
     string Type,
@@ -123,7 +128,7 @@ internal static class Api
         var writer = new VaultWriter(device, clock);
 
         app.MapPost("/vault/load", (FilesRequest request, VaultSession session) =>
-            Summary(device, session.Load(request.Files.Select(f => f.ToVaultFile()))));
+            Summary(device, session.Load(request.Files.Select(f => f.ToVaultFile()), request.Undecryptable ?? [])));
 
         app.MapPost("/vault/add", (FilesRequest request, VaultSession session) =>
         {
@@ -264,7 +269,9 @@ internal static class Api
             [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest)))],
             Unlinked(s.Content),
-            [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail))]);
+            [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail, u.Kind))
+                .Concat(s.Undecryptable.Select(u => new UnreadableView(u.Path, "Undecryptable", u.Detail, VaultFileKind.Of(u.Plain))))
+                .OrderBy(u => u.Path, StringComparer.Ordinal)]);
     }
 
     // Values are carried to a new version only through crosswalks; a version none leads to — even one

@@ -131,6 +131,8 @@ impl NewVault {
 pub struct UndecryptableFile {
     /// Path relative to the vault root, with `/` separators.
     pub path: String,
+    /// The vault path it would hold once decrypted (`path` without the encrypted extension).
+    pub plain_path: String,
     /// What went wrong.
     pub reason: String,
 }
@@ -276,7 +278,7 @@ impl Vault {
             };
             match age::decrypt(&self.identity, &fs::read(&path)?) {
                 Ok(bytes) => contents.files.push((plain_name.to_owned(), bytes)),
-                Err(e) => contents.undecryptable.push(UndecryptableFile { path: relative.clone(), reason: e.to_string() }),
+                Err(e) => contents.undecryptable.push(UndecryptableFile { path: relative.clone(), plain_path: plain_name.to_owned(), reason: e.to_string() }),
             }
         }
         contents.files.sort_by(|a, b| a.0.cmp(&b.0));

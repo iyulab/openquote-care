@@ -120,6 +120,7 @@ fn record_report_close_reopen_same_numbers() {
     let listed: Vec<_> = summary["unreadable"].as_array().unwrap().iter().filter(|u| u["reason"] == "Undecryptable").collect();
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0]["path"], "practitioners/01900000-0000-7000-8000-00000000abcd.pc02.json.age");
+    assert_eq!(listed[0]["kind"]["kind"], "practitioners", "named by what it was for");
     assert_eq!(reopened.current_summary().unwrap()["unreadable"], summary["unreadable"]);
     fs::remove_file(&cut).unwrap();
     reopened.reload().unwrap();
