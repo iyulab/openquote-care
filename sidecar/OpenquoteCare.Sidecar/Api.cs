@@ -56,6 +56,8 @@ public sealed record EntityView(
     string Type,
     string Id,
     string? Subject,
+    string? Group,
+    IReadOnlyList<string> People,
     IReadOnlyDictionary<string, JsonElement> Fields,
     IReadOnlyDictionary<string, IReadOnlyList<HeadView>> Conflicts);
 
@@ -210,6 +212,8 @@ internal static class Api
         e.Reference.Type,
         e.Reference.Id,
         e.Subject,
+        e.Group,
+        e.People,
         e.Fields,
         e.Conflicts.ToDictionary(
             c => c.Key,

@@ -146,6 +146,21 @@ fn folders_that_are_not_encrypted_vaults_are_refused() {
     let plain = tempfile::tempdir().unwrap();
     fs::write(plain.path().join(VAULT_FILE), r#"{ "format": "openquote.vault/0", "encryption": "none" }"#).unwrap();
     assert!(matches!(Vault::unlock(plain.path(), pass("p")), Err(VaultError::NotEncrypted)));
+
+    let other = tempfile::tempdir().unwrap();
+    fs::write(other.path().join(VAULT_FILE), r#"{ "format": "something-else/0", "encryption": "age" }"#).unwrap();
+    assert!(matches!(Vault::unlock(other.path(), pass("p")), Err(VaultError::NotAVault)));
+}
+
+#[test]
+fn a_vault_in_a_newer_format_is_refused_as_newer_not_as_foreign() {
+    let newer = tempfile::tempdir().unwrap();
+    fs::write(newer.path().join(VAULT_FILE), "{
+  \"format\": \"openquote.vault/1\",
+  \"encryption\": \"age\"
+}
+").unwrap();
+    assert!(matches!(Vault::unlock(newer.path(), pass("p")), Err(VaultError::NewerFormat)));
 }
 
 /// Opens a record file with an independent age implementation, when one is available:

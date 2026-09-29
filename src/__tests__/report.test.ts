@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comparable, lastMonth, layOut, placesOf, type KeptRun, type RunRecord } from '../report.js'
+import { comparable, headCount, lastMonth, layOut, placesOf, type KeptRun, type RunRecord } from '../report.js'
 import type { Entity, Scheme } from '../records.js'
 
 const topic: Scheme = {
@@ -12,7 +12,7 @@ const topic: Scheme = {
     { code: 'learning', label: '학습', parent: null, suggest: true },
   ],
 }
-const person = (id: string, name: string): Entity => ({ type: 'practitioner', id, subject: null, fields: { name }, conflicts: {} })
+const person = (id: string, name: string): Entity => ({ type: 'practitioner', id, subject: null, group: null, people: [], fields: { name }, conflicts: {} })
 const run: RunRecord = {
   id: '5',
   at: '2026-05-02T09:00:00+09:00',
@@ -51,6 +51,24 @@ describe('layOut', () => {
   })
   it('balances: placed + pending + unmapped = total', () => {
     expect(table.placed + table.pending.count + table.unmapped.count).toBe(table.total.count)
+  })
+})
+
+describe('headCount', () => {
+  it('counts each person once and every attendee of a group session', () => {
+    const withPeople: RunRecord = { ...run, people: { a: ['s1'], b: ['s1', 's2', 's3'], c: ['s2'], d: ['s4'], e: [], f: ['s5'] } }
+    expect(headCount(withPeople, ['a', 'b'])).toBe(3)
+    expect(headCount(withPeople, withPeople.total.records)).toBe(5)
+    expect(headCount(withPeople, ['e'])).toBe(0)
+  })
+  it('is unknown for a run kept before people were counted', () => {
+    expect(headCount(run, ['a'])).toBeNull()
+  })
+  it('gives the table every record behind its row and column totals', () => {
+    const table = layOut(run, [topic], [person('p2', '나'), person('p1', '가')], '(없음)')
+    expect(table.rows[0].records).toEqual(['a', 'b', 'd'])
+    expect(table.columnRecords).toEqual([['c'], ['a', 'b'], ['d']])
+    expect(table.placedRecords.sort()).toEqual(['a', 'b', 'c', 'd'])
   })
 })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -46,7 +46,7 @@ describe('labelOf', () => {
 })
 
 describe('newestFirst', () => {
-  const session = (id: string, date: string): Entity => ({ type: 'session', id, subject: 's', fields: { date }, conflicts: {} })
+  const session = (id: string, date: string): Entity => ({ type: 'session', id, subject: 's', group: null, people: ['s'], fields: { date }, conflicts: {} })
   it('orders by the written date, then by id', () => {
     const sorted = newestFirst([session('1', '2026-04-01'), session('3', '2026-04-02'), session('2', '2026-04-02')])
     expect(sorted.map((s) => s.id)).toEqual(['3', '2', '1'])
@@ -65,7 +65,7 @@ describe('definitionOf', () => {
 describe('classifiedField', () => {
   it('finds the field holding a value of the scheme', () => {
     const e: Entity = {
-      type: 'session', id: '1', subject: 's', conflicts: {},
+      type: 'session', id: '1', subject: 's', group: null, people: ['s'], conflicts: {},
       fields: { date: '2026-04-01', topic: { scheme: 'topic', version: 1, code: 'relation' }, method: { scheme: 'method', version: 1, code: 'phone' } },
     }
     expect(classifiedField(e, 'topic')).toEqual(['topic', { scheme: 'topic', version: 1, code: 'relation' }])
@@ -77,7 +77,7 @@ describe('conflictsOf', () => {
   it('lists each concurrently changed field with its values by device', () => {
     const topic = (code: string) => ({ scheme: 'topic', version: 1, code })
     const e: Entity = {
-      type: 'session', id: '1', subject: 's', fields: { topic: topic('learning') },
+      type: 'session', id: '1', subject: 's', group: null, people: ['s'], fields: { topic: topic('learning') },
       conflicts: { topic: [{ changeId: 'b', device: 'pc02', value: topic('learning') }, { changeId: 'a', device: 'pc01', value: topic('anxiety') }] },
     }
     expect(conflictsOf(e)).toEqual([
@@ -90,5 +90,15 @@ describe('conflictsOf', () => {
 describe('today', () => {
   it('is the local calendar date', () => {
     expect(today(new Date(2026, 3, 2, 23, 59))).toBe('2026-04-02')
+  })
+})
+
+describe('namesOf', () => {
+  it('names a session\'s subject, or every attendee of a group session', () => {
+    const names = new Map([['s1', '가'], ['s2', '나']])
+    const one: Entity = { type: 'session', id: '1', subject: 's1', group: null, people: ['s1'], fields: {}, conflicts: {} }
+    const group: Entity = { type: 'session', id: '2', subject: null, group: 'g', people: ['s1', 's2', 'gone'], fields: {}, conflicts: {} }
+    expect(namesOf(one, names)).toBe('가')
+    expect(namesOf(group, names)).toBe('가, 나')
   })
 })

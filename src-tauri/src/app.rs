@@ -58,6 +58,7 @@ impl AppError {
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
+                VaultError::NewerFormat => "newer-format",
                 VaultError::NotEncrypted => "not-encrypted",
                 VaultError::WrongPassphrase => "wrong-passphrase",
                 VaultError::DamagedKeyFile => "damaged-key-file",

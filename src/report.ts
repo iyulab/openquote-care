@@ -13,6 +13,8 @@ export interface RunRecord {
   pending: Group
   unmapped: Group
   total: Group
+  /** For every record in the total, the subjects it is about. Absent from runs kept before people were counted. */
+  people?: Record<string, string[]>
 }
 
 export interface Group {
@@ -32,14 +34,19 @@ export interface Row {
   /** One per column, in the columns' order. */
   cells: Group[]
   total: number
+  /** Every record in the row, for its head count. */
+  records: string[]
 }
 
 export interface Table {
   columns: Column[]
   rows: Row[]
   columnTotals: number[]
+  /** Every record in each column, in the columns' order, for their head counts. */
+  columnRecords: string[][]
   /** What the cells add up to: records placed in a row. */
   placed: number
+  placedRecords: string[]
   pending: Group
   unmapped: Group
   total: Group
@@ -74,18 +81,29 @@ export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[
   }
   const rows = rowList.map(({ code, label }) => {
     const cells = columns.map((c) => cellAt(code, c.id))
-    return { code, label, cells, total: cells.reduce((n, c) => n + c.count, 0) }
+    return { code, label, cells, total: cells.reduce((n, c) => n + c.count, 0), records: cells.flatMap((c) => c.records) }
   })
   const columnTotals = columns.map((_, i) => rows.reduce((n, r) => n + r.cells[i].count, 0))
   return {
     columns,
     rows,
     columnTotals,
+    columnRecords: columns.map((_, i) => rows.flatMap((r) => r.cells[i].records)),
     placed: columnTotals.reduce((n, c) => n + c, 0),
+    placedRecords: rows.flatMap((r) => r.records),
     pending: run.pending,
     unmapped: run.unmapped,
     total: run.total,
   }
+}
+
+/**
+ * How many different people `records` are about — a group session counts each attendee, and a
+ * person seen twice counts once. Null when the run did not record people.
+ */
+export function headCount(run: RunRecord, records: string[]): number | null {
+  if (!run.people) return null
+  return new Set(records.flatMap((r) => run.people?.[r] ?? [])).size
 }
 
 /** A kept run, as the engine lists them. */

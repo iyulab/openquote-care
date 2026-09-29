@@ -45,6 +45,9 @@ pub enum VaultError {
     AlreadyExists,
     /// The folder has no vault declaration, or one this version does not understand.
     NotAVault,
+    /// The folder holds a vault in a newer format than this version reads. Opening it anyway
+    /// could miscount what this version does not know about, so it is refused.
+    NewerFormat,
     /// The vault is declared unencrypted; it has no key to unlock.
     NotEncrypted,
     /// The passphrase does not unwrap the vault key.
@@ -66,6 +69,7 @@ impl fmt::Display for VaultError {
         match self {
             Self::AlreadyExists => f.write_str("the folder already holds a vault"),
             Self::NotAVault => f.write_str("the folder holds no vault this version can open"),
+            Self::NewerFormat => f.write_str("the vault is in a newer format than this version reads"),
             Self::NotEncrypted => f.write_str("the vault is not encrypted"),
             Self::WrongPassphrase => f.write_str("the passphrase does not open this vault"),
             Self::DamagedKeyFile => f.write_str("the vault key file is damaged"),
@@ -308,13 +312,24 @@ fn check_declaration(root: &Path) -> Result<(), VaultError> {
         _ => VaultError::Io(e),
     })?;
     let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
-    if !compact.contains("\"format\":\"openquote.vault/0\"") {
-        return Err(VaultError::NotAVault);
+    match declared_version(&compact) {
+        Some(FORMAT_VERSION) => {}
+        Some(v) if v > FORMAT_VERSION => return Err(VaultError::NewerFormat),
+        _ => return Err(VaultError::NotAVault),
     }
     if !compact.contains("\"encryption\":\"age\"") {
         return Err(VaultError::NotEncrypted);
     }
     Ok(())
+}
+
+/// The vault format version this build reads and writes.
+const FORMAT_VERSION: u32 = 0;
+
+/// The `N` of `"format":"openquote.vault/N"` in a declaration with whitespace removed.
+fn declared_version(compact: &str) -> Option<u32> {
+    let rest = &compact[compact.find("\"format\":\"openquote.vault/")? + "\"format\":\"openquote.vault/".len()..];
+    rest[..rest.find('"')?].parse().ok()
 }
 
 fn write_new(path: &Path, content: &[u8]) -> Result<(), VaultError> {

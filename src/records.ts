@@ -11,8 +11,12 @@ export interface Classified {
 export interface Entity {
   type: string
   id: string
-  /** The subject whose folder holds it; null for a practitioner. */
+  /** The subject whose folder holds it; null for a practitioner or anything a group holds. */
   subject: string | null
+  /** The group whose folder holds it (a group session, say); null otherwise. */
+  group: string | null
+  /** The subjects it is about: its subject, or a group session's attendees. */
+  people: string[]
   fields: Record<string, unknown>
   /** Fields two devices changed without seeing each other: every value is kept. */
   conflicts: Record<string, FieldHead[]>
@@ -133,4 +137,9 @@ export function definitionOf(path: string): Definition | undefined {
 export function today(now = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+}
+
+/** Who a session is about, by name: its subject, or a group session's attendees. */
+export function namesOf(session: Entity, names: Map<string, string>): string {
+  return session.people.map((id) => names.get(id) ?? '').filter((n) => n !== '').join(', ')
 }

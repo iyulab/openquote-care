@@ -4,8 +4,8 @@ import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { Latest } from './latest.js'
-import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
-import { comparable, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
+import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
+import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type Comparison, type Group, type KeptRun, type Place, type RunRecord } from './report.js'
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
@@ -123,6 +123,9 @@ export class OcVault extends LitElement {
     .num {
       text-align: right;
       font-variant-numeric: tabular-nums;
+    }
+    .people {
+      color: var(--dc-color-text-muted, #666);
     }
     tbody th {
       font-weight: 400;
@@ -463,7 +466,7 @@ export class OcVault extends LitElement {
   }
 
   private subjectDetail(subject: Entity) {
-    const sessions = newestFirst(this.sessions.filter((s) => s.subject === subject.id))
+    const sessions = newestFirst(this.sessions.filter((s) => s.people.includes(subject.id)))
     const names = new Map(this.practitioners.map((p) => [p.id, text(p, 'name')]))
     return html`
       <h2>${strings.sessions(text(subject, 'name'))}</h2>
@@ -689,7 +692,7 @@ export class OcVault extends LitElement {
                   const session = byId.get(id)
                   return html`<tr data-change=${kind} data-id=${id}>
                     <td>${date(id)}</td>
-                    <td>${session ? (subjectNames.get(session.subject ?? '') ?? '') : ''}</td>
+                    <td>${session ? namesOf(session, subjectNames) : ''}</td>
                     <td>${strings.changeKind[kind]}</td>
                     <td>${this.placeText(c.earlier, before.get(id))}</td>
                     <td>${this.placeText(c.later, after.get(id))}</td>
@@ -850,7 +853,7 @@ export class OcVault extends LitElement {
             const done = this.reclassified.has(session.id)
             return html`<tr data-pending=${session.id}>
               <td>${text(session, 'date')}</td>
-              <td>${subjectNames.get(session.subject ?? '') ?? ''}</td>
+              <td>${namesOf(session, subjectNames)}</td>
               <td>${labelOf(this.schemes, c.was)}</td>
               <td>
                 ${done
@@ -886,10 +889,15 @@ export class OcVault extends LitElement {
 
   private reportTable(result: RunRecord) {
     const table = layOut(result, this.schemes, this.practitioners, strings.noPractitioner)
+    // The head count beside a record count, when the run recorded people.
+    const people = (records: string[]) => {
+      const n = records.length === 0 ? null : headCount(result, records)
+      return n === null ? nothing : html`<span class="people" data-role="people">${strings.headCount(n)}</span>`
+    }
     const count = (title: string, group: Group) =>
       group.count === 0
         ? html`<td class="num">0</td>`
-        : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(title, group)}>${group.count}</button></td>`
+        : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(title, group)}>${group.count}</button>${people(group.records)}</td>`
     return html`
       <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
       <table class="groups">
@@ -898,7 +906,7 @@ export class OcVault extends LitElement {
             <th>${strings.pending}</th>
             ${table.pending.count === 0
               ? html`<td class="num">0</td>`
-              : html`<td class="num"><button class="cell" @click=${() => void this.showPending(result)}>${table.pending.count}</button></td>`}
+              : html`<td class="num"><button class="cell" @click=${() => void this.showPending(result)}>${table.pending.count}</button>${people(table.pending.records)}</td>`}
             <td class="muted">${strings.pendingHint}</td>
           </tr>
           <tr data-group="unmapped">
@@ -926,18 +934,19 @@ export class OcVault extends LitElement {
             (r) => html`<tr data-row=${r.code}>
               <th>${r.label}</th>
               ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
-              <td class="num">${r.total}</td>
+              <td class="num">${r.total}${people(r.records)}</td>
             </tr>`,
           )}
         </tbody>
         <tfoot>
           <tr>
             <th>${strings.reportTotal}</th>
-            ${table.columnTotals.map((n) => html`<td class="num">${n}</td>`)}
-            <td class="num" data-role="placed">${table.placed}</td>
+            ${table.columnTotals.map((n, i) => html`<td class="num">${n}${people(table.columnRecords[i])}</td>`)}
+            <td class="num" data-role="placed">${table.placed}${people(table.placedRecords)}</td>
           </tr>
         </tfoot>
       </table>
+      ${result.people ? html`<p class="muted" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
       ${this.compareControls(result)}
       ${this.comparison
         ? this.comparisonView(this.comparison)
@@ -967,7 +976,7 @@ export class OcVault extends LitElement {
           ${rows.map(
             (s) => html`<tr data-evidence=${s.id}>
               <td>${text(s, 'date')}</td>
-              <td>${subjectNames.get(s.subject ?? '') ?? ''}</td>
+              <td>${namesOf(s, subjectNames)}</td>
               <td>${labelOf(this.schemes, s.fields.topic)}</td>
             </tr>`,
           )}

@@ -177,6 +177,21 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_group_session_names_its_group_and_everyone_who_took_part()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        var sessions = (await Get("/entities/session")).AsArray();
+
+        var group = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.IdOf("Q25"))!;
+        Assert.Equal(GoldenVault.IdOf("G01"), group["group"]!.GetValue<string>());
+        Assert.Null(group["subject"]);
+        Assert.Equal(3, group["people"]!.AsArray().Count);
+        var alone = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.IdOf("Q01"))!;
+        Assert.Equal([alone["subject"]!.GetValue<string>()], alone["people"]!.AsArray().Select(p => p!.GetValue<string>()));
+    }
+
+    [Fact]
     public async Task Reports_unreadable_files_when_loading()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));
