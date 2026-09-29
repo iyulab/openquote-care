@@ -719,6 +719,41 @@ cut off").unwrap();
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../tests/golden/steps/{step}"))
     }
 
+    #[test]
+    fn a_fresh_engine_rebuilds_the_same_state_from_the_files_alone() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let first = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let key = first.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        first.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = first.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap().to_owned();
+        let session = first
+            .record("/changes/in-subject", json!({ "subjectId": subject_id, "type": "session",
+                     "fields": { "date": "2026-04-02", "topic": { "scheme": "topic", "version": 1, "code": "relation" } } }))
+            .unwrap();
+        let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
+        first.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "date": "2026-04-03" } })).unwrap();
+        first.record("/changes/group", json!({ "fields": { "name": "peers", "members": [subject_id] } })).unwrap();
+        first.apply_pack(&golden_step(2)).unwrap();
+        first.run_report("monthly-topic", 2, 2026, 4).unwrap();
+        let state = |app: &App| {
+            json!({
+                "subjects": app.entities("subject").unwrap(),
+                "sessions": app.entities("session").unwrap(),
+                "groups": app.entities("group").unwrap(),
+                "summary": app.summary().unwrap(),
+                "runs": app.runs().unwrap(),
+            })
+        };
+        let before = state(&first);
+        first.close_vault();
+
+        let fresh = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        fresh.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        assert_eq!(state(&fresh), before);
+    }
+
     /// Every file in the vault but the wrapped key (the one file a vault replaces), by its path.
     fn vault_files(root: &Path) -> std::collections::BTreeMap<String, Vec<u8>> {
         fn walk(root: &Path, dir: &Path, out: &mut std::collections::BTreeMap<String, Vec<u8>>) {
