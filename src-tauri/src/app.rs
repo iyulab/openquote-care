@@ -360,6 +360,15 @@ mod tests {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../packs/care-kr")
     }
 
+    /// A folder for the tests where two devices share a vault. `OPENQUOTE_SHARED_TEST_ROOT` puts it
+    /// under a network share (for example `\\localhost\share`) so they run over SMB, not only a local disk.
+    fn shared_folder() -> tempfile::TempDir {
+        match std::env::var_os("OPENQUOTE_SHARED_TEST_ROOT") {
+            Some(root) => tempfile::tempdir_in(root).unwrap(),
+            None => tempfile::tempdir().unwrap(),
+        }
+    }
+
     #[test]
     fn a_new_vault_cannot_be_used_until_its_recovery_kit_is_confirmed() {
         let Some(app) = app() else { return };
@@ -490,7 +499,7 @@ mod tests {
     #[test]
     fn two_devices_sharing_a_folder_see_each_others_records() {
         let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
-        let dir = tempfile::tempdir().unwrap();
+        let dir = shared_folder();
         let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
         let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
@@ -526,7 +535,7 @@ mod tests {
     #[test]
     fn a_field_two_devices_changed_unseen_shows_both_values_until_a_person_picks_one() {
         let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
-        let dir = tempfile::tempdir().unwrap();
+        let dir = shared_folder();
         let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
         let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
         let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
@@ -576,9 +585,52 @@ mod tests {
     }
 
     #[test]
+    fn two_devices_writing_at_the_same_time_lose_nothing() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let dir = shared_folder();
+        let one = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let two = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        two.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap().to_owned();
+        two.refresh().unwrap();
+
+        const EACH: usize = 20;
+        let write = |app: &App, day: u32| {
+            (0..EACH)
+                .map(|_| {
+                    app.record(
+                        "/changes/in-subject",
+                        json!({ "subjectId": subject_id, "type": "session",
+                                "fields": { "date": format!("2026-04-{day:02}"), "topic": { "scheme": "topic", "version": 1, "code": "family" } } }),
+                    )
+                    .unwrap()
+                })
+                .collect::<Vec<_>>()
+        };
+        let (a, b) = std::thread::scope(|s| {
+            let a = s.spawn(|| write(&one, 2));
+            let b = s.spawn(|| write(&two, 3));
+            (a.join().unwrap(), b.join().unwrap())
+        });
+        let mut names: Vec<_> = a.iter().chain(&b).cloned().collect();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), 2 * EACH, "every write made its own file");
+
+        for app in [&one, &two] {
+            app.refresh().unwrap();
+            assert_eq!(app.entities("session").unwrap().as_array().unwrap().len(), 2 * EACH);
+            assert_eq!(app.run_report("monthly-topic", 1, 2026, 4).unwrap()["total"]["count"], 2 * EACH);
+        }
+    }
+
+    #[test]
     fn the_app_hears_when_another_device_writes_to_its_vault() {
         let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
-        let dir = tempfile::tempdir().unwrap();
+        let dir = shared_folder();
         let (tx, rx) = std::sync::mpsc::channel();
         let tx = Mutex::new(tx);
         let one = App::new(PathBuf::from(&exe), "pc01".to_owned()).on_outside_change(move || {

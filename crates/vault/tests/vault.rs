@@ -8,6 +8,15 @@ fn pass(p: &str) -> SecretString {
     SecretString::from(p.to_owned())
 }
 
+/// A folder for a vault that the tests treat as shared. `OPENQUOTE_SHARED_TEST_ROOT` puts it under
+/// a network share (for example `\\localhost\share`) so the file-system guarantees are checked over SMB too.
+fn shared_folder() -> tempfile::TempDir {
+    match std::env::var_os("OPENQUOTE_SHARED_TEST_ROOT") {
+        Some(root) => tempfile::tempdir_in(root).unwrap(),
+        None => tempfile::tempdir().unwrap(),
+    }
+}
+
 const RECORD: &[u8] = br#"{"format":"openquote.change/0","fields":{"marker":"PLAINTEXT-MARKER-7f3a"}}"#;
 
 fn all_bytes_under(root: &Path) -> Vec<(String, Vec<u8>)> {
@@ -138,6 +147,37 @@ fn nothing_is_ever_replaced() {
     assert!(matches!(vault.write_new("practitioners/0001.dev1.json", b"other"), Err(VaultError::AlreadyExists)));
     assert!(matches!(Vault::create(dir.path(), pass("p")), Err(VaultError::AlreadyExists)));
     assert_eq!(vault.read_all().unwrap().files[0].1, RECORD);
+}
+
+#[test]
+fn of_writers_racing_for_one_name_exactly_one_wins_and_its_content_stays_whole() {
+    let dir = shared_folder();
+    let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();
+    const WRITERS: usize = 8;
+    for round in 0..20 {
+        let name = format!("sessions/{round:04}.dev1.json");
+        let contents: Vec<Vec<u8>> = (0..WRITERS).map(|w| format!("{{\"writer\":{w},\"pad\":\"{}\"}}", "x".repeat(64 * 1024)).into_bytes()).collect();
+        let barrier = std::sync::Barrier::new(WRITERS);
+        let results: Vec<_> = std::thread::scope(|s| {
+            let handles: Vec<_> = contents
+                .iter()
+                .map(|c| {
+                    let (vault, name, barrier) = (&vault, &name, &barrier);
+                    s.spawn(move || {
+                        barrier.wait();
+                        vault.write_new(name, c)
+                    })
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+        let winners: Vec<_> = results.iter().enumerate().filter(|(_, r)| r.is_ok()).map(|(w, _)| w).collect();
+        assert_eq!(winners.len(), 1, "round {round}: {results:?}");
+        assert!(results.iter().all(|r| matches!(r, Ok(()) | Err(VaultError::AlreadyExists))), "round {round}: {results:?}");
+        let files = vault.read_all().unwrap().files;
+        let written = files.iter().find(|(path, _)| *path == name).map(|(_, c)| c).unwrap();
+        assert_eq!(written, &contents[winners[0]], "round {round}: the file holds the winner's content, whole");
+    }
 }
 
 #[test]
