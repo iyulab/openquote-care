@@ -198,15 +198,19 @@ impl Vault {
     }
 
     /// Unlocks the vault in `root` with its recovery key, for when the passphrase is forgotten or
-    /// the key file is lost. The key is checked against an existing record file when there is one.
+    /// the key file is lost. The key is checked against the record files: it is refused only when
+    /// a readable file was encrypted to another key. Damaged files are passed over, since recovery
+    /// is exactly when some may be — a vault with no readable file accepts the key.
     pub fn recover(root: &Path, secret_key: &str) -> Result<Vault, VaultError> {
         check_declaration(root)?;
         let identity = x25519::Identity::from_str(secret_key.trim()).map_err(|_| VaultError::InvalidRecoveryKey)?;
         let vault = Vault::with_identity(root, identity);
-        if let Some(sample) = first_encrypted_file(root)?
-            && age::decrypt(&vault.identity, &fs::read(&sample)?).is_err()
-        {
-            return Err(VaultError::RecoveryKeyMismatch);
+        for file in encrypted_files(root)? {
+            match key_opens(&vault.identity, &fs::read(&file)?) {
+                Some(true) => break,
+                Some(false) => return Err(VaultError::RecoveryKeyMismatch),
+                None => continue,
+            }
         }
         Ok(vault)
     }
@@ -374,14 +378,28 @@ fn collect_files(dir: &Path, into: &mut Vec<PathBuf>) -> io::Result<()> {
     Ok(())
 }
 
-fn first_encrypted_file(root: &Path) -> io::Result<Option<PathBuf>> {
+/// The vault's encrypted record files (not the key file), in path order.
+fn encrypted_files(root: &Path) -> io::Result<Vec<PathBuf>> {
     let mut paths = Vec::new();
     collect_files(root, &mut paths)?;
-    paths.sort();
-    Ok(paths.into_iter().find(|p| {
+    paths.retain(|p| {
         let relative = relative_path(root, p);
         !relative.starts_with("keys/") && relative.ends_with(ENCRYPTED_EXTENSION)
-    }))
+    });
+    paths.sort();
+    Ok(paths)
+}
+
+/// Whether `identity` is the key an age file was encrypted to, judged from its header alone:
+/// `Some(false)` when the header is sound but names another key, `None` when the header cannot be
+/// read. A file cut off after its header still answers.
+fn key_opens(identity: &x25519::Identity, file: &[u8]) -> Option<bool> {
+    let decryptor = age::Decryptor::new(file).ok()?;
+    match decryptor.decrypt(std::iter::once(identity as &dyn age::Identity)) {
+        Ok(_) => Some(true),
+        Err(age::DecryptError::NoMatchingKeys) => Some(false),
+        Err(_) => None,
+    }
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {

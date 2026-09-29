@@ -97,6 +97,27 @@ fn the_recovery_kit_opens_the_vault_without_passphrase_or_key_file() {
 }
 
 #[test]
+fn a_damaged_record_file_does_not_make_the_right_recovery_key_look_wrong() {
+    let dir = tempfile::tempdir().unwrap();
+    let other = tempfile::tempdir().unwrap();
+    let (vault, kit) = Vault::create(dir.path(), pass("forgotten")).unwrap();
+    // Files that sort before the rest: the first with a garbage header, the next cut off mid-copy.
+    vault.write_new("devices/pc01.json", RECORD).unwrap();
+    vault.write_new("groups/g1/0001.dev1.json", RECORD).unwrap();
+    vault.write_new("subjects/s1/0001.dev1.json", RECORD).unwrap();
+    fs::write(dir.path().join("devices/pc01.json.age"), b"not an age file").unwrap();
+    let cut = dir.path().join("groups/g1/0001.dev1.json.age");
+    let bytes = fs::read(&cut).unwrap();
+    fs::write(&cut, &bytes[..bytes.len() - 20]).unwrap();
+    fs::remove_file(dir.path().join(KEY_FILE)).unwrap();
+    let (_, other_kit) = Vault::create(other.path(), pass("other")).unwrap();
+
+    let recovered = Vault::recover(dir.path(), kit.secret_key()).unwrap();
+    assert!(recovered.read_all().unwrap().files.iter().any(|(path, content)| path == "subjects/s1/0001.dev1.json" && content == RECORD));
+    assert!(matches!(Vault::recover(dir.path(), other_kit.secret_key()), Err(VaultError::RecoveryKeyMismatch)));
+}
+
+#[test]
 fn another_vaults_recovery_key_is_refused() {
     let a = tempfile::tempdir().unwrap();
     let b = tempfile::tempdir().unwrap();
