@@ -655,6 +655,44 @@ mod tests {
         assert!(rx.recv_timeout(std::time::Duration::from_millis(1500)).is_err(), "a closed vault is no longer watched");
     }
 
+    /// Not a check but a measurement: writes `OPENQUOTE_MEASURE_RECORDS` sessions (default 2000, about a
+    /// year of one counselor's work), then times opening the vault in a fresh engine process, which
+    /// is the first build of its cache. Run with `cargo test --release -- --ignored --nocapture measure`.
+    #[test]
+    #[ignore = "measurement"]
+    fn measure_opening_a_vault_of_a_years_records() {
+        let Some(exe) = std::env::var_os("OPENQUOTE_SIDECAR_EXE") else { return };
+        let records: usize = std::env::var("OPENQUOTE_MEASURE_RECORDS").ok().and_then(|n| n.parse().ok()).unwrap_or(2000);
+        let dir = shared_folder();
+        let writer = App::new(PathBuf::from(&exe), "pc01".to_owned());
+        let key = writer.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        writer.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = writer.record("/changes/subject", json!({ "fields": { "name": "measured" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap().to_owned();
+        let started = std::time::Instant::now();
+        for i in 0..records {
+            writer
+                .record(
+                    "/changes/in-subject",
+                    json!({ "subjectId": subject_id, "type": "session",
+                            "fields": { "date": format!("2026-{:02}-{:02}", i % 12 + 1, i % 28 + 1), "topic": { "scheme": "topic", "version": 1, "code": "family" } } }),
+                )
+                .unwrap();
+        }
+        let writing = started.elapsed();
+        writer.close_vault();
+
+        let reader = App::new(PathBuf::from(&exe), "pc02".to_owned());
+        let started = std::time::Instant::now();
+        reader.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        let opening = started.elapsed();
+        assert_eq!(reader.entities("session").unwrap().as_array().unwrap().len(), records);
+        let started = std::time::Instant::now();
+        reader.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        let report = started.elapsed();
+        eprintln!("measure: {records} sessions · writing {writing:.2?} ({:.1?}/record) · opening with first cache build {opening:.2?} · one monthly report {report:.2?}", writing / records as u32);
+    }
+
     fn golden_step(step: u32) -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../tests/golden/steps/{step}"))
     }
