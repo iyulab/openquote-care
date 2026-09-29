@@ -192,6 +192,26 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Records_a_group_and_a_session_it_holds()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(0)));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        var groupFile = await Post("/changes/group", new { fields = new { name = "a group" } });
+        await Post("/vault/add", new { files = new[] { subjectFile, groupFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        var groupId = groupFile["path"]!.GetValue<string>().Split('/')[1];
+        Assert.StartsWith("groups/", groupFile["path"]!.GetValue<string>(), StringComparison.Ordinal);
+
+        var sessionFile = await Post("/changes/in-group", new { groupId, type = "session", fields = new { date = "2026-04-01", attendees = new[] { subjectId } } });
+        await Post("/vault/add", new { files = new[] { sessionFile } });
+
+        var session = (await Get("/entities/session")).AsArray().Single()!;
+        Assert.Equal(groupId, session["group"]!.GetValue<string>());
+        Assert.Equal(subjectId, session["people"]!.AsArray().Single()!.GetValue<string>());
+        Assert.Single((await Get("/entities/group")).AsArray());
+    }
+
+    [Fact]
     public async Task Reports_unreadable_files_when_loading()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));

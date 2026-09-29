@@ -414,6 +414,37 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'records a group session once and counts each person who took part'(app, work) {
+    await app.type('대상자 이름', '가상 학생 2')
+    await app.click('dc-button', '대상자 추가')
+    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.textContent.trim() === '가상 학생 2')`, 'the second subject')
+
+    await app.click('button', '집단')
+    await app.type('집단 이름', '또래 집단')
+    await app.click('dc-button', '집단 추가')
+    await app.cdp.waitFor(`__e2e.all('[data-role=members] input[data-subject]').length === 2`, 'the members to pick from')
+    await app.cdp.evaluate(`(() => { for (const box of __e2e.all('[data-role=members] input[data-subject]')) box.click(); return true })()`)
+    await app.click('dc-button', '구성원 저장')
+    await app.cdp.waitFor(`__e2e.all('input[data-subject]').filter((b) => b.checked).length === 4`, 'members saved, and offered as the attendees')
+
+    await app.setDate('날짜', '2026-04-16')
+    await app.choose('주제', 'relation-peer')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
+    await app.noAlert()
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    const groups = await readdir(join(work.vault, 'groups'))
+    assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
+    assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
+
+    await app.click('button', '월 보고')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`__e2e.one('tr[data-group=total]')?.children[1].textContent.trim() === '3 (2명)'`, 'one more session, one more person')
+    const row = await app.cdp.evaluate(`[...__e2e.one('tr[data-row=relation-peer]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(row.slice(1), ['2 (2명)', '2 (2명)'], 'the settled session and the group session; the first student counted once')
+  },
   async 'asks a second device sharing the vault to name itself'(app, work) {
     // The same vault opened as another device: this app's device id is swapped between runs.
     const idFile = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e', 'device-id')

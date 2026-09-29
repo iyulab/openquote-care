@@ -24,6 +24,8 @@ public sealed record CreateSubjectRequest(Dictionary<string, JsonNode?> Fields);
 
 public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dictionary<string, JsonNode?> Fields);
 
+public sealed record CreateInGroupRequest(string GroupId, string Type, Dictionary<string, JsonNode?> Fields);
+
 public sealed record DeviceNameRequest(string Name);
 
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
@@ -163,6 +165,12 @@ internal static class Api
         app.MapPost("/changes/in-subject", (CreateInSubjectRequest request) =>
             WireFile.From(writer.CreateInSubject(request.SubjectId, request.Type, request.Fields)));
 
+        app.MapPost("/changes/group", (CreateSubjectRequest request) =>
+            WireFile.From(writer.CreateGroup(request.Fields)));
+
+        app.MapPost("/changes/in-group", (CreateInGroupRequest request) =>
+            WireFile.From(writer.CreateInGroup(request.GroupId, request.Type, request.Fields)));
+
         // Names this device: renames the device entity it made, or makes one.
         app.MapPost("/changes/device-name", (DeviceNameRequest request, VaultSession session) =>
         {
@@ -225,6 +233,7 @@ internal static class Api
 [JsonSerializable(typeof(FilesRequest))]
 [JsonSerializable(typeof(CreateSubjectRequest))]
 [JsonSerializable(typeof(CreateInSubjectRequest))]
+[JsonSerializable(typeof(CreateInGroupRequest))]
 [JsonSerializable(typeof(DeviceNameRequest))]
 [JsonSerializable(typeof(UpdateRequest))]
 [JsonSerializable(typeof(ReclassifyRequest))]

@@ -9,7 +9,9 @@ import { comparable, headCount, lastMonth, layOut, placesOf, rowSchemeOf, type C
 import { shell, type VaultSummary } from './shell.js'
 import { strings } from './strings.js'
 
-type View = 'subjects' | 'report' | 'practitioners' | 'devices'
+type View = 'subjects' | 'groups' | 'report' | 'practitioners' | 'devices'
+/** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
+type Holder = { kind: 'subject'; id: string } | { kind: 'group'; id: string }
 type Problem = keyof typeof strings.problems
 
 /** An open vault: its subjects and their sessions, and the practitioners sessions are kept by. */
@@ -79,6 +81,29 @@ export class OcVault extends LitElement {
     }
     li button:focus-visible {
       outline: 2px solid var(--dc-color-accent, #4a5bd4);
+    }
+    fieldset.picker {
+      border: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dc-space-2, 8px) var(--dc-space-4, 16px);
+    }
+    fieldset.picker legend {
+      padding: 0;
+      margin-bottom: var(--dc-space-1, 4px);
+      font-size: 13px;
+    }
+    label.pick {
+      display: inline-flex;
+      flex-direction: row;
+      flex: none;
+      align-items: center;
+      gap: var(--dc-space-1, 4px);
+    }
+    label.pick input {
+      accent-color: var(--dc-color-accent, #1a73e8);
     }
     li button[aria-current='true'] {
       background: var(--dc-color-surface, #f2f2f2);
@@ -186,6 +211,13 @@ export class OcVault extends LitElement {
   @state() private sidebarOpen = true
   @state() private subjects: Entity[] = []
   @state() private sessions: Entity[] = []
+  @state() private groups: Entity[] = []
+  @state() private selectedGroup?: string
+  @state() private groupName = ''
+  /** The selected group's members as being edited; undefined while unchanged. */
+  @state() private memberDraft?: string[]
+  /** Who took part in the group session being recorded; undefined means the group's members. */
+  @state() private attendeeDraft?: string[]
   @state() private practitioners: Entity[] = []
   @state() private schemes: Scheme[] = []
   @state() private summary?: VaultSummary
@@ -268,9 +300,10 @@ export class OcVault extends LitElement {
   /** Reads everything the views show. A read overtaken by a newer one is dropped, not applied. */
   private async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, practitioners, schemes, summary] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
+      shell.entities('group'),
       shell.entities('practitioner'),
       shell.schemes(),
       shell.summary(),
@@ -286,6 +319,7 @@ export class OcVault extends LitElement {
     }
     this.subjects = [...subjects].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
     this.sessions = sessions
+    this.groups = [...groups].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
     this.practitioners = practitioners
     this.schemes = schemes
     if (!this.practitioner && practitioners.length === 1) this.practitioner = practitioners[0].id
@@ -319,6 +353,33 @@ export class OcVault extends LitElement {
     })
   }
 
+  private async addGroup() {
+    const name = this.groupName.trim()
+    if (!name) return this.problem('no-name')
+    await this.run(async () => {
+      const path = await shell.record('/changes/group', { fields: { name, members: [] } })
+      this.groupName = ''
+      await this.load()
+      this.selectGroup(path.split('/')[1])
+    })
+  }
+
+  private selectGroup(id: string) {
+    this.selectedGroup = id
+    this.memberDraft = undefined
+    this.attendeeDraft = undefined
+  }
+
+  private async saveMembers(group: Entity) {
+    const members = this.memberDraft
+    if (!members) return
+    await this.run(async () => {
+      await shell.record('/changes/update', { type: 'group', id: group.id, fields: { members } })
+      this.memberDraft = undefined
+      await this.load()
+    })
+  }
+
   private async addPractitioner() {
     const name = this.practitionerName.trim()
     if (!name) return this.problem('no-name')
@@ -345,7 +406,7 @@ export class OcVault extends LitElement {
     return name ?? strings.unnamedDevice(device)
   }
 
-  private async recordSession(subjectId: string) {
+  private async recordSession(holder: Holder) {
     const topics = latest(this.schemes, 'topic')
     const methods = latest(this.schemes, 'method')
     if (!this.date) return this.problem('no-date')
@@ -357,12 +418,31 @@ export class OcVault extends LitElement {
       topic: { scheme: 'topic', version: topics.version, code: this.topic },
     }
     if (methods && this.method) fields.method = { scheme: 'method', version: methods.version, code: this.method }
+    if (holder.kind === 'group') {
+      const attendees = this.attendeesOf(holder.id)
+      if (attendees.length === 0) return this.problem('no-attendees')
+      fields.attendees = attendees
+    }
     await this.run(async () => {
-      await shell.record('/changes/in-subject', { subjectId, type: 'session', fields })
+      await (holder.kind === 'subject'
+        ? shell.record('/changes/in-subject', { subjectId: holder.id, type: 'session', fields })
+        : shell.record('/changes/in-group', { groupId: holder.id, type: 'session', fields }))
       this.topic = ''
       this.method = ''
+      this.attendeeDraft = undefined
       await this.load()
     })
+  }
+
+  /** A group's members as recorded. */
+  private membersOf(groupId: string): string[] {
+    const members = this.groups.find((g) => g.id === groupId)?.fields.members
+    return Array.isArray(members) ? members.filter((m): m is string => typeof m === 'string') : []
+  }
+
+  /** Who the group session being recorded is about: as picked, or else the group's members. */
+  private attendeesOf(groupId: string): string[] {
+    return this.attendeeDraft ?? this.membersOf(groupId)
   }
 
   private close() {
@@ -370,7 +450,7 @@ export class OcVault extends LitElement {
   }
 
   render() {
-    const heading = { subjects: strings.subjects, report: strings.report, practitioners: strings.practitioners, devices: strings.devices }[this.view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, practitioners: strings.practitioners, devices: strings.devices }[this.view]
     const unreadable = this.summary?.unreadable.length ?? 0
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen}>
@@ -381,6 +461,7 @@ export class OcVault extends LitElement {
           active-id=${this.view}
           .items=${[
             { id: 'subjects', icon: '◉', label: strings.navSubjects },
+            { id: 'groups', icon: '◈', label: strings.navGroups },
             { id: 'report', icon: '▦', label: strings.navReport },
             { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
             { id: 'devices', icon: '▣', label: strings.navDevices },
@@ -403,7 +484,7 @@ export class OcVault extends LitElement {
         </dp-toolbar>
         <dp-page>
           ${unreadable > 0 ? html`<p class="error">${strings.unreadable(unreadable)}</p>` : nothing} ${this.nameHint()} ${this.errorLine()}
-          ${{ subjects: () => this.subjectsView(), report: () => this.reportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
+          ${{ subjects: () => this.subjectsView(), groups: () => this.groupsView(), report: () => this.reportView(), practitioners: () => this.practitionersView(), devices: () => this.devicesView() }[this.view]()}
         </dp-page>
       </dp-shell>
     `
@@ -474,7 +555,7 @@ export class OcVault extends LitElement {
         const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
         return open ? this.conflictPanel(open) : nothing
       })()}
-      ${this.sessionForm(subject.id)}
+      ${this.sessionForm({ kind: 'subject', id: subject.id })}
       ${sessions.length === 0
         ? html`<p class="muted">${strings.noSessions}</p>`
         : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
@@ -544,7 +625,101 @@ export class OcVault extends LitElement {
     </div>`
   }
 
-  private sessionForm(subjectId: string) {
+  /**
+   * A list of subjects to tick. TODO(upstream: a checkbox in @iyulab/desktop-compact) —
+   * native checkboxes until the component library offers one.
+   */
+  private subjectPicker(label: string, current: () => string[], set: (ids: string[]) => void) {
+    const picked = current()
+    if (this.subjects.length === 0) return html`<p class="muted">${strings.noSubjects}</p>`
+    return html`<fieldset class="picker" aria-label=${label}>
+      <legend>${label}</legend>
+      ${this.subjects.map(
+        (s) => html`<label class="pick">
+          <input
+            type="checkbox"
+            data-subject=${s.id}
+            .checked=${picked.includes(s.id)}
+            ?disabled=${this.busy}
+            @change=${(e: Event) => {
+              // Read the picks afresh: two ticks can land before the next render.
+              const now = current().filter((id) => id !== s.id)
+              set((e.target as HTMLInputElement).checked ? [...now, s.id] : now)
+            }}
+          />
+          ${text(s, 'name')}
+        </label>`,
+      )}
+    </fieldset>`
+  }
+
+  private groupsView() {
+    const group = this.groups.find((g) => g.id === this.selectedGroup)
+    const addGroup = () => void this.addGroup()
+    return html`<div class="columns">
+      <section>
+        <div class="row">
+          ${this.nameField(strings.groupName, this.groupName, (v) => (this.groupName = v), addGroup)}
+          <dc-button variant="secondary" ?disabled=${this.busy} @click=${addGroup}>${strings.addGroup}</dc-button>
+        </div>
+        ${this.groups.length === 0
+          ? html`<p class="muted">${strings.noGroups}</p>`
+          : html`<ul aria-label=${strings.groups}>
+              ${this.groups.map(
+                (g) => html`<li>
+                  <button aria-current=${g.id === this.selectedGroup ? 'true' : 'false'} @click=${() => this.selectGroup(g.id)}>
+                    ${text(g, 'name')}
+                  </button>
+                </li>`,
+              )}
+            </ul>`}
+      </section>
+      <section>${group ? this.groupDetail(group) : html`<p class="muted">${strings.pickGroup}</p>`}</section>
+    </div>`
+  }
+
+  private groupDetail(group: Entity) {
+    const sessions = newestFirst(this.sessions.filter((s) => s.group === group.id))
+    const names = new Map(this.practitioners.map((p) => [p.id, text(p, 'name')]))
+    const subjectNames = new Map(this.subjects.map((s) => [s.id, text(s, 'name')]))
+    return html`
+      <h2>${strings.sessions(text(group, 'name'))}</h2>
+      <div class="form" data-role="members">
+        ${this.subjectPicker(strings.groupMembers, () => this.memberDraft ?? this.membersOf(group.id), (ids) => (this.memberDraft = ids))}
+        <div class="row">
+          <dc-button variant="secondary" ?disabled=${this.busy || !this.memberDraft} @click=${() => void this.saveMembers(group)}
+            >${strings.saveMembers}</dc-button
+          >
+        </div>
+      </div>
+      ${this.sessionForm({ kind: 'group', id: group.id })}
+      ${sessions.length === 0
+        ? html`<p class="muted">${strings.noSessions}</p>`
+        : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>${strings.sessionDate}</th>
+                  <th>${strings.sessionTopic}</th>
+                  <th>${strings.attendees}</th>
+                  <th>${strings.sessionPractitioner}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sessions.map(
+                  (s) => html`<tr data-session=${s.id}>
+                    <td>${text(s, 'date')}</td>
+                    <td>${labelOf(this.schemes, s.fields.topic)}</td>
+                    <td>${namesOf(s, subjectNames)}</td>
+                    <td>${names.get(text(s, 'practitioner')) ?? ''}</td>
+                  </tr>`,
+                )}
+              </tbody>
+            </table>`}
+    `
+  }
+
+  private sessionForm(holder: Holder) {
     const topics = latest(this.schemes, 'topic')
     const methods = latest(this.schemes, 'method')
     if (this.practitioners.length === 0) {
@@ -598,8 +773,11 @@ export class OcVault extends LitElement {
           ></dc-select>
         </label>
       </div>
+      ${holder.kind === 'group'
+        ? this.subjectPicker(strings.attendees, () => this.attendeesOf(holder.id), (ids) => (this.attendeeDraft = ids))
+        : nothing}
       <div class="row">
-        <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.recordSession(subjectId)}>${strings.recordSession}</dc-button>
+        <dc-button variant="primary" ?disabled=${this.busy} @click=${() => void this.recordSession(holder)}>${strings.recordSession}</dc-button>
       </div>
     </div>`
   }

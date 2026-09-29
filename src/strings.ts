@@ -39,6 +39,7 @@ export const strings = {
   toggleSidebar: '사이드바 접기/펼치기',
   navLabel: '탐색',
   navSubjects: '대상자',
+  navGroups: '집단',
   navPractitioners: '담당자',
   navReport: '월 보고',
   navDevices: '기기',
@@ -135,6 +136,15 @@ export const strings = {
   goNameThisDevice: '이름 붙이기',
   noNamedDevices: '아직 이름이 붙은 기기가 없습니다.',
 
+  groups: '집단',
+  noGroups: '집단이 없습니다. 이름을 입력해 추가하세요. 여러 대상자를 한 번에 만나는 집단 상담을 여기에 기록합니다.',
+  groupName: '집단 이름',
+  addGroup: '집단 추가',
+  pickGroup: '집단을 고르면 구성원과 회기가 여기에 보입니다.',
+  groupMembers: '구성원',
+  saveMembers: '구성원 저장',
+  attendees: '참여자',
+
   practitioners: '담당자',
   noPractitioners: '담당자가 없습니다. 월 보고의 열은 담당자별로 나뉩니다.',
   practitionerName: '담당자 이름',
@@ -148,6 +158,7 @@ export const strings = {
     'no-name': '이름을 입력하세요.',
     'no-date': '날짜를 입력하세요.',
     'no-topic': '주제를 고르세요.',
+    'no-attendees': '참여자를 한 명 이상 고르세요.',
     'no-practitioner': '담당자를 고르세요.',
   },
   errors: {
