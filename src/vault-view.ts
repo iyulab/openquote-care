@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
+import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { Latest } from './latest.js'
@@ -106,16 +107,6 @@ export class OcVault extends LitElement {
       padding: 0;
       margin-bottom: var(--dc-space-1, 4px);
       font-size: 13px;
-    }
-    label.pick {
-      display: inline-flex;
-      flex-direction: row;
-      flex: none;
-      align-items: center;
-      gap: var(--dc-space-1, 4px);
-    }
-    label.pick input {
-      accent-color: var(--dc-color-accent, #1a73e8);
     }
     li button[aria-current='true'] {
       background: var(--dc-color-surface, #f2f2f2);
@@ -728,30 +719,24 @@ export class OcVault extends LitElement {
     </div>`
   }
 
-  /**
-   * A list of subjects to tick. TODO(upstream: a checkbox in @iyulab/desktop-compact) —
-   * native checkboxes until the component library offers one.
-   */
+  /** A list of subjects to tick. */
   private subjectPicker(label: string, current: () => string[], set: (ids: string[]) => void) {
     const picked = current()
     if (this.subjects.length === 0) return html`<p class="muted">${strings.noSubjects}</p>`
     return html`<fieldset class="picker" aria-label=${label}>
       <legend>${label}</legend>
       ${this.subjects.map(
-        (s) => html`<label class="pick">
-          <input
-            type="checkbox"
-            data-subject=${s.id}
-            .checked=${picked.includes(s.id)}
-            ?disabled=${this.busy}
-            @change=${(e: Event) => {
-              // Read the picks afresh: two ticks can land before the next render.
-              const now = current().filter((id) => id !== s.id)
-              set((e.target as HTMLInputElement).checked ? [...now, s.id] : now)
-            }}
-          />
-          ${text(s, 'name')}
-        </label>`,
+        (s) => html`<dc-checkbox
+          data-subject=${s.id}
+          .checked=${picked.includes(s.id)}
+          ?disabled=${this.busy}
+          @change=${(e: Event) => {
+            // Read the picks afresh: two ticks can land before the next render.
+            const now = current().filter((id) => id !== s.id)
+            set((e.target as DcCheckbox).checked ? [...now, s.id] : now)
+          }}
+          >${text(s, 'name')}</dc-checkbox
+        >`,
       )}
     </fieldset>`
   }

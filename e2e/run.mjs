@@ -481,10 +481,10 @@ const scenarios = {
     await app.click('button', '집단')
     await app.type('집단 이름', '또래 집단')
     await app.click('dc-button', '집단 추가')
-    await app.cdp.waitFor(`__e2e.all('[data-role=members] input[data-subject]').length === 2`, 'the members to pick from')
-    await app.cdp.evaluate(`(() => { for (const box of __e2e.all('[data-role=members] input[data-subject]')) box.click(); return true })()`)
+    await app.cdp.waitFor(`__e2e.all('[data-role=members] dc-checkbox[data-subject]').length === 2`, 'the members to pick from')
+    await app.cdp.evaluate(`(() => { for (const box of __e2e.all('[data-role=members] dc-checkbox[data-subject]')) box.click(); return true })()`)
     await app.click('dc-button', '구성원 저장')
-    await app.cdp.waitFor(`__e2e.all('input[data-subject]').filter((b) => b.checked).length === 4`, 'members saved, and offered as the attendees')
+    await app.cdp.waitFor(`__e2e.all('dc-checkbox[data-subject]').filter((b) => b.checked).length === 4`, 'members saved, and offered as the attendees')
 
     await app.setDate('날짜', '2026-04-16')
     await app.choose('주제', 'relation-peer')
