@@ -20,9 +20,10 @@ Released installers report the app's own failures to the publisher, so that defe
 | Failure code | `engine-start`, `engine` or `io` |
 | Place in the app's source | `src-tauri/src/lib.rs:42` (a place inside a dependency is reported as `dependency`) |
 | The engine's HTTP status, when it answered | `500` |
+| When the engine failed unexpectedly: the error's type and the method in the engine where it happened | `System.FormatException`, `Openquote.Vault.VaultReader.Read` |
 | App version, operating system, architecture | `0.1.0`, `windows`, `x86_64` |
 
-The report types have no field for record values, file paths, vault names or error messages, so none can be included by accident.
+The report types have no field for record values, file paths, vault names or error messages, so none can be included by accident; the engine's two names are kept only when they are plain identifiers.
 
 **Where.** Reports go to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and are kept for 30 days.
 

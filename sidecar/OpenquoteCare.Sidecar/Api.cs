@@ -329,4 +329,5 @@ internal static class Api
 [JsonSerializable(typeof(RunResult))]
 [JsonSerializable(typeof(WireFile))]
 [JsonSerializable(typeof(ErrorView))]
+[JsonSerializable(typeof(FaultResponse))]
 internal sealed partial class SidecarJson : JsonSerializerContext;

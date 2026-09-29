@@ -3,9 +3,10 @@
 //! When the shell fails in a way that is its own fault — a panic, the engine not starting or
 //! answering with an error, a file operation failing — it can report that the failure happened.
 //! What a report may hold is fixed by the types below: an event name, a code from the shell's own
-//! list, a place in the app's own source (`file:line`), an HTTP status, and the app version,
-//! operating system and architecture. There is no field a record value, a file path, a vault
-//! name or an error message could travel in, so nothing needs to be scrubbed.
+//! list, a place in the app's own source (`file:line`), an HTTP status, the type and method of an
+//! unexpected failure inside the engine, and the app version, operating system and architecture.
+//! There is no field a record value, a file path, a vault name or an error message could travel
+//! in; the engine's two names are checked to be plain identifiers before they are kept.
 //!
 //! Reporting is off unless a connection string is configured — through the
 //! `OPENQUOTE_DIAGNOSTICS_CONNECTION` environment variable, or embedded at build time under the
@@ -86,14 +87,44 @@ impl SourcePlace {
     }
 }
 
+/// An unexpected failure inside the engine, as it answers one: the exception's type and the
+/// method in its own code where it was thrown — never the message.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EngineFault {
+    pub kind: String,
+    pub at: Option<String>,
+}
+
+impl EngineFault {
+    /// Reads the engine's answer to a failed request (`{"fault":{"type":…,"at":…}}`). Anything
+    /// else, or a name that is not a plain identifier, gives nothing.
+    pub fn from_answer(body: &str) -> Option<EngineFault> {
+        let answer: Value = serde_json::from_str(body).ok()?;
+        let fault = answer.get("fault")?;
+        let kind = identifier(fault.get("type")?.as_str()?)?;
+        let at = fault.get("at").and_then(Value::as_str).and_then(identifier);
+        Some(EngineFault { kind, at })
+    }
+}
+
+/// `name` when it is a dotted identifier such as `System.FormatException` or
+/// `Openquote.Vault.VaultReader.Read` (generic and compiler-generated names included), else nothing.
+fn identifier(name: &str) -> Option<String> {
+    let plain = !name.is_empty()
+        && name.len() <= 200
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '`' | '<' | '>' | '+'));
+    plain.then(|| name.to_owned())
+}
+
 /// Every report the shell can make.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Report {
     /// The shell panicked at this place. The panic message is never included.
     Panic { at: SourcePlace },
     /// A command failed through the shell's own fault. `code` comes from the shell's list of
-    /// failure codes; `status` is the engine's HTTP status, when it answered with one.
-    CommandFailed { code: &'static str, at: SourcePlace, status: Option<u16> },
+    /// failure codes; `status` is the engine's HTTP status, when it answered with one, and
+    /// `fault` what the engine said went wrong, when it failed unexpectedly.
+    CommandFailed { code: &'static str, at: SourcePlace, status: Option<u16>, fault: Option<EngineFault> },
 }
 
 impl Report {
@@ -107,10 +138,16 @@ impl Report {
     fn properties(&self) -> Vec<(&'static str, String)> {
         match self {
             Report::Panic { at } => vec![("at", at.render())],
-            Report::CommandFailed { code, at, status } => {
+            Report::CommandFailed { code, at, status, fault } => {
                 let mut p = vec![("code", (*code).to_owned()), ("at", at.render())];
                 if let Some(s) = status {
                     p.push(("status", s.to_string()));
+                }
+                if let Some(f) = fault {
+                    p.push(("faultType", f.kind.clone()));
+                    if let Some(at) = &f.at {
+                        p.push(("faultAt", at.clone()));
+                    }
                 }
                 p
             }
@@ -223,11 +260,11 @@ pub fn install() {
 }
 
 /// Reports a failed command when reporting is on and the failure is the app's own fault.
-pub fn command_failed(code: &'static str, at: &'static Location<'static>, status: Option<u16>) {
+pub fn command_failed(code: &'static str, at: &'static Location<'static>, status: Option<u16>, fault: Option<EngineFault>) {
     if let Some(reporter) = REPORTER.get()
         && is_fault(code)
     {
-        reporter.send(Report::CommandFailed { code, at: SourcePlace::of(at), status });
+        reporter.send(Report::CommandFailed { code, at: SourcePlace::of(at), status, fault });
     }
 }
 
@@ -309,18 +346,34 @@ mod tests {
     fn an_envelope_carries_only_the_listed_fields() {
         let c = Connection::parse(CONNECTION).unwrap();
         let facts = Facts { app_version: "0.1.0", os: "windows", arch: "x86_64" };
-        let reports = [Report::Panic { at: place() }, Report::CommandFailed { code: "engine", at: place(), status: Some(500) }];
+        let reports = [Report::Panic { at: place() }, Report::CommandFailed { code: "engine", at: place(), status: Some(500), fault: Some(EngineFault { kind: "System.FormatException".into(), at: Some("Openquote.Vault.VaultReader.Read".into()) }) }];
         for report in reports {
             let env = envelope(&report, &c, &facts, "2026-09-29T00:00:00Z");
             assert_eq!(env["iKey"], "00000000-0000-0000-0000-000000000000");
             assert_eq!(env["data"]["baseData"]["name"], report.name());
             let keys: Vec<&str> = env["data"]["baseData"]["properties"].as_object().unwrap().keys().map(String::as_str).collect();
             for key in &keys {
-                assert!(["appVersion", "os", "arch", "at", "code", "status"].contains(key), "unlisted field {key}");
+                assert!(["appVersion", "os", "arch", "at", "code", "status", "faultType", "faultAt"].contains(key), "unlisted field {key}");
             }
         }
-        let env = envelope(&Report::CommandFailed { code: "io", at: place(), status: None }, &c, &facts, "t");
+        let env = envelope(&Report::CommandFailed { code: "io", at: place(), status: None, fault: None }, &c, &facts, "t");
         assert_eq!(env["data"]["baseData"]["properties"], json!({ "appVersion": "0.1.0", "os": "windows", "arch": "x86_64", "code": "io", "at": "src-tauri/src/lib.rs:42" }));
+    }
+
+    #[test]
+    fn keeps_only_plain_names_from_the_engine_answer() {
+        let answer = r#"{"fault":{"type":"System.FormatException","at":"OpenquoteCare.Sidecar.Api.<>c.<Map>b__0_1"}}"#;
+        assert_eq!(
+            EngineFault::from_answer(answer),
+            Some(EngineFault { kind: "System.FormatException".into(), at: Some("OpenquoteCare.Sidecar.Api.<>c.<Map>b__0_1".into()) })
+        );
+        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"System.FormatException"}}"#).unwrap().at, None);
+        // Anything that could carry content is dropped rather than cleaned.
+        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"a record, 2026.json"}}"#), None);
+        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"X","at":"가상 학생"}}"#).unwrap().at, None);
+        assert_eq!(EngineFault::from_answer(&format!(r#"{{"fault":{{"type":"{}"}}}}"#, "A".repeat(201))), None);
+        assert_eq!(EngineFault::from_answer(r#"{"error":"already in the vault"}"#), None);
+        assert_eq!(EngineFault::from_answer("not json"), None);
     }
 
     #[test]
@@ -367,7 +420,7 @@ mod tests {
         let reporter = Diagnostics::new(Connection::parse(&format!("InstrumentationKey=k;IngestionEndpoint={url}")).unwrap());
         let mut threads = Vec::new();
         for _ in 0..MAX_REPORTS {
-            threads.push(reporter.send(Report::CommandFailed { code: "engine-start", at: place(), status: None }).unwrap());
+            threads.push(reporter.send(Report::CommandFailed { code: "engine-start", at: place(), status: None, fault: None }).unwrap());
         }
         assert!(reporter.send(Report::Panic { at: place() }).is_none(), "the run's limit holds");
         for t in threads {

@@ -266,6 +266,18 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Answers_an_unexpected_failure_with_its_type_and_place_but_not_its_message()
+    {
+        var answer = await Post("/vault/load", new { files = new[] { new { path = "subjects/s1/x.json", content = "not base64 — 가상 학생" } } },
+            HttpStatusCode.InternalServerError);
+
+        Assert.Equal("System.FormatException", answer["fault"]!["type"]!.GetValue<string>());
+        Assert.StartsWith("OpenquoteCare.Sidecar.", answer["fault"]!["at"]!.GetValue<string>());
+        Assert.DoesNotContain("가상", answer.ToJsonString());
+        Assert.Equal(["fault"], answer.AsObject().Select(p => p.Key));
+    }
+
+    [Fact]
     public async Task Reports_unreadable_files_when_loading()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));

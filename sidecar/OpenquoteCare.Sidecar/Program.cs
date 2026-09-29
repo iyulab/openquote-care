@@ -56,6 +56,11 @@ namespace OpenquoteCare.Sidecar
                 {
                     context.Response.StatusCode = StatusCodes.Status409Conflict;
                 }
+                catch (Exception e) when (!context.Response.HasStarted)
+                {
+                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await context.Response.WriteAsJsonAsync(new FaultResponse(Fault.Of(e)), SidecarJson.Default.FaultResponse);
+                }
             });
             Api.Map(app, device, clock);
             return app;

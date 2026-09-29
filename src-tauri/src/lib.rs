@@ -33,11 +33,11 @@ type CommandResult<T> = Result<T, CommandError>;
 fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
     let at = std::panic::Location::caller();
     r.map_err(|e| {
-        let status = match &e {
-            AppError::Engine(openquote_care_engine::EngineError::Status(status, _)) => Some(*status),
-            _ => None,
+        let (status, fault) = match &e {
+            AppError::Engine(openquote_care_engine::EngineError::Status(status, body)) => (Some(*status), diagnostics::EngineFault::from_answer(body)),
+            _ => (None, None),
         };
-        diagnostics::command_failed(e.code(), at, status);
+        diagnostics::command_failed(e.code(), at, status, fault);
         CommandError::from(e)
     })
 }
