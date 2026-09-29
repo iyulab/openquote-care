@@ -29,15 +29,7 @@ How it is built: [docs/architecture.md](docs/architecture.md). What it will and 
 
 ## Building
 
-You need Node.js 22, Rust (on Windows the MSVC toolchain), the .NET 10 SDK and, on Windows, the WebView2 runtime. The app's engine sidecar uses the [Openquote engine](https://github.com/iyulab/openquote) package, which is not on nuget.org yet — pack it from the tag matching the `Openquote` version in `Directory.Packages.props` into a local package source:
-
-```sh
-git clone --branch v0.2.0 https://github.com/iyulab/openquote
-dotnet pack openquote/src/Openquote/Openquote.csproj -c Release -o ../openquote-packages
-dotnet nuget add source "$(cd ../openquote-packages && pwd)" --name openquote-local
-```
-
-Then:
+You need Node.js 22, Rust (on Windows the MSVC toolchain), the .NET 10 SDK and, on Windows, the WebView2 runtime. The engine sidecar restores the [Openquote engine](https://github.com/iyulab/openquote) package from nuget.org.
 
 ```sh
 npm ci
