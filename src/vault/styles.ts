@@ -108,6 +108,16 @@ export const vaultStyles = css`
     font-size: 13px;
     flex: 1 1 160px;
   }
+  label.wide {
+    flex-basis: 100%;
+  }
+  tr[data-note] td {
+    background: var(--dc-color-surface-hover, #f7f7f5);
+  }
+  .note p {
+    margin: var(--dc-space-1, 4px) 0 0;
+    white-space: pre-wrap;
+  }
   .form {
     display: flex;
     flex-direction: column;

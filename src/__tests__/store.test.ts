@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Entity } from '../records.js'
+import type { FieldView } from '../fields.js'
+import { today, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
 
 vi.mock('../shell.js', () => ({
   shell: {
     entities: vi.fn(),
     schemes: vi.fn(),
+    fields: vi.fn(),
     summary: vi.fn(),
     refresh: vi.fn(),
     onVaultChanged: vi.fn(),
@@ -35,6 +37,7 @@ describe('VaultStore', () => {
     vi.resetAllMocks()
     vaultHolds([])
     vi.mocked(shell.schemes).mockResolvedValue([])
+    vi.mocked(shell.fields).mockResolvedValue([])
     vi.mocked(shell.summary).mockResolvedValue(summary)
     vi.mocked(shell.refresh).mockResolvedValue(summary)
   })
@@ -50,6 +53,24 @@ describe('VaultStore', () => {
     expect(store.summary?.exports).toEqual([])
     expect(store.reportKey).toBe('shown@1')
     expect(store.exportKey).toBeFalsy()
+  })
+
+  it('starts the form with today and the only practitioner, and keeps them when it clears', async () => {
+    const field = (name: string, kind: FieldView['kind'], refType: string | null = null): FieldView => ({
+      name, kind, scheme: kind === 'coded' ? name : null, refType, required: true, hidden: false, tier: 'structured', defaultFromSubject: null, label: name, aliases: [],
+    })
+    vi.mocked(shell.fields).mockImplementation(async (type) =>
+      type === 'session' ? [field('date', 'date'), field('practitioner', 'reference', 'practitioner'), field('topic', 'coded')] : [],
+    )
+    vi.mocked(shell.entities).mockImplementation(async (type) => (type === 'practitioner' ? [{ ...subject('p1', 'Kim'), type: 'practitioner' }] : []))
+    const store = new VaultStore()
+
+    await store.load()
+    expect(store.draft).toEqual({ date: today(), practitioner: 'p1' })
+
+    store.editDraft({ topic: 'peer', date: '2026-04-02' })
+    store.clearDraft()
+    expect(store.draft).toEqual({ date: '2026-04-02', practitioner: 'p1' })
   })
 
   it('drops a read overtaken by a newer one', async () => {

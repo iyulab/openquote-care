@@ -1,12 +1,12 @@
 import { html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { labelOf, namesOf, newestFirst, text, type Entity } from '../records.js'
+import { newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { nameField } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
-import { subjectPicker } from './session-parts.js'
+import { sessionTable, subjectPicker, toggled } from './session-parts.js'
 
 /** Groups: their members, and the sessions held with them. */
 @customElement('oc-groups')
@@ -17,6 +17,8 @@ export class OcGroups extends VaultScreen {
   @state() private memberDraft?: string[]
   /** Who took part in the group session being recorded; undefined means the group's members. */
   @state() private attendeeDraft?: string[]
+  /** Sessions whose written content is open under their row. */
+  @state() private openNotes = new Set<string>()
 
   private async addGroup() {
     const name = this.groupName.trim()
@@ -85,8 +87,6 @@ export class OcGroups extends VaultScreen {
   private groupDetail(group: Entity) {
     const store = this.store
     const sessions = newestFirst(store.sessions.filter((s) => s.group === group.id))
-    const names = new Map(store.practitioners.map((p) => [p.id, text(p, 'name')]))
-    const subjectNames = new Map(store.subjects.map((s) => [s.id, text(s, 'name')]))
     return html`
       <h2>${strings.sessions(text(group, 'name'))}</h2>
       <div class="form" data-role="members">
@@ -107,26 +107,12 @@ export class OcGroups extends VaultScreen {
       ${sessions.length === 0
         ? html`<p class="muted">${strings.noSessions}</p>`
         : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
-            <table>
-              <thead>
-                <tr>
-                  <th>${strings.sessionDate}</th>
-                  <th>${strings.sessionTopic}</th>
-                  <th>${strings.attendees}</th>
-                  <th>${strings.sessionPractitioner}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${sessions.map(
-                  (s) => html`<tr data-session=${s.id}>
-                    <td>${text(s, 'date')}</td>
-                    <td>${labelOf(store.schemes, s.fields.topic)}</td>
-                    <td>${namesOf(s, subjectNames)}</td>
-                    <td>${names.get(text(s, 'practitioner')) ?? ''}</td>
-                  </tr>`,
-                )}
-              </tbody>
-            </table>`}
+            ${sessionTable(store, {
+              sessions,
+              attendees: true,
+              openNotes: this.openNotes,
+              toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+            })}`}
     `
   }
 }

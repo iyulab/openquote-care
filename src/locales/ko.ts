@@ -3,6 +3,13 @@
 import native from '../native-strings.json'
 import type { VaultFileKind } from '../shell.js'
 
+// 을 after a final consonant, 를 after a vowel; a word that does not end in Hangul gets both.
+const objectParticle = (word: string) => {
+  const last = word.trim().charCodeAt(word.trim().length - 1)
+  if (last < 0xac00 || last > 0xd7a3) return '을(를)'
+  return (last - 0xac00) % 28 === 0 ? '를' : '을'
+}
+
 export const ko = {
   appName: 'Openquote Care',
   tagline: '이어지는 기록, 근거 있는 통계',
@@ -209,16 +216,18 @@ export const ko = {
   newSession: '새 회기',
   sessionDate: '날짜',
   sessionTopic: '주제',
-  sessionMethod: '방법',
-  sessionPractitioner: '담당자',
-  noMethod: '(없음)',
+  none: '(없음)',
+  noFieldDefinitions: '이 볼트에는 회기 칸 정의가 없습니다. 칸 정의가 담긴 데이터 팩을 적용하세요.',
+  addFirst: (label: string) => `회기를 기록하려면 ${label}${objectParticle(label)} 먼저 추가하세요.`,
+  missing: (label: string) => `‘${label}’ 칸을 채우세요.`,
+  showNote: (label: string) => `${label} 보기`,
+  hideNote: (label: string) => `${label} 접기`,
   recordSession: '회기 기록',
   sessionCount: (n: number) => `회기 ${n}건`,
   conflict: '동시 수정',
   conflictTitle: '두 기기에서 서로 모르게 고친 칸',
   conflictLead: '둘 다 보존되어 있습니다. 맞는 값을 고르면 모든 기기에서 그 값으로 정리됩니다.',
   conflictMissingBase: '다른 기기에서 쓴 변경 일부가 아직 이 기기에 오지 않았습니다. 동기화가 끝나면 이 동시 수정이 저절로 풀릴 수 있으니, 급하지 않다면 잠시 기다렸다 고르세요.',
-  conflictField: { topic: '주제', method: '방법', date: '날짜', practitioner: '담당자' } as Record<string, string>,
   conflictFrom: (device: string) => device,
   conflictResolved: '동시 수정을 정리했습니다.',
 
@@ -255,17 +264,13 @@ export const ko = {
   noPractitioners: '담당자가 없습니다. 월 보고의 열은 담당자별로 나뉩니다.',
   practitionerName: '담당자 이름',
   addPractitioner: '담당자 추가',
-  needPractitioner: '회기를 기록하려면 담당자를 먼저 추가하세요.',
 
   problems: {
     'passphrase-short': (min: number) => `패스프레이즈는 ${min}자 이상이어야 합니다.`,
     'passphrase-mismatch': '두 패스프레이즈가 다릅니다.',
     'no-folder': '폴더를 먼저 선택하세요.',
     'no-name': '이름을 입력하세요.',
-    'no-date': '날짜를 입력하세요.',
-    'no-topic': '주제를 고르세요.',
     'no-attendees': '참여자를 한 명 이상 고르세요.',
-    'no-practitioner': '담당자를 고르세요.',
   },
   errors: {
     'no-vault': '열린 볼트가 없습니다.',

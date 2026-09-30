@@ -5,6 +5,7 @@ import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
+import type { FieldView } from '../fields.js'
 import { shell, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -13,13 +14,11 @@ export type Problem = keyof typeof strings.problems
 /** A failure in words, with the shell's own words for the detail line. */
 export type ErrorText = { text: string; detail?: string }
 
-/** The new-session form as being filled in; the subject and group screens share it. */
-export interface SessionDraft {
-  date: string
-  topic: string
-  method: string
-  practitioner: string
-}
+/**
+ * The new-session form as being filled in, by field name: a code for a classification, an id for a
+ * reference, the text otherwise. The subject and group screens share it.
+ */
+export type SessionDraft = Record<string, string>
 
 /** What the screens may set directly; everything else changes through the store's actions. */
 type Settable = Pick<VaultStore, 'notice' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month'>
@@ -34,6 +33,9 @@ export class VaultStore extends EventTarget {
   groups: Entity[] = []
   practitioners: Entity[] = []
   schemes: Scheme[] = []
+  /** The fields the vault's packs declare for sessions and for subjects. */
+  sessionFields: FieldView[] = []
+  subjectFields: FieldView[] = []
   summary?: VaultSummary
   /** How names are ordered in this vault: by the locales its packs label things in. */
   names = nameCollator()
@@ -47,7 +49,7 @@ export class VaultStore extends EventTarget {
   /** The month the report and export screens work on. */
   year = lastMonth().year
   month = lastMonth().month
-  draft: SessionDraft = { date: today(), topic: '', method: '', practitioner: '' }
+  draft: SessionDraft = {}
 
   private readonly loads = new Latest()
   private unlisten?: Promise<() => void>
@@ -63,7 +65,7 @@ export class VaultStore extends EventTarget {
     this.changed()
   }
 
-  editDraft(patch: Partial<SessionDraft>) {
+  editDraft(patch: SessionDraft) {
     this.draft = { ...this.draft, ...patch }
     this.changed()
   }
@@ -97,6 +99,19 @@ export class VaultStore extends EventTarget {
     }
   }
 
+  /** The entities a reference field of `type` may point at. */
+  entitiesOf(type: string | null): Entity[] {
+    return type === 'practitioner' ? this.practitioners : type === 'subject' ? this.subjects : type === 'group' ? this.groups : []
+  }
+
+  /** What the form holds after a session is written: the date and who was there stay; the rest is cleared. */
+  clearDraft() {
+    this.draft = Object.fromEntries(
+      this.sessionFields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, this.draft[f.name] ?? '']),
+    )
+    this.changed()
+  }
+
   /** Reads the vault folder again: records other devices sharing it wrote come in. */
   async refresh() {
     await this.run(async () => {
@@ -108,13 +123,15 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
       shell.entities('practitioner'),
       shell.schemes(),
       shell.summary(),
+      shell.fields('session'),
+      shell.fields('subject'),
     ])
     if (!current()) return
     // A form standing on a hidden field is never shown; the sidecar decides which those are.
@@ -135,7 +152,9 @@ export class VaultStore extends EventTarget {
     this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes
-    if (!this.draft.practitioner && practitioners.length === 1) this.draft = { ...this.draft, practitioner: practitioners[0].id }
+    this.sessionFields = sessionFields
+    this.subjectFields = subjectFields
+    this.draft = { ...startingValues(this, sessionFields), ...this.draft }
     this.changed()
   }
 
@@ -153,6 +172,11 @@ export class VaultStore extends EventTarget {
       this.changed()
       if (this.outsideChangeWaiting) void this.onOutsideChange()
     }
+  }
+
+  /** Says a field a person must fill in is empty, by its label. */
+  missing(label: string) {
+    this.set({ error: { text: strings.missing(label) } })
   }
 
   problem(p: Problem, min?: number) {
@@ -204,6 +228,21 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
   const unlinked = summary?.unlinked ?? []
   if (unlinked.length > 0) notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(u.scheme, u.version)))
   return notice
+}
+
+/**
+ * What an empty form starts with: today in a required date, and the one entity a required reference
+ * can point at when there is only one (a vault kept by a single practitioner).
+ */
+function startingValues(store: VaultStore, fields: FieldView[]): SessionDraft {
+  const values: SessionDraft = {}
+  for (const f of fields) {
+    if (!f.required || f.hidden) continue
+    if (f.kind === 'date') values[f.name] = today()
+    const only = f.kind === 'reference' ? store.entitiesOf(f.refType) : []
+    if (only.length === 1) values[f.name] = only[0].id
+  }
+  return values
 }
 
 /** Updates a Lit element whenever the store it shows changes. */

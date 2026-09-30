@@ -213,9 +213,12 @@ export const en: Strings = {
   newSession: 'New session',
   sessionDate: 'Date',
   sessionTopic: 'Topic',
-  sessionMethod: 'Method',
-  sessionPractitioner: 'Practitioner',
-  noMethod: '(None)',
+  none: '(None)',
+  noFieldDefinitions: 'This vault has no session field definitions. Apply a data pack that defines them.',
+  addFirst: (label: string) => `Before recording a session, add at least one: ${label}.`,
+  missing: (label: string) => `Fill in “${label}”.`,
+  showNote: (label: string) => `Show ${label}`,
+  hideNote: (label: string) => `Hide ${label}`,
   recordSession: 'Record session',
   sessionCount: (n: number) => plural(n, 'session'),
   conflict: 'Edited on two devices',
@@ -223,7 +226,6 @@ export const en: Strings = {
   conflictLead: 'Both values are kept. Choose the right one and every device settles on it.',
   conflictMissingBase:
     'Some changes written on another device have not reached this one yet. When syncing finishes this may clear by itself — if it is not urgent, wait a little before choosing.',
-  conflictField: { topic: 'Topic', method: 'Method', date: 'Date', practitioner: 'Practitioner' } as Record<string, string>,
   conflictFrom: (device: string) => device,
   conflictResolved: 'The conflicting edit is settled.',
 
@@ -262,17 +264,13 @@ export const en: Strings = {
   noPractitioners: 'No practitioners yet. The columns of the monthly report are split by practitioner.',
   practitionerName: 'Practitioner name',
   addPractitioner: 'Add practitioner',
-  needPractitioner: 'Add a practitioner before recording a session.',
 
   problems: {
     'passphrase-short': (min: number) => `The passphrase needs at least ${min} characters.`,
     'passphrase-mismatch': 'The two passphrases differ.',
     'no-folder': 'Choose a folder first.',
     'no-name': 'Type a name.',
-    'no-date': 'Enter a date.',
-    'no-topic': 'Choose a topic.',
     'no-attendees': 'Choose at least one participant.',
-    'no-practitioner': 'Choose a practitioner.',
   },
   errors: {
     'no-vault': 'No vault is open.',

@@ -125,6 +125,15 @@ class App {
     await this.cdp.insertText(text)
   }
 
+  /** Focuses the multi-line field labelled `label`, clears it, and types `text`. */
+  async write(label, text) {
+    await this.cdp.waitFor(
+      `(() => { const el = __e2e.one(${q(`textarea[aria-label="${label}"]`)}); if (!el || el.disabled) return false; el.focus(); el.select(); return true })()`,
+      `text area "${label}"`,
+    )
+    await this.cdp.insertText(text)
+  }
+
   /** Where the folder picker's answer lands. */
   pickFolder(path) {
     return this.cdp.evaluate(`(() => { document.querySelector('oc-app').folder = ${q(path)}; return true })()`)
@@ -578,7 +587,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
@@ -633,6 +642,35 @@ const scenarios = {
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /v1 기준/, 'the form says which scheme version it lags')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
   },
+  async 'records what was said in a session, and keeps it out of the list form'(app, work) {
+    const said = '합성 상담 내용: 시험 불안을 이야기함'
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 3')
+    await app.setDate('날짜', '2026-05-07')
+    await app.choose('주제', 'relation-peer')
+    await app.write('상담 내용', said)
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').some((tr) => tr.textContent.includes('2026-05-07'))`, 'the session listed')
+    await app.noAlert()
+    const row = await app.cdp.evaluate(`__e2e.all('tr[data-session]').find((tr) => tr.textContent.includes('2026-05-07')).textContent`)
+    assert.ok(!row.includes(said), 'what was said is not a column')
+    await app.click('button[data-role=note]')
+    await app.cdp.waitFor(`__e2e.all('tr[data-note]').some((tr) => tr.textContent.includes(${q(said)}))`, 'what was said, opened under its row')
+
+    await app.click('button', '기록 목록')
+    await app.choose('월', '5')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 1`, 'the May session listed')
+    const listed = await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.textContent).join(' ')`)
+    assert.ok(!listed.includes(said), 'the list form never carries what was said')
+    for (const dir of await readdir(join(work.vault, 'subjects'))) {
+      for (const f of await readdir(join(work.vault, 'subjects', dir))) {
+        assert.ok(f.endsWith('.age'), 'every record encrypted')
+        assert.ok(!(await readFile(join(work.vault, 'subjects', dir, f))).includes(Buffer.from(said)), 'nothing said is on disk in the clear')
+      }
+    }
+  },
+
   async 'names a scheme version no crosswalk leads to when its pack is applied'(app, work) {
     // A relabel-only revision still needs a crosswalk; without one every earlier value is unmapped there.
     const pack = join(dirname(work.vault), 'relabel-pack')

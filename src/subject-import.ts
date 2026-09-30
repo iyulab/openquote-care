@@ -1,8 +1,8 @@
 // Many subjects at once, from rows pasted out of a spreadsheet: what each row would do, before
 // anything is written.
 
+import type { FieldView } from './fields.js'
 import type { Entity } from './records.js'
-import { fieldOfHeading } from './subject-fields.js'
 
 export type RowProblem =
   | { kind: 'no-name' }
@@ -17,9 +17,9 @@ export type PlannedRow =
   | { line: number; kind: 'problem'; problem: RowProblem }
 
 export interface ImportPlan {
-  /** The field key of each column; null for a heading this app does not keep. */
+  /** The field of each column, by name; null for a heading the vault declares no field for. */
   columns: (string | null)[]
-  /** Headings this app does not keep: their columns are not read. */
+  /** Headings the vault declares no field for: their columns are not read. */
   unknownHeadings: string[]
   rows: PlannedRow[]
   /** Nothing is written while any row has a problem, or the sheet has no name column. */
@@ -28,14 +28,15 @@ export interface ImportPlan {
 }
 
 /**
- * Plans the import of `rows` (the first one is the headings) against the subjects the vault has.
+ * Plans the import of `rows` (the first one is the headings) against the subjects the vault has;
+ * `fieldOf` says which field a heading names (see `headingIndex`).
  * A row finds its subject by management number when the sheet has that column and the row fills
  * it, otherwise by name; a name several subjects share cannot say which one it means. An empty
  * cell never clears a value the subject has.
  */
-export function planImport(rows: string[][], existing: Entity[]): ImportPlan {
+export function planImport(rows: string[][], existing: Entity[], fieldOf: (heading: string) => FieldView | undefined): ImportPlan {
   const [headings = [], ...body] = rows
-  const columns = headings.map((h) => fieldOfHeading(h)?.key ?? null)
+  const columns = headings.map((h) => fieldOf(h)?.name ?? null)
   const unknownHeadings = headings.filter((h, i) => columns[i] === null && h.trim() !== '')
   const missingName = !columns.includes('name')
 

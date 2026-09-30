@@ -1,14 +1,14 @@
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { conflictsOf, labelOf, newestFirst, text, type Entity } from '../records.js'
+import { headingIndex, labelOfField } from '../fields.js'
+import { conflictsOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { headingOf } from '../subject-fields.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
 import { nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
-import { conflictPanel } from './session-parts.js'
+import { conflictPanel, sessionTable, toggled } from './session-parts.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
 @customElement('oc-subjects')
@@ -19,6 +19,8 @@ export class OcSubjects extends VaultScreen {
   @state() private importPlan?: ImportPlan
   /** The session whose concurrent changes are open for a person to settle. */
   @state() private settling?: string
+  /** Sessions whose written content is open under their row. */
+  @state() private openNotes = new Set<string>()
 
   private async addSubject() {
     const name = this.subjectName.trim()
@@ -70,7 +72,7 @@ export class OcSubjects extends VaultScreen {
           placeholder=${strings.importPaste}
           @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
             this.store.set({ notice: '' })
-            this.importPlan = planImport(e.detail.rows, this.store.subjects)
+            this.importPlan = planImport(e.detail.rows, this.store.subjects, headingIndex(this.store.subjectFields))
           }}
         ></dc-paste-rows-zone>
         ${noticeLine(this.store)}
@@ -109,7 +111,7 @@ export class OcSubjects extends VaultScreen {
         : { create: strings.importCreate, update: strings.importUpdate, same: strings.importSame }[r.kind]
     const shown = (r: PlannedRow) =>
       r.kind === 'create' || r.kind === 'update'
-        ? Object.entries(r.fields).map(([k, v]) => `${headingOf(k)} ${v}`).join(' · ')
+        ? Object.entries(r.fields).map(([k, v]) => `${labelOfField(this.store.subjectFields, k)} ${v}`).join(' · ')
         : r.kind === 'same'
           ? text(this.store.subjects.find((s) => s.id === r.subject) ?? ({ fields: {} } as Entity), 'name')
           : ''
@@ -143,7 +145,6 @@ export class OcSubjects extends VaultScreen {
   private subjectDetail(subject: Entity) {
     const store = this.store
     const sessions = newestFirst(store.sessions.filter((s) => s.people.includes(subject.id)))
-    const names = new Map(store.practitioners.map((p) => [p.id, text(p, 'name')]))
     const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
     return html`
       <h2>${strings.sessions(text(subject, 'name'))}</h2>
@@ -152,31 +153,12 @@ export class OcSubjects extends VaultScreen {
       ${sessions.length === 0
         ? html`<p class="muted">${strings.noSessions}</p>`
         : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
-            <table>
-              <thead>
-                <tr>
-                  <th>${strings.sessionDate}</th>
-                  <th>${strings.sessionTopic}</th>
-                  <th>${strings.sessionMethod}</th>
-                  <th>${strings.sessionPractitioner}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${sessions.map(
-                  (s) => html`<tr data-session=${s.id}>
-                    <td>
-                      ${text(s, 'date')}
-                      ${conflictsOf(s).length > 0
-                        ? html`<button class="cell conflict" data-role="conflict" @click=${() => (this.settling = s.id)}>${strings.conflict}</button>`
-                        : nothing}
-                    </td>
-                    <td>${labelOf(store.schemes, s.fields.topic)}</td>
-                    <td>${labelOf(store.schemes, s.fields.method)}</td>
-                    <td>${names.get(text(s, 'practitioner')) ?? ''}</td>
-                  </tr>`,
-                )}
-              </tbody>
-            </table>`}
+            ${sessionTable(store, {
+              sessions,
+              openNotes: this.openNotes,
+              toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+              settle: (id) => (this.settling = id),
+            })}`}
     `
   }
 }
