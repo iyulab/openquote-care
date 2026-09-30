@@ -11,6 +11,12 @@
 
 It is the first product built on the [Openquote engine](https://github.com/iyulab/openquote). The engine knows the record format and nothing about any field of work; this app knows counseling and nothing about any one country or institution. What is specific to a field or a region lives in data packs.
 
+### Layers and tracks
+
+Packs stack in layers, and each builds only on the layers below it: the core profile (`care`), a field of work (`care.school`), a region (`kr`, `en`), a track holding what only a field and a region together need (`care.school.kr`), an institution, and the person's own additions. A pack adds codes, fields, forms and labels; it never changes what a lower layer counts. An item an institution or a person adds is anchored to a code of a lower layer, so reports stay comparable across them.
+
+One installation serves two tracks. A regional track is built for day-to-day use in one country. A neutral track (`care` with English labels) proves that the core stands without any field or regional pack. A feature enters the core only if it works in the neutral track; what one track alone needs goes into that track's packs.
+
 ### The non-negotiable principle
 
 **Counseling records never leave the counselor's control.**
