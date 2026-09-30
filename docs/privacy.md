@@ -10,13 +10,13 @@ The app writes records, encrypted, only to the vault folder you choose — which
 
 Released installers report the app's own failures to the publisher, so that defects can be found and fixed while the app is young. Builds made from source send nothing unless a collector is configured for them.
 
-**When.** A report is sent when the app crashes, or when an action fails through the app's own fault — the engine not starting or answering with an error, or a file operation failing. A wrong passphrase, a folder that is not a vault and other situations a person can resolve are not reported.
+**When.** A report is sent when the app crashes, when it cannot start because the system's web view runtime (Microsoft Edge WebView2) is missing, or when an action fails through the app's own fault — the engine not starting or answering with an error, or a file operation failing. A wrong passphrase, a folder that is not a vault and other situations a person can resolve are not reported.
 
 **What.** A report holds only:
 
 | Field | Example |
 | --- | --- |
-| Event | `app.panic` or `command.failed` |
+| Event | `app.panic`, `webview.missing` or `command.failed` |
 | Failure code | `engine-start`, `engine` or `io` |
 | Place in the app's source | `src-tauri/src/lib.rs:42` (a place inside a dependency is reported as `dependency`) |
 | The engine's HTTP status, when it answered | `500` |

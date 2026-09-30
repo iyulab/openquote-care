@@ -125,6 +125,9 @@ pub enum Report {
     /// failure codes; `status` is the engine's HTTP status, when it answered with one, and
     /// `fault` what the engine said went wrong, when it failed unexpectedly.
     CommandFailed { code: &'static str, at: SourcePlace, status: Option<u16>, fault: Option<EngineFault> },
+    /// The app could not start because the system's web view runtime is missing. Carries only
+    /// the facts every report has, so the publisher can see how often installs end up without it.
+    WebviewMissing,
 }
 
 impl Report {
@@ -132,12 +135,14 @@ impl Report {
         match self {
             Report::Panic { .. } => "app.panic",
             Report::CommandFailed { .. } => "command.failed",
+            Report::WebviewMissing => "webview.missing",
         }
     }
 
     fn properties(&self) -> Vec<(&'static str, String)> {
         match self {
             Report::Panic { at } => vec![("at", at.render())],
+            Report::WebviewMissing => vec![],
             Report::CommandFailed { code, at, status, fault } => {
                 let mut p = vec![("code", (*code).to_owned()), ("at", at.render())];
                 if let Some(s) = status {
@@ -268,6 +273,12 @@ pub fn command_failed(code: &'static str, at: &'static Location<'static>, status
     }
 }
 
+/// Reports that the web view runtime is missing, when reporting is on. Returns the sending thread
+/// so the caller can give it a moment before the process ends.
+pub fn webview_missing() -> Option<std::thread::JoinHandle<()>> {
+    REPORTER.get().and_then(|reporter| reporter.send(Report::WebviewMissing))
+}
+
 /// A panic location's file lives as long as the binary for code in this workspace, but the hook
 /// only sees a borrowed `&str`; the few panics a run can report make leaking the copy harmless.
 fn leak_file(file: &str) -> &'static str {
@@ -358,6 +369,9 @@ mod tests {
         }
         let env = envelope(&Report::CommandFailed { code: "io", at: place(), status: None, fault: None }, &c, &facts, "t");
         assert_eq!(env["data"]["baseData"]["properties"], json!({ "appVersion": "0.1.0", "os": "windows", "arch": "x86_64", "code": "io", "at": "src-tauri/src/lib.rs:42" }));
+        let env = envelope(&Report::WebviewMissing, &c, &facts, "t");
+        assert_eq!(env["data"]["baseData"]["name"], "webview.missing");
+        assert_eq!(env["data"]["baseData"]["properties"], json!({ "appVersion": "0.1.0", "os": "windows", "arch": "x86_64" }));
     }
 
     #[test]

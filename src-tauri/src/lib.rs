@@ -182,7 +182,11 @@ pub fn run() {
     diagnostics::install();
     // Tauri would stop with an English message of its own; say it in the person's language first.
     if let Some(message) = runtime::check() {
+        let sending = diagnostics::webview_missing();
         runtime::alert(&message);
+        if let Some(thread) = sending {
+            let _ = thread.join();
+        }
         std::process::exit(1);
     }
     let builder = tauri::Builder::default();
