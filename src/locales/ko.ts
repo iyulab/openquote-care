@@ -33,6 +33,8 @@ export const ko = {
   openWithPassphrase: '패스프레이즈 입력으로 돌아가기',
   passphraseHint: (min: number) => `${min}자 이상. 볼트를 열 때마다 입력합니다.`,
   create: '만들기',
+  track: '분야와 지역',
+  trackHint: '볼트가 처음 갖출 칸·분류·양식의 묶음입니다. 만든 뒤에도 데이터 팩을 적용해 넓힐 수 있습니다.',
   open: '열기',
   back: '뒤로',
   working: '처리하고 있습니다…',

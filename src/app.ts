@@ -4,7 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
-import { shell } from './shell.js'
+import { shell, type TrackView } from './shell.js'
 import { inAppLanguage, strings } from './strings.js'
 import './vault-view.js'
 
@@ -96,6 +96,9 @@ export class OcApp extends LitElement {
   @state() private folder?: string
   @state() private passphrase = ''
   @state() private again = ''
+  /** The tracks a new vault can be made on, and the one chosen. */
+  @state() private tracks: TrackView[] = []
+  @state() private track = ''
   @state() private tail = ''
   /** Whether the open screen takes the recovery key instead of the passphrase. */
   @state() private withKey = false
@@ -144,6 +147,7 @@ export class OcApp extends LitElement {
   }
 
   private go(screen: Screen) {
+    if (screen.name === 'create') void this.loadTracks()
     this.screen = screen
     this.folder = undefined
     this.passphrase = ''
@@ -173,6 +177,12 @@ export class OcApp extends LitElement {
     }
   }
 
+  /** The tracks to offer, the suggested one chosen; a bundle that cannot be read leaves the choice to the shell. */
+  private async loadTracks() {
+    this.tracks = await shell.tracks().catch(() => [])
+    this.track = this.tracks[0]?.id ?? ''
+  }
+
   private async create() {
     const problem = createProblem(this.folder, this.passphrase, this.again)
     if (problem) {
@@ -182,7 +192,7 @@ export class OcApp extends LitElement {
     }
     const folder = this.folder!
     await this.run(async () => {
-      const key = await shell.createVault(folder, this.passphrase)
+      const key = await shell.createVault(folder, this.passphrase, this.track || undefined)
       this.go({ name: 'kit', key, folder })
     })
   }
@@ -310,6 +320,19 @@ export class OcApp extends LitElement {
       ${this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
       ${this.passphraseField(strings.passphraseAgain, this.again, (v) => (this.again = v), submit)}
       <p class="muted">${strings.passphraseHint(MIN_PASSPHRASE)}</p>
+      ${this.tracks.length > 1
+        ? html`<label>
+              ${strings.track}
+              <dc-select
+                aria-label=${strings.track}
+                .options=${this.tracks.map((t) => ({ value: t.id, label: t.label }))}
+                .value=${this.track}
+                ?disabled=${this.busy}
+                @change=${(e: Event) => (this.track = (e.target as HTMLSelectElement).value)}
+              ></dc-select>
+            </label>
+            <p class="muted">${strings.trackHint}</p>`
+        : nothing}
       ${this.actions(strings.create, submit)}
     `
   }

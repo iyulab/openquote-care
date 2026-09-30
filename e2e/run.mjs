@@ -238,6 +238,7 @@ const scenarios = {
   async 'creates a vault and shows its recovery kit'(app, work) {
     await app.type('패스프레이즈', PASSPHRASE)
     await app.type('패스프레이즈 다시 입력', PASSPHRASE)
+    await app.choose('분야와 지역', 'school-kr')
     await app.click('dc-button', '만들기')
     await app.heading('복구 키트')
     const shown = await app.cdp.evaluate(`__e2e.one('[data-role=key]').textContent`)
@@ -831,6 +832,53 @@ const scenarios = {
   },
 
   // Last: it ends the app, so the web view writes out its profile before the scan.
+  async 'makes a vault on the neutral English track, records on it, and shows no Korean anywhere'(app, work) {
+    // The core and English packs only: no school or Korean pack, and the window in English.
+    await app.restart({ OPENQUOTE_UI_LOCALE: 'en' })
+    const vault = join(dirname(work.vault), 'neutral-vault')
+    await mkdir(vault)
+    await app.click('dc-button', 'Create a vault')
+    await app.pickFolder(vault)
+    await app.type('Passphrase', PASSPHRASE)
+    await app.type('Passphrase again', PASSPHRASE)
+    await app.choose('Field and region', 'care-en')
+    await app.click('dc-button', 'Create')
+    await app.heading('Recovery kit')
+    const key = (await app.cdp.evaluate(`__e2e.one('[data-role=key]').textContent`)).replaceAll(/\s+/g, '')
+    await app.type('To confirm you kept it, type the last group of the vault key (6 characters)', key.slice(-6))
+    await app.click('dc-button', 'Confirm')
+    await app.vaultOpen()
+    assert.deepEqual((await readdir(join(vault, 'packs'))).sort(), ['care', 'en'], 'only the core and the English labels')
+
+    await app.click('button', 'Practitioners')
+    await app.type('Practitioner name', 'Counselor A')
+    await app.click('dc-button', 'Add practitioner')
+    await app.click('button', 'Clients')
+    await app.type('Client name', 'Client One')
+    await app.click('dc-button', 'Add client')
+    await app.click('li button', 'Client One')
+    await app.setDate('Date', '2026-04-02')
+    await app.choose('Concern', 'anxiety')
+    await app.choose('Mode', 'video')
+    await app.write('Notes', 'Synthetic notes about exam stress')
+    await app.click('dc-button', 'Record session')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the session listed')
+    await app.noAlert()
+    const [row] = await app.sessionRows()
+    assert.ok(row[0].startsWith('2026-04-02'), 'the date first (its cell also offers to open the notes)')
+    assert.deepEqual(row.slice(1), ['Anxiety and stress', 'Video', 'Counselor A'], 'then the concern, the mode and the practitioner')
+
+    // Every screen, every text node and every name a screen reader or tooltip gives, shadow roots included.
+    const words = () => app.cdp.evaluate(`__e2e.all('*').flatMap((el) => [
+      ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),
+      ...['aria-label', 'title', 'placeholder', 'label'].map((a) => el.getAttribute(a) ?? ''),
+    ]).join(' ')`)
+    for (const screen of ['Clients', 'Groups', 'Monthly report', 'Record lists', 'Practitioners', 'Devices']) {
+      await app.click('button', screen)
+      assert.doesNotMatch(await words(), /[\uac00-\ud7a3]/, `no Korean on ${screen}`)
+    }
+  },
+
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()

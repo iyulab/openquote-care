@@ -39,6 +39,14 @@ export interface FieldView {
   aliases: string[]
 }
 
+/** A track a vault can be made on: the packs it starts from, named in the app's language. */
+export interface TrackView {
+  id: string
+  label: string
+  /** The locale its packs label things in. */
+  locale: string
+}
+
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
@@ -64,7 +72,10 @@ export interface VaultSummary {
 
 /** The shell's commands, typed. Every failure rejects with a `CommandError`. */
 export const shell = {
-  createVault: (folder: string, passphrase: string) => invoke<string>('create_vault', { folder, passphrase }),
+  /** The tracks a vault can be made on, the one the app's language suggests first. */
+  tracks: () => invoke<TrackView[]>('tracks'),
+  /** Prepares a vault on `track` (the suggested one when not given) and returns its recovery key. */
+  createVault: (folder: string, passphrase: string, track?: string) => invoke<string>('create_vault', { folder, passphrase, track }),
   confirmRecoveryKit: (typed: string) => invoke<void>('confirm_recovery_kit', { typed }),
   openVault: (folder: string, passphrase: string) => invoke<VaultSummary>('open_vault', { folder, passphrase }),
   /** Opens with the recovery key from the kit, for a forgotten passphrase. */

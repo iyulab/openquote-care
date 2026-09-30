@@ -28,6 +28,8 @@ export const en: Strings = {
   openWithPassphrase: 'Back to the passphrase',
   passphraseHint: (min: number) => `At least ${min} characters. You type it each time you open the vault.`,
   create: 'Create',
+  track: 'Field and region',
+  trackHint: 'The set of fields, classifications and forms the vault starts with. Applying data packs can extend it later.',
   open: 'Open',
   back: 'Back',
   working: 'Working…',
