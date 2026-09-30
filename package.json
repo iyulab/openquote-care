@@ -20,6 +20,7 @@
     "test:e2e": "node e2e/run.mjs",
     "test:installed": "node e2e/installed.mjs",
     "test:upgrade": "node e2e/upgrade.mjs",
+    "test:sandbox": "node e2e/sandbox.mjs",
     "verify": "node scripts/verify.mjs",
     "tauri": "tauri"
   },
