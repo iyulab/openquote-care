@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
+          global-json-file: global.json
 
       - name: Pack the engine
         shell: pwsh
@@ -61,7 +61,8 @@ jobs:
           node-version: 22
           cache: npm
 
-      - uses: Swatinem/rust-cache@v2
+      # Pinned to a commit like every third-party action in this job: it holds the signing token.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
 
