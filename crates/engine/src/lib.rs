@@ -173,10 +173,11 @@ impl Engine {
         self.call("GET", "/schemes", None)
     }
 
-    /// Carries classification values to `target_version` of their scheme through the vault's
-    /// crosswalks: for each, where it lands, or the codes a person chooses from.
-    pub fn resolve(&self, target_version: u32, values: Value) -> Result<Value, EngineError> {
-        self.call("POST", "/classification/resolve", Some(json!({ "targetVersion": target_version, "values": values })))
+    /// The records among `records` that wait for a person in a run of the report form: for each,
+    /// the field and value the form carries and the codes to choose from. Records no longer
+    /// pending are left out.
+    pub fn pending(&self, report: &str, version: u32, records: Value) -> Result<Value, EngineError> {
+        self.call("POST", "/reports/pending", Some(json!({ "report": report, "version": version, "records": records })))
     }
 
     /// The run records the vault keeps, oldest first.

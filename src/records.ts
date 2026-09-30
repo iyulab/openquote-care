@@ -20,6 +20,11 @@ export interface Entity {
   fields: Record<string, unknown>
   /** Fields two devices changed without seeing each other: every value is kept. */
   conflicts: Record<string, FieldHead[]>
+  /**
+   * Changes its changes build on that have not reached this device. Until they arrive, a
+   * conflict may only be a gap, not two devices disagreeing.
+   */
+  missingBase?: string[]
 }
 
 /** One device's value for a field that was changed concurrently. */
@@ -83,19 +88,14 @@ export function isClassified(value: unknown): value is Classified {
   return typeof v === 'object' && v !== null && typeof v.scheme === 'string' && typeof v.version === 'number' && typeof v.code === 'string'
 }
 
-/** Where a value lands in a later version: one code, codes a person chooses from, or none. */
-export interface Resolution {
-  kind: 'assigned' | 'pending' | 'unmapped'
-  code: string | null
+/** A record waiting for a person in a form's run: the value the form carries, and the codes to choose from. */
+export interface PendingChoice {
+  record: string
+  field: string
+  scheme: string
+  version: number
+  was: Classified | null
   candidates: string[]
-}
-
-/** The field of `entity` classified in `scheme`, if any: the one a report's rows count by. */
-export function classifiedField(entity: Entity, scheme: string): [string, Classified] | undefined {
-  for (const [field, value] of Object.entries(entity.fields)) {
-    if (isClassified(value) && value.scheme === scheme) return [field, value]
-  }
-  return undefined
 }
 
 /** The fields of `entity` changed concurrently, each with the distinct values to choose from. */

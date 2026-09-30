@@ -149,22 +149,41 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Carries_values_to_a_later_version_and_names_the_candidates_of_a_split()
+    public async Task Lists_the_pending_records_of_a_run_with_the_codes_each_may_take()
     {
         await Post("/vault/load", Files(GoldenVault.Through(2)));
-        JsonObject Topic(string code) => new() { ["scheme"] = "topic", ["version"] = 1, ["code"] = code };
+        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var records = run["record"]!["pending"]!["records"]!.AsArray().Select(r => r!.GetValue<string>()).ToArray();
 
-        var resolved = (await Post("/classification/resolve", new
+        var pending = (await Post("/reports/pending", new { report = "monthly-topic", version = 2, records })).AsArray();
+
+        Assert.Equal(records, pending.Select(p => p!["record"]!.GetValue<string>()));
+        Assert.All(pending, p =>
         {
-            targetVersion = 2,
-            values = new[] { Topic("family"), Topic("relation"), Topic("other") },
-        })).AsArray();
+            Assert.Equal("topic", p!["field"]!.GetValue<string>());
+            Assert.Equal(2, p["version"]!.GetValue<int>());
+            Assert.Equal(1, p["was"]!["version"]!.GetValue<int>());
+            Assert.True(p["candidates"]!.AsArray().Count > 1);
+        });
+        Assert.Contains(pending, p => p!["candidates"]!.AsArray().Select(c => c!.GetValue<string>()).SequenceEqual(["relation-peer", "relation-teacher"]));
+    }
 
-        Assert.Equal("assigned", resolved[0]!["kind"]!.GetValue<string>());
-        Assert.Equal("family", resolved[0]!["code"]!.GetValue<string>());
-        Assert.Equal("pending", resolved[1]!["kind"]!.GetValue<string>());
-        Assert.Equal(["relation-peer", "relation-teacher"], resolved[1]!["candidates"]!.AsArray().Select(c => c!.GetValue<string>()));
-        Assert.Equal("unmapped", resolved[2]!["kind"]!.GetValue<string>());
+    [Fact]
+    public async Task Refuses_a_code_the_record_is_not_waiting_for()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var id = run["record"]!["pending"]!["records"]![0]!.GetValue<string>();
+
+        var refused = await Post("/changes/reclassify", new
+        {
+            type = "session",
+            id,
+            field = "topic",
+            value = new JsonObject { ["scheme"] = "topic", ["version"] = 2, ["code"] = "no-such-code" },
+        }, HttpStatusCode.UnprocessableEntity);
+
+        Assert.Contains("no-such-code", refused["error"]!.GetValue<string>(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -352,6 +371,8 @@ public sealed class SidecarTests : IAsyncLifetime
 
         var after = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
         Assert.Equal(6, after["record"]!["pending"]!["count"]!.GetValue<int>());
+        var stillPending = (await Post("/reports/pending", new { report = "monthly-topic", version = 2, records = new[] { sessionId } })).AsArray();
+        Assert.Empty(stillPending); // chosen, so no longer waiting
         Assert.Equal(26, after["record"]!["total"]!["count"]!.GetValue<int>());
     }
 

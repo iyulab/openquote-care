@@ -115,6 +115,7 @@ export const strings = {
   exportCopied: (n: number) => `${n}행과 제목 행을 복사했습니다. 엑셀에 붙여 넣으세요.`,
   exportPeriod: (from: string, to: string, n: number) => `기간 ${from} ~ ${to} · ${n}행`,
   exportEmpty: '이 기간에 기록한 회기가 없습니다.',
+  exportWithheld: (columns: string[]) => `${columns.join(', ')} 열은 상담 내용을 담는 칸이라 비워 두었습니다. 내용은 앱 밖으로 옮기지 않습니다.`,
   exportGaps: (pending: number, unmapped: number) =>
     `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 버전에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 버전의 목록 양식을 쓰세요.`,
   noExports: '이 볼트에는 목록 양식이 없습니다. 데이터 팩을 적용하면 생깁니다.',
@@ -202,6 +203,7 @@ export const strings = {
   conflict: '동시 수정',
   conflictTitle: '두 기기에서 서로 모르게 고친 칸',
   conflictLead: '둘 다 보존되어 있습니다. 맞는 값을 고르면 모든 기기에서 그 값으로 정리됩니다.',
+  conflictMissingBase: '다른 기기에서 쓴 변경 일부가 아직 이 기기에 오지 않았습니다. 동기화가 끝나면 이 동시 수정이 저절로 풀릴 수 있으니, 급하지 않다면 잠시 기다렸다 고르세요.',
   conflictField: { topic: '주제', method: '방법', date: '날짜', practitioner: '담당자' } as Record<string, string>,
   conflictFrom: (device: string) => device,
   conflictResolved: '동시 수정을 정리했습니다.',
@@ -265,6 +267,7 @@ export const strings = {
     'damaged-key-file': '볼트 키 파일이 손상되었습니다. 복구 키트로 열어야 합니다.',
     'recovery-key': '복구 키가 맞지 않습니다.',
     'invalid-path': '볼트 밖의 경로입니다.',
+    'not-a-choice': '이 기록은 더 이상 그 분류를 기다리지 않습니다. 다른 기기에서 이미 골랐을 수 있습니다. 대기 목록을 다시 여세요.',
     'engine-start': '기록 엔진이 시작되지 않았습니다. 앱을 다시 설치해야 할 수 있습니다.',
     engine: '기록 엔진이 요청을 처리하지 못했습니다.',
     io: '파일을 읽거나 쓰지 못했습니다.',

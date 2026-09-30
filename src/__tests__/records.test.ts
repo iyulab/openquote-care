@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -59,17 +59,6 @@ describe('definitionOf', () => {
     expect(definitionOf('schemes/topic/v1-v2.json')).toEqual({ kind: 'crosswalk', name: 'topic', from: 1, to: 2 })
     expect(definitionOf('reports/monthly-topic/v2.json')).toEqual({ kind: 'report', name: 'monthly-topic', version: 2 })
     expect(definitionOf('subjects/x/y.json')).toBeUndefined()
-  })
-})
-
-describe('classifiedField', () => {
-  it('finds the field holding a value of the scheme', () => {
-    const e: Entity = {
-      type: 'session', id: '1', subject: 's', group: null, people: ['s'], conflicts: {},
-      fields: { date: '2026-04-01', topic: { scheme: 'topic', version: 1, code: 'relation' }, method: { scheme: 'method', version: 1, code: 'phone' } },
-    }
-    expect(classifiedField(e, 'topic')).toEqual(['topic', { scheme: 'topic', version: 1, code: 'relation' }])
-    expect(classifiedField(e, 'school-level')).toBeUndefined()
   })
 })
 

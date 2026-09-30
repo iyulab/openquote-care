@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { Classified, Entity, Resolution, Scheme } from './records.js'
+import type { Entity, PendingChoice, Scheme } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry } from './forms.js'
@@ -58,8 +58,8 @@ export const shell = {
   applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
   runs: () => invoke<KeptRun[]>('runs'),
   compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
-  /** Where each value lands in `targetVersion` of its scheme, through the vault's crosswalks. */
-  resolve: (targetVersion: number, values: Classified[]) => invoke<Resolution[]>('resolve', { targetVersion, values }),
+  /** Which of a form run's pending records still wait for a person, with the codes each may take. */
+  pending: (report: string, version: number, records: string[]) => invoke<PendingChoice[]>('pending', { report, version, records }),
   /** Runs a monthly report; the engine keeps its run record in the vault. */
   runReport: (report: string, version: number, year: number, month: number) =>
     invoke<RunRecord>('run_report', { report, version, year, month }),

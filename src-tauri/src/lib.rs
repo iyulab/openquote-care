@@ -91,8 +91,8 @@ fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
 }
 
 #[tauri::command]
-fn resolve(target_version: u32, values: Value, app: State<App>) -> CommandResult<Value> {
-    text(app.resolve(target_version, values))
+fn pending(report: String, version: u32, records: Value, app: State<App>) -> CommandResult<Value> {
+    text(app.pending(&report, version, records))
 }
 
 #[tauri::command]
@@ -216,7 +216,7 @@ pub fn run() {
             vault_summary,
             diagnostics_enabled,
             apply_pack,
-            resolve,
+            pending,
             runs,
             refresh,
             compare_runs,

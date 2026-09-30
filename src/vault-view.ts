@@ -5,7 +5,7 @@ import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { open } from '@tauri-apps/plugin-dialog'
 import { describeError } from './errors.js'
 import { Latest } from './latest.js'
-import { choices, classifiedField, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Classified, type Entity, type Scheme } from './records.js'
+import { choices, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, text, today, type Entity, type Scheme } from './records.js'
 import { toTsv, type ExportTable } from './export.js'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from './idle.js'
 import { atSession, headingOf } from './subject-fields.js'
@@ -747,6 +747,7 @@ export class OcVault extends LitElement {
     return html`<div class="form" data-role="settle">
       <h3>${strings.conflictTitle} · ${text(session, 'date')}</h3>
       <p class="muted">${strings.conflictLead}</p>
+      ${(session.missingBase?.length ?? 0) > 0 ? html`<p class="muted" data-role="missing-base">${strings.conflictMissingBase}</p>` : nothing}
       ${conflictsOf(session).map(
         ({ field, heads }) => html`<div class="row">
           <span>${strings.conflictField[field] ?? field}</span>
@@ -1135,6 +1136,7 @@ export class OcVault extends LitElement {
     return html`
       <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
       ${gaps > 0 ? html`<p class="error" data-role="export-gaps">${strings.exportGaps(table.pending.length, table.unmapped.length)}</p>` : nothing}
+      ${table.withheld.length > 0 ? html`<p class="muted" data-role="export-withheld">${strings.exportWithheld(table.withheld)}</p>` : nothing}
       ${table.rows.length === 0
         ? html`<p class="muted">${strings.exportEmpty}</p>`
         : html`<div class="scroll">
@@ -1233,25 +1235,15 @@ export class OcVault extends LitElement {
 
   /** Lists the report's pending records with the codes each may take, for a person to choose. */
   private async showPending(result: RunRecord) {
-    const [scheme, { version }] = Object.entries(result.schemes)[0]
     const byId = new Map(this.sessions.map((s) => [s.id, s]))
-    const rows = result.pending.records
-      .map((id) => byId.get(id))
-      .filter((s): s is Entity => !!s)
-      .map((session) => ({ session, found: classifiedField(session, scheme) }))
-      .filter((r): r is { session: Entity; found: [string, Classified] } => !!r.found)
     await this.run(async () => {
-      const resolved = await shell.resolve(version, rows.map((r) => r.found[1]))
+      // The engine says which records still wait and for which codes — the screen never carries values itself.
+      const waiting = await shell.pending(result.report.report, result.report.version, result.pending.records)
       this.evidence = undefined
       this.comparison = undefined
-      this.pendingChoices = rows.map((r, i) => ({
-        session: r.session,
-        field: r.found[0],
-        was: r.found[1],
-        scheme,
-        version,
-        candidates: resolved[i].candidates,
-      }))
+      this.pendingChoices = waiting
+        .filter((w) => byId.has(w.record))
+        .map((w) => ({ session: byId.get(w.record)!, field: w.field, was: w.was, scheme: w.scheme, version: w.version, candidates: w.candidates }))
     })
     await this.updateComplete
     this.renderRoot.querySelector('[data-role=pending]')?.scrollIntoView({ block: 'start', behavior: 'smooth' })

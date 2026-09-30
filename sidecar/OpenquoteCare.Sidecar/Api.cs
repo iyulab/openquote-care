@@ -35,9 +35,11 @@ public sealed record DeviceNameRequest(string Name);
 
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
 
-public sealed record ReclassifyRequest(string Type, string Id, string Field, JsonNode Value);
+/// <param name="Value">The code a person chose, in the scheme version the record waits in.</param>
+public sealed record ReclassifyRequest(string Type, string Id, string Field, CodedValue Value);
 
-public sealed record ResolveRequest(int TargetVersion, IReadOnlyList<CodedValue> Values);
+/// <summary>The pending records of a run of a report form, by id.</summary>
+public sealed record PendingRequest(string Report, int Version, IReadOnlyList<string> Records);
 
 public sealed record CompareRequest(string Earlier, string Later);
 
@@ -77,7 +79,8 @@ public sealed record ExportTableView(
     IReadOnlyList<string> Columns,
     IReadOnlyList<ExportRowView> Rows,
     IReadOnlyList<string> Pending,
-    IReadOnlyList<string> Unmapped);
+    IReadOnlyList<string> Unmapped,
+    IReadOnlyList<string> Withheld);
 
 public sealed record ReportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
 
@@ -91,13 +94,15 @@ public sealed record EntityView(
     string? Group,
     IReadOnlyList<string> People,
     IReadOnlyDictionary<string, JsonElement> Fields,
-    IReadOnlyDictionary<string, IReadOnlyList<HeadView>> Conflicts);
+    IReadOnlyDictionary<string, IReadOnlyList<HeadView>> Conflicts,
+    IReadOnlyList<string> MissingBase);
 
 public sealed record HeadView(string ChangeId, string Device, JsonElement Value);
 
 public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<SchemeItem> Items);
 
-public sealed record ResolutionView(string Kind, string? Code, IReadOnlyList<string> Candidates, IReadOnlyList<string> Crosswalks);
+/// <summary>A record waiting for a person: the field and value the form carries, and the codes to choose from.</summary>
+public sealed record PendingView(string Record, string Field, string Scheme, int Version, JsonElement? Was, IReadOnlyList<string> Candidates);
 
 public sealed record RunListItem(string Id, string Device, string At, RunReportRef Report, PeriodView Period, int Total);
 
@@ -157,15 +162,6 @@ internal static class Api
                 .Select(s => new SchemeView(s.Name, s.Version, s.Items))
                 .ToArray());
 
-        app.MapPost("/classification/resolve", (ResolveRequest request, VaultSession session) =>
-        {
-            var catalog = session.Current.Content.Catalog();
-            return request.Values
-                .Select(v => catalog.Resolve(v, request.TargetVersion))
-                .Select(r => new ResolutionView(r.Kind.ToString().ToLowerInvariant(), r.Code, r.Candidates, r.Crosswalks))
-                .ToArray();
-        });
-
         app.MapGet("/runs", (VaultSession session) =>
             session.Current.Content.Runs.Select(k => new RunListItem(
                 k.Id,
@@ -215,10 +211,39 @@ internal static class Api
                 ? Results.Ok(WireFile.From(writer.Update(entity, request.Fields)))
                 : Results.NotFound());
 
+        // The engine accepts only a code the record is waiting for; a stale screen or another
+        // device's view that offers anything else is answered, not written.
         app.MapPost("/changes/reclassify", (ReclassifyRequest request, VaultSession session) =>
-            Find(session, request.Type, request.Id) is { } entity
-                ? Results.Ok(WireFile.From(writer.Reclassify(entity, request.Field, request.Value)))
-                : Results.NotFound());
+        {
+            if (Find(session, request.Type, request.Id) is not { } entity) return Results.NotFound();
+            try
+            {
+                return Results.Ok(WireFile.From(writer.Reclassify(entity, request.Field, request.Value, session.Current.Content.Catalog())));
+            }
+            catch (ArgumentException e)
+            {
+                return Results.UnprocessableEntity(new ErrorView(e.Message));
+            }
+        });
+
+        // Where each pending record of a form's run waits, by the engine's own rule — the screen
+        // never carries values itself. A record no longer pending (chosen since) is left out.
+        app.MapPost("/reports/pending", (PendingRequest request, VaultSession session) =>
+        {
+            var snapshot = session.Current;
+            var report = snapshot.Content.Reports.SingleOrDefault(r => r.Name == request.Report && r.Version == request.Version);
+            if (report is null) return Results.NotFound();
+            var catalog = snapshot.Content.Catalog();
+            return Results.Ok(request.Records
+                .Select(id => snapshot.Entities.GetValueOrDefault(new EntityRef(report.Counts, id)))
+                .OfType<Entity>()
+                .Select(e => (Entity: e, Resolution: e.Classify(report.RowField, report.RowScheme, report.RowVersion, catalog)))
+                .Where(x => x.Resolution.Kind == ResolutionKind.Pending)
+                .Select(x => new PendingView(x.Entity.Reference.Id, report.RowField, report.RowScheme, report.RowVersion,
+                    x.Entity.LatestValue(report.RowField, v => CodedValue.From(v) is { } c && c.Scheme == report.RowScheme && c.Version <= report.RowVersion),
+                    x.Resolution.Candidates))
+                .ToArray());
+        });
 
         app.MapPost("/reports/run", (RunRequest request, VaultSession session) =>
         {
@@ -238,7 +263,8 @@ internal static class Api
             var export = snapshot.Content.Exports.SingleOrDefault(e => e.Name == request.Export && e.Version == request.Version);
             if (export is null) return Results.NotFound();
             var from = new DateOnly(request.Year, request.Month, 1);
-            var table = ExportRunner.Run(export, from, from.AddMonths(1).AddDays(-1), snapshot.Entities.Values, snapshot.Content.Catalog());
+            var table = ExportRunner.Run(export, from, from.AddMonths(1).AddDays(-1), snapshot.Entities.Values, snapshot.Content.Catalog(),
+                snapshot.Content.FieldCatalog());
             return Results.Ok(new ExportTableView(
                 export.Name,
                 export.Version,
@@ -247,7 +273,8 @@ internal static class Api
                 [.. export.Columns.Select(c => c.Label)],
                 [.. table.Rows.Select(r => new ExportRowView(r.Record, r.Cells))],
                 table.Pending,
-                table.Unmapped));
+                table.Unmapped,
+                table.Withheld));
         });
     }
 
@@ -303,7 +330,8 @@ internal static class Api
         e.Fields,
         e.Conflicts.ToDictionary(
             c => c.Key,
-            c => (IReadOnlyList<HeadView>)[.. c.Value.Select(h => new HeadView(h.ChangeId, h.Device, h.Value))]));
+            c => (IReadOnlyList<HeadView>)[.. c.Value.Select(h => new HeadView(h.ChangeId, h.Device, h.Value))]),
+        e.MissingBase);
 }
 
 /// <summary>The sidecar's JSON contract, generated at compile time.</summary>
@@ -315,7 +343,7 @@ internal static class Api
 [JsonSerializable(typeof(DeviceNameRequest))]
 [JsonSerializable(typeof(UpdateRequest))]
 [JsonSerializable(typeof(ReclassifyRequest))]
-[JsonSerializable(typeof(ResolveRequest))]
+[JsonSerializable(typeof(PendingRequest))]
 [JsonSerializable(typeof(CompareRequest))]
 [JsonSerializable(typeof(RunRequest))]
 [JsonSerializable(typeof(ExportRequest))]
@@ -323,7 +351,7 @@ internal static class Api
 [JsonSerializable(typeof(SummaryView))]
 [JsonSerializable(typeof(EntityView[]))]
 [JsonSerializable(typeof(SchemeView[]))]
-[JsonSerializable(typeof(ResolutionView[]))]
+[JsonSerializable(typeof(PendingView[]))]
 [JsonSerializable(typeof(RunListItem[]))]
 [JsonSerializable(typeof(ComparisonView))]
 [JsonSerializable(typeof(RunResult))]

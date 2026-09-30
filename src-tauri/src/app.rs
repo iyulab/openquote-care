@@ -67,6 +67,8 @@ impl AppError {
                 VaultError::Io(_) => "io",
             },
             Self::Engine(EngineError::Start(_)) => "engine-start",
+            // The engine refused a choice the record is not waiting for (another device chose first).
+            Self::Engine(EngineError::Status(422, _)) => "not-a-choice",
             Self::Engine(_) => "engine",
             Self::Io(_) => "io",
         }
@@ -251,9 +253,9 @@ impl App {
         })
     }
 
-    /// Where each classification value lands in `target_version`, through the vault's crosswalks.
-    pub fn resolve(&self, target_version: u32, values: Value) -> Result<Value, AppError> {
-        self.with_open(|open| Ok(open.engine.resolve(target_version, values)?))
+    /// The pending records of a report form's run, with the codes each may take.
+    pub fn pending(&self, report: &str, version: u32, records: Value) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.pending(report, version, records)?))
     }
 
     /// The run records the vault keeps.
@@ -842,8 +844,17 @@ cut off").unwrap();
         assert_eq!(added, ["reports/monthly-topic/v2.json", "schemes/topic/v1-v2.json", "schemes/topic/v2.json"]);
         assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["version"] == 2));
         assert!(app.apply_pack(&golden_step(2)).unwrap().is_empty(), "applying it again adds nothing");
-        let split = app.resolve(2, serde_json::json!([{ "scheme": "topic", "version": 1, "code": "relation" }])).unwrap();
-        assert_eq!(split[0]["candidates"], serde_json::json!(["relation-peer", "relation-teacher"]));
+        let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        let session = app
+            .record(
+                "/changes/in-subject",
+                json!({ "subjectId": subject.split('/').nth(1).unwrap(), "type": "session",
+                        "fields": { "date": "2026-04-02", "topic": { "scheme": "topic", "version": 1, "code": "relation" } } }),
+            )
+            .unwrap();
+        let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
+        let split = app.pending("monthly-topic", 2, json!([id])).unwrap();
+        assert_eq!(split[0]["candidates"], json!(["relation-peer", "relation-teacher"]));
         assert!(app.apply_pack(&pack()).unwrap().is_empty(), "the pack the vault started from is already in it");
 
         let other = tempfile::tempdir().unwrap();

@@ -328,7 +328,7 @@ mod tests {
         for code in ["engine-start", "engine", "io"] {
             assert!(is_fault(code));
         }
-        for code in ["wrong-passphrase", "not-a-vault", "recovery-key", "pack-conflict", "no-vault"] {
+        for code in ["wrong-passphrase", "not-a-vault", "recovery-key", "pack-conflict", "no-vault", "not-a-choice"] {
             assert!(!is_fault(code), "{code} is a person's situation, not a defect");
         }
     }
