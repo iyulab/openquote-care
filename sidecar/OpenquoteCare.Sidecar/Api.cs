@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using Openquote.Classification;
 using Openquote.Exports;
+using Openquote.Packs;
 using Openquote.Records;
 using Openquote.Reports;
 using Openquote.Vault;
@@ -59,12 +60,29 @@ public sealed record SummaryView(
     IReadOnlyList<ReportView> Reports,
     IReadOnlyList<ExportView> Exports,
     IReadOnlyList<SchemeVersionView> Unlinked,
-    IReadOnlyList<UnreadableView> Unreadable);
+    IReadOnlyList<UnreadableView> Unreadable,
+    IReadOnlyList<PackView> Packs,
+    IReadOnlyList<PackIssueView> PackIssues,
+    IReadOnlyList<FieldIssueView> FieldIssues,
+    IReadOnlyList<LabelConflictView> LabelConflicts,
+    IReadOnlyList<string> Locales);
+
+/// <summary>A data pack the vault holds (its latest version).</summary>
+public sealed record PackView(string Id, int Version, string Label, IReadOnlyDictionary<string, int> Depends);
+
+/// <summary>How the vault's packs do not fit together: a missing or older dependency, a missing or shared file, a cycle.</summary>
+public sealed record PackIssueView(string Kind, string Pack, string Detail);
+
+/// <summary>A field definition the vault's packs disagree on or cannot apply.</summary>
+public sealed record FieldIssueView(string Kind, string Type, string Field, string Detail);
+
+/// <summary>Packs that label the same thing differently in one locale, none of them building on the others.</summary>
+public sealed record LabelConflictView(string Locale, string Target, IReadOnlyList<string> Packs);
 
 /// <summary>A scheme version no crosswalk leads to from an earlier version of the same scheme.</summary>
 public sealed record SchemeVersionView(string Scheme, int Version);
 
-public sealed record ExportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
+public sealed record ExportView(string Name, int Version, string Label, string Rows, string PeriodField, IReadOnlyList<SchemeLagView> Behind);
 
 /// <summary>A scheme a form classifies by, at a version older than the latest one the vault holds.</summary>
 public sealed record SchemeLagView(string Scheme, int Version, int Latest);
@@ -82,7 +100,15 @@ public sealed record ExportTableView(
     IReadOnlyList<string> Unmapped,
     IReadOnlyList<string> Withheld);
 
-public sealed record ReportView(string Name, int Version, string Label, IReadOnlyList<SchemeLagView> Behind);
+public sealed record ReportView(
+    string Name,
+    int Version,
+    string Label,
+    string Counts,
+    string PeriodField,
+    string RowField,
+    string? ColumnField,
+    IReadOnlyList<SchemeLagView> Behind);
 
 /// <summary>A file that could not be used: why, and what it was for (read from its path).</summary>
 public sealed record UnreadableView(string Path, string Reason, string Detail, VaultFileKind Kind);
@@ -292,13 +318,33 @@ internal static class Api
             s.Content.Changes.Count,
             s.Entities.Count,
             s.Entities.Values.Count(e => e.Conflicts.Count > 0),
-            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label, Behind([(r.RowScheme, r.RowVersion)], latest)))],
-            [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label,
+            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label, r.Counts, r.PeriodField, r.RowField, r.ColumnField,
+                Behind([(r.RowScheme, r.RowVersion)], latest)))],
+            [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label, e.Rows, e.PeriodField,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest)))],
             Unlinked(s.Content),
             [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail, u.Kind))
                 .Concat(s.Undecryptable.Select(u => new UnreadableView(u.Path, "Undecryptable", u.Detail, VaultFileKind.Of(u.Plain))))
-                .OrderBy(u => u.Path, StringComparer.Ordinal)]);
+                .OrderBy(u => u.Path, StringComparer.Ordinal)],
+            [.. new PackGraph(s.Content.Packs).Latest.OrderBy(p => p.Id, StringComparer.Ordinal)
+                .Select(p => new PackView(p.Id, p.Version, p.Label, p.Depends))],
+            [.. s.Content.CheckPacks().Select(i => new PackIssueView(i.Kind.ToString(), i.Pack, i.Detail))],
+            [.. s.Content.FieldCatalog().Issues.Select(i => new FieldIssueView(i.Kind.ToString(), i.Type, i.Field, i.Detail))],
+            [.. s.Content.LabelCatalog().Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
+            Locales(s.Content));
+    }
+
+    // The locales the vault's packs label things in, the most specific pack's first: a pack comes
+    // after everything it builds on, so the last in pack order speaks for the vault. Empty when the
+    // vault holds no labels (every vault made before packs carried them).
+    private static string[] Locales(VaultContent content)
+    {
+        var rank = new PackGraph(content.Packs).Order().Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i, StringComparer.Ordinal);
+        return [.. content.Labels
+            .OrderByDescending(l => rank.GetValueOrDefault(l.Pack, -1))
+            .ThenBy(l => l.Pack, StringComparer.Ordinal)
+            .Select(l => l.Locale)
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
     // Values are carried to a new version only through crosswalks; a version none leads to — even one

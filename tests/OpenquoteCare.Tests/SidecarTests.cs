@@ -148,6 +148,58 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal("topic", exportLag["scheme"]!.GetValue<string>());
     }
 
+    private static Openquote.Vault.VaultFile Def(string path, string json) => new(path, System.Text.Encoding.UTF8.GetBytes(json));
+
+    // Two packs: "base" and "region" building on it, each labelling the date field in its own locale.
+    private static readonly Openquote.Vault.VaultFile[] TwoPacks =
+    [
+        Def("packs/base/v1.json", """{"format":"openquote.pack/0","pack":"base","version":1,"label":"Base","provides":["labels/base/v1.en.json"]}"""),
+        Def("labels/base/v1.en.json", """{"format":"openquote.labels/0","pack":"base","version":1,"locale":"en","fields":{"session":{"date":"Date"}}}"""),
+        Def("packs/region/v1.json", """{"format":"openquote.pack/0","pack":"region","version":1,"label":"Region","depends":{"base":1},"provides":["labels/region/v1.fr.json","reports/missing/v1.json"]}"""),
+        Def("labels/region/v1.fr.json", """{"format":"openquote.labels/0","pack":"region","version":1,"locale":"fr","fields":{"session":{"date":"Date du jour"}}}"""),
+    ];
+
+    [Fact]
+    public async Task Summarises_the_packs_the_vault_holds_and_what_does_not_fit()
+    {
+        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. TwoPacks]));
+
+        Assert.Equal(["base", "region"], summary["packs"]!.AsArray().Select(p => p!["id"]!.GetValue<string>()));
+        Assert.Equal(1, summary["packs"]![1]!["depends"]!["base"]!.GetValue<int>());
+        var issue = Assert.Single(summary["packIssues"]!.AsArray());
+        Assert.Equal("region", issue!["pack"]!.GetValue<string>()); // it lists a report form the vault does not hold
+    }
+
+    [Fact]
+    public async Task Orders_the_vault_locales_most_specific_pack_first()
+    {
+        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. TwoPacks]));
+
+        Assert.Equal(["fr", "en"], summary["locales"]!.AsArray().Select(l => l!.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task A_vault_without_labels_names_no_locale_and_no_pack()
+    {
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        Assert.Empty(summary["locales"]!.AsArray());
+        Assert.Empty(summary["packs"]!.AsArray());
+        Assert.Empty(summary["packIssues"]!.AsArray());
+    }
+
+    [Fact]
+    public async Task Names_the_fields_a_report_form_counts_by()
+    {
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        var report = summary["reports"]!.AsArray().First(r => r!["name"]!.GetValue<string>() == "monthly-topic")!;
+        Assert.Equal("session", report["counts"]!.GetValue<string>());
+        Assert.Equal("date", report["periodField"]!.GetValue<string>());
+        Assert.Equal("topic", report["rowField"]!.GetValue<string>());
+        Assert.Equal("practitioner", report["columnField"]!.GetValue<string>());
+    }
+
     [Fact]
     public async Task Lists_the_pending_records_of_a_run_with_the_codes_each_may_take()
     {

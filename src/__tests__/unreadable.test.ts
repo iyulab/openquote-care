@@ -14,6 +14,11 @@ describe('unreadableWhat', () => {
     expect(strings.unreadableWhat({ kind: 'export', name: 'session-list', version: 1 })).toBe('내보내기 양식 session-list 1판')
     expect(strings.unreadableWhat({ kind: 'run', year: 2026 })).toBe('2026년 보고 산출 기록')
   })
+  it('names what an unreadable pack, labels or fields file was for', () => {
+    expect(strings.unreadableWhat({ kind: 'pack', name: 'care.school', version: 1 })).toBe('데이터 팩 care.school 1판의 목록')
+    expect(strings.unreadableWhat({ kind: 'labels', name: 'kr', version: 1 })).toBe('데이터 팩 kr 1판의 이름표')
+    expect(strings.unreadableWhat({ kind: 'fields', name: 'care', version: 1, type: 'session' })).toBe('데이터 팩 care 1판의 session 칸 정의')
+  })
   it('leaves anything else to its path', () => {
     expect(strings.unreadableWhat({ kind: 'other' })).toBeUndefined()
   })

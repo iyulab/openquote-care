@@ -121,8 +121,12 @@ export type Definition =
   | { kind: 'scheme'; name: string; version: number }
   | { kind: 'crosswalk'; name: string; from: number; to: number }
   | { kind: 'report'; name: string; version: number }
+  | { kind: 'export'; name: string; version: number }
+  | { kind: 'pack'; name: string; version: number }
+  | { kind: 'labels'; name: string; version: number; locale: string }
+  | { kind: 'fields'; name: string; version: number; type: string }
 
-/** Reads a definition file's vault path (`schemes/topic/v2.json`, `schemes/topic/v1-v2.json`, `reports/x/v2.json`). */
+/** Reads a definition file's vault path (`schemes/topic/v2.json`, `schemes/topic/v1-v2.json`, `reports/x/v2.json`, `exports/…`, `packs/…`, `labels/…`, `fields/…`). */
 export function definitionOf(path: string): Definition | undefined {
   const scheme = /^schemes\/([^/]+)\/v(\d+)\.json$/.exec(path)
   if (scheme) return { kind: 'scheme', name: scheme[1], version: Number(scheme[2]) }
@@ -130,6 +134,14 @@ export function definitionOf(path: string): Definition | undefined {
   if (crosswalk) return { kind: 'crosswalk', name: crosswalk[1], from: Number(crosswalk[2]), to: Number(crosswalk[3]) }
   const report = /^reports\/([^/]+)\/v(\d+)\.json$/.exec(path)
   if (report) return { kind: 'report', name: report[1], version: Number(report[2]) }
+  const exportForm = /^exports\/([^/]+)\/v(\d+)\.json$/.exec(path)
+  if (exportForm) return { kind: 'export', name: exportForm[1], version: Number(exportForm[2]) }
+  const pack = /^packs\/([^/]+)\/v(\d+)\.json$/.exec(path)
+  if (pack) return { kind: 'pack', name: pack[1], version: Number(pack[2]) }
+  const labels = /^labels\/([^/]+)\/v(\d+)\.([^/]+)\.json$/.exec(path)
+  if (labels) return { kind: 'labels', name: labels[1], version: Number(labels[2]), locale: labels[3] }
+  const fields = /^fields\/([^/]+)\/([^/]+)\/v(\d+)\.json$/.exec(path)
+  if (fields) return { kind: 'fields', name: fields[1], type: fields[2], version: Number(fields[3]) }
   return undefined
 }
 

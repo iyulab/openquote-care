@@ -60,6 +60,13 @@ describe('definitionOf', () => {
     expect(definitionOf('reports/monthly-topic/v2.json')).toEqual({ kind: 'report', name: 'monthly-topic', version: 2 })
     expect(definitionOf('subjects/x/y.json')).toBeUndefined()
   })
+
+  it('reads every definition path a pack can add', () => {
+    expect(definitionOf('exports/session-list/v1.json')).toEqual({ kind: 'export', name: 'session-list', version: 1 })
+    expect(definitionOf('packs/care.school/v2.json')).toEqual({ kind: 'pack', name: 'care.school', version: 2 })
+    expect(definitionOf('labels/kr/v1.ko.json')).toEqual({ kind: 'labels', name: 'kr', version: 1, locale: 'ko' })
+    expect(definitionOf('fields/care/session/v1.json')).toEqual({ kind: 'fields', name: 'care', type: 'session', version: 1 })
+  })
 })
 
 describe('conflictsOf', () => {

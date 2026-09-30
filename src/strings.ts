@@ -64,6 +64,12 @@ export const strings = {
         return `보고 양식 ${f.name} ${f.version}판`
       case 'export':
         return `내보내기 양식 ${f.name} ${f.version}판`
+      case 'pack':
+        return `데이터 팩 ${f.name} ${f.version}판의 목록`
+      case 'labels':
+        return `데이터 팩 ${f.name} ${f.version}판의 이름표`
+      case 'fields':
+        return `데이터 팩 ${f.name} ${f.version}판의 ${f.type} 칸 정의`
       case 'run':
         return `${f.year}년 보고 산출 기록`
       case 'other':
@@ -169,7 +175,14 @@ export const strings = {
     scheme: (name: string, version: number) => `분류 ${name} v${version}`,
     crosswalk: (name: string, from: number, to: number) => `연계표 ${name} v${from}→v${to}`,
     report: (name: string, version: number) => `양식 ${name} v${version}`,
+    export: (name: string, version: number) => `내보내기 양식 ${name} v${version}`,
+    pack: (name: string, version: number) => `데이터 팩 ${name} v${version}`,
+    labels: (name: string, version: number, locale: string) => `이름표 ${name} v${version} (${locale})`,
+    fields: (name: string, version: number, type: string) => `칸 정의 ${name} v${version} (${type})`,
   },
+  /** A pack whose manifest came along: named by its label rather than by its files. */
+  packApplied: (label: string, version: number) => `데이터 팩 「${label}」 ${version}판을 적용했습니다.`,
+  packIssues: (n: number) => `데이터 팩끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 팩이나 파일이 있는지 확인하세요.`,
 
   subjects: '대상자',
   noSubjects: '대상자가 없습니다. 이름을 입력해 추가하세요.',

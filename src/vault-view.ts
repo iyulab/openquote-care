@@ -1031,13 +1031,27 @@ export class OcVault extends LitElement {
         this.notice = strings.packNothingNew
         return
       }
-      const names = added.map((p) => {
-        const d = definitionOf(p)
-        if (!d) return p
-        if (d.kind === 'crosswalk') return strings.definition.crosswalk(d.name, d.from, d.to)
-        return strings.definition[d.kind](d.name, d.version)
-      })
-      this.notice = strings.packAdded(names)
+      // A pack that brings its manifest is named once; a folder of loose definitions, file by file.
+      const manifests = added.map(definitionOf).filter((d) => d?.kind === 'pack')
+      const packs = this.summary?.packs ?? []
+      const named = manifests.map((m) => packs.find((p) => p.id === m!.name && p.version === m!.version)).filter((p) => !!p)
+      if (named.length > 0) {
+        this.notice = named.map((p) => strings.packApplied(p!.label, p!.version)).join(' ')
+      } else {
+        const names = added.map((p) => {
+          const d = definitionOf(p)
+          if (!d) return p
+          switch (d.kind) {
+            case 'crosswalk': return strings.definition.crosswalk(d.name, d.from, d.to)
+            case 'labels': return strings.definition.labels(d.name, d.version, d.locale)
+            case 'fields': return strings.definition.fields(d.name, d.version, d.type)
+            default: return strings.definition[d.kind](d.name, d.version)
+          }
+        })
+        this.notice = strings.packAdded(names)
+      }
+      const issues = this.summary?.packIssues ?? []
+      if (issues.length > 0) this.notice += ' ' + strings.packIssues(issues.length)
       const behind = leftBehind([...(this.summary?.reports ?? []), ...(this.summary?.exports ?? [])])
       if (behind.length > 0) this.notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
       const unlinked = this.summary?.unlinked ?? []

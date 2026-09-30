@@ -7,11 +7,13 @@ import type { FormEntry } from './forms.js'
 
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
 export interface VaultFileKind {
-  kind: 'subject' | 'group' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'run' | 'other'
+  kind: 'subject' | 'group' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'pack' | 'labels' | 'fields' | 'run' | 'other'
   /** The subject's or group's id. */
   id?: string | null
-  /** The scheme, report form or export form. */
+  /** The scheme, report form, export form or pack. */
   name?: string | null
+  /** The entity type a field definition file declares fields for. */
+  type?: string | null
   version?: number | null
   from?: number | null
   to?: number | null
@@ -30,6 +32,12 @@ export interface VaultSummary {
   device: string
   /** Names people gave the devices writing to this vault, by device id. */
   devices: Record<string, string>
+  /** The data packs the vault holds, at their latest versions. */
+  packs: { id: string; version: number; label: string; depends: Record<string, number> }[]
+  /** How the vault's packs do not fit together (a missing dependency or file, a cycle). */
+  packIssues: { kind: string; pack: string; detail: string }[]
+  /** The locales the vault's packs label things in, the most specific pack's first; empty for a vault without labels. */
+  locales: string[]
   [key: string]: unknown
 }
 

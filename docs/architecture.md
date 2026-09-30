@@ -77,10 +77,11 @@ Every vault the app creates is encrypted. A vault whose declaration says it is n
 
 ## Data packs
 
-Classification schemes, crosswalks between scheme versions, report forms and export forms are data, not code. They come as a data pack: a folder with the vault's own layout, such as the Korean pack in `packs/care-kr/` (schemes under `schemes/`, report forms under `reports/`, export forms under `exports/`).
+Classification schemes, crosswalks between scheme versions, report forms and export forms are data, not code. They come as a data pack: a folder with the vault's own layout, such as the Korean pack in `packs/care-kr/` (schemes under `schemes/`, report forms under `reports/`, export forms under `exports/`, and — for a pack that names itself — its manifest under `packs/`, labels under `labels/` and field definitions under `fields/`). Only these six folders enter a vault; anything else in a pack folder stays out.
 
 - **A new vault starts from the bundled pack.** Its files are copied into the vault as ordinary encrypted files when the vault is created. From then on the vault holds its own copy; neither the pack nor the app is needed to interpret it.
 - **Applying a pack adds, never changes.** A person can apply another pack folder to an open vault. Only files the vault lacks are added. A file the vault already holds with the same content is skipped; one with different content stops the whole pack and nothing is added, since definitions are never rewritten.
+- **A pack with a manifest is named as a pack.** After applying it, the app names the pack and its version rather than listing its files, and says when the vault's packs do not fit together (a missing dependency or file, a cycle).
 - **Lagging forms are flagged.** When the newest version of a report or export form still classifies by an older version of a scheme than the latest one in the vault, the app warns after a pack is applied and again when that form is chosen. Older form versions lag by design, since they serve the months before a revision, so only a form's newest version is checked.
 - **Unlinked versions are flagged.** Values reach a new scheme version only through a crosswalk. When a scheme version has no crosswalk from an earlier version of the same scheme — even one that only relabels its items — the app names it after a pack is applied, since every value recorded earlier would be unmapped in forms of that version.
 

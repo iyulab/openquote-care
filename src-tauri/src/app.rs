@@ -222,13 +222,12 @@ impl App {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
     }
 
-    /// Adds a data pack's schemes, crosswalks, report forms and export forms to the open vault: the files it
+    /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. Returns the
     /// paths added.
     pub fn apply_pack(&self, pack: &Path) -> Result<Vec<String>, AppError> {
-        let definitions: Vec<PlainFile> =
-            pack_files(pack)?.into_iter().filter(|f| ["schemes/", "reports/", "exports/"].iter().any(|d| f.path.starts_with(d))).collect();
+        let definitions = pack_files(pack)?;
         if definitions.is_empty() {
             return Err(AppError::NotAPack);
         }
@@ -325,7 +324,12 @@ pub fn device_id(config_dir: &Path) -> io::Result<String> {
     Ok(id)
 }
 
-/// The files of a data pack, with their paths inside the pack as vault paths.
+/// The vault folders a data pack adds to: classification schemes and crosswalks, report and export
+/// forms, and the pack's manifest, labels and field definitions. Anything else in a pack folder
+/// stays out of the vault.
+const DEFINITION_FOLDERS: [&str; 6] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/"];
+
+/// The definition files of a data pack, with their paths inside the pack as vault paths.
 fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<PlainFile>) -> io::Result<()> {
         for entry in fs::read_dir(dir)? {
@@ -341,6 +345,7 @@ fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
     }
     let mut files = Vec::new();
     walk(pack, pack, &mut files)?;
+    files.retain(|f| DEFINITION_FOLDERS.iter().any(|d| f.path.starts_with(d)));
     files.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(files)
 }
@@ -863,6 +868,29 @@ cut off").unwrap();
         assert_eq!(app.apply_pack(other.path()).unwrap_err().code(), "pack-conflict");
         let empty = tempfile::tempdir().unwrap();
         assert_eq!(app.apply_pack(empty.path()).unwrap_err().code(), "not-a-pack");
+    }
+
+    #[test]
+    fn a_pack_with_a_manifest_adds_its_manifest_labels_and_fields() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), &pack()).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let extra = tempfile::tempdir().unwrap();
+        let put = |path: &str, json: &str| {
+            let file = extra.path().join(path);
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(file, json).unwrap();
+        };
+        put("packs/x/v1.json", r#"{"format":"openquote.pack/0","pack":"x","version":1,"label":"X","provides":["labels/x/v1.en.json","fields/x/session/v1.json"]}"#);
+        put("labels/x/v1.en.json", r#"{"format":"openquote.labels/0","pack":"x","version":1,"locale":"en","fields":{"session":{"date":"Date"}}}"#);
+        put("fields/x/session/v1.json", r#"{"format":"openquote.fields/0","pack":"x","type":"session","version":1,"fields":[{"name":"date","kind":"date"}]}"#);
+        put("tracks.json", r#"{"not":"a definition"}"#);
+
+        let mut added = app.apply_pack(extra.path()).unwrap();
+        added.sort();
+        assert_eq!(added, ["fields/x/session/v1.json", "labels/x/v1.en.json", "packs/x/v1.json"]);
+        assert!(app.summary().unwrap()["unreadable"].as_array().unwrap().is_empty(), "every file it added reads");
     }
 
     #[test]
