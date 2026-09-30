@@ -141,7 +141,7 @@ export const ko = {
   pending: '재분류 대기',
   pendingHint: '분류 체계가 바뀌어 한 기록이 여러 새 분류로 갈 수 있습니다. 사람이 골라야 칸에 들어갑니다.',
   unmapped: '연계 없음',
-  unmappedHint: '연계표에 없는 옛 분류의 기록입니다. 분류 체계 자료를 확인하세요.',
+  unmappedHint: '분류 칸을 비워 두었거나, 옛 분류가 연계표에 없어 줄에 넣지 못한 기록입니다. 비어 있으면 기록에서 채우고, 옛 분류라면 분류 체계 자료를 확인하세요.',
   grandTotal: '전체',
   evidence: (what: string, n: number) => `${what} — 근거 기록 ${n}건`,
   evidenceSubject: '대상자',

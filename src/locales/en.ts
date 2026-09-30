@@ -137,7 +137,7 @@ export const en: Strings = {
   pending: 'Awaiting reclassification',
   pendingHint: 'The classification changed and a record could go to more than one new category. It is counted once a person chooses.',
   unmapped: 'Not mapped',
-  unmappedHint: 'Records in an old category that the crosswalk does not carry forward. Check the classification material.',
+  unmappedHint: 'Records with the category left empty, or in an old category the crosswalk does not carry forward. Fill in an empty one on the record; for an old one, check the classification material.',
   grandTotal: 'All',
   evidence: (what: string, n: number) => `${what} — ${plural(n, 'record')} behind it`,
   evidenceSubject: 'Client',
