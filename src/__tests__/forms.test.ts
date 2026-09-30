@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { leftBehind, type FormEntry } from '../forms.js'
 
 const lag = { scheme: 'topic', version: 1, latest: 2 }
-const form = (name: string, version: number, behind = [lag]): FormEntry => ({ name, version, label: name, behind })
+const form = (name: string, version: number, behind = [lag]): FormEntry => ({ name, version, label: name, behind, offered: true })
 
 describe('leftBehind', () => {
   it('names a form whose newest version still uses an older scheme version', () => {

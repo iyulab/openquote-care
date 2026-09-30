@@ -117,10 +117,15 @@ export class VaultStore extends EventTarget {
       shell.summary(),
     ])
     if (!current()) return
-    this.summary = summary
-    if (!this.exportKey && summary.exports.length > 0) this.exportKey = `${summary.exports[0].name}@${summary.exports[0].version}`
-    if (!this.reportKey && summary.reports.length > 0) {
-      const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
+    // A form standing on a hidden field is never shown; the sidecar decides which those are.
+    const { reports, exports } = (this.summary = {
+      ...summary,
+      reports: summary.reports.filter((f) => f.offered),
+      exports: summary.exports.filter((f) => f.offered),
+    })
+    if (!this.exportKey && exports.length > 0) this.exportKey = `${exports[0].name}@${exports[0].version}`
+    if (!this.reportKey && reports.length > 0) {
+      const newest = [...reports].sort((a, b) => b.version - a.version)[0]
       this.reportKey = `${newest.name}@${newest.version}`
     }
     this.names = nameCollator(summary.locales)

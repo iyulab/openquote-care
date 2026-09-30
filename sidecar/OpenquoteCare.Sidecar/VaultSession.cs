@@ -1,3 +1,6 @@
+using Openquote.Fields;
+using Openquote.Labels;
+using Openquote.Packs;
 using Openquote.Records;
 using Openquote.Vault;
 
@@ -14,10 +17,18 @@ internal sealed class VaultSession
     private IReadOnlyList<UndecryptableFile> _undecryptable = [];
     private Snapshot? _snapshot;
 
+    /// <param name="Locales">
+    /// The locales the vault's packs label things in, the most specific pack's first: a pack comes after
+    /// everything it builds on, so the last in pack order speaks for the vault. Empty when the vault holds
+    /// no labels (every vault made before packs carried them).
+    /// </param>
     internal sealed record Snapshot(
         VaultContent Content,
         IReadOnlyDictionary<EntityRef, Entity> Entities,
-        IReadOnlyList<UndecryptableFile> Undecryptable);
+        IReadOnlyList<UndecryptableFile> Undecryptable,
+        FieldCatalog Fields,
+        LabelCatalog Labels,
+        IReadOnlyList<string> Locales);
 
     /// <summary>Replaces the whole vault, with the files the host could not decrypt.</summary>
     public Snapshot Load(IEnumerable<VaultFile> files, IReadOnlyList<UndecryptableFile> undecryptable)
@@ -55,6 +66,17 @@ internal sealed class VaultSession
     private Snapshot Rebuild()
     {
         var content = VaultReader.Read(_files.Values);
-        return _snapshot = new Snapshot(content, EntityMerger.Merge(content.Changes), _undecryptable);
+        return _snapshot = new Snapshot(content, EntityMerger.Merge(content.Changes), _undecryptable,
+            content.FieldCatalog(), content.LabelCatalog(), LocalesOf(content));
+    }
+
+    private static string[] LocalesOf(VaultContent content)
+    {
+        var rank = new PackGraph(content.Packs).Order().Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i, StringComparer.Ordinal);
+        return [.. content.Labels
+            .OrderByDescending(l => rank.GetValueOrDefault(l.Pack, -1))
+            .ThenBy(l => l.Pack, StringComparer.Ordinal)
+            .Select(l => l.Locale)
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 }

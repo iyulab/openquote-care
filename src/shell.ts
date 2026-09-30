@@ -20,6 +20,25 @@ export interface VaultFileKind {
   year?: number | null
 }
 
+/** A field of an entity type as the vault's packs declare it, with its label and aliases in the vault's locale. */
+export interface FieldView {
+  name: string
+  kind: 'text' | 'date' | 'number' | 'coded' | 'reference' | 'references'
+  /** The scheme a coded field is bound to. */
+  scheme: string | null
+  /** The entity type a reference field points at. */
+  refType: string | null
+  required: boolean
+  hidden: boolean
+  /** `narrative` fields hold written content, which never leaves the record. */
+  tier: 'structured' | 'narrative'
+  /** The subject's field whose value the record takes when it is written. */
+  defaultFromSubject: string | null
+  label: string
+  /** Other names the field goes by, matched when data is taken in. */
+  aliases: string[]
+}
+
 /** What the engine reports when a vault opens. */
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
@@ -59,6 +78,10 @@ export const shell = {
   record: (route: string, request: object) => invoke<string>('record', { route, request }),
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
   schemes: () => invoke<Scheme[]>('schemes'),
+  /** The fields the vault's packs declare for an entity type, labelled in the vault's locale; none without field definitions. */
+  fields: (entityType: string) => invoke<FieldView[]>('fields', { entityType }),
+  /** The version of a scheme in force on a date (`YYYY-MM-DD`), or null when the vault holds none. */
+  inForce: (scheme: string, date: string) => invoke<number | null>('in_force', { scheme, date }),
   summary: () => invoke<VaultSummary>('vault_summary'),
   /** Reads the vault again, taking in what other devices sharing its folder wrote. */
   refresh: () => invoke<VaultSummary>('refresh'),

@@ -168,9 +168,20 @@ impl Engine {
         self.call("GET", "/summary", None)
     }
 
-    /// Every classification scheme version in the vault, with its items.
+    /// Every classification scheme version in the vault, with its items named in the vault's locale.
     pub fn schemes(&self) -> Result<Value, EngineError> {
         self.call("GET", "/schemes", None)
+    }
+
+    /// The fields the vault's packs declare for `entity_type`, labelled in the vault's locale.
+    pub fn fields(&self, entity_type: &str) -> Result<Value, EngineError> {
+        self.call("GET", &format!("/fields/{entity_type}"), None)
+    }
+
+    /// The version of `scheme` in force on `date` (`YYYY-MM-DD`), or `None` when the vault holds none.
+    pub fn in_force(&self, scheme: &str, date: &str) -> Result<Option<u32>, EngineError> {
+        let answer = self.call("POST", "/schemes/in-force", Some(json!({ "scheme": scheme, "date": date })))?;
+        Ok(answer.get("version").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok()))
     }
 
     /// The records among `records` that wait for a person in a run of the report form: for each,

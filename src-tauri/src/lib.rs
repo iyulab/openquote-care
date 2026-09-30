@@ -127,6 +127,16 @@ fn vault_summary(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn fields(entity_type: String, app: State<App>) -> CommandResult<Value> {
+    text(app.fields(&entity_type))
+}
+
+#[tauri::command]
+fn in_force(scheme: String, date: String, app: State<App>) -> CommandResult<Option<u32>> {
+    text(app.in_force(&scheme, &date))
+}
+
+#[tauri::command]
 fn schemes(app: State<App>) -> CommandResult<Value> {
     text(app.schemes())
 }
@@ -223,6 +233,8 @@ pub fn run() {
             record,
             entities,
             schemes,
+            fields,
+            in_force,
             vault_summary,
             diagnostics_enabled,
             ui_locale,

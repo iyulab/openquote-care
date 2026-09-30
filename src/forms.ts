@@ -11,6 +11,8 @@ export interface FormEntry {
   version: number
   label: string
   behind: SchemeLag[]
+  /** False when the form reads a field the vault's packs hide: hiding a field hides what is built on it. */
+  offered: boolean
 }
 
 /**

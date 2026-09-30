@@ -153,11 +153,101 @@ public sealed class SidecarTests : IAsyncLifetime
     // Two packs: "base" and "region" building on it, each labelling the date field in its own locale.
     private static readonly Openquote.Vault.VaultFile[] TwoPacks =
     [
-        Def("packs/base/v1.json", """{"format":"openquote.pack/0","pack":"base","version":1,"label":"Base","provides":["labels/base/v1.en.json"]}"""),
-        Def("labels/base/v1.en.json", """{"format":"openquote.labels/0","pack":"base","version":1,"locale":"en","fields":{"session":{"date":"Date"}}}"""),
-        Def("packs/region/v1.json", """{"format":"openquote.pack/0","pack":"region","version":1,"label":"Region","depends":{"base":1},"provides":["labels/region/v1.fr.json","reports/missing/v1.json"]}"""),
-        Def("labels/region/v1.fr.json", """{"format":"openquote.labels/0","pack":"region","version":1,"locale":"fr","fields":{"session":{"date":"Date du jour"}}}"""),
+        Def("packs/base/v1.json", """{"format":"openquote.pack/0","pack":"base","version":1,"label":"Base","provides":["labels/base/v1.en.json"]}"""), Def("labels/base/v1.en.json", """{"format":"openquote.labels/0","pack":"base","version":1,"locale":"en","fields":{"session":{"date":"Date"}}}"""),
+        Def("packs/region/v1.json", """{"format":"openquote.pack/0","pack":"region","version":1,"label":"Region","depends":{"base":1},"provides":["labels/region/v1.fr.json","reports/missing/v1.json"]}"""), Def("labels/region/v1.fr.json", """{"format":"openquote.labels/0","pack":"region","version":1,"locale":"fr","fields":{"session":{"date":"Date du jour"}}}"""),
     ];
+
+    // A pack declaring the session and subject fields of the golden vault, labelled in English, and one building on it
+    // that hides the method field and the school of a subject. Forms read those fields, or do not.
+    private static readonly Openquote.Vault.VaultFile[] FieldPacks =
+    [
+        Def("packs/core/v1.json", """{"format":"openquote.pack/0","pack":"core","version":1,"label":"Core","provides":["fields/core/session/v1.json","fields/core/subject/v1.json","labels/core/v1.en.json","schemes/kind/v1.json","schemes/kind/v2.json","reports/by-method/v1.json","exports/by-method/v1.json","exports/by-school/v1.json","exports/plain/v1.json"]}"""), Def("fields/core/session/v1.json", """{"format":"openquote.fields/0","pack":"core","type":"session","version":1,"fields":[ {"name":"date","kind":"date","required":true,"label":"Date"}, {"name":"practitioner","kind":"reference","type":"practitioner","required":true}, {"name":"topic","kind":"coded","scheme":"topic","required":true}, {"name":"method","kind":"coded","scheme":"method"}, {"name":"grade","kind":"text","default":{"subject":"grade"}}, {"name":"note","kind":"text","tier":"narrative","label":"Notes"}]}"""),
+        Def("fields/core/subject/v1.json", """{"format":"openquote.fields/0","pack":"core","type":"subject","version":1,"fields":[ {"name":"name","kind":"text","required":true,"label":"Name"}, {"name":"school","kind":"text"}]}"""),
+        Def("labels/core/v1.en.json", """{"format":"openquote.labels/0","pack":"core","version":1,"locale":"en", "schemes":{"method":{"1":{"interview":"Interview"}}}, "fields":{"session":{"topic":"Topic"}}, "aliases":{"subject":{"name":["Full name","Client"]}}, "reports":{"monthly-topic":{"1":"Sessions by topic"}}, "exports":{"plain":{"1":{"columns":{"0":"Day"}}}}}"""),
+        Def("schemes/kind/v1.json", """{"format":"openquote.scheme/0","scheme":"kind","version":1,"effective":{"from":"2025-03-01","to":"2026-02-28"},"items":[{"code":"a","label":"A"}]}"""), Def("schemes/kind/v2.json", """{"format":"openquote.scheme/0","scheme":"kind","version":2,"effective":{"from":"2026-03-01"},"items":[{"code":"a","label":"A"}]}"""),
+        Def("reports/by-method/v1.json", """{"format":"openquote.report/0","report":"by-method","version":1,"label":"By method","counts":"session","period":{"unit":"month","field":"date"},"rows":{"field":"method","scheme":"method","version":1}}"""), Def("exports/by-method/v1.json", """{"format":"openquote.export/0","export":"by-method","version":1,"label":"By method","rows":"session","period":{"field":"date"},"columns":[{"label":"Date","field":"date"},{"label":"Method","field":"method","scheme":"method","version":1}]}"""),
+        Def("exports/by-school/v1.json", """{"format":"openquote.export/0","export":"by-school","version":1,"label":"By school","rows":"session","period":{"field":"date"},"columns":[{"label":"Date","field":"date"},{"label":"School","person":"school"}]}"""), Def("exports/plain/v1.json", """{"format":"openquote.export/0","export":"plain","version":1,"label":"Plain","rows":"session","period":{"field":"date"},"columns":[{"label":"Date","field":"date"},{"label":"Practitioner","field":"practitioner","ref":"name"}]}"""),
+        Def("packs/narrow/v1.json", """{"format":"openquote.pack/0","pack":"narrow","version":1,"label":"Narrow","depends":{"core":1},"provides":["fields/narrow/session/v1.json","fields/narrow/subject/v1.json"]}"""), Def("fields/narrow/session/v1.json", """{"format":"openquote.fields/0","pack":"narrow","type":"session","version":1,"constrain":[{"name":"method","hidden":true}]}"""),
+        Def("fields/narrow/subject/v1.json", """{"format":"openquote.fields/0","pack":"narrow","type":"subject","version":1,"constrain":[{"name":"school","hidden":true}]}"""),
+    ];
+
+    [Fact]
+    public async Task Lists_the_fields_of_a_type_with_labels_in_the_vault_locale()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+
+        var session = (await Get("/fields/session")).AsArray().ToDictionary(f => f!["name"]!.GetValue<string>(), f => f!);
+        Assert.Equal(["date", "practitioner", "topic", "method", "grade", "note"], session.Keys);
+        Assert.Equal("Topic", session["topic"]!["label"]!.GetValue<string>());                // from the vault's labels
+        Assert.Equal("Date", session["date"]!["label"]!.GetValue<string>());                  // the definition's own
+        Assert.Equal("practitioner", session["practitioner"]!["label"]!.GetValue<string>());  // neither: its name
+        Assert.Equal(("coded", "topic", true), (session["topic"]!["kind"]!.GetValue<string>(), session["topic"]!["scheme"]!.GetValue<string>(), session["topic"]!["required"]!.GetValue<bool>()));
+        Assert.Equal(("reference", "practitioner"), (session["practitioner"]!["kind"]!.GetValue<string>(), session["practitioner"]!["refType"]!.GetValue<string>()));
+        Assert.True(session["method"]!["hidden"]!.GetValue<bool>());
+        Assert.Equal("narrative", session["note"]!["tier"]!.GetValue<string>());
+        Assert.Equal("grade", session["grade"]!["defaultFromSubject"]!.GetValue<string>());
+
+        var name = (await Get("/fields/subject")).AsArray().Single(f => f!["name"]!.GetValue<string>() == "name")!;
+        Assert.Equal(["Full name", "Client"], name["aliases"]!.AsArray().Select(a => a!.GetValue<string>()));
+    }
+
+    [Fact]
+    public async Task Lists_no_fields_for_a_vault_without_field_definitions()
+    {
+        await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        Assert.Empty((await Get("/fields/session")).AsArray());
+    }
+
+    [Fact]
+    public async Task Labels_scheme_items_in_the_vault_locale_and_falls_back_to_the_items_own()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+
+        var method = (await Get("/schemes")).AsArray().Single(s => s!["scheme"]!.GetValue<string>() == "method")!["items"]!.AsArray()
+            .ToDictionary(i => i!["code"]!.GetValue<string>(), i => i!["label"]!.GetValue<string>());
+        Assert.Equal("Interview", method["interview"]);
+        Assert.Equal("전화", method["phone"]);
+    }
+
+    [Fact]
+    public async Task Offers_the_scheme_version_in_force_on_a_date()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+
+        Assert.Equal(1, (await Post("/schemes/in-force", new { scheme = "kind", date = "2026-02-28" }))["version"]!.GetValue<int>());
+        Assert.Equal(2, (await Post("/schemes/in-force", new { scheme = "kind", date = "2026-03-01" }))["version"]!.GetValue<int>());
+        Assert.Null((await Post("/schemes/in-force", new { scheme = "nothing", date = "2026-03-01" }))["version"]);
+    }
+
+    [Fact]
+    public async Task Does_not_offer_a_form_that_reads_a_hidden_field()
+    {
+        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+
+        var reports = summary["reports"]!.AsArray().ToDictionary(r => r!["name"]!.GetValue<string>(), r => r!["offered"]!.GetValue<bool>());
+        Assert.Equal(new Dictionary<string, bool> { ["monthly-topic"] = true, ["by-method"] = false }, reports);
+        var exports = summary["exports"]!.AsArray().ToDictionary(e => e!["name"]!.GetValue<string>(), e => e!["offered"]!.GetValue<bool>());
+        Assert.Equal(new Dictionary<string, bool> { ["by-method"] = false, ["by-school"] = false, ["plain"] = true }, exports);
+    }
+
+    [Fact]
+    public async Task Offers_every_form_of_a_vault_without_field_definitions()
+    {
+        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+
+        Assert.All(summary["reports"]!.AsArray(), r => Assert.True(r!["offered"]!.GetValue<bool>()));
+    }
+
+    [Fact]
+    public async Task Names_forms_and_export_columns_in_the_vault_locale()
+    {
+        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+
+        Assert.Equal("Sessions by topic", summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "monthly-topic")!["label"]!.GetValue<string>());
+        var table = await Post("/exports/run", new { export = "plain", version = 1, year = 2026, month = 3 });
+        Assert.Equal(["Day", "Practitioner"], table["columns"]!.AsArray().Select(c => c!.GetValue<string>()));
+    }
 
     [Fact]
     public async Task Summarises_the_packs_the_vault_holds_and_what_does_not_fit()

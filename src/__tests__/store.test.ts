@@ -39,6 +39,19 @@ describe('VaultStore', () => {
     vi.mocked(shell.refresh).mockResolvedValue(summary)
   })
 
+  it('never shows a form the vault does not offer, nor picks it first', async () => {
+    const form = (name: string, offered: boolean) => ({ name, version: 1, label: name, behind: [], offered })
+    vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [form('hidden', false)] })
+    const store = new VaultStore()
+
+    await store.load()
+
+    expect(store.summary?.reports.map((f) => f.name)).toEqual(['shown'])
+    expect(store.summary?.exports).toEqual([])
+    expect(store.reportKey).toBe('shown@1')
+    expect(store.exportKey).toBeFalsy()
+  })
+
   it('drops a read overtaken by a newer one', async () => {
     const answers = [deferred<Entity[]>(), deferred<Entity[]>()]
     const reads = [...answers]

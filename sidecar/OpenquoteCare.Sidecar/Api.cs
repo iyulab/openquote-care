@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Nodes;
 using Openquote.Classification;
 using Openquote.Exports;
+using Openquote.Fields;
 using Openquote.Packs;
 using Openquote.Records;
 using Openquote.Reports;
@@ -48,6 +49,9 @@ public sealed record RunRequest(string Report, int Version, int Year, int Month)
 
 public sealed record ExportRequest(string Export, int Version, int Year, int Month);
 
+/// <summary>A scheme and the date a value is entered for.</summary>
+public sealed record InForceRequest(string Scheme, DateOnly Date);
+
 // Responses. Typed rather than anonymous so the JSON contract is source-generated (SidecarJson):
 // no reflection at run time, which is what lets the sidecar be published ahead-of-time compiled.
 
@@ -82,7 +86,9 @@ public sealed record LabelConflictView(string Locale, string Target, IReadOnlyLi
 /// <summary>A scheme version no crosswalk leads to from an earlier version of the same scheme.</summary>
 public sealed record SchemeVersionView(string Scheme, int Version);
 
-public sealed record ExportView(string Name, int Version, string Label, string Rows, string PeriodField, IReadOnlyList<SchemeLagView> Behind);
+/// <param name="Label">What people call the form, in the vault's locale.</param>
+/// <param name="Offered">False when a column reads a field the vault's packs hide: the form is not offered.</param>
+public sealed record ExportView(string Name, int Version, string Label, string Rows, string PeriodField, IReadOnlyList<SchemeLagView> Behind, bool Offered);
 
 /// <summary>A scheme a form classifies by, at a version older than the latest one the vault holds.</summary>
 public sealed record SchemeLagView(string Scheme, int Version, int Latest);
@@ -100,6 +106,8 @@ public sealed record ExportTableView(
     IReadOnlyList<string> Unmapped,
     IReadOnlyList<string> Withheld);
 
+/// <param name="Label">What people call the form, in the vault's locale.</param>
+/// <param name="Offered">False when its rows or columns read a field the vault's packs hide: the form is not offered.</param>
 public sealed record ReportView(
     string Name,
     int Version,
@@ -108,7 +116,28 @@ public sealed record ReportView(
     string PeriodField,
     string RowField,
     string? ColumnField,
-    IReadOnlyList<SchemeLagView> Behind);
+    IReadOnlyList<SchemeLagView> Behind,
+    bool Offered);
+
+/// <summary>
+/// A field of an entity type as the vault's packs declare it, with its label and the other names it goes by
+/// resolved in the vault's locales. <c>Kind</c> is <c>text</c>, <c>date</c>, <c>number</c>, <c>coded</c>,
+/// <c>reference</c> or <c>references</c>; <c>Tier</c> is <c>structured</c> or <c>narrative</c>.
+/// </summary>
+public sealed record FieldView(
+    string Name,
+    string Kind,
+    string? Scheme,
+    string? RefType,
+    bool Required,
+    bool Hidden,
+    string Tier,
+    string? DefaultFromSubject,
+    string Label,
+    IReadOnlyList<string> Aliases);
+
+/// <summary>The scheme version in force on a date, or null when the vault holds none.</summary>
+public sealed record InForceView(int? Version);
 
 /// <summary>A file that could not be used: why, and what it was for (read from its path).</summary>
 public sealed record UnreadableView(string Path, string Reason, string Detail, VaultFileKind Kind);
@@ -182,11 +211,38 @@ internal static class Api
 
         app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
 
+        // Items are named in the vault's locale: a label a pack gives, else the item's own.
         app.MapGet("/schemes", (VaultSession session) =>
-            session.Current.Content.Schemes
+        {
+            var snapshot = session.Current;
+            return snapshot.Content.Schemes
                 .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
-                .Select(s => new SchemeView(s.Name, s.Version, s.Items))
-                .ToArray());
+                .Select(s => new SchemeView(s.Name, s.Version, [.. s.Items.Select(i =>
+                    i with { Label = snapshot.Labels.SchemeLabel(s.Name, s.Version, i.Code, snapshot.Locales) ?? i.Label })]))
+                .ToArray();
+        });
+
+        app.MapPost("/schemes/in-force", (InForceRequest request, VaultSession session) =>
+            new InForceView(session.Current.Content.Catalog().InForce(request.Scheme, request.Date)?.Version));
+
+        // The fields the vault's packs declare for a type, in declaration order; none for a vault without field definitions.
+        app.MapGet("/fields/{type}", (string type, VaultSession session) =>
+        {
+            var snapshot = session.Current;
+            return snapshot.Fields.For(type)
+                .Select(f => new FieldView(
+                    f.Name,
+                    f.Kind.ToString().ToLowerInvariant(),
+                    f.Scheme,
+                    f.RefType,
+                    f.Required,
+                    f.Hidden,
+                    f.Tier.ToString().ToLowerInvariant(),
+                    f.DefaultFromSubject,
+                    snapshot.Labels.FieldLabel(type, f.Name, snapshot.Locales) ?? f.Label ?? f.Name,
+                    snapshot.Labels.FieldAliases(type, f.Name, snapshot.Locales)))
+                .ToArray();
+        });
 
         app.MapGet("/runs", (VaultSession session) =>
             session.Current.Content.Runs.Select(k => new RunListItem(
@@ -296,7 +352,7 @@ internal static class Api
                 export.Version,
                 table.From.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 table.To.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                [.. export.Columns.Select(c => c.Label)],
+                [.. export.Columns.Select((c, i) => snapshot.Labels.ExportColumnLabel(export.Name, export.Version, i, snapshot.Locales) ?? c.Label)],
                 [.. table.Rows.Select(r => new ExportRowView(r.Record, r.Cells))],
                 table.Pending,
                 table.Unmapped,
@@ -318,10 +374,14 @@ internal static class Api
             s.Content.Changes.Count,
             s.Entities.Count,
             s.Entities.Values.Count(e => e.Conflicts.Count > 0),
-            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version, r.Label, r.Counts, r.PeriodField, r.RowField, r.ColumnField,
-                Behind([(r.RowScheme, r.RowVersion)], latest)))],
-            [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version, e.Label, e.Rows, e.PeriodField,
-                Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest)))],
+            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version,
+                s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.PeriodField, r.RowField, r.ColumnField,
+                Behind([(r.RowScheme, r.RowVersion)], latest),
+                !Hidden(s.Fields, r.Counts, r.RowField) && !Hidden(s.Fields, r.Counts, r.ColumnField)))],
+            [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version,
+                s.Labels.ExportLabel(e.Name, e.Version, s.Locales) ?? e.Label, e.Rows, e.PeriodField,
+                Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest),
+                !e.Columns.Any(c => ReadsHidden(s.Fields, e.Rows, c))))],
             Unlinked(s.Content),
             [.. s.Content.Unreadable.Select(u => new UnreadableView(u.Path, u.Reason.ToString(), u.Detail, u.Kind))
                 .Concat(s.Undecryptable.Select(u => new UnreadableView(u.Path, "Undecryptable", u.Detail, VaultFileKind.Of(u.Plain))))
@@ -329,23 +389,24 @@ internal static class Api
             [.. new PackGraph(s.Content.Packs).Latest.OrderBy(p => p.Id, StringComparer.Ordinal)
                 .Select(p => new PackView(p.Id, p.Version, p.Label, p.Depends))],
             [.. s.Content.CheckPacks().Select(i => new PackIssueView(i.Kind.ToString(), i.Pack, i.Detail))],
-            [.. s.Content.FieldCatalog().Issues.Select(i => new FieldIssueView(i.Kind.ToString(), i.Type, i.Field, i.Detail))],
-            [.. s.Content.LabelCatalog().Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
-            Locales(s.Content));
+            [.. s.Fields.Issues.Select(i => new FieldIssueView(i.Kind.ToString(), i.Type, i.Field, i.Detail))],
+            [.. s.Labels.Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
+            s.Locales);
     }
 
-    // The locales the vault's packs label things in, the most specific pack's first: a pack comes
-    // after everything it builds on, so the last in pack order speaks for the vault. Empty when the
-    // vault holds no labels (every vault made before packs carried them).
-    private static string[] Locales(VaultContent content)
+    // A form standing on a field the packs hide is not offered: hiding a field hides what is built on it.
+    private static bool Hidden(FieldCatalog fields, string type, string? field) =>
+        field is not null && fields.Find(type, field) is { Hidden: true };
+
+    private static bool ReadsHidden(FieldCatalog fields, string rows, ExportColumn column) => column switch
     {
-        var rank = new PackGraph(content.Packs).Order().Select((id, i) => (id, i)).ToDictionary(x => x.id, x => x.i, StringComparer.Ordinal);
-        return [.. content.Labels
-            .OrderByDescending(l => rank.GetValueOrDefault(l.Pack, -1))
-            .ThenBy(l => l.Pack, StringComparer.Ordinal)
-            .Select(l => l.Locale)
-            .Distinct(StringComparer.OrdinalIgnoreCase)];
-    }
+        FieldColumn c => Hidden(fields, rows, c.Field),
+        CodedColumn c => Hidden(fields, rows, c.Field),
+        ReferenceColumn c => Hidden(fields, rows, c.Field),
+        YearColumn c => Hidden(fields, rows, c.Field),
+        PersonColumn c => Hidden(fields, "subject", c.Field),
+        _ => false,
+    };
 
     // Values are carried to a new version only through crosswalks; a version none leads to — even one
     // that only relabels — leaves every value recorded in an earlier version unmapped there.
@@ -393,6 +454,9 @@ internal static class Api
 [JsonSerializable(typeof(CompareRequest))]
 [JsonSerializable(typeof(RunRequest))]
 [JsonSerializable(typeof(ExportRequest))]
+[JsonSerializable(typeof(InForceRequest))]
+[JsonSerializable(typeof(InForceView))]
+[JsonSerializable(typeof(FieldView[]))]
 [JsonSerializable(typeof(ExportTableView))]
 [JsonSerializable(typeof(SummaryView))]
 [JsonSerializable(typeof(EntityView[]))]
