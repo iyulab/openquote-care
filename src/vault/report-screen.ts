@@ -4,7 +4,7 @@ import { comparable, headCount, layOut, type Comparison, type Group, type KeptRu
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, noticeLine, periodFields } from './parts.js'
-import { columnAxis, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
+import { blankLabel, columnAxis, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
 
 /** A month's report: its counts, what each is made of, what still waits, and how it moved since an earlier run. */
@@ -155,6 +155,13 @@ export class OcReport extends VaultScreen {
             ${count(strings.unmapped, table.unmapped)}
             <td class="muted">${strings.unmappedHint}</td>
           </tr>
+          ${table.blank.count === 0
+            ? nothing
+            : html`<tr data-group="blank">
+                <th>${blankLabel(store, formOf(store, result))}</th>
+                ${count(blankLabel(store, formOf(store, result)), table.blank)}
+                <td class="muted">${strings.blankHint}</td>
+              </tr>`}
           <tr data-group="total">
             <th>${strings.grandTotal}</th>
             ${count(strings.grandTotal, table.total)}

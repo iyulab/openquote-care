@@ -52,6 +52,20 @@ describe('layOut', () => {
   it('balances: placed + pending + unmapped = total', () => {
     expect(table.placed + table.pending.count + table.unmapped.count).toBe(table.total.count)
   })
+  it('has no blank records for a run kept without them', () => {
+    expect(table.blank).toEqual({ count: 0, records: [] })
+  })
+  it('keeps records with no value in the row field apart, in the total and in no row', () => {
+    // A run lists its blank records inside unmapped too.
+    const unmapped = { count: run.unmapped.count + 1, records: [...run.unmapped.records, 'g'] }
+    const withBlank: RunRecord = { ...run, unmapped, blank: { count: 1, records: ['g'] }, total: { count: 7, records: [...run.total.records, 'g'] } }
+    const t = layOut(withBlank, [topic], referenceAxis([], '(없음)'))
+    expect(t.blank.records).toEqual(['g'])
+    expect(t.unmapped).toEqual(run.unmapped)
+    expect(t.rows.flatMap((r) => r.records)).not.toContain('g')
+    expect(t.placed + t.pending.count + t.unmapped.count + t.blank.count).toBe(t.total.count)
+    expect(placesOf(withBlank).get('g')).toEqual({ kind: 'blank' })
+  })
 })
 
 describe('headCount', () => {

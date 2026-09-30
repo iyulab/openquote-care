@@ -11,7 +11,7 @@ clients and one group:
 
 - sessions with a concern, a mode and notes, and sessions with no notes
 - a session with no concern (April): counted in the total, in no row of the monthly report (the
-  engine counts it unmapped), and an empty concern cell — not a gap — in the session list
+  engine counts it unmapped and lists it as blank), and an empty concern cell — not a gap — in the session list
 - a session with no mode (April)
 - a group session with two attendees (April): one record, two people
 - a client seen twice in a month (March), a session at 23:30 on the last day of a month and one at

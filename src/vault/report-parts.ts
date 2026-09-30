@@ -38,6 +38,11 @@ export function columnAxis(store: VaultStore, form: ReportEntry | undefined): Co
   return { ...axis, label: (id) => named.get(id) ?? axis.label(id) }
 }
 
+/** The row of a form's records with no value in its row field, in words: "(Concern none)". */
+export function blankLabel(store: VaultStore, form: ReportEntry | undefined): string {
+  return strings.noValue(form ? labelOfField(store.fieldsOf(form.counts), form.rowField) : strings.reportRow)
+}
+
 /** The field a form places records in a month by, and how to read it on a record. */
 function periodOf(store: VaultStore, form: ReportEntry | undefined): { label: string; of: (e: Entity) => string } {
   const defs = store.fieldsOf(form?.counts ?? 'session')
@@ -51,6 +56,7 @@ function placeText(store: VaultStore, run: RunRecord, place: Place | undefined):
   if (!place) return strings.nowhere
   if (place.kind === 'pending') return strings.pending
   if (place.kind === 'unmapped') return strings.unmapped
+  if (place.kind === 'blank') return blankLabel(store, formOf(store, run))
   const { scheme, version } = rowSchemeOf(run)
   const row = labelOf(store.schemes, { scheme, version, code: place.row })
   const axis = columnAxis(store, formOf(store, run))
