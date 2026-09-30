@@ -183,7 +183,7 @@ pub fn run() {
     // Tauri would stop with an English message of its own; say it in the person's language first.
     if let Some(message) = runtime::check() {
         runtime::alert(&message);
-        return;
+        std::process::exit(1);
     }
     let builder = tauri::Builder::default();
     // Registered first, so a second start ends before anything else runs.
