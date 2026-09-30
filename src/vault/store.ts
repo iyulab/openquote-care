@@ -6,7 +6,8 @@ import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
 import type { FieldView } from '../fields.js'
-import { shell, type VaultSummary } from '../shell.js'
+import { storeBackup, storedBackup } from '../backup.js'
+import { shell, type BackupStatus, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 
 export type Problem = keyof typeof strings.problems
@@ -50,6 +51,12 @@ export class VaultStore extends EventTarget {
   year = lastMonth().year
   month = lastMonth().month
   draft: SessionDraft = {}
+  /** The folder the vault is in: this computer keeps a backup setting per vault. */
+  folder = ''
+  /** The backup this computer keeps of the vault, as the shell last reported it. */
+  backup: BackupStatus = { folder: null }
+  /** Why the backup remembered for this vault could not be taken up when it opened, as an error code. */
+  backupProblem?: string
 
   private readonly loads = new Latest()
   private unlisten?: Promise<() => void>
@@ -128,7 +135,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, backup] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -137,8 +144,11 @@ export class VaultStore extends EventTarget {
       shell.summary(),
       shell.fields('session'),
       shell.fields('subject'),
+      // Every write is followed by a backup: its outcome is read with the rest.
+      shell.backupStatus(),
     ])
     if (!current()) return
+    this.backup = backup
     // A form standing on a hidden field is never shown; the sidecar decides which those are.
     const { reports, exports } = (this.summary = {
       ...summary,
@@ -190,6 +200,29 @@ export class VaultStore extends EventTarget {
   }
 
   /** Applies the data pack in `folder` and says what it brought. */
+  /** Keeps this vault's backup in `folder` on this computer from now on (null: stops), and remembers it. */
+  async setBackup(folder: string | null) {
+    this.set({ notice: '' })
+    await this.run(async () => {
+      this.backup = await shell.setBackup(folder)
+      this.backupProblem = undefined
+      storeBackup(this.folder, folder)
+    })
+  }
+
+  /** Takes up the backup this computer keeps for the vault. A folder it cannot use is said, and kept for next time. */
+  async resumeBackup() {
+    const folder = storedBackup(this.folder)
+    if (!folder) return
+    try {
+      this.backup = await shell.setBackup(folder)
+    } catch (e) {
+      this.backup = { folder }
+      this.backupProblem = typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string' ? (e as { code: string }).code : 'unknown'
+    }
+    this.changed()
+  }
+
   async applyPack(folder: string) {
     this.set({ notice: '' })
     await this.run(async () => {

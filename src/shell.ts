@@ -70,6 +70,20 @@ export interface VaultSummary {
   [key: string]: unknown
 }
 
+/** Where this computer keeps the open vault's backup, and how the last backup went. */
+export interface BackupStatus {
+  folder: string | null
+  /** When the last backup ran, in milliseconds since 1970. */
+  at?: number
+  copied?: number
+  /** The key file followed a new passphrase. */
+  keyReplaced?: boolean
+  /** Files the backup holds with other content than the vault: named, never replaced. */
+  differs?: string[]
+  /** Why the last backup did not go through, as an error code. */
+  error?: string
+}
+
 /** The shell's commands, typed. Every failure rejects with a `CommandError`. */
 export const shell = {
   /** The tracks a vault can be made on, the one the app's language suggests first. */
@@ -102,6 +116,9 @@ export const shell = {
   onVaultChanged: (f: () => void): Promise<UnlistenFn> => listen('vault-changed', () => f()),
   /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
   applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
+  /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
+  setBackup: (folder: string | null) => invoke<BackupStatus>('set_backup', { folder }),
+  backupStatus: () => invoke<BackupStatus>('backup_status'),
   runs: () => invoke<KeptRun[]>('runs'),
   compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
   /** Which of a form run's pending records still wait for a person, with the codes each may take. */

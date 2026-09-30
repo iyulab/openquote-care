@@ -491,6 +491,26 @@ const scenarios = {
     assert.match(devices[0], /\.json\.age$/)
   },
 
+  async 'keeps a backup of the vault in another folder, and says so on this computer'(app, work) {
+    // The folder picker is the system's; the window's own method takes its answer.
+    const copy = join(dirname(work.vault), 'backup')
+    await mkdir(copy)
+    await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(copy)}).then(() => true)`)
+    await app.cdp.waitFor(`(__e2e.one('[data-role=backup-status]')?.textContent ?? '').startsWith('마지막 백업')`, 'the first backup')
+    await app.noAlert()
+    const files = async (root) => (await readdir(root, { recursive: true })).map((f) => f.replaceAll('\\', '/')).sort()
+    assert.deepEqual(await files(copy), await files(work.vault), 'the copy holds every file of the vault, as it is on disk')
+
+    await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(work.vault)}).then(() => true)`)
+    await app.alert('백업 폴더는 기록 폴더 안이나, 기록 폴더를 품은 폴더일 수 없습니다. 떨어진 폴더를 고르세요.')
+    assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=backup-folder]').textContent.includes(${q(copy)})`), 'a refused folder leaves the backup as it was')
+
+    await app.click('dc-button', '백업 끄기')
+    await app.cdp.waitFor(`__e2e.one('[data-role=backup-status]')?.textContent.trim() === '사용하지 않습니다.'`, 'the backup stopped')
+    await app.noAlert()
+    await rm(copy, { recursive: true, force: true })
+  },
+
   async 'takes in what another program writes to the vault folder, without being asked'(app, work) {
     // A file arriving from outside (here: a copy under a name its content does not match, so the
     // engine reports it as unreadable) shows up with no refresh button and no window focus.

@@ -1,5 +1,7 @@
+import { open } from '@tauri-apps/plugin-dialog'
 import { html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { storedBackup } from '../backup.js'
 import { MIN_PASSPHRASE, passphraseProblem } from '../flow.js'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../idle.js'
 import { shell, type VaultSummary } from '../shell.js'
@@ -7,7 +9,7 @@ import { strings } from '../strings.js'
 import { deviceLabel, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 
-/** This computer in the vault: its name, the devices writing to the vault, the idle lock and the passphrase. */
+/** This computer in the vault: its name, the devices writing to the vault, the idle lock, the backup and the passphrase. */
 @customElement('oc-devices')
 export class OcDevices extends VaultScreen {
   /** Opened with the recovery key: the person may have forgotten the passphrase. */
@@ -61,6 +63,38 @@ export class OcDevices extends VaultScreen {
     this.dispatchEvent(new Event('oc-idle-changed', { bubbles: true, composed: true }))
   }
 
+  private async chooseBackup() {
+    const folder = await open({ directory: true, title: strings.backupPickTitle })
+    if (typeof folder === 'string') await this.store.setBackup(folder)
+  }
+
+  /** Where the backup is kept and how the last one went, in words. */
+  private backupSection() {
+    const { busy, backup, backupProblem } = this.store
+    const folder = backup.folder ?? (backupProblem ? storedBackup(this.store.folder) : null)
+    const reason = (code: string) => (strings.errors as Record<string, string>)[code] ?? strings.errors.unknown
+    const lines = !folder
+      ? [html`<p class="muted" data-role="backup-status">${strings.backupOff}</p>`]
+      : [
+          html`<p data-role="backup-folder">${strings.backupTo(folder)}</p>`,
+          backupProblem
+            ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backupProblem))}</p>`
+            : backup.error
+              ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backup.error))}</p>`
+              : backup.at !== undefined
+                ? html`<p class="muted" data-role="backup-status">${strings.backupDone(new Date(backup.at).toLocaleString(), backup.copied ?? 0)}</p>`
+                : nothing,
+          backup.differs?.length ? html`<p class="error" data-role="backup-differs">${strings.backupDiffers(backup.differs.length)}</p>` : nothing,
+        ]
+    return html`<h3>${strings.backup}</h3>
+      <p class="muted">${strings.backupLead}</p>
+      ${lines}
+      <div class="row" data-role="backup">
+        <dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.chooseBackup()}>${strings.backupChoose}</dc-button>
+        ${folder ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.store.setBackup(null)}>${strings.backupStop}</dc-button>` : nothing}
+      </div>`
+  }
+
   private passphraseInput(label: string, value: string, set: (v: string) => void, submit: () => void) {
     const busy = this.store.busy
     return html`<label>
@@ -108,6 +142,7 @@ export class OcDevices extends VaultScreen {
         </label>
       </div>
       <p class="muted">${strings.idleLockLead}</p>
+      ${this.backupSection()}
       <h3>${strings.changePassphrase}</h3>
       ${this.openedWithKey ? html`<p class="muted" role="status">${strings.openedWithKey}</p>` : nothing}
       <p class="muted">${strings.changePassphraseLead}</p>

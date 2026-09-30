@@ -10,6 +10,8 @@ vi.mock('../shell.js', () => ({
     fields: vi.fn(),
     summary: vi.fn(),
     refresh: vi.fn(),
+    backupStatus: vi.fn(),
+    setBackup: vi.fn(),
     onVaultChanged: vi.fn(),
   },
 }))
@@ -40,6 +42,7 @@ describe('VaultStore', () => {
     vi.mocked(shell.fields).mockResolvedValue([])
     vi.mocked(shell.summary).mockResolvedValue(summary)
     vi.mocked(shell.refresh).mockResolvedValue(summary)
+    vi.mocked(shell.backupStatus).mockResolvedValue({ folder: null })
   })
 
   it('never shows a form the vault does not offer, nor picks it first', async () => {

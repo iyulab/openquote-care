@@ -54,7 +54,9 @@ export class OcVault extends LitElement {
 
   connectedCallback() {
     super.connectedCallback()
+    this.store.folder = this.folder
     this.store.connect()
+    void this.store.resumeBackup()
     if (this.adopted.length > 0) this.store.notice = strings.adopted(this.adopted)
     window.addEventListener('focus', this.onFocus)
   }
@@ -73,6 +75,11 @@ export class OcVault extends LitElement {
   /** Reads the vault folder again: records other devices sharing it wrote come in. */
   async refresh() {
     await this.store.refresh()
+  }
+
+  /** Keeps this vault's backup in `folder` on this computer (what the folder picker answers); null stops it. */
+  async setBackup(folder: string | null) {
+    await this.store.setBackup(folder)
   }
 
   /** Applies the data pack in `folder` (what the folder picker answers). */

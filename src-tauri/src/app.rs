@@ -350,10 +350,13 @@ impl App {
     /// backup; it is brought up to date at once. Returns what [`App::backup_status`] returns.
     pub fn set_backup(&self, folder: Option<&Path>) -> Result<Value, AppError> {
         self.with_open(|open| {
+            // A folder that cannot hold the backup leaves the backup there is as it was.
+            if let Some(folder) = folder {
+                open.vault.check_backup(folder)?;
+            }
             let mut backup = self.backup.lock().unwrap();
             *backup = Backup::default();
             if let Some(folder) = folder {
-                open.vault.check_backup(folder)?;
                 backup.folder = Some(folder.to_path_buf());
                 backup.note(open.vault.back_up(folder));
             }
@@ -675,10 +678,13 @@ mod tests {
         assert_eq!(app.backup_status()["error"], "io");
         assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 2);
 
+        let kept = tempfile::tempdir().unwrap();
+        app.set_backup(Some(kept.path())).unwrap();
         assert_eq!(app.set_backup(Some(dir.path())).unwrap_err().code(), "backup-overlaps");
         let papers = tempfile::tempdir().unwrap();
         fs::write(papers.path().join("notes.txt"), b"someone else's").unwrap();
         assert_eq!(app.set_backup(Some(papers.path())).unwrap_err().code(), "backup-holds-other");
+        assert_eq!(app.backup_status()["folder"], kept.path().to_string_lossy().as_ref(), "a refused folder leaves the backup as it was");
         assert_eq!(app.set_backup(None).unwrap(), json!({ "folder": null }));
 
         // A backup belongs to the vault it was set for: another opening starts without one.
