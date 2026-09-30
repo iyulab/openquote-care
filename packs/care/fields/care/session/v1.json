@@ -1,0 +1,56 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "session",
+  "version": 1,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "required": true,
+      "label": "Practitioner"
+    },
+    {
+      "name": "topic",
+      "kind": "coded",
+      "scheme": "topic",
+      "required": true,
+      "label": "Topic"
+    },
+    {
+      "name": "method",
+      "kind": "coded",
+      "scheme": "method",
+      "label": "Method"
+    },
+    {
+      "name": "grade",
+      "kind": "text",
+      "default": {
+        "subject": "grade"
+      },
+      "label": "Grade"
+    },
+    {
+      "name": "class",
+      "kind": "text",
+      "default": {
+        "subject": "class"
+      },
+      "label": "Class"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

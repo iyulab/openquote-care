@@ -46,9 +46,8 @@ fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
 }
 
 #[tauri::command]
-fn create_vault(folder: String, passphrase: String, app: State<App>, handle: tauri::AppHandle) -> CommandResult<String> {
-    let pack = pack_dir(&handle);
-    text(app.create_vault(&PathBuf::from(folder), passphrase, &pack))
+fn create_vault(folder: String, passphrase: String, app: State<App>) -> CommandResult<String> {
+    text(app.create_vault(&PathBuf::from(folder), passphrase))
 }
 
 #[tauri::command]
@@ -151,16 +150,20 @@ fn run_report(report: String, version: u32, year: i32, month: u32, app: State<Ap
     text(app.run_report(&report, version, year, month))
 }
 
-/// The data pack a new vault starts from: bundled with the app, or the source tree in development.
-fn pack_dir(handle: &tauri::AppHandle) -> PathBuf {
-    handle
+/// The data packs a new vault starts from, in order: bundled with the app, or the source tree in development.
+fn bundled_packs(handle: &tauri::AppHandle) -> Vec<PathBuf> {
+    let root = handle
         .path()
         .resource_dir()
-        .map(|d| d.join("packs").join("care-kr"))
+        .map(|d| d.join("packs"))
         .ok()
         .filter(|p| p.exists())
-        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../packs/care-kr"))
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../packs"));
+    DEFAULT_PACKS.iter().map(|p| root.join(p)).collect()
 }
+
+/// The packs every vault holds for now: the fields and their labels, then the Korean school counseling definitions.
+const DEFAULT_PACKS: [&str; 2] = ["care", "care-kr"];
 
 /// The engine sidecar: `OPENQUOTE_SIDECAR_EXE` in development; in an installed app, the copy
 /// bundled with it (`src-tauri/tauri.bundle.conf.json`).
@@ -217,6 +220,7 @@ pub fn run() {
             let device = device_id(&config)?;
             let handle = tauri_app.handle().clone();
             let app = App::new(sidecar_path(tauri_app.handle()), device)
+                .with_packs(bundled_packs(tauri_app.handle()))
                 .on_outside_change(move || {
                     let _ = handle.emit(VAULT_CHANGED, ());
                 });

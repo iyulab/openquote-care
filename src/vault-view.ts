@@ -39,6 +39,8 @@ export class OcVault extends LitElement {
   @property() folder = ''
   /** Opened with the recovery key: the person may have forgotten the passphrase. */
   @property({ type: Boolean }) openedWithKey = false
+  /** The packs the vault took on as it opened, by label: said once, on the first screen. */
+  @property({ attribute: false }) adopted: string[] = []
 
   @state() private view: View = 'subjects'
   @state() private sidebarOpen = true
@@ -53,6 +55,7 @@ export class OcVault extends LitElement {
   connectedCallback() {
     super.connectedCallback()
     this.store.connect()
+    if (this.adopted.length > 0) this.store.notice = strings.adopted(this.adopted)
     window.addEventListener('focus', this.onFocus)
   }
 

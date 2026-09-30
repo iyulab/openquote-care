@@ -186,6 +186,7 @@ export const en: Strings = {
   },
   /** A pack whose manifest came along: named by its label rather than by its files. */
   packApplied: (label: string, version: number) => `Applied data pack “${label}”, version ${version}.`,
+  adopted: (labels: string[]) => `Added the data ${labels.length === 1 ? 'pack' : 'packs'} that define this vault's fields (${labels.join(', ')}). Records and classifications already here are unchanged.`,
   packIssues: (n: number) => `Data packs disagree in ${plural(n, 'place')}. Check whether a pack or file is missing.`,
 
   subjects: 'Clients',

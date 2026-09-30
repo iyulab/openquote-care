@@ -17,7 +17,7 @@ type Screen =
   | { name: 'create' }
   | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
-  | { name: 'vault'; folder: string; withKey?: boolean }
+  | { name: 'vault'; folder: string; withKey?: boolean; adopted?: string[] }
 
 @customElement('oc-app')
 export class OcApp extends LitElement {
@@ -203,9 +203,8 @@ export class OcApp extends LitElement {
     const folder = this.folder
     await this.run(async () => {
       const withKey = this.withKey
-      if (withKey) await shell.openVaultWithKey(folder, this.recoveryKey)
-      else await shell.openVault(folder, this.passphrase)
-      this.go({ name: 'vault', folder, withKey })
+      const summary = withKey ? await shell.openVaultWithKey(folder, this.recoveryKey) : await shell.openVault(folder, this.passphrase)
+      this.go({ name: 'vault', folder, withKey, adopted: summary.adopted })
     })
   }
 
@@ -227,6 +226,7 @@ export class OcApp extends LitElement {
       return html`<oc-vault
         .folder=${s.folder}
         .openedWithKey=${s.withKey ?? false}
+        .adopted=${s.adopted ?? []}
         @oc-close=${() => void this.closeVault()}
         @oc-lock=${() => void this.lock()}
         @oc-idle-changed=${() => this.armIdle()}

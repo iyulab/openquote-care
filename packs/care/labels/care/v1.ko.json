@@ -1,0 +1,50 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care",
+  "version": 1,
+  "locale": "ko",
+  "fields": {
+    "session": {
+      "date": "날짜",
+      "practitioner": "담당자",
+      "topic": "주제",
+      "method": "방법",
+      "grade": "학년",
+      "class": "반",
+      "note": "상담 내용"
+    },
+    "subject": {
+      "name": "이름",
+      "mgmt_no": "관리번호",
+      "school": "학교",
+      "grade": "학년",
+      "class": "반",
+      "gender": "성별",
+      "phone": "연락처",
+      "guardian": "보호자",
+      "guardian_phone": "보호자 연락처"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "성명",
+        "학생명",
+        "대상자"
+      ],
+      "mgmt_no": [
+        "사례번호"
+      ],
+      "school": [
+        "학교명"
+      ],
+      "phone": [
+        "전화",
+        "휴대전화"
+      ],
+      "guardian_phone": [
+        "보호자연락처"
+      ]
+    }
+  }
+}

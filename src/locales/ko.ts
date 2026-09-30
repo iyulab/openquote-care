@@ -182,6 +182,7 @@ export const ko = {
   },
   /** A pack whose manifest came along: named by its label rather than by its files. */
   packApplied: (label: string, version: number) => `데이터 팩 「${label}」 ${version}판을 적용했습니다.`,
+  adopted: (labels: string[]) => `이 볼트에 칸 정의가 담긴 데이터 팩(${labels.join(', ')})을 더했습니다. 있던 기록과 분류는 그대로입니다.`,
   packIssues: (n: number) => `데이터 팩끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 팩이나 파일이 있는지 확인하세요.`,
 
   subjects: '대상자',
