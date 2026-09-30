@@ -678,6 +678,56 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'keeps two sessions recorded on the same day as two'(app, work) {
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 1')
+    const before = (await app.sessionRows()).length
+    const recordFiles = async () => (await readdir(join(work.vault, 'subjects'), { recursive: true })).filter((f) => f.endsWith('.age')).length
+    const filesBefore = await recordFiles()
+    await app.setDate('날짜', '2026-06-15')
+    await app.choose('주제', 'family')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === ${before + 1}`, 'the first session of the day')
+    await app.setDate('날짜', '2026-06-15')
+    await app.choose('주제', 'relation-peer')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === ${before + 2}`, 'the second session of the day')
+    await app.noAlert()
+    const sameDay = (await app.sessionRows()).filter((row) => row[0] === '2026-06-15').map((row) => row[1]).sort()
+    assert.deepEqual(sameDay, ['가정', '또래관계'], 'both sessions of the day are shown, neither replacing the other')
+    assert.equal(await recordFiles(), filesBefore + 2, 'one file for each session')
+  },
+
+  async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
+    await app.click('dc-button', '볼트 닫기')
+    const keyFile = join(work.vault, 'keys', 'vault-key.age')
+    await writeFile(keyFile, '-----BEGIN AGE ENCRYPTED FILE-----\ncut off')
+    await app.click('dc-button', '볼트 열기')
+    await app.pickFolder(work.vault)
+    await app.type('패스프레이즈', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.alert('볼트 키 파일이 손상되었습니다. 복구 키트로 열어야 합니다.')
+
+    await app.click('dc-button', '패스프레이즈를 잊었나요? 복구 키 입력')
+    await app.type('복구 키', work.key)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.noAlert()
+    await app.click('dc-button', '새 패스프레이즈 정하기')
+    await app.type('새 패스프레이즈', PASSPHRASE)
+    await app.type('새 패스프레이즈 다시 입력', PASSPHRASE)
+    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase set')
+
+    await app.click('dc-button', '볼트 닫기')
+    await app.click('dc-button', '볼트 열기')
+    await app.pickFolder(work.vault)
+    await app.type('패스프레이즈', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.noAlert()
+  },
+
   async 'says so when a folder is not a vault'(app, work) {
     await app.click('dc-button', '볼트 닫기')
     await app.click('dc-button', '볼트 열기')
@@ -764,7 +814,9 @@ async function main() {
         if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, name)
       } catch (e) {
         failed++
-        console.log(`  ✗ ${name}\n    ${e.message.replaceAll('\n', '\n    ')}`)
+        // A wait that timed out says what it waited for; what the window showed instead says why.
+        const shown = app.child ? await app.cdp.evaluate(`__e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`).catch(() => '') : ''
+        console.log(`  ✗ ${name}\n    ${e.message.replaceAll('\n', '\n    ')}${shown ? `\n    the window showed: ${shown}` : ''}`)
         if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, `FAILED ${name}`).catch(() => {})
         break
       }
