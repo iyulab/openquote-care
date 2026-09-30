@@ -60,7 +60,7 @@ export function latest(schemes: Scheme[], name: string): Scheme | undefined {
 
 /**
  * The choices a scheme offers. An item with children is a heading, not a choice: a record is
- * classified to a leaf, so a child is labelled with its parent ("특별 › 학교폭력").
+ * classified to a leaf, so a child is labelled with its parent ("Special › Bullying").
  */
 export function choices(scheme: Scheme): Choice[] {
   const byCode = new Map(scheme.items.map((i) => [i.code, i]))

@@ -230,7 +230,7 @@ export class OcVault extends LitElement {
   @state() private reportKey = ''
   @state() private year = lastMonth().year
   @state() private month = lastMonth().month
-  /** The report on screen: the run record of the last 산출. */
+  /** The report on screen: the record of the last run. */
   @state() private result?: RunRecord
   @state() private exportKey = ''
   @state() private exportTable?: ExportTable
