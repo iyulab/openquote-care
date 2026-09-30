@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
-use openquote_care_vault::{NewVault, Vault, VaultError, Watcher};
+use openquote_care_vault::{BackupError, BackupReport, NewVault, Vault, VaultError, Watcher};
 use serde_json::Value;
 
 use crate::bundle::{Bundle, BundleError, Track};
@@ -29,6 +29,8 @@ pub enum AppError {
     PackConflict(Vec<String>),
     /// The packs bundled with the app cannot be read, or lack what a track needs.
     Bundle(BundleError),
+    /// The folder chosen for the backup cannot hold it.
+    Backup(BackupError),
     Engine(EngineError),
     Io(io::Error),
 }
@@ -42,6 +44,7 @@ impl fmt::Display for AppError {
             Self::NotAPack => f.write_str("the folder holds no scheme or report form"),
             Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
             Self::Bundle(e) => write!(f, "{e}"),
+            Self::Backup(e) => write!(f, "{e}"),
             Self::Engine(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "{e}"),
         }
@@ -61,6 +64,7 @@ impl AppError {
             Self::NotAPack => "not-a-pack",
             Self::PackConflict(_) => "pack-conflict",
             Self::Bundle(_) => "bundle",
+            Self::Backup(e) => backup_code(e),
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
@@ -78,6 +82,20 @@ impl AppError {
             Self::Engine(_) => "engine",
             Self::Io(_) => "io",
         }
+    }
+}
+
+fn backup_code(e: &BackupError) -> &'static str {
+    match e {
+        BackupError::Overlaps => "backup-overlaps",
+        BackupError::HoldsOther => "backup-holds-other",
+        BackupError::Io(_) => "io",
+    }
+}
+
+impl From<BackupError> for AppError {
+    fn from(e: BackupError) -> Self {
+        Self::Backup(e)
     }
 }
 
@@ -123,12 +141,55 @@ pub struct App {
     device: String,
     bundle: Bundle,
     stage: Mutex<Stage>,
+    /// Where this device keeps a backup of the open vault, and how the last backup went.
+    backup: Mutex<Backup>,
     outside_change: Arc<dyn Fn() + Send + Sync>,
+}
+
+/// A backup of the open vault into a second folder this device chose (see [`App::set_backup`]).
+#[derive(Default)]
+struct Backup {
+    folder: Option<PathBuf>,
+    /// When the last backup ran (milliseconds since 1970) and what came of it.
+    last: Option<(u128, Result<BackupReport, String>)>,
+}
+
+impl Backup {
+    fn note(&mut self, result: Result<BackupReport, BackupError>) {
+        let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or_default();
+        self.last = Some((at, result.map_err(|e| backup_code(&e).to_owned())));
+    }
+
+    fn status(&self) -> Value {
+        let Some(folder) = &self.folder else {
+            return serde_json::json!({ "folder": null });
+        };
+        let mut status = serde_json::json!({ "folder": folder.to_string_lossy() });
+        if let Some((at, result)) = &self.last {
+            status["at"] = serde_json::json!(*at as u64);
+            match result {
+                Ok(report) => {
+                    status["copied"] = serde_json::json!(report.copied);
+                    status["keyReplaced"] = serde_json::json!(report.key_replaced);
+                    status["differs"] = serde_json::json!(report.differs);
+                }
+                Err(code) => status["error"] = serde_json::json!(code),
+            }
+        }
+        status
+    }
 }
 
 impl App {
     pub fn new(sidecar: PathBuf, device: String) -> App {
-        App { sidecar, device, bundle: Bundle::default(), stage: Mutex::new(Stage::Closed), outside_change: Arc::new(|| {}) }
+        App {
+            sidecar,
+            device,
+            bundle: Bundle::default(),
+            stage: Mutex::new(Stage::Closed),
+            backup: Mutex::new(Backup::default()),
+            outside_change: Arc::new(|| {}),
+        }
     }
 
     /// The bundled data packs: the tracks a new vault is made on, and what a vault made before packs
@@ -157,6 +218,8 @@ impl App {
     }
 
     fn opened(&self, open: OpenVault) -> Stage {
+        // A backup belongs to one vault: the window names this vault's again once it is open.
+        *self.backup.lock().unwrap() = Backup::default();
         let notify = Arc::clone(&self.outside_change);
         let watch = open.vault.watch(move || notify()).ok();
         Stage::Open { open: Box::new(open), _watch: watch }
@@ -268,12 +331,56 @@ impl App {
     /// Sets a new passphrase for the open vault. The old one stops opening it on every device
     /// sharing the folder; the recovery kit and the records stay as they are.
     pub fn change_passphrase(&self, passphrase: String) -> Result<(), AppError> {
-        self.with_open(|open| Ok(open.vault.change_passphrase(SecretString::from(passphrase))?))
+        self.with_open(|open| {
+            open.vault.change_passphrase(SecretString::from(passphrase))?;
+            // The backup's key file follows, or the old passphrase would still open the backup.
+            self.back_up(&open.vault, Some(&[]));
+            Ok(())
+        })
     }
 
     /// Closes the vault and stops the engine.
     pub fn close_vault(&self) {
         *self.stage.lock().unwrap() = Stage::Closed;
+        *self.backup.lock().unwrap() = Backup::default();
+    }
+
+    /// Keeps a backup of the open vault in `folder` on this device from now on, or stops keeping
+    /// one (`None`). The folder must be apart from the vault and empty or already this vault's
+    /// backup; it is brought up to date at once. Returns what [`App::backup_status`] returns.
+    pub fn set_backup(&self, folder: Option<&Path>) -> Result<Value, AppError> {
+        self.with_open(|open| {
+            let mut backup = self.backup.lock().unwrap();
+            *backup = Backup::default();
+            if let Some(folder) = folder {
+                open.vault.check_backup(folder)?;
+                backup.folder = Some(folder.to_path_buf());
+                backup.note(open.vault.back_up(folder));
+            }
+            Ok(backup.status())
+        })
+    }
+
+    /// Where this device keeps the open vault's backup, when the last backup ran and what came of
+    /// it: how many files it copied, whether the key file followed a new passphrase, the record
+    /// files the backup holds with other content, or the error that stopped it.
+    pub fn backup_status(&self) -> Value {
+        self.backup.lock().unwrap().status()
+    }
+
+    /// Brings the backup up to date after a write of `written` (None: after reading the whole
+    /// vault again). A backup that fails — the folder unplugged, a share gone — is noted in its
+    /// status and never fails the write it follows.
+    fn back_up(&self, vault: &Vault, written: Option<&[String]>) {
+        let mut backup = self.backup.lock().unwrap();
+        let Some(folder) = backup.folder.clone() else {
+            return;
+        };
+        let result = match written {
+            Some(paths) => vault.back_up_written(&folder, &paths.iter().map(String::as_str).collect::<Vec<_>>()),
+            None => vault.back_up(&folder),
+        };
+        backup.note(result);
     }
 
     /// Asks the engine for a change (`route` is one of its `/changes/…` routes) and keeps it in
@@ -283,6 +390,7 @@ impl App {
             let file = open.engine.change(route, request)?;
             let path = file.path.clone();
             open.keep(file)?;
+            self.back_up(&open.vault, Some(std::slice::from_ref(&path)));
             Ok(path)
         })
     }
@@ -314,9 +422,10 @@ impl App {
             if !conflicts.is_empty() {
                 return Err(AppError::PackConflict(conflicts));
             }
-            let added = new.iter().map(|f| f.path.clone()).collect();
+            let added: Vec<String> = new.iter().map(|f| f.path.clone()).collect();
             if !new.is_empty() {
                 open.keep_all(new)?;
+                self.back_up(&open.vault, Some(&added));
             }
             Ok(added)
         })
@@ -339,7 +448,12 @@ impl App {
 
     /// Reads the open vault again, taking in what other devices sharing its folder wrote.
     pub fn refresh(&self) -> Result<Value, AppError> {
-        self.with_open(|open| Ok(open.reload()?))
+        self.with_open(|open| {
+            let summary = open.reload()?;
+            // What other devices wrote came in with the reading: the backup takes it too.
+            self.back_up(&open.vault, None);
+            Ok(summary)
+        })
     }
 
     /// The open vault's summary, as [`App::open_vault`] returns it.
@@ -366,7 +480,9 @@ impl App {
     pub fn run_report(&self, report: &str, version: u32, year: i32, month: u32) -> Result<Value, AppError> {
         self.with_open(|open| {
             let (record, file) = open.engine.run_report(report, version, year, month)?;
+            let path = file.path.clone();
             open.keep(file)?;
+            self.back_up(&open.vault, Some(&[path]));
             Ok(record)
         })
     }
@@ -530,6 +646,47 @@ mod tests {
         assert_eq!(compared["moved"], serde_json::json!([]));
         assert_eq!(compared["unchanged"].as_array().unwrap().len(), 1);
         assert!(matches!(app.open_vault(dir.path(), "nope".to_owned()), Err(AppError::Engine(EngineError::Vault(VaultError::WrongPassphrase)))));
+    }
+
+    #[test]
+    fn a_backup_follows_every_write_and_a_lost_backup_folder_fails_no_write() {
+        let Some(app) = app() else { return };
+        let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        assert_eq!(app.backup_status(), json!({ "folder": null }));
+
+        let status = app.set_backup(Some(backup.path())).unwrap();
+        assert!(status["copied"].as_u64().unwrap() > 2, "the declaration, the key file and the track's packs: {status}");
+        app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        assert_eq!(app.backup_status()["copied"], 1, "the new record");
+        app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        assert_eq!(app.backup_status()["copied"], 1, "the run record");
+        assert_eq!(vault_files(backup.path()), vault_files(dir.path()));
+
+        app.change_passphrase("new pass".to_owned()).unwrap();
+        assert_eq!(app.backup_status()["keyReplaced"], true);
+        assert!(Vault::unlock(backup.path(), SecretString::from("new pass".to_owned())).is_ok());
+        assert!(Vault::unlock(backup.path(), SecretString::from("pass".to_owned())).is_err(), "the old passphrase opens no copy");
+
+        // The backup folder goes away, as an unplugged drive does: writing goes on, and the status says why.
+        drop(backup);
+        app.record("/changes/subject", json!({ "fields": { "name": "second" } })).unwrap();
+        assert_eq!(app.backup_status()["error"], "io");
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 2);
+
+        assert_eq!(app.set_backup(Some(dir.path())).unwrap_err().code(), "backup-overlaps");
+        let papers = tempfile::tempdir().unwrap();
+        fs::write(papers.path().join("notes.txt"), b"someone else's").unwrap();
+        assert_eq!(app.set_backup(Some(papers.path())).unwrap_err().code(), "backup-holds-other");
+        assert_eq!(app.set_backup(None).unwrap(), json!({ "folder": null }));
+
+        // A backup belongs to the vault it was set for: another opening starts without one.
+        let again = tempfile::tempdir().unwrap();
+        app.set_backup(Some(again.path())).unwrap();
+        app.close_vault();
+        app.open_vault(dir.path(), "new pass".to_owned()).unwrap();
+        assert_eq!(app.backup_status(), json!({ "folder": null }));
     }
 
     #[test]

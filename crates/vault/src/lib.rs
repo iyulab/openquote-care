@@ -23,6 +23,9 @@ use tauri_kit_watch::{OwnWrites, Watch};
 
 pub use tauri_kit_watch::Watcher;
 
+mod backup;
+pub use backup::{BackupError, BackupReport};
+
 /// The vault declaration, readable before the vault is unlocked.
 pub const VAULT_FILE: &str = "vault.json";
 /// The vault key, wrapped with the passphrase.

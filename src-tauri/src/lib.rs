@@ -134,6 +134,16 @@ fn refresh(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn set_backup(folder: Option<String>, app: State<App>) -> CommandResult<Value> {
+    text(app.set_backup(folder.map(PathBuf::from).as_deref()))
+}
+
+#[tauri::command]
+fn backup_status(app: State<App>) -> Value {
+    app.backup_status()
+}
+
+#[tauri::command]
 fn ui_locale() -> String {
     locale::ui_locale()
 }
@@ -268,6 +278,8 @@ pub fn run() {
             pending,
             runs,
             refresh,
+            set_backup,
+            backup_status,
             compare_runs,
             run_report,
             run_export,
