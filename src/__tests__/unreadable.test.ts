@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { strings } from '../strings.js'
+import { ko as strings } from '../locales/ko.js'
 
 describe('unreadableWhat', () => {
   it('names the subject or group a record belongs to, when the vault knows the name', () => {

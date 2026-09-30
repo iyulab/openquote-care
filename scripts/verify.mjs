@@ -61,6 +61,7 @@ environment()
 
 const steps = [
   ['versions agree', 'node scripts/check-versions.mjs'],
+  ['core names no field or region', 'npm run check:core'],
   ['typecheck', 'npm run typecheck'],
   ['screens', 'npm test'],
   ['sidecar build', 'npm run build:sidecar'],

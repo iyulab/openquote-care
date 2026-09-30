@@ -14,11 +14,13 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 
 ## What it does today
 
-- Subjects, groups (with their members) and sessions, including group sessions counted once per session and once per person
+- A vault made on a track: counseling in general (in English, or in Korean), or Korean school counseling. The fields a session and a subject have, their classifications and forms come from the vault's data packs, not from the app
+- Subjects, groups (with their members) and sessions, including group sessions counted once per session and once per person; what was said in a session kept as written content, which never enters a count or a list
 - Monthly reports from report forms, each run kept in the vault with its evidence; comparison with an earlier run
 - Record lists laid out in an export form and copied as a table for a spreadsheet or another system
 - Adding and updating subjects from rows pasted out of a spreadsheet
-- Applying a data pack: classification schemes, crosswalks between their versions, report and export forms. A Korean school counseling pack is included
+- Applying a data pack: classification schemes, crosswalks between their versions, report and export forms, field definitions and labels per language
+- The app in Korean or English, following the system's display language
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time
 - Opening the vault with the recovery kit when the passphrase is forgotten, and changing the passphrase — the old one then stops opening the vault on every device

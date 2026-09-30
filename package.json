@@ -22,6 +22,7 @@
     "test:upgrade": "node e2e/upgrade.mjs",
     "test:sandbox": "node e2e/sandbox.mjs",
     "verify": "node scripts/verify.mjs",
+    "check:core": "node --test scripts/check-core-neutral.test.mjs && node scripts/check-core-neutral.mjs",
     "tauri": "tauri"
   },
   "dependencies": {

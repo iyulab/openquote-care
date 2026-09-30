@@ -2,7 +2,7 @@
 //! language; `OPENQUOTE_UI_LOCALE` overrides it (tests and support use it to fix the language). What a
 //! vault's data packs name — classifications, fields, forms — follows the vault, not this.
 
-/// The environment variable that fixes the app's language, as a language tag such as `en` or `ko-KR`.
+/// The environment variable that fixes the app's language, as a language tag such as `en` or `fr-CA`.
 pub const OVERRIDE: &str = "OPENQUOTE_UI_LOCALE";
 
 /// The app's language as a BCP 47 tag: the override when set, else the system's display language,
@@ -20,7 +20,7 @@ fn choose(overridden: Option<String>, system: Option<String>) -> String {
         .unwrap_or_else(|| "en".to_owned())
 }
 
-/// The language of a tag, lower-cased: `ko` for `ko-KR`.
+/// The language of a tag, lower-cased: `fr` for `fr-CA`.
 pub fn language(tag: &str) -> String {
     tag.split('-').next().unwrap_or_default().to_ascii_lowercase()
 }

@@ -119,7 +119,6 @@ npm run build:sidecar && npm run build:e2e && npm run test:e2e
 
 The following are not implemented in the current code:
 
-- recording which pack version a vault was filled from
 - deleting records on request, and retention reminders
 - classification suggestions
 - automatic updates
