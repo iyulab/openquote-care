@@ -95,6 +95,9 @@ function has(command) {
  * would, and closing means ending the sandbox's processes, which discards it too.
  */
 function startSandbox(config) {
+  // Only one sandbox runs at a time, and one that is still shutting down keeps the next from
+  // running its logon command.
+  if (sandboxRunning()) throw new Error('a Windows Sandbox is already running - close it and try again')
   if (has('wsb')) {
     const started = spawnSync('wsb', ['start', '--raw', '--config', readFileSync(config, 'utf8')], { encoding: 'utf8' })
     if (started.status !== 0) throw new Error(`wsb start: ${(started.stderr || started.stdout).trim()}`)
@@ -110,7 +113,16 @@ function startSandbox(config) {
     for (const name of ['WindowsSandboxRemoteSession.exe', 'WindowsSandboxServer.exe', 'WindowsSandboxClient.exe', 'WindowsSandbox.exe']) {
       spawnSync('taskkill', ['/F', '/IM', name], { stdio: 'ignore' })
     }
+    // The virtual machine outlives those processes by a while; wait for it so the next run starts clean.
+    const until = Date.now() + 5 * 60 * 1000
+    while (sandboxRunning() && Date.now() < until) spawnSync('powershell', ['-NoProfile', '-Command', 'Start-Sleep 3'])
   }
+}
+
+/** Whether a sandbox's virtual machine is running (its memory process is named after it). */
+function sandboxRunning() {
+  const list = spawnSync('tasklist', ['/FO', 'CSV', '/NH'], { encoding: 'utf8' }).stdout ?? ''
+  return /"(vmmemWindowsSandbox|WindowsSandboxServer\.exe)"/i.test(list)
 }
 
 async function main() {
@@ -120,7 +132,10 @@ async function main() {
   const folder = await mkdtemp(join(tmpdir(), 'openquote-care-sandbox-'))
   const from = installer(folder)
   if (dirname(from) !== folder) copyFileSync(from, join(folder, basename(from)))
-  copyFileSync(join(here, 'sandbox-inside.ps1'), join(folder, 'inside.ps1'))
+  // The sandbox runs Windows PowerShell 5.1, which reads a file without a byte order mark in the
+  // ANSI code page: one non-ASCII character inside a string can end it early and the script never
+  // starts. The mark makes it read the file as UTF-8.
+  await writeFile(join(folder, 'inside.ps1'), '﻿' + readFileSync(join(here, 'sandbox-inside.ps1'), 'utf8').replace(/^﻿/, ''))
   await mkdir(join(folder, 'out'))
   const config = join(folder, 'check.wsb')
   await writeFile(config, wsb(folder))
@@ -135,16 +150,25 @@ async function main() {
     console.log('  · sandbox started (networking off)')
     result = await waitFor(join(folder, 'out', 'result.json'))
   } catch (e) {
-    throw new Error(`${e.message} — the folder is kept: ${folder}`)
+    const progress = join(folder, 'out', 'progress.log')
+    const log = existsSync(progress) ? `\n${readFileSync(progress, 'utf8').trimEnd()}` : ' (the script inside never started)'
+    throw new Error(`${e.message} — the folder is kept: ${folder}; steps seen:${log}`)
   } finally {
     close()
   }
   for (const step of result.steps) {
-    console.log(`  ${step.ok ? '·' : '✗'} ${step.name}: ${step.ok ? step.value ?? '(none)' : step.error}`)
+    const shown = !step.ok ? step.error : typeof step.value === 'object' && step.value !== null ? JSON.stringify(step.value, null, 2) : step.value ?? '(none)'
+    console.log(`  ${step.ok ? '·' : '✗'} ${step.name}: ${shown}`)
   }
   const value = (name) => result.steps.find((s) => s.name === name)?.value
   assert.equal(value('network'), 'offline', 'the sandbox has no network')
-  assert.ok(result.ok, 'every step in the sandbox passed')
+  // Say when the sandbox, not the installer, is what cannot provide a web view.
+  if (!withoutWebView2 && /no runtime files/.test(value('webview2 before') ?? '')) {
+    console.log('  ! this sandbox registers a WebView2 runtime whose files are missing, so no window can start here — run with --without-webview2')
+  }
+  const setup = value('install diagnostics')?.webview2Setup
+  if (setup?.length) console.log(`  ! the WebView2 setup the installer carries failed inside the sandbox:\n    ${setup.join('\n    ')}`)
+  assert.ok(result.ok, `every step in the sandbox passed — the folder is kept: ${folder}`)
   assert.ok(value('webview2 after'), 'a WebView2 runtime is registered after the install')
   if (withoutWebView2) assert.equal(value('webview2 before'), null, 'the WebView2 runtime was gone before the install')
   console.log(value('webview2 before')
