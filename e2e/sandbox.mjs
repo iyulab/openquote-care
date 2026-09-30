@@ -6,6 +6,9 @@
 //   npm run test:sandbox                 the latest published offline installer (needs `gh`)
 //   npm run test:sandbox -- <installer>  a given installer
 //   npm run test:sandbox -- --prepare    only lay out the folder and the .wsb file, and say where
+//   npm run test:sandbox -- --without-webview2
+//                                        remove the WebView2 runtime in the sandbox first, so the
+//                                        installer has to bring its own
 //
 // Windows Sandbox is an optional Windows feature (Containers-DisposableClientVM) and needs a
 // restart after it is turned on. The sandbox is a copy of the host's Windows, so it has the
@@ -21,12 +24,12 @@ import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const sandboxExe = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'WindowsSandbox.exe')
 const inside = 'C:\\openquote-care-check'
 const timeoutMs = 15 * 60 * 1000
 
 const args = process.argv.slice(2)
 const prepareOnly = args.includes('--prepare')
+const withoutWebView2 = args.includes('--without-webview2')
 const given = args.find((a) => !a.startsWith('--'))
 
 function gh(ghArgs) {
@@ -61,7 +64,7 @@ function wsb(folder) {
     </MappedFolder>
   </MappedFolders>
   <LogonCommand>
-    <Command>powershell -NoProfile -ExecutionPolicy Bypass -File ${inside}\\inside.ps1</Command>
+    <Command>powershell -NoProfile -ExecutionPolicy Bypass -File ${inside}\\inside.ps1${withoutWebView2 ? ' -WithoutWebView2' : ''}</Command>
   </LogonCommand>
 </Configuration>
 `
@@ -143,6 +146,7 @@ async function main() {
   assert.equal(value('network'), 'offline', 'the sandbox has no network')
   assert.ok(result.ok, 'every step in the sandbox passed')
   assert.ok(value('webview2 after'), 'a WebView2 runtime is registered after the install')
+  if (withoutWebView2) assert.equal(value('webview2 before'), null, 'the WebView2 runtime was gone before the install')
   console.log(value('webview2 before')
     ? '  ✓ installed and started without a network (WebView2 was already there — this does not show an install onto a computer without it)'
     : '  ✓ installed and started without a network, with the WebView2 runtime from the installer')

@@ -5,9 +5,11 @@
 # host more than a sandbox that never answers.
 #
 # -Target installs somewhere else and -Cleanup stops the app and uninstalls it afterwards, so the
-# script can be tried on a host (where the sandbox is thrown away instead).
+# script can be tried on a host (where the sandbox is thrown away instead). -WithoutWebView2
+# removes the WebView2 runtime first, so the installer meets a computer that does not have it —
+# only inside the sandbox, whose account is WDAGUtilityAccount.
 
-param([string]$Target = (Join-Path $env:LOCALAPPDATA 'openquote-care-sandbox'), [switch]$Cleanup)
+param([string]$Target = (Join-Path $env:LOCALAPPDATA 'openquote-care-sandbox'), [switch]$Cleanup, [switch]$WithoutWebView2)
 
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -42,6 +44,19 @@ Step 'network' {
     Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -Method Head -TimeoutSec 10 -UseBasicParsing | Out-Null
     'online'
   } catch { 'offline' }
+}
+if ($WithoutWebView2) {
+  Step 'remove webview2' {
+    if ($env:USERNAME -ne 'WDAGUtilityAccount') { throw 'refusing to remove WebView2 outside Windows Sandbox' }
+    $entry = Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Microsoft EdgeWebView' -ErrorAction SilentlyContinue
+    if (-not $entry) { return 'not installed' }
+    # The runtime marks itself as not removable; its own setup removes it when forced.
+    if ($entry.UninstallString -notmatch '^"([^"]+)"\s*(.*)$') { throw "unexpected uninstall command: $($entry.UninstallString)" }
+    $p = Start-Process -FilePath $Matches[1] -ArgumentList "$($Matches[2]) --force-uninstall" -Wait -PassThru
+    $left = WebView2Version
+    if ($left) { throw "still registered after the uninstaller exited with $($p.ExitCode): $left" }
+    "removed (the uninstaller exited with $($p.ExitCode))"
+  }
 }
 Step 'webview2 before' { WebView2Version }
 
