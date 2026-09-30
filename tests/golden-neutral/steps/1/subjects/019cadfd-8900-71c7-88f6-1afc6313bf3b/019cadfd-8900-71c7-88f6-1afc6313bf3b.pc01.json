@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019cadfd-8900-71c7-88f6-1afc6313bf3b",
+  "device": "pc01",
+  "at": "2026-03-02T10:00:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019cadfd-8900-71c7-88f6-1afc6313bf3b"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Robin Hale",
+    "mgmt_no": "N-001",
+    "gender": null,
+    "phone": null
+  }
+}

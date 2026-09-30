@@ -1,0 +1,86 @@
+{
+  "format": "openquote.run/0",
+  "report": {
+    "report": "care.monthly-concern",
+    "version": 1
+  },
+  "schemes": {
+    "care.concern": {
+      "version": 1
+    }
+  },
+  "period": {
+    "from": "2026-03-01",
+    "to": "2026-03-31"
+  },
+  "cells": [
+    {
+      "row": "anxiety",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 2,
+      "records": [
+        "019cb46d-7c00-7813-8581-49a0a194a96b",
+        "019cfc86-8400-781a-9071-f02a4abf9e99"
+      ]
+    },
+    {
+      "row": "family",
+      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "count": 1,
+      "records": [
+        "019d2093-0800-7311-acfc-09279efd540d"
+      ]
+    },
+    {
+      "row": "mood",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019cd87a-0000-702f-ad6a-e7625714da35"
+      ]
+    },
+    {
+      "row": "relationships",
+      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "count": 1,
+      "records": [
+        "019d463b-88c0-78a8-9559-bc5af3b916dc"
+      ]
+    }
+  ],
+  "pending": {
+    "count": 0,
+    "records": []
+  },
+  "unmapped": {
+    "count": 0,
+    "records": []
+  },
+  "total": {
+    "count": 5,
+    "records": [
+      "019cb46d-7c00-7813-8581-49a0a194a96b",
+      "019cd87a-0000-702f-ad6a-e7625714da35",
+      "019cfc86-8400-781a-9071-f02a4abf9e99",
+      "019d2093-0800-7311-acfc-09279efd540d",
+      "019d463b-88c0-78a8-9559-bc5af3b916dc"
+    ]
+  },
+  "people": {
+    "019cb46d-7c00-7813-8581-49a0a194a96b": [
+      "019cadfd-8900-71c7-88f6-1afc6313bf3b"
+    ],
+    "019cd87a-0000-702f-ad6a-e7625714da35": [
+      "019cae02-1ce0-7dfb-81ca-769f3565ea29"
+    ],
+    "019cfc86-8400-781a-9071-f02a4abf9e99": [
+      "019cadfd-8900-71c7-88f6-1afc6313bf3b"
+    ],
+    "019d2093-0800-7311-acfc-09279efd540d": [
+      "019cae34-7780-7b3c-ada4-5190dadd9a07"
+    ],
+    "019d463b-88c0-78a8-9559-bc5af3b916dc": [
+      "019cae39-0b60-7946-8be0-d453cd8881b9"
+    ]
+  }
+}

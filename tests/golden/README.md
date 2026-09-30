@@ -30,6 +30,15 @@ It also includes:
 - a second case for the same subject
 - a group session (three subjects in one session, kept in the group's folder): one record, three people
 
+## A vault from before packs had manifests
+
+The vault names no pack: its schemes and forms were written before packs carried manifests. That
+makes it the fixed point for adoption — opening such a vault, the app recognises the track whose
+bundled files it holds unchanged, adds that track's manifests and field definitions, and every
+number stays the same (`the_golden_vault_is_adopted_into_the_school_track_and_counts_the_same` in
+`src-tauri`). Keep it without manifests. A vault made on a track today is exercised by
+[`tests/golden-neutral`](../golden-neutral/README.md).
+
 ## Layout
 
 ```

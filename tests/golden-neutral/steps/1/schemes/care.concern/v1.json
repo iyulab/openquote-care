@@ -1,0 +1,44 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.concern",
+  "version": 1,
+  "items": [
+    {
+      "code": "mood",
+      "label": "Mood"
+    },
+    {
+      "code": "anxiety",
+      "label": "Anxiety and stress"
+    },
+    {
+      "code": "relationships",
+      "label": "Relationships"
+    },
+    {
+      "code": "family",
+      "label": "Family"
+    },
+    {
+      "code": "study-work",
+      "label": "Study or work"
+    },
+    {
+      "code": "substance",
+      "label": "Substance use"
+    },
+    {
+      "code": "loss",
+      "label": "Loss and grief"
+    },
+    {
+      "code": "safety",
+      "label": "Safety and crisis",
+      "suggest": false
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

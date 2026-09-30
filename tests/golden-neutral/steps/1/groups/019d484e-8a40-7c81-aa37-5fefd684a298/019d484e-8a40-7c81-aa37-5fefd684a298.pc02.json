@@ -1,0 +1,19 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d484e-8a40-7c81-aa37-5fefd684a298",
+  "device": "pc02",
+  "at": "2026-04-01T09:10:00+00:00",
+  "entity": {
+    "type": "group",
+    "id": "019d484e-8a40-7c81-aa37-5fefd684a298"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Peer support",
+    "members": [
+      "019d4845-6280-789f-8b18-7d65872f784c",
+      "019d4849-f660-728b-9674-21fffcb40b58"
+    ]
+  }
+}

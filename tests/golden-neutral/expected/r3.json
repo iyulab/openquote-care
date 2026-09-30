@@ -1,0 +1,69 @@
+{
+  "format": "openquote.run/0",
+  "report": {
+    "report": "care.monthly-concern",
+    "version": 1
+  },
+  "schemes": {
+    "care.concern": {
+      "version": 1
+    }
+  },
+  "period": {
+    "from": "2026-05-01",
+    "to": "2026-05-31"
+  },
+  "cells": [
+    {
+      "row": "anxiety",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019e1cea-a400-75c4-bc56-a528455f0c7f"
+      ]
+    },
+    {
+      "row": "other",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019e40f7-2800-753e-8691-c84608b74d6e"
+      ]
+    },
+    {
+      "row": "safety",
+      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "count": 1,
+      "records": [
+        "019df8de-2000-76ad-b18d-983f84eefee1"
+      ]
+    }
+  ],
+  "pending": {
+    "count": 0,
+    "records": []
+  },
+  "unmapped": {
+    "count": 0,
+    "records": []
+  },
+  "total": {
+    "count": 3,
+    "records": [
+      "019df8de-2000-76ad-b18d-983f84eefee1",
+      "019e1cea-a400-75c4-bc56-a528455f0c7f",
+      "019e40f7-2800-753e-8691-c84608b74d6e"
+    ]
+  },
+  "people": {
+    "019df8de-2000-76ad-b18d-983f84eefee1": [
+      "019d4849-f660-728b-9674-21fffcb40b58"
+    ],
+    "019e1cea-a400-75c4-bc56-a528455f0c7f": [
+      "019cadfd-8900-71c7-88f6-1afc6313bf3b"
+    ],
+    "019e40f7-2800-753e-8691-c84608b74d6e": [
+      "019cae02-1ce0-7dfb-81ca-769f3565ea29"
+    ]
+  }
+}

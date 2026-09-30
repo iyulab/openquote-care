@@ -1,0 +1,29 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "subject",
+  "version": 1,
+  "fields": [
+    {
+      "name": "name",
+      "kind": "text",
+      "required": true,
+      "label": "Name"
+    },
+    {
+      "name": "mgmt_no",
+      "kind": "text",
+      "label": "Case number"
+    },
+    {
+      "name": "gender",
+      "kind": "text",
+      "label": "Gender"
+    },
+    {
+      "name": "phone",
+      "kind": "text",
+      "label": "Phone"
+    }
+  ]
+}

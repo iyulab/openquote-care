@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d4845-6280-789f-8b18-7d65872f784c",
+  "device": "pc02",
+  "at": "2026-04-01T09:00:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019d4845-6280-789f-8b18-7d65872f784c"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Jamie Fox",
+    "mgmt_no": "N-005",
+    "gender": null,
+    "phone": null
+  }
+}

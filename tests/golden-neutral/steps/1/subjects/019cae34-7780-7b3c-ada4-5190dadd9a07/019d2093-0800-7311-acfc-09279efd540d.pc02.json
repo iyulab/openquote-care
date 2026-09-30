@@ -1,0 +1,27 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d2093-0800-7311-acfc-09279efd540d",
+  "device": "pc02",
+  "at": "2026-03-24T16:00:00+00:00",
+  "entity": {
+    "type": "session",
+    "id": "019d2093-0800-7311-acfc-09279efd540d"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "date": "2026-03-24",
+    "practitioner": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+    "concern": {
+      "scheme": "care.concern",
+      "version": 1,
+      "code": "family"
+    },
+    "mode": {
+      "scheme": "care.mode",
+      "version": 1,
+      "code": "video"
+    },
+    "note": "Synthetic note: disagreement at home"
+  }
+}

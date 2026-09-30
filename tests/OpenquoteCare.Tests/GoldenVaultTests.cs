@@ -13,14 +13,14 @@ public class GoldenVaultTests
 {
     private static ReportRun Run(int step, int reportVersion, int month)
     {
-        var content = VaultReader.Read(GoldenVault.Through(step));
+        var content = VaultReader.Read(GoldenVault.School.Through(step));
         Assert.Empty(content.Unreadable);
         var report = content.Reports.Single(r => r.Name == "monthly-topic" && r.Version == reportVersion);
         return ReportRunner.RunMonth(report, 2026, month, GoldenVault.Entities(content).Values, content.Catalog());
     }
 
     private static SchemeCatalog CatalogThrough(int step) =>
-        VaultReader.Read(GoldenVault.Through(step)).Catalog();
+        VaultReader.Read(GoldenVault.School.Through(step)).Catalog();
 
     private static JsonObject RunRecord(ReportRun run)
     {
@@ -40,7 +40,7 @@ public class GoldenVaultTests
     {
         var got = RunRecord(Run(step, reportVersion, month));
 
-        Assert.True(JsonNode.DeepEquals(GoldenVault.Expected(name), got), $"{name} differs:\n{got.ToJsonString()}");
+        Assert.True(JsonNode.DeepEquals(GoldenVault.School.Expected(name), got), $"{name} differs:\n{got.ToJsonString()}");
     }
 
     [Theory]
@@ -49,7 +49,7 @@ public class GoldenVaultTests
     public void Tells_late_entries_from_reclassified_records(string name, int stepA, int versionA, int stepB, int versionB)
     {
         var diff = ReportDiff.Compare(Run(stepA, versionA, 4), Run(stepB, versionB, 4), CatalogThrough(stepB));
-        var expected = GoldenVault.Expected($"diff-{name}");
+        var expected = GoldenVault.School.Expected($"diff-{name}");
 
         string[] Ids(string key) => [.. expected[key]!.AsArray().Select(n => n!.GetValue<string>())];
         Assert.Equal(Ids("late"), diff.Late);
@@ -64,13 +64,13 @@ public class GoldenVaultTests
     {
         var diff = ReportDiff.Compare(Run(1, 1, 4), Run(2, 2, 4), CatalogThrough(2));
 
-        Assert.Equal([GoldenVault.IdOf("Q22")], diff.Late);
+        Assert.Equal([GoldenVault.School.IdOf("Q22")], diff.Late);
     }
 
     [Fact]
     public void Unreadable_files_are_reported_and_change_no_number()
     {
-        var content = VaultReader.Read(GoldenVault.Through(1).Concat(GoldenVault.Invalid()));
+        var content = VaultReader.Read(GoldenVault.School.Through(1).Concat(GoldenVault.School.Invalid()));
 
         Assert.Equal(
             [UnreadableReason.Malformed, UnreadableReason.NameMismatch],
@@ -78,14 +78,14 @@ public class GoldenVaultTests
 
         var report = content.Reports.Single(r => r.Version == 1);
         var run = ReportRunner.RunMonth(report, 2026, 4, GoldenVault.Entities(content).Values, content.Catalog());
-        Assert.True(JsonNode.DeepEquals(GoldenVault.Expected("r1"), RunRecord(run)));
+        Assert.True(JsonNode.DeepEquals(GoldenVault.School.Expected("r1"), RunRecord(run)));
     }
 
     [Fact]
     public void Two_devices_editing_one_field_unseen_keep_both_values()
     {
-        var content = VaultReader.Read(GoldenVault.Through(3));
-        var session = GoldenVault.Entities(content).Values.Single(e => e.Reference.Id == GoldenVault.IdOf("Q05"));
+        var content = VaultReader.Read(GoldenVault.School.Through(3));
+        var session = GoldenVault.Entities(content).Values.Single(e => e.Reference.Id == GoldenVault.School.IdOf("Q05"));
 
         var heads = session.Conflicts["method"];
         Assert.Equal(["pc01", "pc02"], heads.Select(h => h.Device));

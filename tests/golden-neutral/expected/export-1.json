@@ -1,0 +1,78 @@
+{
+  "export": {
+    "export": "care.session-list",
+    "version": 1
+  },
+  "period": {
+    "from": "2026-04-01",
+    "to": "2026-04-30"
+  },
+  "rows": [
+    {
+      "record": "019d4660-27c0-7801-b76d-58086dfaafe2",
+      "cells": [
+        "2026-04-01",
+        "Robin Hale",
+        "1",
+        "Anxiety and stress",
+        "In person",
+        "Alex Morgan"
+      ]
+    },
+    {
+      "record": "019d68ac-1000-72db-86b5-63b85f789e7f",
+      "cells": [
+        "2026-04-07",
+        "Casey Stone",
+        "1",
+        "Mood",
+        "",
+        "Alex Morgan"
+      ]
+    },
+    {
+      "record": "019d72f8-c800-7f3d-beb0-c2d0def9f466",
+      "cells": [
+        "2026-04-09",
+        "Taylor Reed",
+        "1",
+        "",
+        "Video",
+        "Jordan Price"
+      ]
+    },
+    {
+      "record": "019d8cb8-9400-7739-b860-893821ba24cf",
+      "cells": [
+        "2026-04-14",
+        "Morgan Blake",
+        "1",
+        "Relationships",
+        "Message",
+        "Jordan Price"
+      ]
+    },
+    {
+      "record": "019db0c5-1800-728f-b142-0a704bb4b6a8",
+      "cells": [
+        "2026-04-21",
+        "Jamie Fox, Riley Quinn",
+        "2",
+        "Loss and grief",
+        "In person",
+        "Jordan Price"
+      ]
+    },
+    {
+      "record": "019dd4d1-9c00-7d99-a66d-7458a3ec61ba",
+      "cells": [
+        "2026-04-28",
+        "Jamie Fox",
+        "1",
+        "Study or work",
+        "Phone",
+        "Alex Morgan"
+      ]
+    }
+  ]
+}

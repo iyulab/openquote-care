@@ -1,0 +1,27 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.mode",
+  "version": 1,
+  "items": [
+    {
+      "code": "in-person",
+      "label": "In person"
+    },
+    {
+      "code": "phone",
+      "label": "Phone"
+    },
+    {
+      "code": "video",
+      "label": "Video"
+    },
+    {
+      "code": "message",
+      "label": "Message"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d72f8-c800-7f3d-beb0-c2d0def9f466",
+  "device": "pc02",
+  "at": "2026-04-09T16:00:00+00:00",
+  "entity": {
+    "type": "session",
+    "id": "019d72f8-c800-7f3d-beb0-c2d0def9f466"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "date": "2026-04-09",
+    "practitioner": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+    "concern": null,
+    "mode": {
+      "scheme": "care.mode",
+      "version": 1,
+      "code": "video"
+    },
+    "note": "Synthetic note: no concern was recorded"
+  }
+}

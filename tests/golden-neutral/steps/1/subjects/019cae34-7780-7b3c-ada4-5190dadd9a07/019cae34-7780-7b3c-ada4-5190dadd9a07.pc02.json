@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019cae34-7780-7b3c-ada4-5190dadd9a07",
+  "device": "pc02",
+  "at": "2026-03-02T11:00:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019cae34-7780-7b3c-ada4-5190dadd9a07"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Taylor Reed",
+    "mgmt_no": "N-003",
+    "gender": null,
+    "phone": null
+  }
+}

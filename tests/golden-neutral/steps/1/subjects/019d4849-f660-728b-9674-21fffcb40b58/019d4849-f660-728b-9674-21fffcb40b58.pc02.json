@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019d4849-f660-728b-9674-21fffcb40b58",
+  "device": "pc02",
+  "at": "2026-04-01T09:05:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019d4849-f660-728b-9674-21fffcb40b58"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Riley Quinn",
+    "mgmt_no": "N-006",
+    "gender": null,
+    "phone": "555-0106"
+  }
+}

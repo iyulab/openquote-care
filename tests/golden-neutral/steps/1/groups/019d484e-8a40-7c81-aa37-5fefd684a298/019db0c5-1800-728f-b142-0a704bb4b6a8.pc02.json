@@ -1,0 +1,31 @@
+{
+  "format": "openquote.change/0",
+  "id": "019db0c5-1800-728f-b142-0a704bb4b6a8",
+  "device": "pc02",
+  "at": "2026-04-21T16:00:00+00:00",
+  "entity": {
+    "type": "session",
+    "id": "019db0c5-1800-728f-b142-0a704bb4b6a8"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "date": "2026-04-21",
+    "practitioner": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+    "concern": {
+      "scheme": "care.concern",
+      "version": 1,
+      "code": "loss"
+    },
+    "mode": {
+      "scheme": "care.mode",
+      "version": 1,
+      "code": "in-person"
+    },
+    "note": "Synthetic note: group met after a loss",
+    "attendees": [
+      "019d4845-6280-789f-8b18-7d65872f784c",
+      "019d4849-f660-728b-9674-21fffcb40b58"
+    ]
+  }
+}

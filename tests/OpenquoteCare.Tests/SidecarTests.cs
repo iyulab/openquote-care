@@ -76,7 +76,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Loads_the_golden_vault_and_reproduces_its_run()
     {
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(3)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(3)));
         Assert.Equal(81, summary["changes"]!.GetValue<int>());
         Assert.Equal(75, summary["entities"]!.GetValue<int>());
         Assert.Equal(1, summary["conflicts"]!.GetValue<int>());
@@ -87,14 +87,14 @@ public sealed class SidecarTests : IAsyncLifetime
         var record = result["record"]!.AsObject();
         Assert.Equal("pc09", record["device"]!.GetValue<string>());
         foreach (var key in new[] { "id", "device", "at" }) record.Remove(key);
-        Assert.True(JsonNode.DeepEquals(GoldenVault.Expected("r3"), record));
+        Assert.True(JsonNode.DeepEquals(GoldenVault.School.Expected("r3"), record));
         Assert.Matches(@"^runs/\d{4}/[0-9a-f-]{36}\.pc09\.json$", result["file"]!["path"]!.GetValue<string>());
     }
 
     [Fact]
     public async Task Lists_every_scheme_version_with_its_items()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
 
         var schemes = await Get("/schemes");
 
@@ -107,7 +107,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Summarises_the_loaded_vault_on_request()
     {
-        var loaded = await Post("/vault/load", Files(GoldenVault.Through(3)));
+        var loaded = await Post("/vault/load", Files(GoldenVault.School.Through(3)));
 
         var summary = await Get("/summary");
 
@@ -118,11 +118,11 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Names_a_scheme_version_no_crosswalk_leads_to()
     {
-        var linked = await Post("/vault/load", Files(GoldenVault.Through(3)));
+        var linked = await Post("/vault/load", Files(GoldenVault.School.Through(3)));
         Assert.Empty(linked["unlinked"]!.AsArray());
 
         const string relabelled = """{"format":"openquote.scheme/0","scheme":"method","version":2,"items":[{"code":"individual","label":"Individual"}]}""";
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(3).Append(
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(3).Append(
             new Openquote.Vault.VaultFile("schemes/method/v2.json", System.Text.Encoding.UTF8.GetBytes(relabelled)))));
 
         var unlinked = summary["unlinked"]!.AsArray().Single()!;
@@ -138,7 +138,7 @@ public sealed class SidecarTests : IAsyncLifetime
             """;
         var exportFile = new Openquote.Vault.VaultFile("exports/list/v1.json", System.Text.Encoding.UTF8.GetBytes(form));
 
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(3).Append(exportFile)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(3).Append(exportFile)));
 
         var reports = summary["reports"]!.AsArray().ToDictionary(r => r!["version"]!.GetValue<int>(), r => r!["behind"]!.AsArray());
         var lag = reports[1].Single()!;
@@ -174,7 +174,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Lists_the_fields_of_a_type_with_labels_in_the_vault_locale()
     {
-        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         var session = (await Get("/fields/session")).AsArray().ToDictionary(f => f!["name"]!.GetValue<string>(), f => f!);
         Assert.Equal(["date", "practitioner", "topic", "method", "grade", "note"], session.Keys);
@@ -194,7 +194,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Lists_no_fields_for_a_vault_without_field_definitions()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(1)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         Assert.Empty((await Get("/fields/session")).AsArray());
     }
@@ -202,7 +202,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Labels_scheme_items_in_the_vault_locale_and_falls_back_to_the_items_own()
     {
-        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         var method = (await Get("/schemes")).AsArray().Single(s => s!["scheme"]!.GetValue<string>() == "method")!["items"]!.AsArray()
             .ToDictionary(i => i!["code"]!.GetValue<string>(), i => i!["label"]!.GetValue<string>());
@@ -213,7 +213,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Offers_the_scheme_version_in_force_on_a_date()
     {
-        await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         Assert.Equal(1, (await Post("/schemes/in-force", new { scheme = "kind", date = "2026-02-28" }))["version"]!.GetValue<int>());
         Assert.Equal(2, (await Post("/schemes/in-force", new { scheme = "kind", date = "2026-03-01" }))["version"]!.GetValue<int>());
@@ -223,7 +223,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Does_not_offer_a_form_that_reads_a_hidden_field()
     {
-        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+        var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         var reports = summary["reports"]!.AsArray().ToDictionary(r => r!["name"]!.GetValue<string>(), r => r!["offered"]!.GetValue<bool>());
         Assert.Equal(new Dictionary<string, bool> { ["monthly-topic"] = true, ["by-method"] = false }, reports);
@@ -234,7 +234,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Offers_every_form_of_a_vault_without_field_definitions()
     {
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         Assert.All(summary["reports"]!.AsArray(), r => Assert.True(r!["offered"]!.GetValue<bool>()));
     }
@@ -242,7 +242,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Names_forms_and_export_columns_in_the_vault_locale()
     {
-        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. FieldPacks]));
+        var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         Assert.Equal("Sessions by topic", summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "monthly-topic")!["label"]!.GetValue<string>());
         var table = await Post("/exports/run", new { export = "plain", version = 1, year = 2026, month = 3 });
@@ -252,7 +252,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Summarises_the_packs_the_vault_holds_and_what_does_not_fit()
     {
-        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. TwoPacks]));
+        var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. TwoPacks]));
 
         Assert.Equal(["base", "region"], summary["packs"]!.AsArray().Select(p => p!["id"]!.GetValue<string>()));
         Assert.Equal(1, summary["packs"]![1]!["depends"]!["base"]!.GetValue<int>());
@@ -263,7 +263,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Orders_the_vault_locales_most_specific_pack_first()
     {
-        var summary = await Post("/vault/load", Files([.. GoldenVault.Through(1), .. TwoPacks]));
+        var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. TwoPacks]));
 
         Assert.Equal(["fr", "en"], summary["locales"]!.AsArray().Select(l => l!.GetValue<string>()));
     }
@@ -271,7 +271,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task A_vault_without_labels_names_no_locale_and_no_pack()
     {
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         Assert.Empty(summary["locales"]!.AsArray());
         Assert.Empty(summary["packs"]!.AsArray());
@@ -281,7 +281,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Names_the_fields_a_report_form_counts_by()
     {
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(1)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         var report = summary["reports"]!.AsArray().First(r => r!["name"]!.GetValue<string>() == "monthly-topic")!;
         Assert.Equal("session", report["counts"]!.GetValue<string>());
@@ -293,7 +293,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Lists_the_pending_records_of_a_run_with_the_codes_each_may_take()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
         var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
         var records = run["record"]!["pending"]!["records"]!.AsArray().Select(r => r!.GetValue<string>()).ToArray();
 
@@ -313,7 +313,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Refuses_a_code_the_record_is_not_waiting_for()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
         var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
         var id = run["record"]!["pending"]!["records"]![0]!.GetValue<string>();
 
@@ -332,9 +332,9 @@ public sealed class SidecarTests : IAsyncLifetime
     public async Task Lists_the_runs_it_keeps_and_explains_how_two_differ()
     {
         // The report as it stood after step 2, then after step 3 — the golden r2 and r3.
-        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
         var r2 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
-        await Post("/vault/load", Files(GoldenVault.Through(3).Append(FileOf(r2["file"]!))));
+        await Post("/vault/load", Files(GoldenVault.School.Through(3).Append(FileOf(r2["file"]!))));
         var r3 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
         await Post("/vault/add", new { files = new[] { r3["file"] } });
 
@@ -344,7 +344,7 @@ public sealed class SidecarTests : IAsyncLifetime
 
         var compared = await Post("/runs/compare", new { earlier = runs[0]!["id"]!.GetValue<string>(), later = runs[1]!["id"]!.GetValue<string>() });
 
-        var expected = GoldenVault.Expected("diff-r2-r3");
+        var expected = GoldenVault.School.Expected("diff-r2-r3");
         foreach (var key in new[] { "late", "removed", "revised", "moved", "unchanged" })
             Assert.True(JsonNode.DeepEquals(expected[key], compared[key]), key);
         Assert.Equal(r3["record"]!["total"]!.ToJsonString(), compared["later"]!["total"]!.ToJsonString());
@@ -356,7 +356,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Names_the_subject_each_record_belongs_to()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(0)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(0)));
         var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
         await Post("/vault/add", new { files = new[] { subjectFile } });
         var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
@@ -373,22 +373,22 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task A_group_session_names_its_group_and_everyone_who_took_part()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(1)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         var sessions = (await Get("/entities/session")).AsArray();
 
-        var group = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.IdOf("Q25"))!;
-        Assert.Equal(GoldenVault.IdOf("G01"), group["group"]!.GetValue<string>());
+        var group = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.School.IdOf("Q25"))!;
+        Assert.Equal(GoldenVault.School.IdOf("G01"), group["group"]!.GetValue<string>());
         Assert.Null(group["subject"]);
         Assert.Equal(3, group["people"]!.AsArray().Count);
-        var alone = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.IdOf("Q01"))!;
+        var alone = sessions.Single(s => s!["id"]!.GetValue<string>() == GoldenVault.School.IdOf("Q01"))!;
         Assert.Equal([alone["subject"]!.GetValue<string>()], alone["people"]!.AsArray().Select(p => p!.GetValue<string>()));
     }
 
     [Fact]
     public async Task Records_a_group_and_a_session_it_holds()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(0)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(0)));
         var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
         var groupFile = await Post("/changes/group", new { fields = new { name = "a group" } });
         await Post("/vault/add", new { files = new[] { subjectFile, groupFile } });
@@ -413,7 +413,7 @@ public sealed class SidecarTests : IAsyncLifetime
              "columns":[{"label":"date","field":"date"},{"label":"people","people":"count"},{"label":"topic","field":"topic","scheme":"topic","version":1}]}
             """;
         var exportFile = new Openquote.Vault.VaultFile("exports/list/v1.json", System.Text.Encoding.UTF8.GetBytes(form));
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Append(exportFile)));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1).Append(exportFile)));
         Assert.Equal("list", summary["exports"]!.AsArray().Single()!["name"]!.GetValue<string>());
 
         var table = await Post("/exports/run", new { export = "list", version = 1, year = 2026, month = 4 });
@@ -421,7 +421,7 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal(["date", "people", "topic"], table["columns"]!.AsArray().Select(c => c!.GetValue<string>()));
         var rows = table["rows"]!.AsArray();
         Assert.Equal(24, rows.Count);
-        var group = rows.Single(r => r!["record"]!.GetValue<string>() == GoldenVault.IdOf("Q25"))!;
+        var group = rows.Single(r => r!["record"]!.GetValue<string>() == GoldenVault.School.IdOf("Q25"))!;
         Assert.Equal("3", group["cells"]![1]!.GetValue<string>());
         Assert.Equal(rows.Select(r => r!["cells"]![0]!.GetValue<string>()).Order(StringComparer.Ordinal), rows.Select(r => r!["cells"]![0]!.GetValue<string>()));
     }
@@ -441,7 +441,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Reports_unreadable_files_when_loading()
     {
-        var summary = await Post("/vault/load", Files(GoldenVault.Through(1).Concat(GoldenVault.Invalid())));
+        var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1).Concat(GoldenVault.School.Invalid())));
 
         var unreadable = summary["unreadable"]!.AsArray();
         Assert.Equal(2, unreadable.Count);
@@ -451,7 +451,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Lists_the_files_the_host_could_not_decrypt_with_what_they_were_for_and_keeps_them_listed()
     {
-        var files = GoldenVault.Through(1).Select(f => new { path = f.Path, content = Convert.ToBase64String(f.Content.Span) });
+        var files = GoldenVault.School.Through(1).Select(f => new { path = f.Path, content = Convert.ToBase64String(f.Content.Span) });
         var undecryptable = new[] { new { path = "schemes/topic/v2.json.age", plain = "schemes/topic/v2.json", detail = "no identity matched" } };
         var loaded = await Post("/vault/load", new { files, undecryptable });
 
@@ -471,7 +471,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task Hands_back_every_change_as_a_file_and_takes_it_in_once_written()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(2)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
 
         var subjectFile = await Post("/changes/subject", new { fields = new { name = "new subject" } });
         var added = await Post("/vault/add", new { files = new[] { subjectFile } });
@@ -484,7 +484,7 @@ public sealed class SidecarTests : IAsyncLifetime
         var practitionerFile = await Post("/changes/practitioner", new { fields = new { name = "new practitioner" } });
         Assert.StartsWith("practitioners/", practitionerFile["path"]!.GetValue<string>(), StringComparison.Ordinal);
         await Post("/vault/add", new { files = new[] { practitionerFile } });
-        var practitioner = GoldenVault.IdOf("A");
+        var practitioner = GoldenVault.School.IdOf("A");
         var sessionFile = await Post("/changes/in-subject", new
         {
             subjectId,
@@ -521,7 +521,7 @@ public sealed class SidecarTests : IAsyncLifetime
     [Fact]
     public async Task An_unknown_entity_or_report_is_not_found()
     {
-        await Post("/vault/load", Files(GoldenVault.Through(1)));
+        await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         await Post("/changes/update", new { type = "session", id = "nope", fields = new { note = "x" } }, HttpStatusCode.NotFound);
         await Post("/reports/run", new { report = "monthly-topic", version = 9, year = 2026, month = 4 }, HttpStatusCode.NotFound);

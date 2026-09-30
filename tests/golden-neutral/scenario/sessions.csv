@@ -1,0 +1,15 @@
+key,subject,group,attendees,practitioner,device,date,entered_at,concern,mode,note
+S01,C1,,,P1,pc01,2026-03-03,2026-03-03T16:00:00+00:00,anxiety,in-person,Synthetic note: worries before a presentation
+S02,C2,,,P1,pc01,2026-03-10,2026-03-10T16:00:00+00:00,mood,phone,Synthetic note: low energy for two weeks
+S03,C1,,,P1,pc01,2026-03-17,2026-03-17T16:00:00+00:00,anxiety,in-person,
+S04,C3,,,P2,pc02,2026-03-24,2026-03-24T16:00:00+00:00,family,video,Synthetic note: disagreement at home
+S05,C4,,,P2,pc02,2026-03-31,2026-03-31T23:30:00+00:00,relationships,in-person,
+S06,C1,,,P1,pc01,2026-04-01,2026-04-01T00:10:00+00:00,anxiety,in-person,
+S07,C2,,,P1,pc01,2026-04-07,2026-04-07T16:00:00+00:00,mood,,Synthetic note: no mode was recorded
+S08,C3,,,P2,pc02,2026-04-09,2026-04-09T16:00:00+00:00,,video,Synthetic note: no concern was recorded
+S09,C4,,,P2,pc02,2026-04-14,2026-04-14T16:00:00+00:00,relationships,message,Synthetic note: follow-up by message
+S10,,G1,C5 C6,P2,pc02,2026-04-21,2026-04-21T16:00:00+00:00,loss,in-person,Synthetic note: group met after a loss
+S11,C5,,,P1,pc01,2026-04-28,2026-04-28T16:00:00+00:00,study-work,phone,
+S12,C6,,,P2,pc02,2026-05-05,2026-05-05T16:00:00+00:00,safety,in-person,Synthetic note: safety plan reviewed
+S13,C1,,,P1,pc01,2026-05-12,2026-05-12T16:00:00+00:00,anxiety,video,
+S14,C2,,,P1,pc01,2026-05-19,2026-05-19T16:00:00+00:00,other,phone,

@@ -1,0 +1,27 @@
+{
+  "format": "openquote.change/0",
+  "id": "019df8de-2000-76ad-b18d-983f84eefee1",
+  "device": "pc02",
+  "at": "2026-05-05T16:00:00+00:00",
+  "entity": {
+    "type": "session",
+    "id": "019df8de-2000-76ad-b18d-983f84eefee1"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "date": "2026-05-05",
+    "practitioner": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+    "concern": {
+      "scheme": "care.concern",
+      "version": 1,
+      "code": "safety"
+    },
+    "mode": {
+      "scheme": "care.mode",
+      "version": 1,
+      "code": "in-person"
+    },
+    "note": "Synthetic note: safety plan reviewed"
+  }
+}

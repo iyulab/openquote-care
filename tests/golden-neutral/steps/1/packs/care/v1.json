@@ -1,0 +1,14 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 1,
+  "label": "Care",
+  "provides": [
+    "schemes/care.concern/v1.json",
+    "schemes/care.mode/v1.json",
+    "fields/care/session/v1.json",
+    "fields/care/subject/v1.json",
+    "reports/care.monthly-concern/v1.json",
+    "exports/care.session-list/v1.json"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019cae39-0b60-7946-8be0-d453cd8881b9",
+  "device": "pc02",
+  "at": "2026-03-02T11:05:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019cae39-0b60-7946-8be0-d453cd8881b9"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Morgan Blake",
+    "mgmt_no": null,
+    "gender": "male",
+    "phone": null
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "format": "openquote.change/0",
+  "id": "019dd4d1-9c00-7d99-a66d-7458a3ec61ba",
+  "device": "pc01",
+  "at": "2026-04-28T16:00:00+00:00",
+  "entity": {
+    "type": "session",
+    "id": "019dd4d1-9c00-7d99-a66d-7458a3ec61ba"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "date": "2026-04-28",
+    "practitioner": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+    "concern": {
+      "scheme": "care.concern",
+      "version": 1,
+      "code": "study-work"
+    },
+    "mode": {
+      "scheme": "care.mode",
+      "version": 1,
+      "code": "phone"
+    },
+    "note": null
+  }
+}

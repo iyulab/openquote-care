@@ -8,7 +8,7 @@ namespace OpenquoteCare.Tests;
 /// <summary>The data packs bundled with the app, read by the engine as a vault on each track would hold them.</summary>
 public sealed class PackFilesTests
 {
-    private static readonly string Packs = Path.GetFullPath(Path.Combine(GoldenVault.Root, "..", "..", "packs"));
+    private static readonly string Packs = Path.GetFullPath(Path.Combine(GoldenVault.School.Root, "..", "..", "packs"));
 
     private static JsonNode Json(string path) => JsonNode.Parse(File.ReadAllText(path))!;
 

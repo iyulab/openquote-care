@@ -1,0 +1,18 @@
+{
+  "format": "openquote.change/0",
+  "id": "019cae02-1ce0-7dfb-81ca-769f3565ea29",
+  "device": "pc01",
+  "at": "2026-03-02T10:05:00+00:00",
+  "entity": {
+    "type": "subject",
+    "id": "019cae02-1ce0-7dfb-81ca-769f3565ea29"
+  },
+  "op": "create",
+  "base": [],
+  "fields": {
+    "name": "Casey Stone",
+    "mgmt_no": "N-002",
+    "gender": "female",
+    "phone": "555-0102"
+  }
+}

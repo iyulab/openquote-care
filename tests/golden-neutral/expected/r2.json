@@ -1,0 +1,100 @@
+{
+  "format": "openquote.run/0",
+  "report": {
+    "report": "care.monthly-concern",
+    "version": 1
+  },
+  "schemes": {
+    "care.concern": {
+      "version": 1
+    }
+  },
+  "period": {
+    "from": "2026-04-01",
+    "to": "2026-04-30"
+  },
+  "cells": [
+    {
+      "row": "anxiety",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019d4660-27c0-7801-b76d-58086dfaafe2"
+      ]
+    },
+    {
+      "row": "loss",
+      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "count": 1,
+      "records": [
+        "019db0c5-1800-728f-b142-0a704bb4b6a8"
+      ]
+    },
+    {
+      "row": "mood",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019d68ac-1000-72db-86b5-63b85f789e7f"
+      ]
+    },
+    {
+      "row": "relationships",
+      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "count": 1,
+      "records": [
+        "019d8cb8-9400-7739-b860-893821ba24cf"
+      ]
+    },
+    {
+      "row": "study-work",
+      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "count": 1,
+      "records": [
+        "019dd4d1-9c00-7d99-a66d-7458a3ec61ba"
+      ]
+    }
+  ],
+  "pending": {
+    "count": 0,
+    "records": []
+  },
+  "unmapped": {
+    "count": 1,
+    "records": [
+      "019d72f8-c800-7f3d-beb0-c2d0def9f466"
+    ]
+  },
+  "total": {
+    "count": 6,
+    "records": [
+      "019d4660-27c0-7801-b76d-58086dfaafe2",
+      "019d68ac-1000-72db-86b5-63b85f789e7f",
+      "019d72f8-c800-7f3d-beb0-c2d0def9f466",
+      "019d8cb8-9400-7739-b860-893821ba24cf",
+      "019db0c5-1800-728f-b142-0a704bb4b6a8",
+      "019dd4d1-9c00-7d99-a66d-7458a3ec61ba"
+    ]
+  },
+  "people": {
+    "019d4660-27c0-7801-b76d-58086dfaafe2": [
+      "019cadfd-8900-71c7-88f6-1afc6313bf3b"
+    ],
+    "019d68ac-1000-72db-86b5-63b85f789e7f": [
+      "019cae02-1ce0-7dfb-81ca-769f3565ea29"
+    ],
+    "019d72f8-c800-7f3d-beb0-c2d0def9f466": [
+      "019cae34-7780-7b3c-ada4-5190dadd9a07"
+    ],
+    "019d8cb8-9400-7739-b860-893821ba24cf": [
+      "019cae39-0b60-7946-8be0-d453cd8881b9"
+    ],
+    "019db0c5-1800-728f-b142-0a704bb4b6a8": [
+      "019d4845-6280-789f-8b18-7d65872f784c",
+      "019d4849-f660-728b-9674-21fffcb40b58"
+    ],
+    "019dd4d1-9c00-7d99-a66d-7458a3ec61ba": [
+      "019d4845-6280-789f-8b18-7d65872f784c"
+    ]
+  }
+}
