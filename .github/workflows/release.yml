@@ -68,6 +68,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Check every file names the same app version
+        run: node scripts/check-versions.mjs
+
       - name: Publish the engine sidecar
         run: npm run publish:sidecar
 

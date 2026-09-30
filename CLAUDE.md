@@ -32,3 +32,7 @@ cargo test --release --workspace
 cargo clippy --workspace --all-targets   # no warnings
 npm run build:sidecar && npm run build:e2e && npm run test:e2e   # the real window over CDP
 ```
+
+Before the checks, `verify` checks the machine: Rust on the MSVC toolchain, a `dotnet` on PATH, and — when `DOTNET_ROOT` is unset and .NET is a per-user install — it points `DOTNET_ROOT` at that `dotnet` for the sidecar. The first check is that every file naming the app version names the same one (`node scripts/check-versions.mjs`).
+
+A window scenario that fails only sometimes: `npm run test:e2e -- --through <part of its name> --repeat <n>` runs the scenarios up to it n times, each in a fresh folder and window.

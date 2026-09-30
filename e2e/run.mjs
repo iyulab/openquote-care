@@ -4,6 +4,11 @@
 //   npm run build:e2e       builds the debug app with the e2e config (debugging port 9224)
 //   npm run test:e2e        runs every scenario against a fresh temporary folder
 //                           (E2E_SCREENSHOTS=<dir> saves a picture of the window after each one)
+//   npm run test:e2e -- --through <part of a name> --repeat <n>
+//                           runs the scenarios up to the first whose name contains that text, n
+//                           times over, each time in a fresh folder and window — for chasing a
+//                           scenario that fails only sometimes. Scenarios build on each other, so
+//                           one cannot run alone.
 //
 // The one seam: the folder picker is a native dialog, so the scenarios put the folder where the
 // picker's result goes (the app element's `folder`). Everything after that is clicks and typing.
@@ -819,10 +824,29 @@ async function screenshot(cdp, dir, name) {
   await writeFile(join(dir, `${name.replace(/[^\p{L}\p{N}]+/gu, '-')}.png`), Buffer.from(data, 'base64'))
 }
 
-async function main() {
-  if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
-  if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
-  const temp = await mkdtemp(join(tmpdir(), 'openquote-care-e2e-'))
+function options(argv) {
+  const value = (flag) => {
+    const i = argv.indexOf(flag)
+    return i >= 0 ? argv[i + 1] : undefined
+  }
+  const known = new Set(['--through', '--repeat'])
+  const unknown = argv.filter((a, i) => a.startsWith('--') && !known.has(a) && !known.has(argv[i - 1]))
+  if (unknown.length) throw new Error(`unknown option: ${unknown.join(' ')} (expected --through <text>, --repeat <n>)`)
+  const through = value('--through')
+  const repeat = Number(value('--repeat') ?? 1)
+  if (!Number.isInteger(repeat) || repeat < 1) throw new Error('--repeat takes a whole number of runs, 1 or more')
+  const names = Object.keys(scenarios)
+  const last = through === undefined ? names.length - 1 : names.findIndex((n) => n.includes(through))
+  if (last < 0) throw new Error(`no scenario name contains "${through}"`)
+  return { selected: names.slice(0, last + 1), repeat }
+}
+
+/** Runs `selected` once against a fresh folder and window; answers the name of the scenario that failed, if one did. */
+// The system temporary folder, read before a run points TEMP into its own folder.
+const systemTemp = tmpdir()
+
+async function runOnce(selected) {
+  const temp = await mkdtemp(join(systemTemp, 'openquote-care-e2e-'))
   const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty'), appTemp: join(temp, 'app-temp') }
   await mkdir(work.vault)
   await mkdir(work.empty)
@@ -832,31 +856,47 @@ async function main() {
   process.env.TEMP = process.env.TMP = work.appTemp
 
   let app
-  let failed = 0
   try {
     app = await App.launch()
     // Scenarios run in order against one window: each builds on what the last one left.
-    for (const [name, run] of Object.entries(scenarios)) {
+    for (const name of selected) {
       try {
-        await run(app, work)
+        await scenarios[name](app, work)
         console.log(`  ✓ ${name}`)
         // A scenario may end with the app quit (the last one looks through what it left behind).
         if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, name)
       } catch (e) {
-        failed++
         // A wait that timed out says what it waited for; what the window showed instead says why.
         const shown = app.child ? await app.cdp.evaluate(`__e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`).catch(() => '') : ''
         console.log(`  ✗ ${name}\n    ${e.message.replaceAll('\n', '\n    ')}${shown ? `\n    the window showed: ${shown}` : ''}`)
         if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, `FAILED ${name}`).catch(() => {})
-        break
+        return name
       }
     }
+    return undefined
   } finally {
     await app?.quit()
     await rm(temp, { recursive: true, force: true })
+    process.env.TEMP = process.env.TMP = systemTemp
   }
-  console.log(failed ? `\n${failed} scenario failed` : `\nall ${Object.keys(scenarios).length} scenarios passed`)
-  process.exitCode = failed ? 1 : 0
+}
+
+async function main() {
+  if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
+  if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
+  const { selected, repeat } = options(process.argv.slice(2))
+  const failures = []
+  for (let run = 1; run <= repeat; run++) {
+    if (repeat > 1) console.log(`\nrun ${run} of ${repeat}`)
+    const failed = await runOnce(selected)
+    if (failed) failures.push(failed)
+  }
+  if (repeat === 1) {
+    console.log(failures.length ? `\n${failures.length} scenario failed` : `\nall ${selected.length} scenarios passed`)
+  } else {
+    console.log(`\n${repeat - failures.length} of ${repeat} runs passed${failures.length ? ` — failed: ${[...new Set(failures)].join(', ')}` : ''}`)
+  }
+  process.exitCode = failures.length ? 1 : 0
 }
 
 await main()
