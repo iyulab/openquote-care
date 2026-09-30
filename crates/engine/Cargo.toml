@@ -13,7 +13,7 @@ base64 = "0.22"
 getrandom = "0.3"
 openquote-care-vault = { path = "../vault" }
 serde_json = "1"
-tauri-kit-sidecar = { git = "https://github.com/iyulab/tauri-kit", tag = "v0.4.0" }
+tauri-kit-sidecar = { git = "https://github.com/iyulab/tauri-kit", tag = "v0.5.0" }
 ureq = { version = "3", default-features = false, features = ["json"] }
 
 [dev-dependencies]
