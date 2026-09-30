@@ -99,6 +99,11 @@ export class VaultStore extends EventTarget {
     }
   }
 
+  /** The fields the vault declares for an entity type; none for a type this app does not read fields of. */
+  fieldsOf(type: string): FieldView[] {
+    return type === 'session' ? this.sessionFields : type === 'subject' ? this.subjectFields : []
+  }
+
   /** The entities a reference field of `type` may point at. */
   entitiesOf(type: string | null): Entity[] {
     return type === 'practitioner' ? this.practitioners : type === 'subject' ? this.subjects : type === 'group' ? this.groups : []

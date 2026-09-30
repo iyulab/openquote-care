@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comparable, headCount, lastMonth, layOut, placesOf, type KeptRun, type RunRecord } from '../report.js'
+import { comparable, headCount, lastMonth, layOut, placesOf, referenceAxis, type KeptRun, type RunRecord } from '../report.js'
 import type { Entity, Scheme } from '../records.js'
 
 const topic: Scheme = {
@@ -30,12 +30,12 @@ const run: RunRecord = {
 }
 
 describe('layOut', () => {
-  const table = layOut(run, [topic], [person('p2', '나'), person('p1', '가')], '(없음)')
+  const table = layOut(run, [topic], referenceAxis([person('p2', '나'), person('p1', '가')], '(없음)'))
 
   it('lists every leaf of the report version, in scheme order', () => {
     expect(table.rows.map((r) => r.label)).toEqual(['가정', '관계 › 또래', '학습'])
   })
-  it('puts practitioners in name order and the unassigned column last', () => {
+  it('puts what the column field refers to in name order and the column of records without it last', () => {
     expect(table.columns).toEqual([
       { id: 'p1', label: '가' },
       { id: 'p2', label: '나' },
@@ -65,10 +65,21 @@ describe('headCount', () => {
     expect(headCount(run, ['a'])).toBeNull()
   })
   it('gives the table every record behind its row and column totals', () => {
-    const table = layOut(run, [topic], [person('p2', '나'), person('p1', '가')], '(없음)')
+    const table = layOut(run, [topic], referenceAxis([person('p2', '나'), person('p1', '가')], '(없음)'))
     expect(table.rows[0].records).toEqual(['a', 'b', 'd'])
     expect(table.columnRecords).toEqual([['c'], ['a', 'b'], ['d']])
     expect(table.placedRecords.sort()).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('referenceAxis', () => {
+  it('names a column the vault no longer holds by its value', () => {
+    const table = layOut(run, [topic], referenceAxis([person('p1', '가')], '(없음)'))
+    expect(table.columns.map((c) => c.label)).toEqual(['가', 'p2', '(없음)'])
+  })
+  it('shows only the column of records without a value when nothing is referred to', () => {
+    const lone: RunRecord = { ...run, cells: run.cells.map((c) => ({ ...c, column: null })) }
+    expect(layOut(lone, [topic], referenceAxis([], '건수')).columns).toEqual([{ id: null, label: '건수' }])
   })
 })
 

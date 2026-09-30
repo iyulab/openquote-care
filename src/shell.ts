@@ -3,7 +3,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { Entity, PendingChoice, Scheme } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
-import type { FormEntry } from './forms.js'
+import type { FormEntry, ReportEntry } from './forms.js'
 
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
 export interface VaultFileKind {
@@ -43,7 +43,7 @@ export interface FieldView {
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
   unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
-  reports: FormEntry[]
+  reports: ReportEntry[]
   exports: FormEntry[]
   /** Scheme versions no crosswalk leads to from an earlier version. */
   unlinked: { scheme: string; version: number }[]

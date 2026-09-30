@@ -15,6 +15,15 @@ export interface FormEntry {
   offered: boolean
 }
 
+/** A report form: which records it counts, and the fields that place them in a month, a row and a column. */
+export interface ReportEntry extends FormEntry {
+  counts: string
+  periodField: string
+  rowField: string
+  /** The reference field that splits the columns; null for a form with one column. */
+  columnField: string | null
+}
+
 /**
  * The forms whose newest version still classifies by an older scheme version — after a revision,
  * the pack that brought the new scheme did not bring a matching form. Older versions of a form lag

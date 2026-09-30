@@ -43,7 +43,9 @@ describe('VaultStore', () => {
   })
 
   it('never shows a form the vault does not offer, nor picks it first', async () => {
-    const form = (name: string, offered: boolean) => ({ name, version: 1, label: name, behind: [], offered })
+    const form = (name: string, offered: boolean) => ({
+      name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', rowField: 'topic', columnField: null,
+    })
     vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [form('hidden', false)] })
     const store = new VaultStore()
 

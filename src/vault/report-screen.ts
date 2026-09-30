@@ -4,7 +4,7 @@ import { comparable, headCount, layOut, type Comparison, type Group, type KeptRu
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, noticeLine, periodFields } from './parts.js'
-import { comparisonView, evidenceList, pendingList, type PendingEntry } from './report-parts.js'
+import { columnAxis, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
 
 /** A month's report: its counts, what each is made of, what still waits, and how it moved since an earlier run. */
@@ -129,7 +129,7 @@ export class OcReport extends VaultScreen {
 
   private reportTable(result: RunRecord) {
     const store = this.store
-    const table = layOut(result, store.schemes, store.practitioners, strings.noPractitioner, store.names)
+    const table = layOut(result, store.schemes, columnAxis(store, formOf(store, result)))
     // The head count beside a record count, when the run recorded people.
     const people = (records: string[]) => {
       const n = records.length === 0 ? null : headCount(result, records)
@@ -192,9 +192,9 @@ export class OcReport extends VaultScreen {
       ${this.comparison
         ? comparisonView(store, this.comparison)
         : this.pendingChoices
-          ? pendingList(store, this.pendingChoices, this.reclassified, (c, code) => void this.reclassify(c, code))
+          ? pendingList(store, result, this.pendingChoices, this.reclassified, (c, code) => void this.reclassify(c, code))
           : this.evidence
-            ? evidenceList(store, this.evidence.title, this.evidence.group)
+            ? evidenceList(store, result, this.evidence.title, this.evidence.group)
             : html`<p class="muted">${strings.pickCell}</p>`}
     `
   }

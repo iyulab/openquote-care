@@ -202,7 +202,10 @@ impl App {
 
     fn open_unlocked(&self, vault: Vault) -> Result<Value, AppError> {
         let mut open = OpenVault::open(vault, Engine::start(&self.sidecar, &self.device)?)?;
-        let adopted = self.adopt(&mut open)?;
+        // Taking packs on adds to a vault that reads without them: a failed write (a read-only share,
+        // another device adding the same file first) never keeps the vault from opening. What was not
+        // added is tried again the next time, since the manifests go last.
+        let adopted = self.adopt(&mut open).unwrap_or_default();
         let mut summary = open.summary.clone();
         if !adopted.is_empty() {
             summary["adopted"] = Value::from(adopted);
@@ -213,7 +216,9 @@ impl App {
 
     /// A vault whose packs do not name themselves — every vault made before they did — takes on the
     /// app's packs: the files it lacks are added, and no file it holds is changed. When one of them
-    /// differs from a file the vault holds, nothing is added. Returns the labels of the packs added.
+    /// differs from a file the vault holds, nothing is added. The manifests are written last, so a
+    /// vault left part-way still names no pack and takes the rest on when it is next opened.
+    /// Returns the labels of the packs added.
     fn adopt(&self, open: &mut OpenVault) -> Result<Vec<String>, AppError> {
         let names_packs = open.summary["packs"].as_array().is_some_and(|p| !p.is_empty());
         if names_packs || self.packs.is_empty() {
@@ -234,6 +239,7 @@ impl App {
             .filter(|f| f.path.starts_with("packs/"))
             .filter_map(|f| serde_json::from_slice::<Value>(&f.content).ok()?["label"].as_str().map(str::to_owned))
             .collect();
+        new.sort_by_key(|f| f.path.starts_with("packs/"));
         if !new.is_empty() {
             open.keep_all(new)?;
         }
@@ -983,7 +989,9 @@ cut off").unwrap();
         let summary = app.summary().unwrap();
         assert_eq!(summary["packs"][0]["id"], "care");
         assert_eq!(summary["locales"], json!(["ko"]));
-        assert!(summary["unreadable"].as_array().unwrap().is_empty());
+        for clean in ["unreadable", "packIssues", "fieldIssues", "labelConflicts"] {
+            assert_eq!(summary[clean], json!([]), "{clean}");
+        }
         let fields = app.fields("session").unwrap();
         let topic = fields.as_array().unwrap().iter().find(|f| f["name"] == "topic").unwrap();
         assert_eq!((&topic["label"], &topic["required"]), (&json!("주제"), &json!(true)));

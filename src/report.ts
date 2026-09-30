@@ -24,9 +24,32 @@ export interface Group {
 }
 
 export interface Column {
-  /** The practitioner id, or null for records with none. */
+  /** The value of the report's column field (the id of what it refers to), or null for records with none. */
   id: string | null
   label: string
+}
+
+/** What splits a report's columns: the values its column field can take, in the order to show them. */
+export interface ColumnAxis {
+  /** Columns shown even when nothing fell into them, in order. */
+  known: Column[]
+  /** A value outside `known` in words: a column the run found that the vault no longer names. */
+  label(id: string): string
+  /** The heading of the column of records with no value. */
+  none: string
+}
+
+/**
+ * The column axis of a report whose column field refers to `entities` (every entity it may point
+ * at, named and in name order); a value that names none of them reads as written.
+ */
+export function referenceAxis(entities: Entity[], none: string, collator: Intl.Collator = nameCollator()): ColumnAxis {
+  const names = new Map(entities.map((e) => [e.id, text(e, 'name')]))
+  return {
+    known: [...entities].sort((a, b) => collator.compare(text(a, 'name'), text(b, 'name'))).map((e) => ({ id: e.id, label: text(e, 'name') })),
+    label: (id) => names.get(id) ?? id,
+    none,
+  }
 }
 
 export interface Row {
@@ -57,9 +80,9 @@ const EMPTY: Group = { count: 0, records: [] }
 
 /**
  * Lays out a run: every row the report's scheme version offers, in the scheme's order (a row
- * nothing fell into still shows, as a form does), by every practitioner, with totals.
+ * nothing fell into still shows, as a form does), by every column of `axis`, with totals.
  */
-export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[], noPractitioner: string, collator: Intl.Collator = nameCollator()): Table {
+export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Table {
   const [rowScheme, { version }] = Object.entries(run.schemes)[0] ?? ['', { version: 0 }]
   const scheme = schemes.find((s) => s.scheme === rowScheme && s.version === version)
   const rowChoices = scheme ? choices(scheme).filter((c) => !c.disabled) : []
@@ -67,12 +90,10 @@ export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[
   const extraRows = [...new Set(run.cells.map((c) => c.row).filter((r) => !known.has(r)))]
   const rowList = [...rowChoices.map((c) => ({ code: c.value, label: c.label })), ...extraRows.map((r) => ({ code: r, label: r }))]
 
-  const names = new Map(practitioners.map((p) => [p.id, text(p, 'name')]))
-  const byName = [...practitioners].sort((a, b) => collator.compare(text(a, 'name'), text(b, 'name')))
-  const columns: Column[] = byName.map((p) => ({ id: p.id, label: text(p, 'name') }))
+  const columns: Column[] = [...axis.known]
   for (const cell of run.cells) {
     if (!columns.some((c) => c.id === cell.column)) {
-      columns.push({ id: cell.column, label: cell.column === null ? noPractitioner : (names.get(cell.column) ?? cell.column) })
+      columns.push({ id: cell.column, label: cell.column === null ? axis.none : axis.label(cell.column) })
     }
   }
 
