@@ -26,6 +26,17 @@ describe('locale tables', () => {
     expect(text).not.toMatch(/[ㄱ-ㆎ가-힣]/)
   })
 
+  // The people who use the app are not IT specialists: the folder of records is a record folder, the
+  // secret that opens it is a password, and the key on the kit has one name wherever it appears.
+  it('the Korean table calls things by everyday words', () => {
+    const text = JSON.stringify(ko, (_k, v: unknown) => (typeof v === 'function' ? String(v) : v))
+    for (const word of ['볼트', '패스프레이즈', '사이드바']) expect(text).not.toContain(word)
+  })
+
+  it('names the key on the recovery kit the way the recovery field does', () => {
+    for (const table of [ko, en]) expect(table.kitKey).toBe(table.recoveryKey)
+  })
+
   it('picks the table for the first language it has and falls back to English', () => {
     expect(pickLocale(['ko-KR'])).toBe('ko')
     expect(pickLocale(['KO'])).toBe('ko')

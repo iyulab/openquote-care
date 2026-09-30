@@ -30,8 +30,8 @@ const sidecar = resolve(
     join(root, 'sidecar', 'OpenquoteCare.Sidecar', 'bin', 'Release', 'net10.0', process.platform === 'win32' ? 'openquote-care-sidecar.exe' : 'openquote-care-sidecar'),
 )
 const PORT = 9224
-const PASSPHRASE = '상담 기록 볼트 2026'
-const NEW_PASSPHRASE = '새 볼트 암호 2026'
+const PASSPHRASE = '상담 기록 폴더 2026'
+const NEW_PASSPHRASE = '새 기록 암호 2026'
 
 /** In-page helpers: queries that pierce shadow roots, and element boxes for real clicks. */
 const HELPERS = `window.__e2e = {
@@ -209,14 +209,14 @@ const scenarios = {
     assert.doesNotMatch(words, /[가-힣]/, 'no Korean on the first screen')
     await app.restart()
     await app.heading('Openquote Care')
-    await app.cdp.waitFor(`!!__e2e.one('dc-button', '새 볼트 만들기')`, 'the Korean first screen again')
+    await app.cdp.waitFor(`!!__e2e.one('dc-button', '새 기록 폴더 만들기')`, 'the Korean first screen again')
   },
 
   async 'leaves nothing behind when the app ends at the recovery kit'(app, work) {
-    await app.click('dc-button', '새 볼트 만들기')
+    await app.click('dc-button', '새 기록 폴더 만들기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', PASSPHRASE)
-    await app.type('패스프레이즈 다시 입력', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
+    await app.type('암호 다시 입력', PASSPHRASE)
     await app.click('dc-button', '만들기')
     await app.heading('복구 키트')
     await app.restart()
@@ -225,19 +225,19 @@ const scenarios = {
   },
 
   async 'refuses a short passphrase before touching the disk'(app, work) {
-    await app.click('dc-button', '새 볼트 만들기')
-    await app.heading('새 볼트 만들기')
+    await app.click('dc-button', '새 기록 폴더 만들기')
+    await app.heading('새 기록 폴더 만들기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', 'short')
-    await app.type('패스프레이즈 다시 입력', 'short')
+    await app.type('암호', 'short')
+    await app.type('암호 다시 입력', 'short')
     await app.click('dc-button', '만들기')
-    await app.alert('패스프레이즈는 8자 이상이어야 합니다.')
+    await app.alert('암호는 8자 이상이어야 합니다.')
     assert.deepEqual(await readdir(work.vault), [], 'nothing written')
   },
 
   async 'creates a vault and shows its recovery kit'(app, work) {
-    await app.type('패스프레이즈', PASSPHRASE)
-    await app.type('패스프레이즈 다시 입력', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
+    await app.type('암호 다시 입력', PASSPHRASE)
     await app.choose('분야와 지역', 'school-kr')
     await app.click('dc-button', '만들기')
     await app.heading('복구 키트')
@@ -250,12 +250,12 @@ const scenarios = {
   },
 
   async 'keeps the vault locked until the end of the key is typed back'(app, work) {
-    await app.type('보관했는지 확인: 볼트 키의 마지막 묶음(6자)을 입력하세요', 'ZZZZZZ')
+    await app.type('보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', 'ZZZZZZ')
     await app.click('dc-button', '확인')
-    await app.alert('볼트 키의 마지막 글자와 다릅니다. 다시 확인하세요.')
+    await app.alert('복구 키의 마지막 글자와 다릅니다. 다시 확인하세요.')
     await app.heading('복구 키트')
 
-    await app.type('보관했는지 확인: 볼트 키의 마지막 묶음(6자)을 입력하세요', work.key.slice(-6).toLowerCase())
+    await app.type('보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', work.key.slice(-6).toLowerCase())
     await app.click('dc-button', '확인')
     await app.vaultOpen()
     await app.noAlert()
@@ -266,18 +266,18 @@ const scenarios = {
   },
 
   async 'closes the vault and refuses the wrong passphrase'(app, work) {
-    await app.click('dc-button', '볼트 닫기')
+    await app.click('dc-button', '기록 폴더 닫기')
     await app.heading('Openquote Care')
-    await app.click('dc-button', '볼트 열기')
-    await app.heading('볼트 열기')
+    await app.click('dc-button', '기록 폴더 열기')
+    await app.heading('기록 폴더 열기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', 'not the passphrase')
+    await app.type('암호', 'not the passphrase')
     await app.click('dc-button', '열기')
-    await app.alert('패스프레이즈가 맞지 않습니다. 다른 기기에서 바꿨다면 새 패스프레이즈를 입력하세요.')
+    await app.alert('암호가 맞지 않습니다. 다른 기기에서 바꿨다면 새 암호를 입력하세요.')
   },
 
   async 'opens the vault with the recovery key when the passphrase is forgotten, and sets a new one'(app, work) {
-    await app.click('dc-button', '패스프레이즈를 잊었나요? 복구 키 입력')
+    await app.click('dc-button', '암호를 잊었나요? 복구 키 입력')
     await app.type('복구 키', 'AGE-SECRET-KEY-1NOTTHEKEY')
     await app.click('dc-button', '열기')
     await app.alert('복구 키가 맞지 않습니다.')
@@ -289,45 +289,45 @@ const scenarios = {
 
     // Opened with the kit, the window offers a new passphrase; the new one replaces the old.
     await app.cdp.waitFor(`!!__e2e.one('[data-role=key-hint]')`, 'the offer of a new passphrase')
-    await app.click('dc-button', '새 패스프레이즈 정하기')
-    await app.type('새 패스프레이즈', NEW_PASSPHRASE)
-    await app.type('새 패스프레이즈 다시 입력', NEW_PASSPHRASE + '!')
-    await app.click('dc-button', '패스프레이즈 바꾸기')
-    await app.alert('두 패스프레이즈가 다릅니다.')
-    await app.type('새 패스프레이즈 다시 입력', NEW_PASSPHRASE)
-    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.click('dc-button', '새 암호 정하기')
+    await app.type('새 암호', NEW_PASSPHRASE)
+    await app.type('새 암호 다시 입력', NEW_PASSPHRASE + '!')
+    await app.click('dc-button', '암호 바꾸기')
+    await app.alert('두 암호가 다릅니다.')
+    await app.type('새 암호 다시 입력', NEW_PASSPHRASE)
+    await app.click('dc-button', '암호 바꾸기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=key-hint]')`), false, 'the offer is gone once taken')
 
     const reopen = async (passphrase) => {
-      await app.click('dc-button', '볼트 닫기')
+      await app.click('dc-button', '기록 폴더 닫기')
       await app.heading('Openquote Care')
-      await app.click('dc-button', '볼트 열기')
-      await app.heading('볼트 열기')
-      assert.equal(await app.cdp.evaluate(`!!__e2e.one('input[aria-label="패스프레이즈"]')`), true, 'the passphrase is asked again by default')
+      await app.click('dc-button', '기록 폴더 열기')
+      await app.heading('기록 폴더 열기')
+      assert.equal(await app.cdp.evaluate(`!!__e2e.one('input[aria-label="암호"]')`), true, 'the passphrase is asked again by default')
       await app.pickFolder(work.vault)
       if (!passphrase) return
-      await app.type('패스프레이즈', passphrase)
+      await app.type('암호', passphrase)
       await app.click('dc-button', '열기')
     }
     await reopen(PASSPHRASE)
-    await app.alert('패스프레이즈가 맞지 않습니다. 다른 기기에서 바꿨다면 새 패스프레이즈를 입력하세요.')
-    await app.type('패스프레이즈', NEW_PASSPHRASE)
+    await app.alert('암호가 맞지 않습니다. 다른 기기에서 바꿨다면 새 암호를 입력하세요.')
+    await app.type('암호', NEW_PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
 
     // Changed back while open with a passphrase, for the scenarios that follow.
     await app.click('button', '기기')
-    await app.type('새 패스프레이즈', PASSPHRASE)
-    await app.type('새 패스프레이즈 다시 입력', PASSPHRASE)
-    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.type('새 암호', PASSPHRASE)
+    await app.type('새 암호 다시 입력', PASSPHRASE)
+    await app.click('dc-button', '암호 바꾸기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed back')
     await reopen()
   },
 
   async 'opens the vault again with its passphrase'(app, work) {
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
@@ -530,9 +530,9 @@ const scenarios = {
 
   async 'keeps the sessions across a restart'(app, work) {
     await app.restart()
-    await app.click('dc-button', '볼트 열기')
+    await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.click('li button', '가상 학생 1')
@@ -566,7 +566,7 @@ const scenarios = {
     await app.cdp.waitFor(`!!__e2e.one('[data-role=locked]')`, 'the locked screen')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('oc-vault')`), false, 'no record is on screen')
     assert.ok(await app.cdp.evaluate(`__e2e.all('.folder').some((el) => el.textContent.includes(${q(work.vault)}))`), 'the same folder, ready to open')
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
@@ -695,9 +695,9 @@ const scenarios = {
       const next = await App.launch()
       app.child = next.child
       app.cdp = next.cdp
-      await app.click('dc-button', '볼트 열기')
+      await app.click('dc-button', '기록 폴더 열기')
       await app.pickFolder(work.vault)
-      await app.type('패스프레이즈', PASSPHRASE)
+      await app.type('암호', PASSPHRASE)
       await app.click('dc-button', '열기')
       await app.vaultOpen()
       await app.cdp.waitFor(`!!__e2e.one('[data-role=name-hint]')`, 'the hint to name this device')
@@ -793,42 +793,42 @@ const scenarios = {
   },
 
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
-    await app.click('dc-button', '볼트 닫기')
+    await app.click('dc-button', '기록 폴더 닫기')
     const keyFile = join(work.vault, 'keys', 'vault-key.age')
     await writeFile(keyFile, '-----BEGIN AGE ENCRYPTED FILE-----\ncut off')
-    await app.click('dc-button', '볼트 열기')
+    await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
-    await app.alert('볼트 키 파일이 손상되었습니다. 복구 키트로 열어야 합니다.')
+    await app.alert('암호로 여는 데 쓰는 파일이 손상되었습니다. 복구 키로 여세요.')
 
-    await app.click('dc-button', '패스프레이즈를 잊었나요? 복구 키 입력')
+    await app.click('dc-button', '암호를 잊었나요? 복구 키 입력')
     await app.type('복구 키', work.key)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
-    await app.click('dc-button', '새 패스프레이즈 정하기')
-    await app.type('새 패스프레이즈', PASSPHRASE)
-    await app.type('새 패스프레이즈 다시 입력', PASSPHRASE)
-    await app.click('dc-button', '패스프레이즈 바꾸기')
+    await app.click('dc-button', '새 암호 정하기')
+    await app.type('새 암호', PASSPHRASE)
+    await app.type('새 암호 다시 입력', PASSPHRASE)
+    await app.click('dc-button', '암호 바꾸기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase set')
 
-    await app.click('dc-button', '볼트 닫기')
-    await app.click('dc-button', '볼트 열기')
+    await app.click('dc-button', '기록 폴더 닫기')
+    await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
   },
 
   async 'says so when a folder is not a vault'(app, work) {
-    await app.click('dc-button', '볼트 닫기')
-    await app.click('dc-button', '볼트 열기')
+    await app.click('dc-button', '기록 폴더 닫기')
+    await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.empty)
-    await app.type('패스프레이즈', PASSPHRASE)
+    await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
-    await app.alert('이 폴더는 볼트가 아닙니다.')
+    await app.alert('이 폴더는 기록 폴더가 아닙니다.')
   },
 
   // Last: it ends the app, so the web view writes out its profile before the scan.
@@ -845,7 +845,7 @@ const scenarios = {
     await app.click('dc-button', 'Create')
     await app.heading('Recovery kit')
     const key = (await app.cdp.evaluate(`__e2e.one('[data-role=key]').textContent`)).replaceAll(/\s+/g, '')
-    await app.type('To confirm you kept it, type the last group of the vault key (6 characters)', key.slice(-6))
+    await app.type('To confirm you kept it, type the last group of the recovery key (6 characters)', key.slice(-6))
     await app.click('dc-button', 'Confirm')
     await app.vaultOpen()
     assert.deepEqual((await readdir(join(vault, 'packs'))).sort(), ['care', 'en'], 'only the core and the English labels')
