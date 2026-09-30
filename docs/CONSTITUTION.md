@@ -95,7 +95,7 @@ When a library this app builds on cannot do its own job, the fix goes upstream f
 - **Nothing unreadable disappears.** A file the app cannot read is listed with its reason; everything else is still read.
 - **Tests use synthetic data only.** The golden vault and every fixture are made up; no real case or classification source appears in tests, examples or documents.
 - **The build is clean.** Type checks, unit tests, the shell's tests and the real-window end-to-end scenarios pass, and `cargo clippy` reports no warnings, before a change is considered done. See [architecture.md](architecture.md) for how to run them.
-- **User-facing strings are Korean and live in `src/strings.ts`;** code, comments, tests, commit messages and `docs/` are English.
+- **User-facing strings are Korean and live in `src/strings.ts`** (with `src/native-strings.json` for the shell's messages before a window exists, re-exported there); code, comments, tests, commit messages and `docs/` are English.
 - **Public text describes behaviour.** Commit messages, documents and comments describe what the software does and under which conditions — not where or how an issue was found. Product surfaces name categories, never competing products.
 
 ---

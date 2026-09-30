@@ -2,6 +2,7 @@
 
 mod app;
 mod diagnostics;
+pub mod runtime;
 mod window;
 
 use std::path::PathBuf;
@@ -179,6 +180,11 @@ const VAULT_CHANGED: &str = "vault-changed";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     diagnostics::install();
+    // Tauri would stop with an English message of its own; say it in the person's language first.
+    if let Some(message) = runtime::check() {
+        runtime::alert(&message);
+        return;
+    }
     let builder = tauri::Builder::default();
     // Registered first, so a second start ends before anything else runs.
     #[cfg(desktop)]

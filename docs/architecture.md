@@ -84,7 +84,7 @@ Classification schemes, crosswalks between scheme versions, report forms and exp
 - **Lagging forms are flagged.** When the newest version of a report or export form still classifies by an older version of a scheme than the latest one in the vault, the app warns after a pack is applied and again when that form is chosen. Older form versions lag by design, since they serve the months before a revision, so only a form's newest version is checked.
 - **Unlinked versions are flagged.** Values reach a new scheme version only through a crosswalk. When a scheme version has no crosswalk from an earlier version of the same scheme — even one that only relabels its items — the app names it after a pack is applied, since every value recorded earlier would be unmapped in forms of that version.
 
-User-facing strings in the app are Korean and live in one file, `src/strings.ts`. Pack contents carry their own labels.
+User-facing strings in the app are Korean and live in one file, `src/strings.ts`. The few the shell shows before any window exists — the notice that the WebView2 runtime is missing — sit in `src/native-strings.json`, which `strings.ts` re-exports and the shell compiles in. Pack contents carry their own labels.
 
 ## Offline
 

@@ -5,7 +5,7 @@ A desktop app (Tauri 2 shell in Rust, a .NET engine sidecar, a Lit UI) built on 
 ## Language
 
 - Code, comments, tests, commit messages and `docs/` are English.
-- Strings people see in the app are Korean and live in one place: `src/strings.ts`.
+- Strings people see in the app are Korean and live in one place: `src/strings.ts` (the few the shell shows before a window exists sit in `src/native-strings.json`, which `strings.ts` re-exports and the shell compiles in).
 - The Korean data pack (`packs/care-kr/`) carries Korean labels; its structure keys stay English.
 
 ## Rules

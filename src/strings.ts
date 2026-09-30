@@ -1,9 +1,13 @@
-// Every user-facing string lives here, so a change of UI language touches one file.
+// Every user-facing string lives here, so a change of UI language touches one file. The few the
+// shell shows before any window exists sit in native-strings.json, which the shell compiles in.
+import native from './native-strings.json'
 import type { VaultFileKind } from './shell.js'
 
 export const strings = {
   appName: 'Openquote Care',
-  tagline: '분류가 바뀌어도 다시 세지 않는 상담 기록',
+  tagline: '이어지는 기록, 근거 있는 통계',
+  /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
+  webviewMissing: native.webviewMissing,
   diagnosticsNotice:
     '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·볼트 이름은 보내지 않으며, 인터넷이 없으면 보내지 않고 버립니다.',
 
