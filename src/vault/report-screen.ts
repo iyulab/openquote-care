@@ -129,7 +129,7 @@ export class OcReport extends VaultScreen {
 
   private reportTable(result: RunRecord) {
     const store = this.store
-    const table = layOut(result, store.schemes, store.practitioners, strings.noPractitioner)
+    const table = layOut(result, store.schemes, store.practitioners, strings.noPractitioner, store.names)
     // The head count beside a record count, when the run recorded people.
     const people = (records: string[]) => {
       const n = records.length === 0 ? null : headCount(result, records)

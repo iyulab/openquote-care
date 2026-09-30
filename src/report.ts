@@ -1,5 +1,6 @@
 // A monthly report's run record, laid out as the table a counsellor reads and hands in.
 
+import { nameCollator } from './collation.js'
 import { choices, text, type Entity, type Scheme } from './records.js'
 
 /** The run record the engine keeps in the vault for every report it produces. */
@@ -58,7 +59,7 @@ const EMPTY: Group = { count: 0, records: [] }
  * Lays out a run: every row the report's scheme version offers, in the scheme's order (a row
  * nothing fell into still shows, as a form does), by every practitioner, with totals.
  */
-export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[], noPractitioner: string): Table {
+export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[], noPractitioner: string, collator: Intl.Collator = nameCollator()): Table {
   const [rowScheme, { version }] = Object.entries(run.schemes)[0] ?? ['', { version: 0 }]
   const scheme = schemes.find((s) => s.scheme === rowScheme && s.version === version)
   const rowChoices = scheme ? choices(scheme).filter((c) => !c.disabled) : []
@@ -67,7 +68,7 @@ export function layOut(run: RunRecord, schemes: Scheme[], practitioners: Entity[
   const rowList = [...rowChoices.map((c) => ({ code: c.value, label: c.label })), ...extraRows.map((r) => ({ code: r, label: r }))]
 
   const names = new Map(practitioners.map((p) => [p.id, text(p, 'name')]))
-  const byName = [...practitioners].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
+  const byName = [...practitioners].sort((a, b) => collator.compare(text(a, 'name'), text(b, 'name')))
   const columns: Column[] = byName.map((p) => ({ id: p.id, label: text(p, 'name') }))
   for (const cell of run.cells) {
     if (!columns.some((c) => c.id === cell.column)) {

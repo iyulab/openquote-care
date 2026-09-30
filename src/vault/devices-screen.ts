@@ -81,7 +81,7 @@ export class OcDevices extends VaultScreen {
     const save = () => void this.saveDeviceName()
     const change = () => void this.changePassphrase()
     const label = (d: string) => deviceLabel(summary, d)
-    const named = Object.keys(summary?.devices ?? {}).sort((a, b) => label(a).localeCompare(label(b)))
+    const named = Object.keys(summary?.devices ?? {}).sort((a, b) => this.store.names.compare(label(a), label(b)))
     return html`<section>
       <p class="muted">${strings.devicesLead}</p>
       <div class="row">

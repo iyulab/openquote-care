@@ -1,4 +1,5 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit'
+import { nameCollator } from '../collation.js'
 import { describeError } from '../errors.js'
 import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
@@ -34,6 +35,8 @@ export class VaultStore extends EventTarget {
   practitioners: Entity[] = []
   schemes: Scheme[] = []
   summary?: VaultSummary
+  /** How names are ordered in this vault: by the locales its packs label things in. */
+  names = nameCollator()
   busy = false
   error?: ErrorText
   notice = ''
@@ -120,9 +123,11 @@ export class VaultStore extends EventTarget {
       const newest = [...summary.reports].sort((a, b) => b.version - a.version)[0]
       this.reportKey = `${newest.name}@${newest.version}`
     }
-    this.subjects = [...subjects].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
+    this.names = nameCollator(summary.locales)
+    const byName = (a: Entity, b: Entity) => this.names.compare(text(a, 'name'), text(b, 'name'))
+    this.subjects = [...subjects].sort(byName)
     this.sessions = sessions
-    this.groups = [...groups].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name'), 'ko'))
+    this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes
     if (!this.draft.practitioner && practitioners.length === 1) this.draft = { ...this.draft, practitioner: practitioners[0].id }
