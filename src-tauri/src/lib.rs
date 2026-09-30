@@ -2,6 +2,7 @@
 
 mod app;
 mod diagnostics;
+pub mod locale;
 pub mod runtime;
 mod window;
 
@@ -108,6 +109,11 @@ fn compare_runs(earlier: String, later: String, app: State<App>) -> CommandResul
 #[tauri::command]
 fn refresh(app: State<App>) -> CommandResult<Value> {
     text(app.refresh())
+}
+
+#[tauri::command]
+fn ui_locale() -> String {
+    locale::ui_locale()
 }
 
 #[tauri::command]
@@ -219,6 +225,7 @@ pub fn run() {
             schemes,
             vault_summary,
             diagnostics_enabled,
+            ui_locale,
             apply_pack,
             pending,
             runs,

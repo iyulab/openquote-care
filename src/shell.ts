@@ -51,6 +51,8 @@ export const shell = {
   /** Sets a new passphrase for the open vault; the old one stops opening it on every device. */
   changePassphrase: (passphrase: string) => invoke<void>('change_passphrase', { passphrase }),
   closeVault: () => invoke<void>('close_vault'),
+  /** The app's language as a language tag: the system's display language, or `OPENQUOTE_UI_LOCALE` when set. */
+  uiLocale: () => invoke<string>('ui_locale'),
   /** Whether this installation reports the app's own errors (content-free; see docs/privacy.md). */
   diagnosticsEnabled: () => invoke<boolean>('diagnostics_enabled'),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */

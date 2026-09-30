@@ -75,11 +75,14 @@ const HELPERS = `window.__e2e = {
 
 const q = (s) => JSON.stringify(s)
 
+// The scenarios find elements by their Korean names, so the app speaks Korean whatever the machine's language.
+const appEnv = (env = {}) => ({ ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env })
+
 class App {
   /** Starts the app, with `env` added to its environment, and waits for its window. */
   static async launch(env = {}) {
     const app = new App()
-    app.child = spawn(exe, [], { stdio: 'ignore', env: { ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, ...env } })
+    app.child = spawn(exe, [], { stdio: 'ignore', env: appEnv(env) })
     const page = await findPage(PORT)
     app.cdp = await Cdp.connect(page.webSocketDebuggerUrl)
     await app.cdp.waitFor(`customElements.get('oc-app') && !!document.querySelector('oc-app')`, 'the app')
@@ -182,6 +185,22 @@ const scenarios = {
     await app.restart()
     await app.heading('Openquote Care')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
+  },
+
+  async 'speaks English when the system language has no table of its own'(app) {
+    await app.restart({ OPENQUOTE_UI_LOCALE: 'fr-FR' })
+    await app.heading('Openquote Care')
+    assert.equal(await app.cdp.evaluate(`document.documentElement.lang`), 'en')
+    // Every text node and every name a screen reader or tooltip gives, shadow roots included.
+    const words = await app.cdp.evaluate(`__e2e.all('*').flatMap((el) => [
+      ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),
+      ...['aria-label', 'title', 'placeholder', 'label'].map((a) => el.getAttribute(a) ?? ''),
+    ]).join(' ')`)
+    assert.match(words, /Create a vault/)
+    assert.doesNotMatch(words, /[가-힣]/, 'no Korean on the first screen')
+    await app.restart()
+    await app.heading('Openquote Care')
+    await app.cdp.waitFor(`!!__e2e.one('dc-button', '새 볼트 만들기')`, 'the Korean first screen again')
   },
 
   async 'leaves nothing behind when the app ends at the recovery kit'(app, work) {
@@ -439,7 +458,7 @@ const scenarios = {
 
   async 'brings this window forward instead of opening a second one'(app) {
     // A second start hands over to the running app and ends; this window keeps its state.
-    const second = spawn(exe, [], { stdio: 'ignore', env: { ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar } })
+    const second = spawn(exe, [], { stdio: 'ignore', env: appEnv() })
     const code = await new Promise((done, fail) => {
       const timer = setTimeout(() => fail(new Error('the second start is still running')), 15000)
       second.once('exit', (c) => (clearTimeout(timer), done(c)))

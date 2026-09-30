@@ -35,6 +35,7 @@ You need Node.js 22, Rust (on Windows the MSVC toolchain), the .NET 10 SDK and, 
 npm ci
 npm run verify          # UI, engine sidecar, shell and vault tests, lints — see docs/architecture.md
 npm run tauri dev       # the app, with OPENQUOTE_SIDECAR_EXE set to the sidecar npm run build:sidecar built
+                        # (OPENQUOTE_UI_LOCALE=en or ko fixes the app's language; it follows the system otherwise)
 ```
 
 ## License

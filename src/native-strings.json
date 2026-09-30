@@ -1,6 +1,14 @@
 {
-  "webviewMissing": {
-    "title": "Openquote Care를 열 수 없습니다",
-    "body": "화면을 그리는 Windows 구성 요소(Microsoft Edge WebView2 런타임)를 찾지 못했습니다.\n\nMicrosoft 웹사이트에서 WebView2 런타임을 설치한 뒤 다시 여세요.\nhttps://developer.microsoft.com/microsoft-edge/webview2\n\n인터넷이 없는 PC라면 다른 PC에서 받은 독립 실행형 설치 관리자로 설치할 수 있습니다. 다른 사용자 계정에만 설치되어 있으면 이 계정에서는 쓸 수 없습니다."
+  "ko": {
+    "webviewMissing": {
+      "title": "Openquote Care를 열 수 없습니다",
+      "body": "화면을 그리는 Windows 구성 요소(Microsoft Edge WebView2 런타임)를 찾지 못했습니다.\n\nMicrosoft 웹사이트에서 WebView2 런타임을 설치한 뒤 다시 여세요.\nhttps://developer.microsoft.com/microsoft-edge/webview2\n\n인터넷이 없는 PC라면 다른 PC에서 받은 독립 실행형 설치 관리자로 설치할 수 있습니다. 다른 사용자 계정에만 설치되어 있으면 이 계정에서는 쓸 수 없습니다."
+    }
+  },
+  "en": {
+    "webviewMissing": {
+      "title": "Openquote Care cannot open",
+      "body": "The Windows component that draws the app's window (the Microsoft Edge WebView2 Runtime) was not found.\n\nInstall the WebView2 Runtime from the Microsoft website, then open the app again.\nhttps://developer.microsoft.com/microsoft-edge/webview2\n\nOn a PC without internet access, use the standalone installer downloaded on another PC. A runtime installed only for another user account cannot be used from this one."
+    }
   }
 }
