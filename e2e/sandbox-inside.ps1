@@ -44,12 +44,13 @@ function Step($name, [scriptblock]$body) {
 }
 
 # The WebView2 runtime registers its version under EdgeUpdate, per machine or per user.
+$WebView2Clients = @(
+  'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+  'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+  'HKCU:\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}')
+
 function WebView2Version {
-  $id = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
-  foreach ($key in @(
-      "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$id",
-      "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$id",
-      "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$id")) {
+  foreach ($key in $WebView2Clients) {
     $pv = (Get-ItemProperty -Path $key -Name pv -ErrorAction SilentlyContinue).pv
     if ($pv -and $pv -ne '0.0.0.0') { return "$pv ($key) - $(WebView2Files $pv)" }
   }
@@ -79,11 +80,7 @@ if ($WithoutWebView2) {
     # A registration without runtime files (Windows Sandbox ships one) has no uninstaller to run:
     # remove the registration itself, which is all an installer looks at.
     if (-not $entry.UninstallString -and (WebView2Version) -match 'no runtime files') {
-      $id = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
-      foreach ($key in @($uninstallKey,
-          "HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\$id",
-          "HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\$id",
-          "HKCU:\Software\Microsoft\EdgeUpdate\Clients\$id")) {
+      foreach ($key in @($uninstallKey) + $WebView2Clients) {
         Remove-Item -Path $key -Recurse -Force -ErrorAction SilentlyContinue
       }
       $left = WebView2Version

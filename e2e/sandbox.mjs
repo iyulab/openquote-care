@@ -90,24 +90,14 @@ function has(command) {
 }
 
 /**
- * Starts the sandbox and returns how to close it. The `wsb` command line (Windows 11 24H2 and
- * later) starts it with an ID to stop it by; without it, the .wsb file is opened the way a person
- * would, and closing means ending the sandbox's processes, which discards it too.
+ * Starts the sandbox and returns how to close it: the .wsb file is opened the way a person would,
+ * and closing means ending the sandbox's processes, which discards it too. (The `wsb` command line
+ * of Windows 11 24H2 is not used: no run here has had it, and a path never run is not kept.)
  */
 function startSandbox(config) {
   // Only one sandbox runs at a time, and one that is still shutting down keeps the next from
   // running its logon command.
   if (sandboxRunning()) throw new Error('a Windows Sandbox is already running - close it and try again')
-  if (has('wsb')) {
-    const started = spawnSync('wsb', ['start', '--raw', '--config', readFileSync(config, 'utf8')], { encoding: 'utf8' })
-    if (started.status !== 0) throw new Error(`wsb start: ${(started.stderr || started.stdout).trim()}`)
-    // The ID is the one GUID in the output, whatever shape the output takes.
-    const id = started.stdout.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]
-    if (!id) throw new Error(`wsb start printed no sandbox ID: ${started.stdout.trim()}`)
-    // A logon command runs only in a user session, which a remote desktop connection opens.
-    spawn('wsb', ['connect', '--id', id], { detached: true, stdio: 'ignore' }).unref()
-    return () => spawnSync('wsb', ['stop', '--id', id], { stdio: 'ignore' })
-  }
   spawn('WindowsSandbox', [config], { detached: true, stdio: 'ignore' }).unref()
   return () => {
     for (const name of ['WindowsSandboxRemoteSession.exe', 'WindowsSandboxServer.exe', 'WindowsSandboxClient.exe', 'WindowsSandbox.exe']) {
@@ -126,7 +116,7 @@ function sandboxRunning() {
 }
 
 async function main() {
-  if (!prepareOnly && !has('wsb') && !has('WindowsSandbox')) {
+  if (!prepareOnly && !has('WindowsSandbox')) {
     throw new Error('Windows Sandbox is not available — turn on the Containers-DisposableClientVM feature and restart')
   }
   const folder = await mkdtemp(join(tmpdir(), 'openquote-care-sandbox-'))
