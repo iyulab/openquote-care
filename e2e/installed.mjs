@@ -47,7 +47,14 @@ async function main() {
     assert.ok(exe, `the app is installed (${files.join(', ')})`)
     assert.ok(existsSync(join(target, 'sidecar', 'openquote-care-sidecar.exe')), 'the engine sidecar is bundled')
     assert.ok(existsSync(join(target, 'packs', 'tracks.json')), 'the tracks are bundled')
-    assert.ok(existsSync(join(target, 'packs', 'care.school.kr', 'schemes', 'topic', 'v1.json')), 'the data packs are bundled')
+    // Every pack the tracks start from, and every pack they build on, with each file it lists.
+    for (const pack of readdirSync(join(root, 'packs'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
+      const manifests = readdirSync(join(root, 'packs', pack, 'packs', pack))
+      for (const name of manifests) {
+        const { provides } = JSON.parse(readFileSync(join(target, 'packs', pack, 'packs', pack, name), 'utf8'))
+        for (const path of provides) assert.ok(existsSync(join(target, 'packs', pack, path)), `pack ${pack} brings ${path}`)
+      }
+    }
     console.log('  ✓ installed for the current user')
 
     const env = { ...process.env }
