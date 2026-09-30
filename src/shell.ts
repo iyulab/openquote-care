@@ -57,8 +57,8 @@ export interface VaultSummary {
   packIssues: { kind: string; pack: string; detail: string }[]
   /** The locales the vault's packs label things in, the most specific pack's first; empty for a vault without labels. */
   locales: string[]
-  /** On opening: the packs a vault made before packs named themselves took on, by label. */
-  adopted?: string[]
+  /** On opening: the track a vault made before packs named themselves was taken onto, with its names per language. */
+  adopted?: { track: string; label: Record<string, string> }
   [key: string]: unknown
 }
 

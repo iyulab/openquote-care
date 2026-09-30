@@ -1,0 +1,19 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care.school.kr",
+  "version": 1,
+  "locale": "ko",
+  "fields": {
+    "session": {
+      "topic": "주제",
+      "method": "방법"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "학생명"
+      ]
+    }
+  }
+}

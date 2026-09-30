@@ -1,0 +1,42 @@
+{
+  "format": "openquote.export/0",
+  "export": "care.session-list",
+  "version": 1,
+  "label": "Session list",
+  "rows": "session",
+  "period": {
+    "field": "date"
+  },
+  "columns": [
+    {
+      "label": "Date",
+      "field": "date"
+    },
+    {
+      "label": "Clients",
+      "person": "name",
+      "all": true
+    },
+    {
+      "label": "People",
+      "people": "count"
+    },
+    {
+      "label": "Concern",
+      "field": "concern",
+      "scheme": "care.concern",
+      "version": 1
+    },
+    {
+      "label": "Mode",
+      "field": "mode",
+      "scheme": "care.mode",
+      "version": 1
+    },
+    {
+      "label": "Practitioner",
+      "field": "practitioner",
+      "ref": "name"
+    }
+  ]
+}

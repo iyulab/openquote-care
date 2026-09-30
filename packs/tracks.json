@@ -1,0 +1,37 @@
+{
+  "tracks": [
+    {
+      "id": "school-kr",
+      "packs": [
+        "care.school.kr"
+      ],
+      "locale": "ko",
+      "label": {
+        "ko": "학교 상담 · 한국",
+        "en": "School counseling · Korea"
+      }
+    },
+    {
+      "id": "care-en",
+      "packs": [
+        "en"
+      ],
+      "locale": "en",
+      "label": {
+        "ko": "상담 · 영어(분야 없음)",
+        "en": "Counseling · English (no field)"
+      }
+    },
+    {
+      "id": "care-kr",
+      "packs": [
+        "kr"
+      ],
+      "locale": "ko",
+      "label": {
+        "ko": "상담 · 한국(분야 없음)",
+        "en": "Counseling · Korea (no field)"
+      }
+    }
+  ]
+}

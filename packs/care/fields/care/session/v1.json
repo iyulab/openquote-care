@@ -18,33 +18,16 @@
       "label": "Practitioner"
     },
     {
-      "name": "topic",
+      "name": "concern",
       "kind": "coded",
-      "scheme": "topic",
-      "required": true,
-      "label": "Topic"
+      "scheme": "care.concern",
+      "label": "Concern"
     },
     {
-      "name": "method",
+      "name": "mode",
       "kind": "coded",
-      "scheme": "method",
-      "label": "Method"
-    },
-    {
-      "name": "grade",
-      "kind": "text",
-      "default": {
-        "subject": "grade"
-      },
-      "label": "Grade"
-    },
-    {
-      "name": "class",
-      "kind": "text",
-      "default": {
-        "subject": "class"
-      },
-      "label": "Class"
+      "scheme": "care.mode",
+      "label": "Mode"
     },
     {
       "name": "note",

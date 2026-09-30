@@ -187,7 +187,8 @@ export const en: Strings = {
   },
   /** A pack whose manifest came along: named by its label rather than by its files. */
   packApplied: (label: string, version: number) => `Applied data pack “${label}”, version ${version}.`,
-  adopted: (labels: string[]) => `Added the data ${labels.length === 1 ? 'pack' : 'packs'} that define this vault's fields (${labels.join(', ')}). Records and classifications already here are unchanged.`,
+  adopted: (tracks: string[]) =>
+    `Brought this vault onto the “${tracks.join(', ')}” data packs, which define its fields. Records and classifications already here are unchanged.`,
   packIssues: (n: number) => `Data packs disagree in ${plural(n, 'place')}. Check whether a pack or file is missing.`,
 
   subjects: 'Clients',
@@ -286,6 +287,7 @@ export const en: Strings = {
     'recovery-key': 'The recovery key is not right.',
     'invalid-path': 'That path is outside the vault.',
     'not-a-choice': 'This record no longer awaits that category — another device may have chosen already. Open the list of records awaiting again.',
+    bundle: 'The data packs that come with the app could not be read. The app may need to be installed again.',
     'engine-start': 'The record engine did not start. The app may need to be installed again.',
     engine: 'The record engine could not handle the request.',
     io: 'A file could not be read or written.',

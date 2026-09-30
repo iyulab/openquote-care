@@ -7,9 +7,17 @@ import { pickLocale, tables, type Locale, type Strings } from './locales/index.j
 /** The table in use. Modules read it at the time they draw, so switching before the app starts reaches all of them. */
 export let strings: Strings = ko
 
+/** The language of the table in use. */
+export let locale: Locale = 'ko'
+
+/** Of names given per language, the one in the app's language, else the English one, else `fallback`. */
+export function inAppLanguage(names: Readonly<Record<string, string>>, fallback: string): string {
+  return names[locale] ?? names.en ?? fallback
+}
+
 /** Uses the table for a system language tag such as `ko-KR` (English when there is none) and says which. */
 export function useLocale(tag: string): Locale {
-  const locale = pickLocale([tag])
+  locale = pickLocale([tag])
   strings = tables[locale]
   return locale
 }

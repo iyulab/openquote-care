@@ -190,7 +190,7 @@ export const ko = {
   },
   /** A pack whose manifest came along: named by its label rather than by its files. */
   packApplied: (label: string, version: number) => `데이터 팩 「${label}」 ${version}판을 적용했습니다.`,
-  adopted: (labels: string[]) => `이 볼트에 칸 정의가 담긴 데이터 팩(${labels.join(', ')})을 더했습니다. 있던 기록과 분류는 그대로입니다.`,
+  adopted: (tracks: string[]) => `이 볼트를 「${tracks.join(', ')}」 데이터 팩으로 맞추고 칸 정의를 더했습니다. 있던 기록과 분류는 그대로입니다.`,
   packIssues: (n: number) => `데이터 팩끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 팩이나 파일이 있는지 확인하세요.`,
 
   subjects: '대상자',
@@ -286,6 +286,7 @@ export const ko = {
     'recovery-key': '복구 키가 맞지 않습니다.',
     'invalid-path': '볼트 밖의 경로입니다.',
     'not-a-choice': '이 기록은 더 이상 그 분류를 기다리지 않습니다. 다른 기기에서 이미 골랐을 수 있습니다. 대기 목록을 다시 여세요.',
+    bundle: '앱에 들어 있는 데이터 팩을 읽지 못했습니다. 앱을 다시 설치해야 할 수 있습니다.',
     'engine-start': '기록 엔진이 시작되지 않았습니다. 앱을 다시 설치해야 할 수 있습니다.',
     engine: '기록 엔진이 요청을 처리하지 못했습니다.',
     io: '파일을 읽거나 쓰지 못했습니다.',

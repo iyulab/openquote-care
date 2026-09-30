@@ -5,7 +5,7 @@ import { describeError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell } from './shell.js'
-import { strings } from './strings.js'
+import { inAppLanguage, strings } from './strings.js'
 import './vault-view.js'
 
 /**
@@ -204,7 +204,8 @@ export class OcApp extends LitElement {
     await this.run(async () => {
       const withKey = this.withKey
       const summary = withKey ? await shell.openVaultWithKey(folder, this.recoveryKey) : await shell.openVault(folder, this.passphrase)
-      this.go({ name: 'vault', folder, withKey, adopted: summary.adopted })
+      const adopted = summary.adopted ? [inAppLanguage(summary.adopted.label, summary.adopted.track)] : undefined
+      this.go({ name: 'vault', folder, withKey, adopted })
     })
   }
 

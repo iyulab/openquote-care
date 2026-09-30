@@ -259,6 +259,7 @@ const scenarios = {
     await app.vaultOpen()
     await app.noAlert()
     assert.ok((await readdir(work.vault)).length > 0, 'the vault is on disk once confirmed')
+    assert.deepEqual((await readdir(join(work.vault, 'packs'))).sort(), ['care', 'care.school', 'care.school.kr', 'kr'], 'the school track and what it builds on')
     const keyStillShown = await app.cdp.evaluate(`__e2e.all('*').some((el) => el.textContent?.includes(${q(work.key.slice(16, 28))}))`)
     assert.equal(keyStillShown, false, 'the key is gone from the window')
   },

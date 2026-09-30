@@ -235,7 +235,8 @@ impl Vault {
     }
 
     /// Encrypts `plaintext` and writes it as a new file at `relative` (plus the encrypted
-    /// extension). Fails rather than replace an existing file.
+    /// extension). Fails rather than replace an existing file — unless that file already holds the
+    /// same plaintext: two devices adding the same definition at once both succeed.
     pub fn write_new(&self, relative: &str, plaintext: &[u8]) -> Result<(), VaultError> {
         let path = self.record_path(relative)?;
         let ciphertext = age::encrypt(&self.recipient, plaintext).map_err(|e| VaultError::Io(io::Error::other(e)))?;
@@ -244,7 +245,10 @@ impl Vault {
         if written.is_err() {
             self.own.forget(&path);
         }
-        written
+        match written {
+            Err(VaultError::AlreadyExists) if self.read(relative)?.as_deref() == Some(plaintext) => Ok(()),
+            other => other,
+        }
     }
 
     /// Watches the vault folder and calls `on_change` when record files appear, change or go away

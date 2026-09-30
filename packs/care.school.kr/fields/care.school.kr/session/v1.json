@@ -1,0 +1,31 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "session",
+  "version": 1,
+  "fields": [
+    {
+      "name": "topic",
+      "kind": "coded",
+      "scheme": "topic",
+      "required": true,
+      "label": "Topic"
+    },
+    {
+      "name": "method",
+      "kind": "coded",
+      "scheme": "method",
+      "label": "Method"
+    }
+  ],
+  "constrain": [
+    {
+      "name": "concern",
+      "hidden": true
+    },
+    {
+      "name": "mode",
+      "hidden": true
+    }
+  ]
+}

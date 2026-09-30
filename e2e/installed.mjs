@@ -46,7 +46,8 @@ async function main() {
     const exe = files.find((f) => f.toLowerCase() === 'openquote-care.exe')
     assert.ok(exe, `the app is installed (${files.join(', ')})`)
     assert.ok(existsSync(join(target, 'sidecar', 'openquote-care-sidecar.exe')), 'the engine sidecar is bundled')
-    assert.ok(existsSync(join(target, 'packs', 'care-kr', 'schemes', 'topic', 'v1.json')), 'the data pack is bundled')
+    assert.ok(existsSync(join(target, 'packs', 'tracks.json')), 'the tracks are bundled')
+    assert.ok(existsSync(join(target, 'packs', 'care.school.kr', 'schemes', 'topic', 'v1.json')), 'the data packs are bundled')
     console.log('  ✓ installed for the current user')
 
     const env = { ...process.env }

@@ -1,6 +1,7 @@
 //! The desktop shell: Tauri commands over the vault and the engine sidecar.
 
 mod app;
+mod bundle;
 mod diagnostics;
 pub mod locale;
 pub mod runtime;
@@ -13,6 +14,7 @@ use serde_json::Value;
 use tauri::{Emitter, Manager, State};
 
 pub use app::{App, AppError, device_id};
+pub use bundle::Bundle;
 
 /// A failed command as the window receives it: a code to choose wording by, and the shell's own
 /// description for logs.
@@ -46,8 +48,29 @@ fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
 }
 
 #[tauri::command]
-fn create_vault(folder: String, passphrase: String, app: State<App>) -> CommandResult<String> {
-    text(app.create_vault(&PathBuf::from(folder), passphrase))
+fn create_vault(folder: String, passphrase: String, track: Option<String>, app: State<App>) -> CommandResult<String> {
+    // Without a choice, the track the window's language suggests.
+    let track = track.or_else(|| app.default_track(&locale::ui_locale()).map(|t| t.id.clone())).unwrap_or_default();
+    text(app.create_vault(&PathBuf::from(folder), passphrase, &track))
+}
+
+/// A track as the window offers it: its id, and its name in the app's language.
+#[derive(Serialize)]
+struct TrackView {
+    id: String,
+    label: String,
+    locale: String,
+}
+
+#[tauri::command]
+fn tracks(app: State<App>) -> Vec<TrackView> {
+    let tag = locale::ui_locale();
+    let first = app.default_track(&tag).map(|t| t.id.clone());
+    // The suggested track first, then the rest in the bundle's order.
+    let mut views: Vec<TrackView> =
+        app.tracks().iter().map(|t| TrackView { id: t.id.clone(), label: t.label_in(&tag), locale: t.locale.clone() }).collect();
+    views.sort_by_key(|v| Some(&v.id) != first.as_ref());
+    views
 }
 
 #[tauri::command]
@@ -150,8 +173,9 @@ fn run_report(report: String, version: u32, year: i32, month: u32, app: State<Ap
     text(app.run_report(&report, version, year, month))
 }
 
-/// The data packs a new vault starts from, in order: bundled with the app, or the source tree in development.
-fn bundled_packs(handle: &tauri::AppHandle) -> Vec<PathBuf> {
+/// The data packs bundled with the app, or the source tree's in development. A bundle that cannot
+/// be read leaves no track to make a vault on — said when one is made — and still opens vaults.
+fn bundled_packs(handle: &tauri::AppHandle) -> Bundle {
     let root = handle
         .path()
         .resource_dir()
@@ -159,11 +183,8 @@ fn bundled_packs(handle: &tauri::AppHandle) -> Vec<PathBuf> {
         .ok()
         .filter(|p| p.exists())
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../packs"));
-    DEFAULT_PACKS.iter().map(|p| root.join(p)).collect()
+    Bundle::read(&root).unwrap_or_default()
 }
-
-/// The packs every vault holds for now: the fields and their labels, then the Korean school counseling definitions.
-const DEFAULT_PACKS: [&str; 2] = ["care", "care-kr"];
 
 /// The engine sidecar: `OPENQUOTE_SIDECAR_EXE` in development; in an installed app, the copy
 /// bundled with it (`src-tauri/tauri.bundle.conf.json`).
@@ -220,7 +241,7 @@ pub fn run() {
             let device = device_id(&config)?;
             let handle = tauri_app.handle().clone();
             let app = App::new(sidecar_path(tauri_app.handle()), device)
-                .with_packs(bundled_packs(tauri_app.handle()))
+                .with_bundle(bundled_packs(tauri_app.handle()))
                 .on_outside_change(move || {
                     let _ = handle.emit(VAULT_CHANGED, ());
                 });
@@ -242,6 +263,7 @@ pub fn run() {
             vault_summary,
             diagnostics_enabled,
             ui_locale,
+            tracks,
             apply_pack,
             pending,
             runs,

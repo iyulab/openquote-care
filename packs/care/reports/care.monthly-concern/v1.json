@@ -1,0 +1,19 @@
+{
+  "format": "openquote.report/0",
+  "report": "care.monthly-concern",
+  "version": 1,
+  "label": "Sessions by concern",
+  "counts": "session",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "rows": {
+    "field": "concern",
+    "scheme": "care.concern",
+    "version": 1
+  },
+  "columns": {
+    "field": "practitioner"
+  }
+}

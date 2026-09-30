@@ -1,0 +1,24 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school",
+  "type": "session",
+  "version": 1,
+  "fields": [
+    {
+      "name": "grade",
+      "kind": "text",
+      "default": {
+        "subject": "grade"
+      },
+      "label": "Grade"
+    },
+    {
+      "name": "class",
+      "kind": "text",
+      "default": {
+        "subject": "class"
+      },
+      "label": "Class"
+    }
+  ]
+}

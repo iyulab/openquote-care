@@ -12,6 +12,8 @@ use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
 use openquote_care_vault::{NewVault, Vault, VaultError, Watcher};
 use serde_json::Value;
 
+use crate::bundle::{Bundle, BundleError, Track};
+
 /// How many trailing characters of the recovery key a person types back to show they kept it.
 const KIT_CONFIRMATION_LENGTH: usize = 6;
 
@@ -25,6 +27,8 @@ pub enum AppError {
     NotAPack,
     /// The pack has a file the vault already holds with other content; nothing was applied.
     PackConflict(Vec<String>),
+    /// The packs bundled with the app cannot be read, or lack what a track needs.
+    Bundle(BundleError),
     Engine(EngineError),
     Io(io::Error),
 }
@@ -37,6 +41,7 @@ impl fmt::Display for AppError {
             Self::RecoveryKitMismatch => f.write_str("that does not match the end of the recovery key"),
             Self::NotAPack => f.write_str("the folder holds no scheme or report form"),
             Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
+            Self::Bundle(e) => write!(f, "{e}"),
             Self::Engine(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "{e}"),
         }
@@ -55,6 +60,7 @@ impl AppError {
             Self::RecoveryKitMismatch => "kit-mismatch",
             Self::NotAPack => "not-a-pack",
             Self::PackConflict(_) => "pack-conflict",
+            Self::Bundle(_) => "bundle",
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
@@ -72,6 +78,12 @@ impl AppError {
             Self::Engine(_) => "engine",
             Self::Io(_) => "io",
         }
+    }
+}
+
+impl From<BundleError> for AppError {
+    fn from(e: BundleError) -> Self {
+        Self::Bundle(e)
     }
 }
 
@@ -98,7 +110,7 @@ enum Stage {
     /// A new vault whose recovery kit has been shown but not yet confirmed. It exists only in
     /// memory until it is: skipping the kit is not an option, and a vault abandoned at this
     /// point leaves nothing behind that could be opened without it.
-    AwaitingKit { new: NewVault, tail: String },
+    AwaitingKit { new: NewVault, tail: String, packs: Vec<PathBuf> },
     /// An open vault, and the watch that hears other devices' writes to its folder — none when
     /// the folder cannot be watched (some network shares), which still refreshes on request.
     Open { open: Box<OpenVault>, _watch: Option<Watcher> },
@@ -109,21 +121,31 @@ enum Stage {
 pub struct App {
     sidecar: PathBuf,
     device: String,
-    packs: Vec<PathBuf>,
+    bundle: Bundle,
     stage: Mutex<Stage>,
     outside_change: Arc<dyn Fn() + Send + Sync>,
 }
 
 impl App {
     pub fn new(sidecar: PathBuf, device: String) -> App {
-        App { sidecar, device, packs: Vec::new(), stage: Mutex::new(Stage::Closed), outside_change: Arc::new(|| {}) }
+        App { sidecar, device, bundle: Bundle::default(), stage: Mutex::new(Stage::Closed), outside_change: Arc::new(|| {}) }
     }
 
-    /// The data pack folders a new vault is filled from, in order — and that a vault made before packs
+    /// The bundled data packs: the tracks a new vault is made on, and what a vault made before packs
     /// named themselves takes on when it is opened (see [`App::open_vault`]).
-    pub fn with_packs(mut self, packs: Vec<PathBuf>) -> App {
-        self.packs = packs;
+    pub fn with_bundle(mut self, bundle: Bundle) -> App {
+        self.bundle = bundle;
         self
+    }
+
+    /// The tracks a vault can be made on.
+    pub fn tracks(&self) -> &[Track] {
+        self.bundle.tracks()
+    }
+
+    /// The track to offer first to a window speaking `tag`.
+    pub fn default_track(&self, tag: &str) -> Option<&Track> {
+        self.bundle.default_track(tag)
     }
 
     /// Calls `f`, on a watcher thread, whenever something other than this app changes the open
@@ -140,14 +162,15 @@ impl App {
         Stage::Open { open: Box::new(open), _watch: watch }
     }
 
-    /// Prepares a vault for `folder` and returns the recovery key to show the person. Nothing is
-    /// written until [`App::confirm_recovery_kit`] succeeds; then the vault is created and the
-    /// app's data packs copied into it.
-    pub fn create_vault(&self, folder: &Path, passphrase: String) -> Result<String, AppError> {
+    /// Prepares a vault on `track` for `folder` and returns the recovery key to show the person.
+    /// Nothing is written until [`App::confirm_recovery_kit`] succeeds; then the vault is created and
+    /// the track's data packs copied into it, each after the packs it builds on.
+    pub fn create_vault(&self, folder: &Path, passphrase: String, track: &str) -> Result<String, AppError> {
+        let packs = self.bundle.track_packs(track)?;
         let new = Vault::prepare(folder, SecretString::from(passphrase))?;
         let key = new.recovery_kit().secret_key().to_owned();
         let tail = key[key.len() - KIT_CONFIRMATION_LENGTH..].to_owned();
-        *self.stage.lock().unwrap() = Stage::AwaitingKit { new, tail };
+        *self.stage.lock().unwrap() = Stage::AwaitingKit { new, tail, packs };
         Ok(key)
     }
 
@@ -156,18 +179,18 @@ impl App {
     pub fn confirm_recovery_kit(&self, typed: &str) -> Result<(), AppError> {
         let mut stage = self.stage.lock().unwrap();
         match std::mem::replace(&mut *stage, Stage::Closed) {
-            Stage::AwaitingKit { new, tail } if typed.trim().eq_ignore_ascii_case(&tail) => {
+            Stage::AwaitingKit { new, tail, packs } if typed.trim().eq_ignore_ascii_case(&tail) => {
                 // Start the engine before writing, so a failure to start leaves nothing on disk
                 // and the kit screen can simply be confirmed again.
                 let engine = match Engine::start(&self.sidecar, &self.device) {
                     Ok(engine) => engine,
                     Err(e) => {
-                        *stage = Stage::AwaitingKit { new, tail };
+                        *stage = Stage::AwaitingKit { new, tail, packs };
                         return Err(e.into());
                     }
                 };
                 let mut open = OpenVault::open(new.write()?, engine)?;
-                for pack in &self.packs {
+                for pack in &packs {
                     for file in pack_files(pack)? {
                         open.keep(file)?;
                     }
@@ -175,8 +198,8 @@ impl App {
                 *stage = self.opened(open);
                 Ok(())
             }
-            Stage::AwaitingKit { new, tail } => {
-                *stage = Stage::AwaitingKit { new, tail };
+            Stage::AwaitingKit { new, tail, packs } => {
+                *stage = Stage::AwaitingKit { new, tail, packs };
                 Err(AppError::RecoveryKitMismatch)
             }
             other => {
@@ -187,8 +210,8 @@ impl App {
     }
 
     /// Opens the vault in `folder` with its passphrase. Returns the engine's summary, which lists
-    /// any file it could not read — and, under `adopted`, the labels of the packs the vault took on
-    /// when it held none (see [`App::with_packs`]).
+    /// any file it could not read — and, under `adopted`, the track a vault made before packs named
+    /// themselves was taken onto (its id and its names; see [`App::with_bundle`]).
     pub fn open_vault(&self, folder: &Path, passphrase: String) -> Result<Value, AppError> {
         self.open_unlocked(Vault::unlock(folder, SecretString::from(passphrase))?)
     }
@@ -207,43 +230,39 @@ impl App {
         // added is tried again the next time, since the manifests go last.
         let adopted = self.adopt(&mut open).unwrap_or_default();
         let mut summary = open.summary.clone();
-        if !adopted.is_empty() {
-            summary["adopted"] = Value::from(adopted);
+        if let Some(track) = adopted {
+            summary["adopted"] = serde_json::json!({ "track": track.id, "label": track.label });
         }
         *self.stage.lock().unwrap() = self.opened(open);
         Ok(summary)
     }
 
-    /// A vault whose packs do not name themselves — every vault made before they did — takes on the
-    /// app's packs: the files it lacks are added, and no file it holds is changed. When one of them
-    /// differs from a file the vault holds, nothing is added. The manifests are written last, so a
-    /// vault left part-way still names no pack and takes the rest on when it is next opened.
-    /// Returns the labels of the packs added.
-    fn adopt(&self, open: &mut OpenVault) -> Result<Vec<String>, AppError> {
-        let names_packs = open.summary["packs"].as_array().is_some_and(|p| !p.is_empty());
-        if names_packs || self.packs.is_empty() {
-            return Ok(Vec::new());
+    /// A vault whose packs do not name themselves — every vault made before they did — is taken onto
+    /// the track whose bundled files it holds unchanged (see [`Bundle::adoption`]): the files of that
+    /// track it lacks are added, and no file it holds is changed. The manifests are written last, so a
+    /// vault left part-way still names no pack and is taken on the rest of the way when next opened.
+    /// Returns the track, or None when the vault names its packs or fits no track.
+    fn adopt(&self, open: &mut OpenVault) -> Result<Option<Track>, AppError> {
+        if open.summary["packs"].as_array().is_some_and(|p| !p.is_empty()) {
+            return Ok(None);
         }
+        let vault = &open.vault;
+        let Some(track) = self.bundle.adoption(&|path: &str| vault.read(path).ok().flatten())?.cloned() else {
+            return Ok(None);
+        };
         let mut new = Vec::new();
-        for pack in &self.packs {
-            for file in pack_files(pack)? {
-                match open.vault.read(&file.path)? {
-                    None => new.push(file),
-                    Some(existing) if existing == file.content => {}
-                    Some(_) => return Ok(Vec::new()),
+        for pack in self.bundle.track_packs(&track.id)? {
+            for file in pack_files(&pack)? {
+                if open.vault.read(&file.path)?.is_none() {
+                    new.push(file);
                 }
             }
         }
-        let labels = new
-            .iter()
-            .filter(|f| f.path.starts_with("packs/"))
-            .filter_map(|f| serde_json::from_slice::<Value>(&f.content).ok()?["label"].as_str().map(str::to_owned))
-            .collect();
         new.sort_by_key(|f| f.path.starts_with("packs/"));
         if !new.is_empty() {
             open.keep_all(new)?;
         }
-        Ok(labels)
+        Ok(Some(track))
     }
 
     /// Sets a new passphrase for the open vault. The old one stops opening it on every device
@@ -391,7 +410,7 @@ pub fn device_id(config_dir: &Path) -> io::Result<String> {
 const DEFINITION_FOLDERS: [&str; 6] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/"];
 
 /// The definition files of a data pack, with their paths inside the pack as vault paths.
-fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
+pub(crate) fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<PlainFile>) -> io::Result<()> {
         for entry in fs::read_dir(dir)? {
             let path = entry?.path();
@@ -417,16 +436,20 @@ mod tests {
     use serde_json::json;
 
     fn app() -> Option<App> {
-        Some(App::new(openquote_care_test_support::sidecar()?, "pc01".to_owned()).with_packs(packs()))
+        Some(App::new(openquote_care_test_support::sidecar()?, "pc01".to_owned()).with_bundle(bundle()))
     }
 
+    /// The track the tests make vaults on: the one whose schemes and forms the golden vault holds.
+    const TRACK: &str = "school-kr";
+
+    /// The packs as the app bundles them.
+    fn bundle() -> Bundle {
+        Bundle::read(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../packs")).unwrap()
+    }
+
+    /// The pack of the Korean school counseling schemes and forms.
     fn pack() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../packs/care-kr")
-    }
-
-    /// The packs a vault starts with, as the app bundles them.
-    fn packs() -> Vec<PathBuf> {
-        ["care", "care-kr"].iter().map(|p| Path::new(env!("CARGO_MANIFEST_DIR")).join("../packs").join(p)).collect()
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../packs/care.school.kr")
     }
 
     /// A folder for the tests where two devices share a vault. `OPENQUOTE_SHARED_TEST_ROOT` puts it
@@ -443,7 +466,7 @@ mod tests {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
 
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         assert!(key.starts_with("AGE-SECRET-KEY-1"));
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0, "nothing written before the kit is confirmed");
 
@@ -460,7 +483,7 @@ mod tests {
     fn a_vault_abandoned_before_its_kit_is_confirmed_leaves_nothing() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.close_vault();
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 0);
         assert_eq!(app.open_vault(dir.path(), "pass".to_owned()).unwrap_err().code(), "not-a-vault");
@@ -470,7 +493,7 @@ mod tests {
     fn records_and_reports_survive_closing_and_reopening() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
 
         let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
@@ -513,7 +536,7 @@ mod tests {
     fn the_recovery_key_opens_the_vault_as_the_kit_shows_it() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         app.close_vault();
@@ -535,7 +558,7 @@ mod tests {
     fn a_damaged_key_file_is_named_and_the_recovery_key_restores_it() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         app.close_vault();
@@ -557,7 +580,7 @@ cut off").unwrap();
     fn a_vault_opened_with_its_recovery_key_takes_a_new_passphrase() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "forgotten".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "forgotten".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         app.close_vault();
@@ -594,9 +617,9 @@ cut off").unwrap();
     fn two_devices_sharing_a_folder_see_each_others_records() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
-        let two = App::new(exe.clone(), "pc02".to_owned()).with_packs(packs());
-        let key = one.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let one = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let two = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
         let subject_id = subject.split('/').nth(1).unwrap().to_owned();
@@ -630,9 +653,9 @@ cut off").unwrap();
     fn a_field_two_devices_changed_unseen_shows_both_values_until_a_person_picks_one() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
-        let two = App::new(exe.clone(), "pc02".to_owned()).with_packs(packs());
-        let key = one.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let one = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let two = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
         let topic = |code: &str| json!({ "scheme": "topic", "version": 1, "code": code });
@@ -682,9 +705,9 @@ cut off").unwrap();
     fn two_devices_writing_at_the_same_time_lose_nothing() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();
-        let one = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
-        let two = App::new(exe.clone(), "pc02".to_owned()).with_packs(packs());
-        let key = one.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let one = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let two = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         two.open_vault(dir.path(), "pass".to_owned()).unwrap();
         let subject = one.record("/changes/subject", json!({ "fields": { "name": "shared" } })).unwrap();
@@ -727,11 +750,11 @@ cut off").unwrap();
         let dir = shared_folder();
         let (tx, rx) = std::sync::mpsc::channel();
         let tx = Mutex::new(tx);
-        let one = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs()).on_outside_change(move || {
+        let one = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle()).on_outside_change(move || {
             let _ = tx.lock().unwrap().send(());
         });
-        let two = App::new(exe.clone(), "pc02".to_owned()).with_packs(packs());
-        let key = one.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let two = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         two.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
@@ -765,7 +788,7 @@ cut off").unwrap();
         let temp = if kept.is_none() { Some(shared_folder()) } else { None };
         let folder = kept.clone().unwrap_or_else(|| temp.as_ref().unwrap().path().to_path_buf());
         if kept.as_ref().is_some_and(|k| k.join("vault.json").exists()) {
-            let reader = App::new(exe.clone(), "pc03".to_owned()).with_packs(packs());
+            let reader = App::new(exe.clone(), "pc03".to_owned()).with_bundle(bundle());
             let started = std::time::Instant::now();
             reader.open_vault(&folder, "pass".to_owned()).unwrap();
             let opening = started.elapsed();
@@ -774,8 +797,8 @@ cut off").unwrap();
             return;
         }
         std::fs::create_dir_all(&folder).unwrap();
-        let writer = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
-        let key = writer.create_vault(&folder, "pass".to_owned()).unwrap();
+        let writer = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let key = writer.create_vault(&folder, "pass".to_owned(), TRACK).unwrap();
         writer.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = writer.record("/changes/subject", json!({ "fields": { "name": "measured" } })).unwrap();
         let subject_id = subject.split('/').nth(1).unwrap().to_owned();
@@ -792,7 +815,7 @@ cut off").unwrap();
         let writing = started.elapsed();
         writer.close_vault();
 
-        let reader = App::new(exe.clone(), "pc02".to_owned()).with_packs(packs());
+        let reader = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
         let started = std::time::Instant::now();
         reader.open_vault(&folder, "pass".to_owned()).unwrap();
         let opening = started.elapsed();
@@ -811,8 +834,8 @@ cut off").unwrap();
     fn a_fresh_engine_rebuilds_the_same_state_from_the_files_alone() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let first = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
-        let key = first.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let first = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let key = first.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         first.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = first.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         let subject_id = subject.split('/').nth(1).unwrap().to_owned();
@@ -837,7 +860,7 @@ cut off").unwrap();
         let before = state(&first);
         first.close_vault();
 
-        let fresh = App::new(exe.clone(), "pc01".to_owned()).with_packs(packs());
+        let fresh = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
         fresh.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert_eq!(state(&fresh), before);
     }
@@ -864,7 +887,7 @@ cut off").unwrap();
     fn no_file_once_written_changes_through_editing_revising_and_reporting() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         let topic = |version: u32, code: &str| json!({ "scheme": "topic", "version": version, "code": code });
@@ -910,7 +933,7 @@ cut off").unwrap();
     fn a_pack_adds_only_the_definitions_the_vault_lacks() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
 
         let mut added = app.apply_pack(&golden_step(2)).unwrap();
@@ -943,7 +966,7 @@ cut off").unwrap();
     fn a_pack_with_a_manifest_adds_its_manifest_labels_and_fields() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let extra = tempfile::tempdir().unwrap();
         let put = |path: &str, json: &str| {
@@ -980,56 +1003,82 @@ cut off").unwrap();
     }
 
     #[test]
-    fn a_new_vault_holds_the_bundled_packs_manifests_fields_and_labels() {
+    fn a_new_vault_holds_only_its_tracks_packs() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
 
+        let mut packs: Vec<String> = fs::read_dir(dir.path().join("packs")).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        packs.sort();
+        assert_eq!(packs, ["care", "care.school", "care.school.kr", "kr"]);
         let summary = app.summary().unwrap();
-        assert_eq!(summary["packs"][0]["id"], "care");
         assert_eq!(summary["locales"], json!(["ko"]));
         for clean in ["unreadable", "packIssues", "fieldIssues", "labelConflicts"] {
             assert_eq!(summary[clean], json!([]), "{clean}");
         }
         let fields = app.fields("session").unwrap();
+        let shown: Vec<&str> = fields.as_array().unwrap().iter().filter(|f| f["hidden"] == false).map(|f| f["name"].as_str().unwrap()).collect();
+        assert!(shown.contains(&"topic") && shown.contains(&"method") && !shown.contains(&"concern"), "{shown:?}");
         let topic = fields.as_array().unwrap().iter().find(|f| f["name"] == "topic").unwrap();
         assert_eq!((&topic["label"], &topic["required"]), (&json!("주제"), &json!(true)));
         let name = app.fields("subject").unwrap().as_array().unwrap().iter().find(|f| f["name"] == "name").unwrap().clone();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
+        // The core's forms stand on the fields the school track hides: they are not offered.
+        let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
+        assert_eq!(offered, ["monthly-topic"]);
+    }
+
+    /// A vault as a version before packs named themselves left it: the golden vault's files through
+    /// `step`, encrypted, and no manifest.
+    fn earlier_vault(dir: &Path, step: u32) {
+        let vault = Vault::prepare(dir, SecretString::from("pass".to_owned())).unwrap().write().unwrap();
+        let golden = Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/golden/steps");
+        for s in 1..=step {
+            for file in pack_files_all(&golden.join(s.to_string())) {
+                vault.write_new(&file.path, &file.content).unwrap();
+            }
+        }
+    }
+
+    // Every JSON file under `root` by its path there, whatever folder it is in.
+    fn pack_files_all(root: &Path) -> Vec<PlainFile> {
+        files_under(root)
+            .into_iter()
+            .filter(|(p, _)| p.extension().is_some_and(|e| e == "json") && p != Path::new("vault.json"))
+            .map(|(p, content)| PlainFile { path: p.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/"), content })
+            .collect()
     }
 
     #[test]
-    fn a_vault_without_packs_takes_the_bundled_ones_when_opened_and_changes_no_file() {
-        let Some(exe) = openquote_care_test_support::sidecar() else { return };
+    fn the_golden_vault_is_adopted_into_the_school_track_and_counts_the_same() {
+        let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        // A vault as the app made it before packs named themselves: the Korean definitions only.
-        let before = App::new(exe.clone(), "pc01".to_owned()).with_packs(vec![pack()]);
-        let key = before.create_vault(dir.path(), "pass".to_owned()).unwrap();
-        before.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
-        before.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
-        before.close_vault();
+        earlier_vault(dir.path(), 3);
         let held = files_under(dir.path());
 
-        let app = App::new(exe, "pc01".to_owned()).with_packs(packs());
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
-        assert_eq!(summary["adopted"], json!(["Care"]));
-        assert_eq!(summary["packs"][0]["id"], "care");
+        assert_eq!(summary["adopted"]["track"], TRACK);
+        assert_eq!(summary["unreadable"], json!([]));
         let now = files_under(dir.path());
         for (path, bytes) in &held {
             assert_eq!(now.get(path), Some(bytes), "{} is unchanged", path.display());
         }
-        assert!(now.len() > held.len(), "the pack's own files were added");
-        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+        let run = app.run_report("monthly-topic", 2, 2026, 4).unwrap();
+        let expected: Value =
+            serde_json::from_slice(&fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/golden/expected/r3.json")).unwrap()).unwrap();
+        for key in ["cells", "pending", "unmapped", "total"] {
+            assert_eq!(run[key], expected[key], "{key} counts the same after adoption");
+        }
     }
 
     #[test]
     fn opening_it_again_adds_nothing() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned()).unwrap();
-        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        earlier_vault(dir.path(), 1);
+        app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         app.close_vault();
         let held = files_under(dir.path());
 
@@ -1040,26 +1089,47 @@ cut off").unwrap();
     }
 
     #[test]
-    fn a_vault_holding_a_different_version_of_a_bundled_file_takes_nothing_on() {
-        let Some(exe) = openquote_care_test_support::sidecar() else { return };
+    fn a_vault_holding_a_different_version_of_a_bundled_file_is_not_adopted() {
+        let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let other = tempfile::tempdir().unwrap();
-        fs::create_dir_all(other.path().join("schemes/topic")).unwrap();
-        fs::write(
-            other.path().join("schemes/topic/v1.json"),
-            r#"{"format":"openquote.scheme/0","scheme":"topic","version":1,"items":[{"code":"x","label":"X"}]}"#,
-        )
-        .unwrap();
-        let before = App::new(exe.clone(), "pc01".to_owned()).with_packs(vec![other.path().to_owned()]);
-        let key = before.create_vault(dir.path(), "pass".to_owned()).unwrap();
-        before.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
-        before.close_vault();
+        earlier_vault(dir.path(), 1);
+        let vault = Vault::unlock(dir.path(), SecretString::from("pass".to_owned())).unwrap();
+        vault.write_new("exports/session-list/v1.json", br#"{"format":"openquote.export/0","export":"session-list","version":1}"#).unwrap();
+        drop(vault);
         let held = files_under(dir.path());
 
-        let summary = App::new(exe, "pc01".to_owned()).with_packs(packs()).open_vault(dir.path(), "pass".to_owned()).unwrap();
+        let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert!(summary.get("adopted").is_none());
         assert_eq!(files_under(dir.path()), held);
+    }
+
+    #[test]
+    fn two_devices_adopting_at_once_both_succeed() {
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
+        let dir = shared_folder();
+        earlier_vault(dir.path(), 1);
+        let path = dir.path().to_owned();
+        let opens: Vec<_> = ["pc01", "pc02"]
+            .into_iter()
+            .map(|device| {
+                let (exe, path) = (exe.clone(), path.clone());
+                std::thread::spawn(move || {
+                    let app = App::new(exe, device.to_owned()).with_bundle(bundle());
+                    let summary = app.open_vault(&path, "pass".to_owned()).unwrap();
+                    app.close_vault();
+                    summary
+                })
+            })
+            .collect();
+        for open in opens {
+            let summary = open.join().unwrap();
+            assert_eq!(summary["unreadable"], json!([]));
+        }
+        let app = App::new(exe, "pc03".to_owned()).with_bundle(bundle());
+        let summary = app.open_vault(&path, "pass".to_owned()).unwrap();
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr"), "the vault now names its packs");
+        assert_eq!(summary["packIssues"], json!([]));
     }
 
     #[test]
@@ -1071,7 +1141,7 @@ cut off").unwrap();
     }
 
     #[test]
-    fn the_care_kr_pack_holds_the_schemes_and_the_monthly_form() {
+    fn the_school_pack_holds_the_schemes_and_the_monthly_form() {
         let paths: Vec<String> = pack_files(&pack()).unwrap().into_iter().map(|f| f.path).collect();
         assert!(paths.contains(&"schemes/topic/v1.json".to_owned()));
         assert!(paths.contains(&"reports/monthly-topic/v1.json".to_owned()));

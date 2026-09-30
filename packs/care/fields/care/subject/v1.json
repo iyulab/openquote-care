@@ -16,21 +16,6 @@
       "label": "Case number"
     },
     {
-      "name": "school",
-      "kind": "text",
-      "label": "School"
-    },
-    {
-      "name": "grade",
-      "kind": "text",
-      "label": "Grade"
-    },
-    {
-      "name": "class",
-      "kind": "text",
-      "label": "Class"
-    },
-    {
       "name": "gender",
       "kind": "text",
       "label": "Gender"
@@ -39,16 +24,6 @@
       "name": "phone",
       "kind": "text",
       "label": "Phone"
-    },
-    {
-      "name": "guardian",
-      "kind": "text",
-      "label": "Guardian"
-    },
-    {
-      "name": "guardian_phone",
-      "kind": "text",
-      "label": "Guardian phone"
     }
   ]
 }

@@ -1,0 +1,33 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school",
+  "type": "subject",
+  "version": 1,
+  "fields": [
+    {
+      "name": "school",
+      "kind": "text",
+      "label": "School"
+    },
+    {
+      "name": "grade",
+      "kind": "text",
+      "label": "Grade"
+    },
+    {
+      "name": "class",
+      "kind": "text",
+      "label": "Class"
+    },
+    {
+      "name": "guardian",
+      "kind": "text",
+      "label": "Guardian"
+    },
+    {
+      "name": "guardian_phone",
+      "kind": "text",
+      "label": "Guardian phone"
+    }
+  ]
+}

@@ -6,7 +6,7 @@ A desktop app (Tauri 2 shell in Rust, a .NET engine sidecar, a Lit UI) built on 
 
 - Code, comments, tests, commit messages and `docs/` are English.
 - Strings people see in the app live in one table per language: `src/locales/ko.ts` and `src/locales/en.ts`, with the same keys (a test holds them to it). The few the shell shows before a window exists sit in `src/native-strings.json`, per language. The app speaks the system's display language (English when there is no table); `OPENQUOTE_UI_LOCALE` fixes it.
-- The Korean data pack (`packs/care-kr/`) carries Korean labels; its structure keys stay English.
+- Data packs (`packs/`) carry the labels people see per locale; their structure keys and the core's default labels stay English. Which packs a vault starts from is `packs/tracks.json`, never code.
 
 ## Rules
 

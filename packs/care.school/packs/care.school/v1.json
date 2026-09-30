@@ -1,0 +1,13 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care.school",
+  "version": 1,
+  "label": "School counseling",
+  "depends": {
+    "care": 1
+  },
+  "provides": [
+    "fields/care.school/session/v1.json",
+    "fields/care.school/subject/v1.json"
+  ]
+}
