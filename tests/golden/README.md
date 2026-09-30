@@ -86,5 +86,6 @@ hand.
 dotnet test --solution OpenquoteCare.slnx
 ```
 
-The tests reference the `Openquote` engine package. Until a version is published, pack it from the
-[openquote](https://github.com/iyulab/openquote) repository into a local NuGet source first.
+The tests reference the `Openquote` engine package, restored from nuget.org at the version
+`Directory.Packages.props` names. To try an engine change before it is published, pack it from the
+[openquote](https://github.com/iyulab/openquote) repository into a local NuGet source.

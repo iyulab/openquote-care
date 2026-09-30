@@ -36,25 +36,11 @@ jobs:
           "app=$app" >> $env:GITHUB_OUTPUT
           "engine=$engine" >> $env:GITHUB_OUTPUT
 
-      # The engine package is built from its release tag into a feed on this runner, so the sidecar
-      # restores exactly the version Directory.Packages.props names.
-      - name: Check out the engine
-        uses: actions/checkout@v7
-        with:
-          repository: iyulab/openquote
-          ref: v${{ steps.versions.outputs.engine }}
-          path: engine
-
+      # The sidecar restores the engine from nuget.org: the installer carries the very package that was
+      # published and tested against, at the version Directory.Packages.props names.
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
-
-      - name: Pack the engine
-        shell: pwsh
-        run: |
-          $feed = Join-Path $env:RUNNER_TEMP 'engine-feed'
-          dotnet pack engine/src/Openquote/Openquote.csproj -c Release -o $feed
-          dotnet nuget add source $feed --name engine-feed
 
       - uses: actions/setup-node@v7
         with:
