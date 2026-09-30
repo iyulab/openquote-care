@@ -678,6 +678,36 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'says a conflict may only be a change not yet synced, and it clears when that change arrives'(app, work) {
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 1')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length > 0`, 'the sessions')
+    const id = await app.cdp.evaluate(`__e2e.one('tr[data-session]').dataset.session`)
+    const date = (await app.sessionRows())[0][0].slice(0, 8)
+    const edit = (day) => app.cdp.evaluate(`window.__TAURI_INTERNALS__.invoke('record', { route: '/changes/update',
+      request: { type: 'session', id: ${q(id)}, fields: { date: ${q(date + day)} } } })`)
+    // Two edits in a row on one device; the first has not reached this one yet, so the second
+    // cannot be seen to have seen what came before it.
+    const middle = join(work.vault, ...(await edit('22')).split('/')) + '.age'
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+    await edit('23')
+    const aside = join(work.empty, 'middle.age')
+    await copyFile(middle, aside)
+    await rm(middle)
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+
+    await app.click('[data-role=conflict]')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=settle]')`, 'the panel to settle it')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=missing-base]')`, 'the note that a change has not arrived yet')
+
+    await copyFile(aside, middle)
+    await rm(aside)
+    await app.cdp.evaluate(`__e2e.one('oc-vault').refresh().then(() => true)`)
+    await app.cdp.waitFor(`!__e2e.one('[data-role=conflict]') && !__e2e.one('[data-role=settle]')`, 'the conflict gone once the change arrived')
+    assert.ok((await app.sessionRows()).some((row) => row[0] === date + '23'), 'the later edit is the value')
+    await app.noAlert()
+  },
+
   async 'keeps two sessions recorded on the same day as two'(app, work) {
     await app.click('button', '대상자')
     await app.click('li button', '가상 학생 1')
