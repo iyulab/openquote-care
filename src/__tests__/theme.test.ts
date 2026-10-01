@@ -22,6 +22,10 @@ const PAIRS: [string, string][] = [
   ['--dc-color-secondary-text', '--dc-color-surface-raised'], ['--dc-color-secondary-text', '--oq-secondary-subtle'],
   ['--dc-color-accent-text', '--oq-accent-subtle'], ['--dc-color-success-text', '--oq-success-subtle'],
   ['--dc-color-warning-text', '--oq-warning-subtle'], ['--dc-color-danger-text', '--oq-danger-subtle'],
+  // Table header text (--dc-table-header-color, set to muted) on the header ground (unset, so the surface).
+  ['--dc-color-text-muted', '--dc-color-surface'],
+  // Head counts and other muted text in a table row under the pointer.
+  ['--dc-color-text-muted', '--dc-color-surface-hover'],
 ]
 
 describe('the app theme', () => {
@@ -31,6 +35,11 @@ describe('the app theme', () => {
     const names = (b: string) => [...b.matchAll(/(--(?:dc|oq)-color-[a-z-]+|--oq-[a-z-]+)\s*:\s*#/g)].map((m) => m[1]).sort()
     const [light, ...dark] = palettes()
     for (const d of dark) expect(names(d)).toEqual(names(light))
+  })
+
+  it('draws table headers in muted text on the surface, as the pairs above assume', () => {
+    expect(css).toMatch(/--dc-table-header-color\s*:\s*var\(--dc-color-text-muted\)/)
+    expect(css).not.toMatch(/--dc-table-header-bg\s*:/)
   })
 
   it.each(PAIRS)('%s reads at 4.5:1 on %s in every palette', (text, ground) => {
