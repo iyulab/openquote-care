@@ -68,7 +68,7 @@ impl Vault {
         if !resolved.is_dir() {
             return Err(PlainCopyError::Io(io::Error::new(io::ErrorKind::NotADirectory, "the folder for the plain copy is not a folder")));
         }
-        let root = fs::canonicalize(&self.root)?;
+        let root = fs::canonicalize(self.root.path())?;
         if resolved.starts_with(&root) || root.starts_with(&resolved) {
             return Err(PlainCopyError::Overlaps);
         }

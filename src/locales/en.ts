@@ -388,6 +388,7 @@ export const en: Strings = {
     'plain-copy-exists': 'That folder already has a copy by this name. Make it again in a minute, or choose another folder.',
     'plain-copy-name': 'The copy\'s file names could not be made.',
     'invalid-path': 'That path is outside the vault.',
+    'key-file-changed': 'Another device changed this vault\'s passphrase meanwhile. To keep that one, it was not changed here. Close the vault, open it again with the new passphrase, then change it again if you need to.',
     'not-a-choice': 'This record no longer awaits that category — another device may have chosen already. Open the list of records awaiting again.',
     bundle: 'The data packs that come with the app could not be read. The app may need to be installed again.',
     'engine-start': 'The record engine did not start. The app may need to be installed again.',

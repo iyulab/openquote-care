@@ -118,14 +118,14 @@ impl Vault {
     pub fn back_up(&self, target: &Path) -> Result<BackupReport, BackupError> {
         let target = self.backup_folder(target)?;
         let mut paths = Vec::new();
-        collect_files(&self.root, &mut paths)?;
+        collect_files(self.root.path(), &mut paths)?;
         let relatives: Vec<String> = paths
             .iter()
-            .map(|p| relative_path(&self.root, p))
+            .map(|p| relative_path(self.root.path(), p))
             .filter(|r| r == VAULT_FILE || r == KEY_FILE || r.ends_with(ENCRYPTED_EXTENSION))
             .collect();
         let mut report = self.copy_into(&target, relatives)?;
-        let in_vault = record_files(&self.root)?;
+        let in_vault = record_files(self.root.path())?;
         report.only_in_backup = record_files(&target)?.into_iter().filter(|r| !in_vault.contains(r)).collect();
         Ok(report)
     }
@@ -135,12 +135,12 @@ impl Vault {
     /// files only it holds, or files it holds differently, not after every write.
     pub fn compare_backup(&self, target: &Path) -> Result<BackupComparison, BackupError> {
         let target = self.backup_folder(target)?;
-        let in_vault = record_files(&self.root)?;
+        let in_vault = record_files(self.root.path())?;
         let opens = |bytes: &[u8]| age::decrypt(&self.identity, bytes).is_ok();
         let mut comparison = BackupComparison::default();
         for relative in record_files(&target)? {
             let backup = fs::read(target.join(&relative))?;
-            let vault = if in_vault.contains(&relative) { read_if_present(&self.root.join(&relative))? } else { None };
+            let vault = if in_vault.contains(&relative) { read_if_present(&self.root.path().join(&relative))? } else { None };
             let Some(vault) = vault else {
                 if opens(&backup) { comparison.missing.push(relative) } else { comparison.unresolved.push(relative) }
                 continue;
@@ -167,7 +167,7 @@ impl Vault {
         let mut restored = 0;
         for relative in missing {
             let content = fs::read(target.join(&relative))?;
-            let path = self.root.join(&relative);
+            let path = self.root.path().join(&relative);
             if let Some(parent) = path.parent() {
                 fs::create_dir_all(parent)?;
             }
@@ -193,7 +193,7 @@ impl Vault {
         let mut relatives = vec![VAULT_FILE.to_owned(), KEY_FILE.to_owned()];
         for relative in written {
             let path = self.record_path(relative).map_err(|e| BackupError::Io(io::Error::other(e.to_string())))?;
-            relatives.push(relative_path(&self.root, &path));
+            relatives.push(relative_path(self.root.path(), &path));
         }
         self.copy_into(&target, relatives)
     }
@@ -201,7 +201,7 @@ impl Vault {
     fn copy_into(&self, target: &Path, relatives: Vec<String>) -> Result<BackupReport, BackupError> {
         let mut report = BackupReport::default();
         for relative in relatives {
-            let from = self.root.join(&relative);
+            let from = self.root.path().join(&relative);
             let to = target.join(&relative);
             let content = match fs::read(&from) {
                 Ok(content) => content,
@@ -223,9 +223,15 @@ impl Vault {
                 // The key file follows the vault's, or the old passphrase would still open the backup —
                 // but never a damaged one over the backup's: that may be the one sound copy left.
                 Ok(_) if relative == KEY_FILE => {
-                    if fs::read(&to)? != content && key_file_sound(&self.root) {
-                        tauri_kit_fs::write_atomic(&to, &content)?;
-                        report.key_replaced = true;
+                    let backed_up = fs::read(&to)?;
+                    if backed_up != content && key_file_sound(self.root.path()) {
+                        // Compared and replaced in one step: a copy another backup run put there
+                        // meanwhile is left for the next run to judge.
+                        match tauri_kit_fs::replace_if(&to, tauri_kit_fs::Expect::Holds(&backed_up), &content) {
+                            Ok(()) => report.key_replaced = true,
+                            Err(e) if tauri_kit_fs::is_changed(&e) => {}
+                            Err(e) => return Err(e.into()),
+                        }
                     }
                 }
                 // A record file never changes, so one of the same size is the same file; reading every
@@ -244,7 +250,7 @@ impl Vault {
         if !resolved.is_dir() {
             return Err(BackupError::Io(io::Error::new(io::ErrorKind::NotADirectory, "the backup folder is not a folder")));
         }
-        let root = fs::canonicalize(&self.root)?;
+        let root = fs::canonicalize(self.root.path())?;
         if resolved.starts_with(&root) || root.starts_with(&resolved) {
             return Err(BackupError::Overlaps);
         }

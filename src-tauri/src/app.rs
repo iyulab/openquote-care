@@ -82,6 +82,7 @@ impl AppError {
                 VaultError::DamagedKeyFile => "damaged-key-file",
                 VaultError::InvalidRecoveryKey | VaultError::RecoveryKeyMismatch => "recovery-key",
                 VaultError::InvalidPath(_) => "invalid-path",
+                VaultError::KeyFileChanged => "key-file-changed",
                 VaultError::Io(_) => "io",
             },
             Self::Engine(EngineError::Start(_)) => "engine-start",

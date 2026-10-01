@@ -160,6 +160,57 @@ fn a_vault_opened_with_its_kit_gets_a_passphrase_again() {
 }
 
 #[test]
+fn a_passphrase_another_device_set_meanwhile_is_not_overwritten() {
+    let dir = shared_folder();
+    Vault::create(dir.path(), pass("old")).unwrap();
+    let here = Vault::unlock(dir.path(), pass("old")).unwrap();
+    let there = Vault::unlock(dir.path(), pass("old")).unwrap();
+
+    there.change_passphrase(pass("set there")).unwrap();
+
+    assert!(matches!(here.change_passphrase(pass("set here")), Err(VaultError::KeyFileChanged)));
+    assert!(Vault::unlock(dir.path(), pass("set there")).is_ok(), "the other device's passphrase stays in force");
+    assert!(matches!(Vault::unlock(dir.path(), pass("set here")), Err(VaultError::WrongPassphrase)));
+    there.change_passphrase(pass("again there")).unwrap();
+    assert!(Vault::unlock(dir.path(), pass("again there")).is_ok(), "a vault follows its own replacement");
+}
+
+#[test]
+fn a_key_file_restored_elsewhere_meanwhile_is_not_overwritten() {
+    let dir = tempfile::tempdir().unwrap();
+    let (_, kit) = Vault::create(dir.path(), pass("forgotten")).unwrap();
+    fs::remove_file(dir.path().join(KEY_FILE)).unwrap();
+    let here = Vault::recover(dir.path(), kit.secret_key()).unwrap();
+    Vault::recover(dir.path(), kit.secret_key()).unwrap().change_passphrase(pass("set there")).unwrap();
+
+    assert!(matches!(here.change_passphrase(pass("set here")), Err(VaultError::KeyFileChanged)));
+    assert!(Vault::unlock(dir.path(), pass("set there")).is_ok());
+}
+
+/// A link or junction inside the vault folder that leads out of it — one someone put in a shared
+/// folder, say — must not carry record files outside.
+#[test]
+fn a_link_inside_the_vault_does_not_lead_records_outside() {
+    let dir = tempfile::tempdir().unwrap();
+    let outside = tempfile::tempdir().unwrap();
+    let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();
+    let link = dir.path().join("subjects");
+    #[cfg(windows)]
+    {
+        let made = std::process::Command::new("cmd").args(["/C", "mklink", "/J"]).arg(&link).arg(outside.path()).output().unwrap();
+        assert!(made.status.success(), "{}", String::from_utf8_lossy(&made.stderr));
+    }
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+
+    assert!(matches!(vault.write_new("subjects/s1/0001.dev1.json", RECORD), Err(VaultError::InvalidPath(_))));
+    assert!(matches!(vault.read("subjects/s1/0001.dev1.json"), Err(VaultError::InvalidPath(_))));
+    assert_eq!(fs::read_dir(outside.path()).unwrap().count(), 0, "nothing was written outside the vault");
+    #[cfg(windows)]
+    fs::remove_dir(&link).unwrap();
+}
+
+#[test]
 fn nothing_is_ever_replaced() {
     let dir = tempfile::tempdir().unwrap();
     let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();
@@ -206,7 +257,7 @@ fn paths_stay_inside_the_vault_and_off_reserved_files() {
     let dir = tempfile::tempdir().unwrap();
     let (vault, _) = Vault::create(dir.path(), pass("p")).unwrap();
 
-    for bad in ["", "/abs.json", "../out.json", "a/../b.json", "a//b.json", "a\\b.json", "C:/x.json", VAULT_FILE, "keys/other.json", "./a.json"] {
+    for bad in ["", "/abs.json", "../out.json", "a/../b.json", "a//b.json", "a\\b.json", "C:/x.json", VAULT_FILE, "keys/other.json", "./a.json", "a/./b.json", "a/b.json:stream"] {
         assert!(matches!(vault.write_new(bad, RECORD), Err(VaultError::InvalidPath(_))), "{bad:?} was accepted");
     }
 }

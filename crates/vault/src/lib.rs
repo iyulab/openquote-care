@@ -7,7 +7,8 @@
 //!
 //! Plaintext never touches the disk: files are encrypted in memory and then written with
 //! create-new semantics, so an existing file is never replaced. The one exception is the key
-//! file, which [`Vault::change_passphrase`] replaces atomically.
+//! file, which [`Vault::change_passphrase`] replaces atomically — and only while it still holds
+//! what this vault last read there, so a passphrase another device set meanwhile is not lost.
 //!
 //! [age]: https://age-encryption.org/v1
 
@@ -16,9 +17,11 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::Mutex;
 
 use age::secrecy::{ExposeSecret, SecretString};
 use age::{scrypt, x25519};
+use tauri_kit_fs::Root;
 use tauri_kit_watch::{OwnWrites, Watch};
 
 pub use tauri_kit_watch::Watcher;
@@ -70,6 +73,10 @@ pub enum VaultError {
     RecoveryKeyMismatch,
     /// A relative path would leave the vault or name a reserved file.
     InvalidPath(String),
+    /// The key file changed since this vault read it — another device set a new passphrase — so
+    /// a new passphrase from here would silently undo that one. Opening the vault again with the
+    /// passphrase now in force reads the new key file.
+    KeyFileChanged,
     /// The file system refused.
     Io(io::Error),
 }
@@ -87,6 +94,7 @@ impl fmt::Display for VaultError {
             Self::InvalidRecoveryKey => f.write_str("the recovery key is not valid"),
             Self::RecoveryKeyMismatch => f.write_str("the recovery key belongs to another vault"),
             Self::InvalidPath(p) => write!(f, "not a path inside the vault: {p}"),
+            Self::KeyFileChanged => f.write_str("the vault key file changed since the vault was opened"),
             Self::Io(e) => write!(f, "{e}"),
         }
     }
@@ -132,7 +140,7 @@ impl NewVault {
         // The declaration goes last: a folder with a declaration always has its key.
         write_new(&self.root.join(KEY_FILE), self.key_file.as_bytes())?;
         write_new(&self.root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes())?;
-        Ok(Vault::with_identity(&self.root, self.identity))
+        Vault::with_identity(&self.root, self.identity, Some(self.key_file.into_bytes()))
     }
 }
 
@@ -159,11 +167,14 @@ pub struct VaultContents {
 
 /// An unlocked vault.
 pub struct Vault {
-    root: PathBuf,
+    root: Root,
     identity: x25519::Identity,
     recipient: x25519::Recipient,
     /// What this vault wrote, so a watch of its folder reports only what others wrote.
     own: OwnWrites,
+    /// The key file as this vault last read or wrote it (`None`: there was none) — the only
+    /// content a new passphrase may replace.
+    key_file: Mutex<Option<Vec<u8>>>,
 }
 
 impl Vault {
@@ -218,7 +229,7 @@ impl Vault {
         })?;
         let secret = SecretString::from(String::from_utf8(secret).map_err(|_| VaultError::DamagedKeyFile)?);
         let identity = x25519::Identity::from_str(secret.expose_secret()).map_err(|_| VaultError::DamagedKeyFile)?;
-        Ok(Vault::with_identity(root, identity))
+        Vault::with_identity(root, identity, Some(key_file))
     }
 
     /// Unlocks the vault in `root` with its recovery key, for when the passphrase is forgotten or
@@ -228,7 +239,12 @@ impl Vault {
     pub fn recover(root: &Path, secret_key: &str) -> Result<Vault, VaultError> {
         check_declaration(root)?;
         let identity = x25519::Identity::from_str(secret_key.trim()).map_err(|_| VaultError::InvalidRecoveryKey)?;
-        let vault = Vault::with_identity(root, identity);
+        let key_file = match fs::read(root.join(KEY_FILE)) {
+            Ok(bytes) => Some(bytes),
+            Err(e) if e.kind() == io::ErrorKind::NotFound => None,
+            Err(e) => return Err(e.into()),
+        };
+        let vault = Vault::with_identity(root, identity, key_file)?;
         for file in encrypted_files(root)? {
             match key_opens(&vault.identity, &fs::read(&file)?) {
                 Some(true) => break,
@@ -246,18 +262,34 @@ impl Vault {
     ///
     /// The key file is the one file a vault replaces: keeping the old wrapping beside a new one
     /// would leave the old passphrase working. The replacement is atomic — a crash leaves either
-    /// the old or the new key file.
+    /// the old or the new key file — and happens only while the key file still holds what this
+    /// vault last read or wrote there. When another device sharing the folder set a passphrase
+    /// meanwhile, this fails with [`VaultError::KeyFileChanged`] and leaves that one in force.
     pub fn change_passphrase(&self, passphrase: SecretString) -> Result<(), VaultError> {
-        let key_file = wrap_key(&self.identity, passphrase)?;
-        tauri_kit_fs::write_atomic(&self.root.join(KEY_FILE), key_file.as_bytes())?;
-        Ok(())
+        let key_file = wrap_key(&self.identity, passphrase)?.into_bytes();
+        let mut known = self.key_file.lock().unwrap_or_else(|e| e.into_inner());
+        let path = self.root.path().join(KEY_FILE);
+        let replaced = match known.as_deref() {
+            Some(expected) => tauri_kit_fs::replace_if(&path, tauri_kit_fs::Expect::Holds(expected), &key_file),
+            // There was none (a vault recovered without its key file): write one only if none has
+            // appeared since.
+            None => fs::create_dir_all(self.root.path().join("keys")).and_then(|()| tauri_kit_fs::write_atomic_new(&path, &key_file)),
+        };
+        match replaced {
+            Ok(()) => {
+                *known = Some(key_file);
+                Ok(())
+            }
+            Err(e) if tauri_kit_fs::is_changed(&e) || e.kind() == io::ErrorKind::AlreadyExists => Err(VaultError::KeyFileChanged),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Whether the key file is there and reads as a wrapped key: false when it is missing or its
     /// header is damaged, which only a new passphrase ([`Vault::change_passphrase`]) mends. Whether
     /// a passphrase opens it is known only by trying one.
     pub fn key_file_sound(&self) -> bool {
-        key_file_sound(&self.root)
+        key_file_sound(self.root.path())
     }
 
     /// The vault key's public half, to which every record file is encrypted.
@@ -287,7 +319,7 @@ impl Vault {
     /// called when the platform lost track of changes. Watching stops when the returned watcher is
     /// dropped.
     pub fn watch(&self, mut on_change: impl FnMut() + Send + 'static) -> io::Result<Watcher> {
-        Watch::new(&self.root).ignore(|path| !is_record_file(path)).own_writes(&self.own).start(move |_| on_change())
+        Watch::new(self.root.path()).ignore(|path| !is_record_file(path)).own_writes(&self.own).start(move |_| on_change())
     }
 
     /// Decrypts one record file, or returns `None` if the vault has no file at `relative`.
@@ -306,9 +338,9 @@ impl Vault {
     pub fn read_all(&self) -> Result<VaultContents, VaultError> {
         let mut contents = VaultContents::default();
         let mut paths = Vec::new();
-        collect_files(&self.root, &mut paths)?;
+        collect_files(self.root.path(), &mut paths)?;
         for path in paths {
-            let relative = relative_path(&self.root, &path);
+            let relative = relative_path(self.root.path(), &path);
             if relative == VAULT_FILE || relative.starts_with("keys/") {
                 continue;
             }
@@ -325,29 +357,25 @@ impl Vault {
         Ok(contents)
     }
 
-    fn with_identity(root: &Path, identity: x25519::Identity) -> Vault {
+    fn with_identity(root: &Path, identity: x25519::Identity, key_file: Option<Vec<u8>>) -> Result<Vault, VaultError> {
         let recipient = identity.to_public();
-        Vault { root: root.to_path_buf(), identity, recipient, own: OwnWrites::new() }
+        Ok(Vault { root: Root::open(root)?, identity, recipient, own: OwnWrites::new(), key_file: Mutex::new(key_file) })
     }
 
+    /// Where the record file at `relative` (a vault path with `/` separators) lives. Besides what
+    /// any path inside the folder must be — no `.` or `..`, nothing absolute, no link or junction
+    /// leading out of the folder — a record path names neither the declaration nor anything under
+    /// `keys/`, and holds no `\` or `:` (a separator on one system and a plain character on
+    /// another, or a drive or alternate data stream on Windows), so one name means one file on
+    /// every device.
     fn record_path(&self, relative: &str) -> Result<PathBuf, VaultError> {
         let invalid = || VaultError::InvalidPath(relative.to_owned());
-        if relative.is_empty() || relative.starts_with('/') || relative.contains('\\') || relative.contains(':') {
-            return Err(invalid());
-        }
         let parts: Vec<&str> = relative.split('/').collect();
-        if parts.iter().any(|p| p.is_empty() || *p == "." || *p == "..") {
+        if relative.contains('\\') || relative.contains(':') || parts.iter().any(|p| p.is_empty() || *p == "." || *p == "..") || relative == VAULT_FILE || parts[0] == "keys" {
             return Err(invalid());
         }
-        if relative == VAULT_FILE || parts[0] == "keys" {
-            return Err(invalid());
-        }
-        let mut path = self.root.clone();
-        for part in &parts[..parts.len() - 1] {
-            path.push(part);
-        }
-        path.push(format!("{}{ENCRYPTED_EXTENSION}", parts[parts.len() - 1]));
-        Ok(path)
+        let file = format!("{relative}{ENCRYPTED_EXTENSION}");
+        self.root.resolve(&file).map_err(|e| if tauri_kit_fs::is_outside(&e) { invalid() } else { VaultError::Io(e) })
     }
 }
 
