@@ -279,7 +279,16 @@ internal static class Api
             if (runs.FirstOrDefault(k => k.Id == request.Earlier) is not { } earlier
                 || runs.FirstOrDefault(k => k.Id == request.Later) is not { } later)
                 return Results.NotFound();
-            var diff = ReportDiff.Compare(earlier.Run, later.Run, session.Current.Content.Catalog());
+            // The engine refuses two runs that do not count the same thing over the same period.
+            ReportDiff diff;
+            try
+            {
+                diff = ReportDiff.Compare(earlier.Run, later.Run, session.Current.Content.Catalog());
+            }
+            catch (ArgumentException e)
+            {
+                return Results.UnprocessableEntity(new ErrorView(e.Message));
+            }
             return Results.Ok(new ComparisonView(
                 RunView(earlier), RunView(later), diff.Late, diff.Removed, diff.Revised, diff.Moved, diff.Unchanged));
         });

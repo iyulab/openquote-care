@@ -350,6 +350,22 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal(r3["record"]!["total"]!.ToJsonString(), compared["later"]!["total"]!.ToJsonString());
     }
 
+    [Fact]
+    public async Task Refuses_to_compare_runs_over_different_periods()
+    {
+        await Post("/vault/load", Files(GoldenVault.School.Through(2)));
+        var april = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var march = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 3 });
+        await Post("/vault/add", new { files = new[] { april["file"], march["file"] } });
+        var runs = (await Get("/runs")).AsArray();
+        string IdOf(string from) => runs.Single(r => r!["period"]!["from"]!.GetValue<string>() == from)!["id"]!.GetValue<string>();
+
+        var refused = await Post("/runs/compare", new { earlier = IdOf("2026-04-01"), later = IdOf("2026-03-01") },
+            HttpStatusCode.UnprocessableEntity);
+
+        Assert.Contains("period", refused["error"]!.GetValue<string>(), StringComparison.Ordinal);
+    }
+
     private static Openquote.Vault.VaultFile FileOf(JsonNode wire) =>
         new(wire["path"]!.GetValue<string>(), Convert.FromBase64String(wire["content"]!.GetValue<string>()));
 
