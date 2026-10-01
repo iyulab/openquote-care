@@ -8,6 +8,11 @@ license = "AGPL-3.0-only"
 repository = "https://github.com/iyulab/openquote-care"
 rust-version = "1.90"
 
+[workspace.dependencies]
+tauri-kit-fs = "0.6"
+tauri-kit-sidecar = "0.6"
+tauri-kit-watch = "0.6"
+
 # The vault key is wrapped with scrypt at a fixed cost; unoptimized, one unlock takes minutes, so
 # development builds optimize the password-hashing crates the way release builds do.
 [profile.dev.package.scrypt]
