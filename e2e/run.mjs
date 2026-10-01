@@ -20,7 +20,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
-import { Cdp, findPage } from './cdp.mjs'
+import { App as KitApp, runScenarios } from '@iyulab/tauri-kit-dev/app'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
@@ -33,87 +33,54 @@ const PORT = 9224
 const PASSPHRASE = '상담 기록 폴더 2026'
 const NEW_PASSPHRASE = '새 기록 암호 2026'
 
-/** In-page helpers: queries that pierce shadow roots, and element boxes for real clicks. */
-const HELPERS = `window.__e2e = {
-  all(selector, root = document) {
-    const found = [...root.querySelectorAll(selector)]
-    for (const el of root.querySelectorAll('*')) if (el.shadowRoot) found.push(...this.all(selector, el.shadowRoot))
-    return found
-  },
-  one(selector, text) {
-    // An item's text may lead with an icon ("◉ 대상자"); the label is what follows.
-    const matches = (el) => {
-      const t = el.textContent.replace(/\\s+/g, ' ').trim()
-      return t === text || t.endsWith(' ' + text)
-    }
-    return this.all(selector).find((el) => text === undefined || matches(el))
-  },
-  box(el) {
-    el.scrollIntoView({ block: 'center' })
-    const r = el.getBoundingClientRect()
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
-  },
-  /**
-   * The box to click, once a click there would land on el and the box held still since the last
-   * poll: a smooth scroll still under way would move el between measuring and clicking.
-   */
-  target(el) {
-    const b = this.box(el)
-    const last = this.lastBox
-    this.lastBox = b
-    if (!last || last.x !== b.x || last.y !== b.y) return false
-    let hit = document.elementFromPoint(b.x, b.y)
-    while (hit?.shadowRoot) {
-      const inner = hit.shadowRoot.elementFromPoint(b.x, b.y)
-      if (!inner || inner === hit) break
-      hit = inner
-    }
-    for (let n = hit; n; n = n.parentNode ?? n.host) if (n === el) return b
-    return false
-  },
-}; true`
-
 const q = (s) => JSON.stringify(s)
 
 // The scenarios find elements by their Korean names, so the app speaks Korean whatever the machine's language.
 const appEnv = (env = {}) => ({ ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env })
 
+/**
+ * The app's window, driven the way a person uses it: the kit starts it, puts the in-page helpers
+ * (`__e2e`) in and clicks; what is this app's own — its fields found by their Korean names, the
+ * folder picker's stand-in, the open vault — is here.
+ */
 class App {
+  /** @type {KitApp | undefined} */
+  kit
+
   /** Starts the app, with `env` added to its environment, and waits for its window. */
   static async launch(env = {}) {
     const app = new App()
-    app.child = spawn(exe, [], { stdio: 'ignore', env: appEnv(env) })
-    const page = await findPage(PORT)
-    app.cdp = await Cdp.connect(page.webSocketDebuggerUrl)
-    await app.cdp.waitFor(`customElements.get('oc-app') && !!document.querySelector('oc-app')`, 'the app')
-    await app.cdp.evaluate(HELPERS)
+    app.kit = await KitApp.launch({
+      exe,
+      port: PORT,
+      env: { OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env },
+      // The e2e build's window configuration opens the debugging port itself.
+      debugPortFromEnv: false,
+      ready: `customElements.get('oc-app') && !!document.querySelector('oc-app')`,
+    })
     return app
   }
 
-  /** Ends the app the hard way and starts it again, in this same App. */
-  async restart(env = {}) {
-    await this.quit()
-    const next = await App.launch(env)
-    this.child = next.child
-    this.cdp = next.cdp
+  get cdp() {
+    return this.kit.cdp
+  }
+
+  get child() {
+    return this.kit?.child
+  }
+
+  /** Ends the app the hard way and starts it again, in this same App, with `env` added. */
+  restart(env = {}) {
+    return this.kit.restart(env)
   }
 
   async quit() {
-    this.cdp?.close()
-    const child = this.child
-    if (!child) return
-    child.kill()
-    await new Promise((done) => (child.exitCode !== null ? done() : child.once('exit', done)))
-    this.child = undefined
+    await this.kit?.quit()
   }
 
   /** Clicks the element matching `selector` (and `text`, if given) with the mouse. */
-  async click(selector, text) {
-    const box = await this.cdp.waitFor(
-      `(() => { const el = __e2e.one(${q(selector)}, ${q(text)}); return el && !el.disabled && !el.hasAttribute('disabled') && __e2e.target(el) })()`,
-      `${selector}${text ? ` "${text}"` : ''} to be clickable`,
-    )
-    await this.cdp.clickAt(box)
+  click(selector, text) {
+    return this.kit.click(selector, text)
   }
 
   /** Focuses the field labelled `label`, clears it, and types `text`. */
@@ -167,7 +134,6 @@ class App {
     if (outcome !== 'open') throw new Error(`the vault did not open: ${outcome}`)
   }
 
-  /** The rows of the sessions table, as cell texts. */
   /** The session rows as their values read: a cell's own buttons and marks (`.cell`) left out. */
   sessionRows() {
     return this.cdp.evaluate(
@@ -853,9 +819,7 @@ const scenarios = {
     await app.quit()
     await writeFile(idFile, 'e2esecond')
     try {
-      const next = await App.launch()
-      app.child = next.child
-      app.cdp = next.cdp
+      app.kit = (await App.launch()).kit
       await app.click('dc-button', '기록 폴더 열기')
       await app.pickFolder(work.vault)
       await app.type('암호', PASSPHRASE)
@@ -1173,87 +1137,34 @@ async function filesHolding(dir, needles) {
   return found
 }
 
-/** With E2E_SCREENSHOTS=<dir>, each passed scenario leaves a picture of the window. */
-async function screenshot(cdp, dir, name) {
-  const { writeFile } = await import('node:fs/promises')
-  await mkdir(dir, { recursive: true })
-  const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' })
-  await writeFile(join(dir, `${name.replace(/[^\p{L}\p{N}]+/gu, '-')}.png`), Buffer.from(data, 'base64'))
-}
-
-function options(argv) {
-  const value = (flag) => {
-    const i = argv.indexOf(flag)
-    return i >= 0 ? argv[i + 1] : undefined
-  }
-  const known = new Set(['--through', '--repeat'])
-  const unknown = argv.filter((a, i) => a.startsWith('--') && !known.has(a) && !known.has(argv[i - 1]))
-  if (unknown.length) throw new Error(`unknown option: ${unknown.join(' ')} (expected --through <text>, --repeat <n>)`)
-  const through = value('--through')
-  const repeat = Number(value('--repeat') ?? 1)
-  if (!Number.isInteger(repeat) || repeat < 1) throw new Error('--repeat takes a whole number of runs, 1 or more')
-  const names = Object.keys(scenarios)
-  const last = through === undefined ? names.length - 1 : names.findIndex((n) => n.includes(through))
-  if (last < 0) throw new Error(`no scenario name contains "${through}"`)
-  return { selected: names.slice(0, last + 1), repeat }
-}
-
-/** Runs `selected` once against a fresh folder and window; answers the name of the scenario that failed, if one did. */
 // The system temporary folder, read before a run points TEMP into its own folder.
 const systemTemp = tmpdir()
 
-async function runOnce(selected) {
+/** A fresh start for one run: its own folders, and every app started from here on writing its temporary files into one of them. */
+async function start() {
   const temp = await mkdtemp(join(systemTemp, 'openquote-care-e2e-'))
   const work = { vault: join(temp, 'vault'), empty: join(temp, 'empty'), appTemp: join(temp, 'app-temp') }
-  await mkdir(work.vault)
-  await mkdir(work.empty)
-  await mkdir(work.appTemp)
-  // Every app started from here on (and the engine it starts) writes its temporary files where
-  // the last scenario can look through all of them.
-  process.env.TEMP = process.env.TMP = work.appTemp
-
-  let app
-  try {
-    app = await App.launch()
-    // Scenarios run in order against one window: each builds on what the last one left.
-    for (const name of selected) {
-      try {
-        await scenarios[name](app, work)
-        console.log(`  ✓ ${name}`)
-        // A scenario may end with the app quit (the last one looks through what it left behind).
-        if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, name)
-      } catch (e) {
-        // A wait that timed out says what it waited for; what the window showed instead says why.
-        const shown = app.child ? await app.cdp.evaluate(`__e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`).catch(() => '') : ''
-        console.log(`  ✗ ${name}\n    ${e.message.replaceAll('\n', '\n    ')}${shown ? `\n    the window showed: ${shown}` : ''}`)
-        if (process.env.E2E_SCREENSHOTS && app.child) await screenshot(app.cdp, process.env.E2E_SCREENSHOTS, `FAILED ${name}`).catch(() => {})
-        return name
-      }
-    }
-    return undefined
-  } finally {
-    await app?.quit()
+  const stop = async () => {
     await rm(temp, { recursive: true, force: true })
     process.env.TEMP = process.env.TMP = systemTemp
   }
+  try {
+    await mkdir(work.vault)
+    await mkdir(work.empty)
+    await mkdir(work.appTemp)
+    // The app (and the engine it starts) write their temporary files where the last scenario can look through all of them.
+    process.env.TEMP = process.env.TMP = work.appTemp
+    return { app: await App.launch(), context: work, stop }
+  } catch (e) {
+    await stop()
+    throw e
+  }
 }
 
-async function main() {
-  if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
-  if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
-  const { selected, repeat } = options(process.argv.slice(2))
-  const failures = []
-  for (let run = 1; run <= repeat; run++) {
-    if (repeat > 1) console.log(`\nrun ${run} of ${repeat}`)
-    const failed = await runOnce(selected)
-    if (failed) failures.push(failed)
-  }
-  if (repeat === 1) {
-    console.log(failures.length ? `\n${failures.length} scenario failed` : `\nall ${selected.length} scenarios passed`)
-  } else {
-    console.log(`\n${repeat - failures.length} of ${repeat} runs passed${failures.length ? ` — failed: ${[...new Set(failures)].join(', ')}` : ''}`)
-  }
-  process.exitCode = failures.length ? 1 : 0
-}
-
-await main()
+if (!existsSync(exe)) throw new Error(`no e2e build at ${exe} — run \`npm run build:e2e\` first`)
+if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`npm run build:sidecar\` first`)
+process.exitCode = await runScenarios(scenarios, {
+  start,
+  // A wait that timed out says what it waited for; what the window showed instead says why.
+  shown: (app) => app.cdp.evaluate(`__e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`),
+})
