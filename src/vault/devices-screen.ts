@@ -26,6 +26,8 @@ export class OcDevices extends VaultScreen {
   @state() private newPassphraseAgain = ''
   @state() private passphraseNotice = ''
   @state() private section: DeviceSection = 'name'
+  /** The person asked to replace damaged files with the backup's copies and is asked to confirm. */
+  @state() private confirmingReplace = false
   /** While the window is narrow: the document shows instead of the list. */
   @state() private documentOpen = false
   /** The summary the device name last followed. */
@@ -82,6 +84,11 @@ export class OcDevices extends VaultScreen {
     if (typeof folder === 'string') await this.store.setBackup(folder)
   }
 
+  private async replaceDamaged() {
+    this.confirmingReplace = false
+    await this.store.replaceDamagedFromBackup()
+  }
+
   /** What the backup says the vault lost or holds damaged, and the way back where there is one. */
   private backupFindings() {
     const { busy, backup } = this.store
@@ -96,7 +103,18 @@ export class OcDevices extends VaultScreen {
               <dc-button variant="primary" ?disabled=${busy} data-role="backup-restore" @click=${() => void this.store.restoreFromBackup()}>${strings.backupRestore}</dc-button>
             </div>`
         : nothing,
-      damaged.length ? html`<p class="error" data-role="backup-damaged">${strings.backupDamaged(damaged.length)}</p>` : nothing,
+      damaged.length
+        ? html`<p class="error" data-role="backup-damaged">${strings.backupDamaged(damaged.length)}</p>
+            ${this.confirmingReplace
+              ? html`<p data-role="backup-replace-confirm">${strings.backupReplaceConfirm(damaged.length)}</p>
+                  <div class="row">
+                    <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.replaceDamaged()}>${strings.backupReplaceYes}</dc-button>
+                    <dc-button variant="secondary" ?disabled=${busy} @click=${() => (this.confirmingReplace = false)}>${strings.cancel}</dc-button>
+                  </div>`
+              : html`<div class="row">
+                  <dc-button variant="primary" ?disabled=${busy} data-role="backup-replace" @click=${() => (this.confirmingReplace = true)}>${strings.backupReplace}</dc-button>
+                </div>`}`
+        : nothing,
       damagedInBackup.length ? html`<p class="error" data-role="backup-damaged-in-backup">${strings.backupDamagedInBackup(damagedInBackup.length)}</p>` : nothing,
       unknown ? html`<p class="error" data-role="backup-unresolved">${strings.backupUnresolved(unknown)}</p>` : nothing,
     ]

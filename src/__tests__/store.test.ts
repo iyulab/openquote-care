@@ -139,4 +139,30 @@ describe('VaultStore', () => {
     expect(shell.refresh).toHaveBeenCalledTimes(1)
     store.disconnect()
   })
+
+  it('a change that arrives while another is taken in is read after it, so the window ends on the newest', async () => {
+    let outsideChange!: () => void
+    vi.mocked(shell.onVaultChanged).mockImplementation(async (f) => {
+      outsideChange = f
+      return () => {}
+    })
+    const store = new VaultStore()
+    store.connect()
+    await vi.waitFor(() => expect(store.busy).toBe(false))
+
+    // The first reading fails part-way (a file went away while it was read); a second change
+    // arrives meanwhile.
+    const first = deferred<VaultSummary>()
+    vi.mocked(shell.refresh).mockReturnValueOnce(first.promise)
+    vaultHolds([subject('a', 'added elsewhere')])
+    outsideChange()
+    outsideChange()
+    expect(shell.refresh).toHaveBeenCalledTimes(1)
+
+    vaultHolds([])
+    first.resolve(Promise.reject({ code: 'io', message: 'gone' }) as unknown as VaultSummary)
+    await vi.waitFor(() => expect(shell.refresh).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(store.subjects).toEqual([]))
+    store.disconnect()
+  })
 })

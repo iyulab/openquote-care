@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use age::secrecy::SecretString;
-use openquote_care_vault::{BackupComparison, BackupError, KEY_FILE, Vault, VaultError};
+use openquote_care_vault::{BackupComparison, BackupError, DAMAGED_FOLDER, KEY_FILE, Vault, VaultError};
 
 fn pass(p: &str) -> SecretString {
     SecretString::from(p.to_owned())
@@ -225,6 +225,46 @@ fn restoring_copies_back_the_lost_files_byte_for_byte_and_leaves_a_damaged_one()
     assert!(comparison.missing.is_empty());
     assert_eq!(comparison.damaged, vec!["subjects/s1/0002.dev1.json.age".to_owned()]);
     assert_eq!(vault.restore_from_backup(backup.path()).unwrap(), 0, "restoring again copies nothing");
+}
+
+#[test]
+fn a_damaged_file_gives_way_to_the_backups_sound_copy_and_is_kept_aside() {
+    let (dir, backup, vault) = backed_up();
+    let sound = fs::read(record(dir.path(), "0002")).unwrap();
+    cut_in_half(&record(dir.path(), "0002"));
+    let damaged = fs::read(record(dir.path(), "0002")).unwrap();
+    cut_in_half(&record(backup.path(), "0003"));
+    let damaged_in_backup_only = fs::read(record(dir.path(), "0003")).unwrap();
+
+    assert_eq!(vault.replace_damaged_from_backup(backup.path()).unwrap(), 1);
+
+    assert_eq!(fs::read(record(dir.path(), "0002")).unwrap(), sound, "the file once written, byte for byte");
+    assert_eq!(fs::read(record(dir.path(), "0003")).unwrap(), damaged_in_backup_only, "a sound file is never touched");
+    let aside: Vec<_> = walk(&dir.path().join(DAMAGED_FOLDER));
+    assert_eq!(aside.len(), 1, "{aside:?}");
+    assert!(aside[0].ends_with("subjects/s1/0002.dev1.json.age.damaged"), "{aside:?}");
+    assert_eq!(fs::read(dir.path().join(DAMAGED_FOLDER).join(&aside[0])).unwrap(), damaged, "the damaged bytes are kept");
+    let contents = vault.read_all().unwrap();
+    assert!(contents.undecryptable.is_empty(), "the file kept aside is no record file: {:?}", contents.undecryptable);
+    assert!(vault.compare_backup(backup.path()).unwrap().damaged.is_empty());
+    assert_eq!(vault.replace_damaged_from_backup(backup.path()).unwrap(), 0, "nothing left to replace");
+}
+
+/// Every file under `root`, as a path relative to it with `/` separators.
+fn walk(root: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for entry in fs::read_dir(&dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                stack.push(path);
+            } else {
+                out.push(path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    out
 }
 
 #[test]

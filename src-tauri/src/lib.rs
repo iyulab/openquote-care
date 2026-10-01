@@ -167,6 +167,11 @@ fn restore_from_backup(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn replace_damaged_from_backup(app: State<App>) -> CommandResult<Value> {
+    text(app.replace_damaged_from_backup())
+}
+
+#[tauri::command]
 fn backup_status(app: State<App>) -> Value {
     app.backup_status()
 }
@@ -310,6 +315,7 @@ pub fn run() {
             backup_status,
             restore_declaration,
             restore_from_backup,
+            replace_damaged_from_backup,
             write_plain_copy,
             history,
             compare_runs,

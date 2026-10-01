@@ -135,6 +135,8 @@ export const shell = {
   backupStatus: () => invoke<BackupStatus>('backup_status'),
   /** Copies the record files the vault lost back from its backup; the vault is read again with them. */
   restoreFromBackup: () => invoke<{ restored: number; backup: BackupStatus }>('restore_from_backup'),
+  /** Puts the backup's sound copy in place of each damaged record file; the damaged one is moved aside. */
+  replaceDamagedFromBackup: () => invoke<{ replaced: number; backup: BackupStatus }>('replace_damaged_from_backup'),
   /** Writes a copy that reads without the app into a new folder `name` inside `folder`; answers the new folder. */
   writePlainCopy: (folder: string, name: string, files: { name: string; content: string }[]) =>
     invoke<string>('write_plain_copy', { folder, name, files }),

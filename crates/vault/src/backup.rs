@@ -17,7 +17,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::{collect_files, encrypted_files, key_file_sound, key_opens, relative_path, Vault, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
+use crate::{collect_files, encrypted_files, key_file_sound, key_opens, read_if_present, relative_path, Vault, DAMAGED_EXTENSION, DAMAGED_FOLDER, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
 
 /// Why a folder cannot hold a vault's backup, or a backup could not be brought up to date.
 #[derive(Debug)]
@@ -159,8 +159,8 @@ impl Vault {
 
     /// Copies the record files the vault lost back from its backup in `target` — the files
     /// [`Vault::compare_backup`] finds missing — as new files, byte for byte, so each is the file
-    /// that was once written. A damaged file is left as it is: the vault never replaces a record
-    /// file. Returns how many files it copied.
+    /// that was once written. A damaged file is left as it is ([`Vault::replace_damaged_from_backup`]
+    /// is the person's separate choice). Returns how many files it copied.
     pub fn restore_from_backup(&self, target: &Path) -> Result<usize, BackupError> {
         let missing = self.compare_backup(target)?.missing;
         let target = self.backup_folder(target)?;
@@ -196,6 +196,49 @@ impl Vault {
             relatives.push(relative_path(self.root.path(), &path));
         }
         self.copy_into(&target, relatives)
+    }
+
+    /// Puts the backup's sound copy in place of each record file the vault holds damaged — the
+    /// files [`Vault::compare_backup`] finds damaged: the vault's copy does not decrypt, the
+    /// backup's does. No byte is thrown away: the damaged file is first copied to
+    /// `damaged/<milliseconds since 1970>/<its path>.damaged`, a path that is no record file to any
+    /// reader (no `.age` ending, outside the vault layout), and only then is the file replaced, in
+    /// one crash-safe step, with the backup's copy — the bytes once written there — and only while
+    /// it still holds the damaged bytes that were judged. A file that decrypts by now, or changed
+    /// since it was judged, is left as it is. Returns how many files it replaced.
+    pub fn replace_damaged_from_backup(&self, target: &Path) -> Result<usize, BackupError> {
+        let damaged = self.compare_backup(target)?.damaged;
+        let target = self.backup_folder(target)?;
+        let opens = |bytes: &[u8]| age::decrypt(&self.identity, bytes).is_ok();
+        let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or_default();
+        let aside = self.root.path().join(DAMAGED_FOLDER).join(when.to_string());
+        let mut replaced = 0;
+        for relative in damaged {
+            let sound = fs::read(target.join(&relative))?;
+            let path = self.root.path().join(&relative);
+            let Some(judged) = read_if_present(&path)? else { continue };
+            if opens(&judged) || !opens(&sound) {
+                continue;
+            }
+            let kept = aside.join(format!("{relative}{DAMAGED_EXTENSION}"));
+            if let Some(parent) = kept.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            tauri_kit_fs::write_atomic_new(&kept, &judged)?;
+            self.own.record(&path, &sound);
+            match tauri_kit_fs::replace_if(&path, tauri_kit_fs::Expect::Holds(&judged), &sound) {
+                Ok(()) => replaced += 1,
+                Err(e) => {
+                    self.own.forget(&path);
+                    // Changed since it was judged (another device put a copy back first, say): the
+                    // copy kept aside is the damaged bytes all the same and stays.
+                    if !tauri_kit_fs::is_changed(&e) {
+                        return Err(e.into());
+                    }
+                }
+            }
+        }
+        Ok(replaced)
     }
 
     fn copy_into(&self, target: &Path, relatives: Vec<String>) -> Result<BackupReport, BackupError> {
@@ -264,10 +307,3 @@ fn record_files(root: &Path) -> io::Result<BTreeSet<String>> {
     Ok(encrypted_files(root)?.iter().map(|p| relative_path(root, p)).collect())
 }
 
-fn read_if_present(path: &Path) -> io::Result<Option<Vec<u8>>> {
-    match fs::read(path) {
-        Ok(content) => Ok(Some(content)),
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(e),
-    }
-}

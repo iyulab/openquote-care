@@ -341,7 +341,13 @@ export const en: Strings = {
   backupRestore: 'Restore from the backup',
   backupRestored: (n: number) => (n ? `${plural(n, 'record file')} restored from the backup.` : 'There was nothing to restore.'),
   backupDamaged: (n: number) =>
-    `${plural(n, 'record file')} in this vault ${n === 1 ? 'is' : 'are'} damaged and cannot be read. The backup holds a sound copy — do not delete the backup folder or switch to another one. Opening the backup folder as a vault shows those records.`,
+    `${plural(n, 'record file')} in this vault ${n === 1 ? 'is' : 'are'} damaged and cannot be read. The backup holds a sound copy — do not delete the backup folder or switch to another one.`,
+  backupReplace: 'Replace with the backup\'s sound copies',
+  backupReplaceConfirm: (n: number) =>
+    `The ${plural(n, 'damaged file')} will not be deleted: ${n === 1 ? 'it is' : 'they are'} kept in the “damaged” folder inside the vault, and the backup's sound ${n === 1 ? 'copy takes its' : 'copies take their'} place. Replace?`,
+  backupReplaceYes: 'Replace',
+  backupReplaced: (n: number) =>
+    n ? `Replaced ${plural(n, 'damaged record file')} with the backup's copies. The damaged ${n === 1 ? 'file is' : 'files are'} in the vault's “damaged” folder.` : 'Nothing to replace.',
   backupDamagedInBackup: (n: number) => `${plural(n, 'file')} in the backup ${n === 1 ? 'is' : 'are'} damaged. The originals in this vault are sound. Making the backup again in a new empty folder gives you a sound copy.`,
   backupUnresolved: (n: number) =>
     `This vault and its backup hold ${plural(n, 'file')} differently, and which copy is sound cannot be told. Leave both folders as they are — delete or change neither.`,

@@ -515,8 +515,15 @@ const scenarios = {
     assert.deepEqual(await readFile(cut), cutBytes.subarray(0, cutBytes.length >> 1), 'a damaged record file is not replaced')
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=backup-damaged]')`), 'and is still named')
 
-    // Put the damaged file right by hand, as a person copying it from the backup would.
-    await writeFile(cut, cutBytes)
+    // The person has the backup's sound copy take the damaged file's place, after saying yes.
+    await app.click('dc-button', '백업의 성한 사본으로 바꾸기')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=backup-replace-confirm]').textContent`), /지우지 않고 기록 폴더 안 「damaged」 폴더에 보관한 뒤/)
+    assert.deepEqual(await readFile(cut), cutBytes.subarray(0, cutBytes.length >> 1), 'nothing changes before the person says yes')
+    await app.click('dc-button', '바꾸기')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=backup-damaged]')`, 'the damaged file replaced')
+    await app.noAlert()
+    assert.match(await app.cdp.evaluate(`__e2e.one('[role=status]')?.textContent.trim()`), /손상된 기록 파일 1개를 백업의 사본으로 바꿨습니다/)
+    assert.deepEqual(await readFile(cut), cutBytes, 'the file once written, byte for byte')
     await app.cdp.waitFor(`!__e2e.one('[data-role=unreadable]')`, 'nothing left unreadable')
     await app.click('dc-button', '백업 끄기')
     await app.cdp.waitFor(`__e2e.one('[data-role=backup-status]')?.textContent.trim() === '사용하지 않습니다.'`, 'the backup stopped')

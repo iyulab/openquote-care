@@ -63,6 +63,8 @@ export class VaultStore extends EventTarget {
   private readonly loads = new Latest()
   private unlisten?: Promise<() => void>
   private outsideChangeWaiting = false
+  /** A change from outside is being taken in. */
+  private takingIn = false
 
   /** Tells the screens something changed. */
   changed() {
@@ -95,16 +97,23 @@ export class VaultStore extends EventTarget {
    * cleared message, and not in the middle of the person's own action (it waits for that to end).
    */
   private async onOutsideChange() {
-    if (this.busy) {
+    // One reading at a time: a change that arrives while the vault is being read (by the person's
+    // action or an earlier change) is taken in once that reading ends, so an older reading never
+    // finishes after a newer one and leaves the window behind.
+    if (this.busy || this.takingIn) {
       this.outsideChangeWaiting = true
       return
     }
     this.outsideChangeWaiting = false
+    this.takingIn = true
     try {
       await shell.refresh()
       await this.load()
     } catch {
       // Coming back to the window, or the refresh button, reads the vault again.
+    } finally {
+      this.takingIn = false
+      if (this.outsideChangeWaiting && !this.busy) void this.onOutsideChange()
     }
   }
 
@@ -221,6 +230,16 @@ export class VaultStore extends EventTarget {
       const { restored } = await shell.restoreFromBackup()
       await this.load()
       this.notice = strings.backupRestored(restored)
+    })
+  }
+
+  /** Puts the backup's sound copies in place of the damaged record files, on the person's word. */
+  async replaceDamagedFromBackup() {
+    this.set({ notice: '' })
+    await this.run(async () => {
+      const { replaced } = await shell.replaceDamagedFromBackup()
+      await this.load()
+      this.notice = strings.backupReplaced(replaced)
     })
   }
 

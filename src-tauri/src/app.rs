@@ -457,6 +457,22 @@ impl App {
         })
     }
 
+    /// Puts the backup's sound copy in place of each record file the open vault holds damaged —
+    /// the damaged file is moved aside, not thrown away — reads the vault again, and returns how
+    /// many it replaced with what [`App::backup_status`] returns. Only on the person's word: the
+    /// window asks first.
+    pub fn replace_damaged_from_backup(&self) -> Result<Value, AppError> {
+        self.with_open(|open| {
+            let Some(folder) = self.backup.lock().unwrap().folder.clone() else {
+                return Err(AppError::Backup(BackupError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "no backup is kept"))));
+            };
+            let replaced = open.vault.replace_damaged_from_backup(&folder)?;
+            let summary = open.reload()?;
+            self.back_up(&open.vault, None);
+            Ok(serde_json::json!({ "replaced": replaced, "summary": summary, "backup": self.backup_status() }))
+        })
+    }
+
     /// Asks the engine for a change (`route` is one of its `/changes/…` routes) and keeps it in
     /// the vault. Returns the file's path.
     pub fn record(&self, route: &str, request: Value) -> Result<String, AppError> {
@@ -807,6 +823,13 @@ mod tests {
         // A write after it keeps what the comparison found; the next whole backup compares again.
         app.record("/changes/subject", json!({ "fields": { "name": "four" } })).unwrap();
         assert_eq!(app.backup_status()["damaged"], json!([subjects[1]]));
+
+        // On the person's word, the backup's sound copy takes the damaged file's place.
+        let replaced = app.replace_damaged_from_backup().unwrap();
+        assert_eq!(replaced["replaced"], 1);
+        assert_eq!(replaced["backup"]["damaged"], Value::Null, "nothing left for the backup to name");
+        assert_eq!(fs::read(dir.path().join(&subjects[1])).unwrap(), cut, "the file once written");
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 4, "every record reads again");
     }
 
     #[test]

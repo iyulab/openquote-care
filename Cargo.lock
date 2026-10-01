@@ -4644,9 +4644,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-fs"
-version = "0.8.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6cfd6b021a195befecb9dd7cd19d9ae76a9e396cb58b90c461f4e06c414f2f36"
+checksum = "c7f893a41e64586f7f83ce840c4ae487f6fad040f811d79acf32b2440eecda48"
 dependencies = [
  "dunce",
  "libc",
@@ -4656,9 +4656,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-sidecar"
-version = "0.8.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "339516065722cffd9b74390679b2871a9d3b9cd40d83514baee60df6cfb3f232"
+checksum = "20b6aec58fa3376342361703b78b07be4515cc3ca4708da12bf984f7b7653eff"
 dependencies = [
  "getrandom 0.3.4",
  "libc",
@@ -4668,9 +4668,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-watch"
-version = "0.8.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79904ed7f5daeab6ab95d1bbe9cb5433ad751e007eee90187cfbb8b4565dc4fb"
+checksum = "7d1797462f4d5db925e63ec81f93871de046413945e24cc23d54a7c421604c72"
 dependencies = [
  "notify-debouncer-full",
  "tauri-kit-fs",
@@ -4678,9 +4678,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-webview"
-version = "0.8.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b7b440a63ed9d405e1c7d126b0749bcb93c68d9863ad1e79207dd191f922eaa"
+checksum = "725f48c06b38d3ea27771ffac23e89c8c82e1da2e4dc35d7c97d8117a6efba7b"
 dependencies = [
  "webview2-com",
  "windows-core",

@@ -38,6 +38,13 @@ pub const VAULT_FILE: &str = "vault.json";
 pub const KEY_FILE: &str = "keys/vault-key.age";
 /// The extension an encrypted record file carries after its plaintext name.
 pub const ENCRYPTED_EXTENSION: &str = ".age";
+/// Where a damaged record file is moved when the backup's sound copy takes its place
+/// ([`Vault::replace_damaged_from_backup`]): outside the vault layout, so no reader takes it for a
+/// record.
+pub const DAMAGED_FOLDER: &str = "damaged";
+/// Added to a damaged record file's name when it is moved aside, so it no longer ends in the
+/// encrypted extension.
+pub const DAMAGED_EXTENSION: &str = ".damaged";
 
 const VAULT_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
 
@@ -246,7 +253,8 @@ impl Vault {
         };
         let vault = Vault::with_identity(root, identity, key_file)?;
         for file in encrypted_files(root)? {
-            match key_opens(&vault.identity, &fs::read(&file)?) {
+            let Some(bytes) = read_if_present(&file)? else { continue };
+            match key_opens(&vault.identity, &bytes) {
                 Some(true) => break,
                 Some(false) => return Err(VaultError::RecoveryKeyMismatch),
                 None => continue,
@@ -334,7 +342,8 @@ impl Vault {
     }
 
     /// Decrypts every record file in the vault. A file that fails to decrypt is reported and the
-    /// rest are still returned.
+    /// rest are still returned. A file another program removes while the vault is being read is
+    /// read as gone, as it is by then.
     pub fn read_all(&self) -> Result<VaultContents, VaultError> {
         let mut contents = VaultContents::default();
         let mut paths = Vec::new();
@@ -347,7 +356,12 @@ impl Vault {
             let Some(plain_name) = relative.strip_suffix(ENCRYPTED_EXTENSION) else {
                 continue; // not a record file of an encrypted vault (sync temp files and the like)
             };
-            match age::decrypt(&self.identity, &fs::read(&path)?) {
+            let ciphertext = match fs::read(&path) {
+                Ok(bytes) => bytes,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(e.into()),
+            };
+            match age::decrypt(&self.identity, &ciphertext) {
                 Ok(bytes) => contents.files.push((plain_name.to_owned(), bytes)),
                 Err(e) => contents.undecryptable.push(UndecryptableFile { path: relative.clone(), plain_path: plain_name.to_owned(), reason: e.to_string() }),
             }
@@ -427,6 +441,15 @@ fn write_new(path: &Path, content: &[u8]) -> Result<(), VaultError> {
         io::ErrorKind::AlreadyExists => VaultError::AlreadyExists,
         _ => VaultError::Io(e),
     })
+}
+
+/// The file's bytes, or `None` when it is gone — removed by another program after it was listed.
+fn read_if_present(path: &Path) -> io::Result<Option<Vec<u8>>> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
 }
 
 fn collect_files(dir: &Path, into: &mut Vec<PathBuf>) -> io::Result<()> {
