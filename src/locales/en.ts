@@ -8,9 +8,9 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 export const en: Strings = {
   appName: 'Openquote Care',
   tagline: 'Records that carry on, figures you can trace',
-  welcomeLead: 'Records stay in a records folder on this computer, locked with a password. When reporting rules change, nothing has to be counted again.',
+  welcomeLead: 'Records stay in a records folder on this computer, locked with a passphrase. When reporting rules change, nothing has to be counted again.',
   welcomeFacts: ['Works offline', 'Records stay on this computer', 'Backup copies elsewhere'],
-  welcomeOpenLead: 'Open it with its password or recovery key.',
+  welcomeOpenLead: 'Open it with its passphrase or recovery key.',
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.en.webviewMissing,
   diagnosticsNotice:
