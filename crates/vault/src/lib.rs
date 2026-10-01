@@ -235,6 +235,13 @@ impl Vault {
         Ok(())
     }
 
+    /// Whether the key file is there and reads as a wrapped key: false when it is missing or its
+    /// header is damaged, which only a new passphrase ([`Vault::change_passphrase`]) mends. Whether
+    /// a passphrase opens it is known only by trying one.
+    pub fn key_file_sound(&self) -> bool {
+        key_file_sound(&self.root)
+    }
+
     /// The vault key's public half, to which every record file is encrypted.
     pub fn recipient(&self) -> String {
         self.recipient.to_string()
@@ -386,6 +393,11 @@ fn collect_files(dir: &Path, into: &mut Vec<PathBuf>) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+/// Whether the vault folder `root` holds a key file whose header reads (see [`Vault::key_file_sound`]).
+fn key_file_sound(root: &Path) -> bool {
+    fs::read(root.join(KEY_FILE)).is_ok_and(|bytes| age::Decryptor::new(age::armor::ArmoredReader::new(&bytes[..])).is_ok())
 }
 
 /// The vault's encrypted record files (not the key file), in path order.

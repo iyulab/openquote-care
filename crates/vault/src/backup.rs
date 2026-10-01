@@ -17,7 +17,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::{collect_files, encrypted_files, key_opens, relative_path, Vault, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
+use crate::{collect_files, encrypted_files, key_file_sound, key_opens, relative_path, Vault, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
 
 /// Why a folder cannot hold a vault's backup, or a backup could not be brought up to date.
 #[derive(Debug)]
@@ -220,9 +220,10 @@ impl Vault {
                     }
                 }
                 Err(e) => return Err(e.into()),
-                // The key file follows the vault's, or the old passphrase would still open the backup.
+                // The key file follows the vault's, or the old passphrase would still open the backup —
+                // but never a damaged one over the backup's: that may be the one sound copy left.
                 Ok(_) if relative == KEY_FILE => {
-                    if fs::read(&to)? != content {
+                    if fs::read(&to)? != content && key_file_sound(&self.root) {
                         tauri_kit_fs::write_atomic(&to, &content)?;
                         report.key_replaced = true;
                     }

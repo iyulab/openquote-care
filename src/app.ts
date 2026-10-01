@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { open } from '@tauri-apps/plugin-dialog'
-import { describeError } from './errors.js'
+import { describeError, isCommandError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell, type TrackView } from './shell.js'
@@ -17,7 +17,7 @@ type Screen =
   | { name: 'create' }
   | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
-  | { name: 'vault'; folder: string; withKey?: boolean; adopted?: string[] }
+  | { name: 'vault'; folder: string; withKey?: boolean; keyFileLost?: boolean; adopted?: string[] }
 
 @customElement('oc-app')
 export class OcApp extends LitElement {
@@ -213,9 +213,13 @@ export class OcApp extends LitElement {
     const folder = this.folder
     await this.run(async () => {
       const withKey = this.withKey
-      const summary = withKey ? await shell.openVaultWithKey(folder, this.recoveryKey) : await shell.openVault(folder, this.passphrase)
+      const summary = await (withKey ? shell.openVaultWithKey(folder, this.recoveryKey) : shell.openVault(folder, this.passphrase)).catch((e: unknown) => {
+        // With the key file damaged or gone, the passphrase cannot open the vault: the recovery key is what is asked next.
+        if (!withKey && isCommandError(e) && e.code === 'damaged-key-file') this.withKey = true
+        throw e
+      })
       const adopted = summary.adopted ? [inAppLanguage(summary.adopted.label, summary.adopted.track)] : undefined
-      this.go({ name: 'vault', folder, withKey, adopted })
+      this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted })
     })
   }
 
@@ -237,6 +241,7 @@ export class OcApp extends LitElement {
       return html`<oc-vault
         .folder=${s.folder}
         .openedWithKey=${s.withKey ?? false}
+        .keyFileLost=${s.keyFileLost ?? false}
         .adopted=${s.adopted ?? []}
         @oc-close=${() => void this.closeVault()}
         @oc-lock=${() => void this.lock()}

@@ -226,3 +226,26 @@ fn restoring_copies_back_the_lost_files_byte_for_byte_and_leaves_a_damaged_one()
     assert_eq!(comparison.damaged, vec!["subjects/s1/0002.dev1.json.age".to_owned()]);
     assert_eq!(vault.restore_from_backup(backup.path()).unwrap(), 0, "restoring again copies nothing");
 }
+
+#[test]
+fn a_damaged_key_file_never_replaces_the_backups() {
+    let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (vault, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    vault.back_up(backup.path()).unwrap();
+    let sound = fs::read(backup.path().join(KEY_FILE)).unwrap();
+    assert!(vault.key_file_sound());
+
+    fs::write(dir.path().join(KEY_FILE), b"-----BEGIN AGE ENCRYPTED FILE-----
+cut off").unwrap();
+    assert!(!vault.key_file_sound());
+    let report = vault.back_up(backup.path()).unwrap();
+
+    assert!(!report.key_replaced);
+    assert_eq!(fs::read(backup.path().join(KEY_FILE)).unwrap(), sound, "the backup keeps the one sound key file");
+    Vault::unlock(backup.path(), pass("correct horse")).unwrap();
+
+    fs::remove_file(dir.path().join(KEY_FILE)).unwrap();
+    assert!(!vault.key_file_sound());
+    vault.back_up(backup.path()).unwrap();
+    assert_eq!(fs::read(backup.path().join(KEY_FILE)).unwrap(), sound);
+}

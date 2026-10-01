@@ -311,11 +311,19 @@ impl App {
         self.open_unlocked(Vault::unlock(folder, SecretString::from(passphrase))?)
     }
 
-    /// Opens the vault in `folder` with its recovery key, for when the passphrase is forgotten.
-    /// The key may be typed as the kit shows it: in groups, in either case.
+    /// Opens the vault in `folder` with its recovery key, for when the passphrase is forgotten or the
+    /// key file is lost. The key may be typed as the kit shows it: in groups, in either case. The
+    /// summary says `keyFileLost` when the key file is missing or damaged.
     pub fn open_vault_with_key(&self, folder: &Path, recovery_key: &str) -> Result<Value, AppError> {
         let key: String = recovery_key.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
-        self.open_unlocked(Vault::recover(folder, &key)?)
+        let vault = Vault::recover(folder, &key)?;
+        let key_file_lost = !vault.key_file_sound();
+        let mut summary = self.open_unlocked(vault)?;
+        // Until a new passphrase is set, only the recovery key opens this vault: `keyFileLost` says so.
+        if key_file_lost {
+            summary["keyFileLost"] = serde_json::json!(true);
+        }
+        Ok(summary)
     }
 
     fn open_unlocked(&self, vault: Vault) -> Result<Value, AppError> {
@@ -844,13 +852,19 @@ mod tests {
 cut off").unwrap();
 
         assert_eq!(app.open_vault(dir.path(), "pass".to_owned()).unwrap_err().code(), "damaged-key-file");
-        app.open_vault_with_key(dir.path(), &key).unwrap();
+        assert_eq!(app.open_vault_with_key(dir.path(), &key).unwrap()["keyFileLost"], true);
         assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
         app.change_passphrase("pass again".to_owned()).unwrap();
         app.close_vault();
 
         app.open_vault(dir.path(), "pass again".to_owned()).unwrap();
         assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+
+        // A key file gone altogether is the same: only the recovery key opens, and says so.
+        app.close_vault();
+        std::fs::remove_file(&key_file).unwrap();
+        assert_eq!(app.open_vault(dir.path(), "pass again".to_owned()).unwrap_err().code(), "damaged-key-file");
+        assert_eq!(app.open_vault_with_key(dir.path(), &key).unwrap()["keyFileLost"], true);
     }
 
     #[test]
@@ -862,7 +876,8 @@ cut off").unwrap();
         app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         app.close_vault();
 
-        app.open_vault_with_key(dir.path(), &key).unwrap();
+        let summary = app.open_vault_with_key(dir.path(), &key).unwrap();
+        assert!(summary.get("keyFileLost").is_none(), "a sound key file only waits for a passphrase");
         app.change_passphrase("remembered".to_owned()).unwrap();
         app.close_vault();
 

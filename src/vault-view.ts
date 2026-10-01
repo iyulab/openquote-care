@@ -42,6 +42,8 @@ export class OcVault extends LitElement {
   @property() folder = ''
   /** Opened with the recovery key: the person may have forgotten the passphrase. */
   @property({ type: Boolean }) openedWithKey = false
+  /** Opened with the recovery key while the key file is missing or damaged: a new passphrase is the next step, not a choice. */
+  @property({ type: Boolean }) keyFileLost = false
   /** The packs the vault took on as it opened, by label: said once, on the first screen. */
   @property({ attribute: false }) adopted: string[] = []
 
@@ -115,6 +117,11 @@ export class OcVault extends LitElement {
   }
 
   /** Goes to the devices screen, with one of its settings open. */
+  protected firstUpdated() {
+    // With the key file lost, setting a new passphrase is where the vault opens.
+    if (this.keyFileLost) this.goToDevices('passphrase')
+  }
+
   private goToDevices(section: DeviceSection) {
     this.view = 'devices'
     this.renderRoot.querySelector<OcDevices>('oc-devices')?.show(section)
@@ -173,15 +180,23 @@ export class OcVault extends LitElement {
             .store=${store}
             ?active=${view === 'devices'}
             .openedWithKey=${this.openedWithKey}
-            @oc-passphrase-changed=${() => (this.openedWithKey = false)}
+            .keyFileLost=${this.keyFileLost}
+            @oc-passphrase-changed=${() => ((this.openedWithKey = false), (this.keyFileLost = false))}
           ></oc-devices>
         </dp-page>
       </dp-shell>
     `
   }
 
-  /** Opened with the recovery key: offer a new passphrase, in case the old one is forgotten. */
+  /** Opened with the recovery key: offer a new passphrase, in case the old one is forgotten — or, with
+   * the key file lost, ask for one on every screen until it is set. */
   private keyHint() {
+    if (this.keyFileLost && this.view !== 'devices') {
+      return html`<p class="row error" role="alert" data-role="key-hint">
+        ${strings.keyFileLost}
+        <dc-button variant="secondary" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
+      </p>`
+    }
     if (!this.openedWithKey || this.view === 'devices') return nothing
     return html`<p class="row muted" role="status" data-role="key-hint">
       ${strings.openedWithKey}

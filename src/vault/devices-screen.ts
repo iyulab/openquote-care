@@ -17,6 +17,8 @@ export type DeviceSection = 'name' | 'idle' | 'backup' | 'passphrase'
 export class OcDevices extends VaultScreen {
   /** Opened with the recovery key: the person may have forgotten the passphrase. */
   @property({ type: Boolean }) openedWithKey = false
+  /** Opened with the recovery key while the key file is missing or damaged. */
+  @property({ type: Boolean }) keyFileLost = false
 
   @state() private deviceName = ''
   @state() private idleChoice = idleMinutes()
@@ -204,7 +206,11 @@ export class OcDevices extends VaultScreen {
     const busy = this.store.busy
     const change = () => void this.changePassphrase()
     return html`<h2>${strings.changePassphrase}</h2>
-      ${this.openedWithKey ? html`<p class="muted" role="status">${strings.openedWithKey}</p>` : nothing}
+      ${this.keyFileLost
+        ? html`<p class="error" role="alert" data-role="key-file-lost">${strings.keyFileLost}</p>`
+        : this.openedWithKey
+          ? html`<p class="muted" role="status">${strings.openedWithKey}</p>`
+          : nothing}
       <p class="muted">${strings.changePassphraseLead}</p>
       <div class="row" data-role="change-passphrase">
         ${this.passphraseInput(strings.newPassphrase, this.newPassphrase, (v) => (this.newPassphrase = v), change)}

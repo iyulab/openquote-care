@@ -6,7 +6,7 @@ export interface CommandError {
   message: string
 }
 
-function isCommandError(e: unknown): e is CommandError {
+export function isCommandError(e: unknown): e is CommandError {
   return typeof e === 'object' && e !== null && typeof (e as CommandError).code === 'string'
 }
 
