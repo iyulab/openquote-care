@@ -338,21 +338,20 @@ export class OcApp extends LitElement {
         @oc-idle-changed=${() => this.armIdle()}
       ></oc-vault>`
     }
-    if (s.name === 'welcome') return html`<div class="welcome">${this.welcome()}</div>${errorCallout(this.error)}`
+    if (s.name === 'welcome') return html`<div class="welcome">${this.welcome()}</div>`
     return html`<dp-page><div class="center">${this.body()}${errorCallout(this.error)}</div></dp-page>`
   }
 
   private body() {
     const s = this.screen
     switch (s.name) {
-      case 'welcome':
-        return this.welcome()
       case 'create':
         return this.createForm()
       case 'open':
         return this.openForm()
       case 'kit':
         return this.kit(s.key, s.folder)
+      case 'welcome':
       case 'vault':
         return nothing
     }
@@ -361,13 +360,14 @@ export class OcApp extends LitElement {
   private welcome() {
     return html`
       <div class="hero">
-        <span class="product">${quoteMark(18)}<h1>${strings.appName}</h1></span>
+        <div class="product">${quoteMark(18)}<h1>${strings.appName}</h1></div>
         <span class="mark">${dialogueMark(132)}</span>
         <p class="lead-title">${strings.tagline}</p>
         <p class="lead">${strings.welcomeLead}</p>
         <div class="facts">${strings.welcomeFacts.map((f) => html`<dc-badge>${f}</dc-badge>`)}</div>
       </div>
       <div class="side">
+        ${errorCallout(this.error)}
         <dc-card>
           <span slot="header">${strings.openVault}</span>
           <p class="muted">${strings.welcomeOpenLead}</p>
