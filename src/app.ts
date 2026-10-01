@@ -85,6 +85,11 @@ export class OcApp extends LitElement {
     .detail {
       font-size: 12px;
     }
+    /* A space to write on once printed: where the backup folder is, chosen after the kit. */
+    .write-in-line {
+      height: 2.5em;
+      border-bottom: 1px solid currentColor;
+    }
     @media print {
       .no-print {
         display: none;
@@ -408,6 +413,10 @@ export class OcApp extends LitElement {
       </ul>
       <p class="muted">${strings.kitWithoutApp}</p>
       <p class="muted">${strings.kitPassphraseChange}</p>
+      <div class="write-in" data-role="kit-backup">
+        <p class="muted">${strings.kitBackupWriteIn}</p>
+        <div class="write-in-line"></div>
+      </div>
       <div class="row no-print">
         <dc-button variant="secondary" @click=${() => window.print()}>${strings.print}</dc-button>
       </div>

@@ -111,6 +111,7 @@ export class OcDevices extends VaultScreen {
       ? [html`<p class="muted" data-role="backup-status">${strings.backupOff}</p>`]
       : [
           html`<p data-role="backup-folder">${strings.backupTo(folder)}</p>`,
+          html`<p class="muted" data-role="backup-write-down">${strings.backupWriteDown}</p>`,
           backupProblem
             ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backupProblem))}</p>`
             : backup.error

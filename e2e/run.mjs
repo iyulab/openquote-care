@@ -215,6 +215,7 @@ const scenarios = {
     assert.equal(shown.trim().split(/\s+/).at(-1), work.key.slice(-6), 'the last group is what gets typed back')
     assert.match(work.key, /^AGE-SECRET-KEY-1[0-9A-Z]{58}$/, 'the whole key, in groups')
     assert.deepEqual(await readdir(work.vault), [], 'nothing written before the kit is confirmed')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=kit-backup]').textContent`), /백업 위치/, 'a space on the kit to write the backup folder in')
     await app.noAlert()
   },
 
@@ -472,6 +473,7 @@ const scenarios = {
     await app.click('button', '자동 백업')
     await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(copy)}).then(() => true)`)
     await app.cdp.waitFor(`(__e2e.one('[data-role=backup-status]')?.textContent ?? '').startsWith('마지막 백업')`, 'the first backup')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=backup-write-down]').textContent`), /복구 키트/, 'says to write the backup folder on the kit')
     await app.noAlert()
     const files = async (root) => (await readdir(root, { recursive: true })).map((f) => f.replaceAll('\\', '/')).sort()
     assert.deepEqual(await files(copy), await files(work.vault), 'the copy holds every file of the vault, as it is on disk')
