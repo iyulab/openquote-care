@@ -107,6 +107,9 @@ export const en: Strings = {
   navReport: 'Monthly report',
   navExport: 'Record lists',
   navDevices: 'Devices',
+  navGroupRecords: 'Records',
+  navGroupReports: 'Reports',
+  navGroupSettings: 'Settings',
 
   report: 'Monthly report',
   reportForms: 'Report forms',

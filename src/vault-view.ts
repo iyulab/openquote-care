@@ -36,6 +36,9 @@ export class OcVault extends LitElement {
       dp-shell {
         height: 100%;
       }
+      dp-page > dc-callout {
+        margin: var(--dc-space-3, 12px) var(--dc-space-6, 24px) 0;
+      }
     `,
   ]
 
@@ -147,12 +150,16 @@ export class OcVault extends LitElement {
           nav-label=${strings.navLabel}
           active-id=${view}
           .items=${[
-            { id: 'subjects', icon: '◉', label: strings.navSubjects },
-            { id: 'groups', icon: '◈', label: strings.navGroups },
-            { id: 'report', icon: '▦', label: strings.navReport },
-            { id: 'export', icon: '▤', label: strings.navExport },
-            { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
-            { id: 'devices', icon: '▣', label: strings.navDevices },
+            { id: 'records', label: strings.navGroupRecords, items: [
+              { id: 'subjects', icon: '◉', label: strings.navSubjects },
+              { id: 'groups', icon: '◈', label: strings.navGroups },
+              { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
+            ] },
+            { id: 'reports', label: strings.navGroupReports, items: [
+              { id: 'report', icon: '▦', label: strings.navReport },
+              { id: 'export', icon: '▤', label: strings.navExport },
+            ] },
+            { id: 'settings', label: strings.navGroupSettings, items: [{ id: 'devices', icon: '▣', label: strings.navDevices }] },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
@@ -194,33 +201,33 @@ export class OcVault extends LitElement {
   /** A backup opened in place of the vault it copies: what is written here stays here. */
   private backupCopyHint() {
     if (!this.backupCopy) return nothing
-    return html`<p class="row muted" role="status" data-role="backup-copy">${strings.backupCopyHint}</p>`
+    return html`<dc-callout role="status" data-role="backup-copy"><p>${strings.backupCopyHint}</p></dc-callout>`
   }
 
   /** Opened with the recovery key: offer a new passphrase, in case the old one is forgotten — or, with
    * the key file lost, ask for one on every screen until it is set. */
   private keyHint() {
     if (this.keyFileLost && this.view !== 'devices') {
-      return html`<p class="row error" role="alert" data-role="key-hint">
-        ${strings.keyFileLost}
-        <dc-button variant="secondary" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
-      </p>`
+      return html`<dc-callout variant="danger" role="alert" data-role="key-hint">
+        <p>${strings.keyFileLost}</p>
+        <dc-button slot="actions" variant="secondary" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
+      </dc-callout>`
     }
     if (!this.openedWithKey || this.view === 'devices') return nothing
-    return html`<p class="row muted" role="status" data-role="key-hint">
-      ${strings.openedWithKey}
-      <dc-button variant="ghost" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
-    </p>`
+    return html`<dc-callout role="status" data-role="key-hint">
+      <p>${strings.openedWithKey}</p>
+      <dc-button slot="actions" variant="ghost" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
+    </dc-callout>`
   }
 
   /** Other devices already named themselves in this vault, but this one has no name yet. */
   private nameHint() {
     const s = this.store.summary
     if (!s || this.view === 'devices' || Object.keys(s.devices).length === 0 || s.device in s.devices) return nothing
-    return html`<p class="row muted" role="status" data-role="name-hint">
-      ${strings.nameThisDevice}
-      <dc-button variant="ghost" size="sm" @click=${() => this.goToDevices('name')}>${strings.goNameThisDevice}</dc-button>
-    </p>`
+    return html`<dc-callout role="status" data-role="name-hint">
+      <p>${strings.nameThisDevice}</p>
+      <dc-button slot="actions" variant="ghost" size="sm" @click=${() => this.goToDevices('name')}>${strings.goNameThisDevice}</dc-button>
+    </dc-callout>`
   }
 
   private errorLine() {
@@ -237,8 +244,8 @@ export class OcVault extends LitElement {
       group: new Map(groups.map((g) => [g.id, text(g, 'name')])),
     }
     const holder = (k: VaultFileKind) => ((k.kind === 'subject' || k.kind === 'group') && k.id && holders[k.kind].get(k.id)) || undefined
-    return html`<details class="unreadable" data-role="unreadable">
-      <summary><span class="error">${strings.unreadable(files.length)}</span></summary>
+    return html`<dc-callout variant="warning" data-role="unreadable"><details class="unreadable">
+      <summary>${strings.unreadable(files.length)}</summary>
       <ul>
         ${files.map((f) => {
           const what = strings.unreadableWhat(f.kind, holder(f.kind))
@@ -248,7 +255,7 @@ export class OcVault extends LitElement {
           </li>`
         })}
       </ul>
-    </details>`
+    </details></dc-callout>`
   }
 }
 

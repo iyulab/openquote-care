@@ -112,6 +112,9 @@ export const ko = {
   navReport: '월 보고',
   navExport: '기록 목록',
   navDevices: '기기',
+  navGroupRecords: '기록',
+  navGroupReports: '보고',
+  navGroupSettings: '설정',
 
   report: '월 보고',
   reportForms: '보고 양식',
