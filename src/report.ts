@@ -13,6 +13,8 @@ export interface RunRecord {
   cells: { row: string; column: string | null; count: number; records: string[] }[]
   pending: Group
   unmapped: Group
+  /** The unmapped records with no value in the row field (each is also in `unmapped`). Absent from runs that had none. */
+  blank?: Group
   total: Group
   /** For every record in the total, the subjects it is about. Absent from runs kept before people were counted. */
   people?: Record<string, string[]>
@@ -72,7 +74,10 @@ export interface Table {
   placed: number
   placedRecords: string[]
   pending: Group
+  /** Records whose value the crosswalks do not carry to the report's version — not the blank ones. */
   unmapped: Group
+  /** Records with no value in the row field. */
+  blank: Group
   total: Group
 }
 
@@ -106,6 +111,10 @@ export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Tab
     return { code, label, cells, total: cells.reduce((n, c) => n + c.count, 0), records: cells.flatMap((c) => c.records) }
   })
   const columnTotals = columns.map((_, i) => rows.reduce((n, r) => n + r.cells[i].count, 0))
+  // A run lists its blank records inside unmapped too; the table keeps the two groups apart.
+  const blank = run.blank ?? EMPTY
+  const isBlank = new Set(blank.records)
+  const unmapped = run.unmapped.records.filter((id) => !isBlank.has(id))
   return {
     columns,
     rows,
@@ -114,7 +123,8 @@ export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Tab
     placed: columnTotals.reduce((n, c) => n + c, 0),
     placedRecords: rows.flatMap((r) => r.records),
     pending: run.pending,
-    unmapped: run.unmapped,
+    unmapped: { count: unmapped.length, records: unmapped },
+    blank,
     total: run.total,
   }
 }
@@ -150,7 +160,7 @@ export interface Comparison {
 }
 
 /** Where a run put one record. */
-export type Place = { kind: 'cell'; row: string; column: string | null } | { kind: 'pending' } | { kind: 'unmapped' }
+export type Place = { kind: 'cell'; row: string; column: string | null } | { kind: 'pending' } | { kind: 'unmapped' } | { kind: 'blank' }
 
 /** Every record of a run, with where the run put it. */
 export function placesOf(run: RunRecord): Map<string, Place> {
@@ -158,6 +168,7 @@ export function placesOf(run: RunRecord): Map<string, Place> {
   for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', row: cell.row, column: cell.column })
   for (const id of run.pending.records) places.set(id, { kind: 'pending' })
   for (const id of run.unmapped.records) places.set(id, { kind: 'unmapped' })
+  for (const id of run.blank?.records ?? []) places.set(id, { kind: 'blank' })
   return places
 }
 

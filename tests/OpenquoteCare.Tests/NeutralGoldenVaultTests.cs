@@ -83,6 +83,7 @@ public partial class NeutralGoldenVaultTests
         var none = Vault.IdOf("S08");
 
         Assert.Equal([none], run.Unmapped);
+        Assert.Equal([none], run.Blank);
         Assert.DoesNotContain(none, run.Cells.SelectMany(c => c.Records));
         Assert.Contains(none, run.Total);
         Assert.Equal(run.Total.Count - 1, run.Cells.Sum(c => c.Count));

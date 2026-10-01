@@ -888,6 +888,22 @@ const scenarios = {
     assert.ok(row[0].startsWith('2026-04-02'), 'the date first (its cell also offers to open the notes)')
     assert.deepEqual(row.slice(1), ['Anxiety and stress', 'Video', 'Counselor A'], 'then the concern, the mode and the practitioner')
 
+    // The concern is optional on this track: a session without one is counted, in no row, and said so.
+    await app.setDate('Date', '2026-04-09')
+    await app.choose('Mode', 'phone')
+    await app.click('dc-button', 'Record session')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the session without a concern listed')
+    await app.noAlert()
+    await app.click('button', 'Monthly report')
+    await app.type('Year', '2026')
+    await app.choose('Month', '4')
+    await app.click('dc-button', 'Run')
+    await app.cdp.waitFor(`__e2e.one('tr[data-group=total]')?.children[1].textContent.trim() === '2 (1 person)'`, 'both sessions in the total')
+    const blank = await app.cdp.evaluate(`[...(__e2e.one('tr[data-group=blank]')?.children ?? [])].map((c) => c.textContent.trim())`)
+    assert.deepEqual(blank.slice(0, 2), ['(No concern)', '1 (1 person)'], 'the session without a concern, apart from the rows')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('tr[data-group=unmapped]').children[1].textContent.trim()`), '0', 'not a gap in a crosswalk')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1 person)', 'one session in the rows')
+
     // Every screen, every text node and every name a screen reader or tooltip gives, shadow roots included.
     const words = () => app.cdp.evaluate(`__e2e.all('*').flatMap((el) => [
       ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),
