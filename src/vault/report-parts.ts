@@ -107,8 +107,8 @@ export function comparisonView(store: VaultStore, c: Comparison) {
                   <td>${date(id)}</td>
                   <td>${session ? namesOf(session, subjectNames) : ''}</td>
                   <td>${strings.changeKind[kind]}</td>
-                  <td>${placeText(store, c.earlier, before.get(id))}</td>
-                  <td>${placeText(store, c.later, after.get(id))}</td>
+                  <td class="wrap">${placeText(store, c.earlier, before.get(id))}</td>
+                  <td class="wrap">${placeText(store, c.later, after.get(id))}</td>
                 </tr>`
               })}
             </tbody>

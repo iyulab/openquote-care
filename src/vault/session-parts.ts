@@ -94,7 +94,7 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
         return html`<tr data-session=${s.id}>
             ${cells.map(
               (c, i) =>
-                html`<td>
+                html`<td class=${i === at ? 'wrap' : nothing}>
                   ${c}
                   ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
                   ${i === 0 && t.correct

@@ -144,7 +144,7 @@ export class OcSubjects extends VaultScreen {
     return html`<section data-role="import">
       <dp-page-header eyebrow=${strings.subjects} heading=${strings.importTitle}></dp-page-header>
       <p class="muted" data-role="import-tally">${strings.importTally(counts.create, counts.update, counts.same, counts.problem)}</p>
-      ${plan.missingName ? html`<p class="error">${strings.importMissingName}</p>` : nothing}
+      ${plan.missingName ? html`<dc-callout variant="danger"><p>${strings.importMissingName}</p></dc-callout>` : nothing}
       ${plan.unknownHeadings.length > 0 ? html`<p class="muted">${strings.importUnknown(plan.unknownHeadings)}</p>` : nothing}
       <dc-card>
         <div class="scroll">
@@ -153,8 +153,8 @@ export class OcSubjects extends VaultScreen {
               ${plan.rows.map(
                 (r) => html`<tr data-import-row=${r.line} data-kind=${r.kind}>
                   <td class="num">${r.line}</td>
-                  <td class=${r.kind === 'problem' ? 'error' : ''}>${status(r)}</td>
-                  <td>${shown(r)}</td>
+                  <td class=${r.kind === 'problem' ? 'wrap error' : 'wrap'}>${status(r)}</td>
+                  <td class="wrap">${shown(r)}</td>
                 </tr>`,
               )}
             </tbody>

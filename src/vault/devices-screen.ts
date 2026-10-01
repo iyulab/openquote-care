@@ -224,7 +224,7 @@ export class OcDevices extends VaultScreen {
     const change = () => void this.changePassphrase()
     return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.changePassphrase} description=${strings.changePassphraseLead}></dp-page-header>
       ${this.keyFileLost
-        ? html`<dc-callout variant="warning" role="alert" data-role="key-file-lost"><p>${strings.keyFileLost}</p></dc-callout>`
+        ? html`<dc-callout variant="danger" role="alert" data-role="key-file-lost"><p>${strings.keyFileLost}</p></dc-callout>`
         : this.openedWithKey
           ? html`<p class="muted" role="status">${strings.openedWithKey}</p>`
           : nothing}

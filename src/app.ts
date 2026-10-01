@@ -36,9 +36,11 @@ export class OcApp extends LitElement {
     p {
       margin: 0;
     }
-    .muted {
-      color: var(--dc-color-text-secondary, #5e5c57);
+    .muted,
+    .detail {
+      color: var(--dc-color-text-muted, #8a8a92);
     }
+    /* Centered, unlike the vault screens' rows: here a row holds buttons beside a line of text. */
     .row {
       display: flex;
       gap: var(--dc-space-2, 8px);
@@ -144,7 +146,11 @@ export class OcApp extends LitElement {
       gap: var(--dc-space-1, 4px);
     }
     .detail {
-      font-size: 12px;
+      font-size: var(--dc-font-size-sm, 12px);
+    }
+    /* Callout text at the body size; this outer rule outranks the component's own :host size. */
+    dc-callout {
+      font-size: var(--dc-font-size-md, 14px);
     }
     /* A space to write on once printed: where the backup folder is, chosen after the kit. */
     .write-in-line {

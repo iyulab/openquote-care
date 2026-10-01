@@ -57,6 +57,11 @@ export const vaultStyles = [
     .error {
       color: var(--dc-color-danger-text, #b91c1c);
     }
+    /* Callout text at the body size; this outer rule outranks the component's own :host size. */
+    dc-callout {
+      font-size: var(--dc-font-size-md, 14px);
+    }
+    /* Bottom-aligned, unlike the welcome screens' rows: here a row lines buttons up with labelled fields. */
     .row {
       display: flex;
       gap: var(--dc-space-2, 8px);
@@ -79,7 +84,7 @@ export const vaultStyles = [
     .stack {
       display: flex;
       flex-direction: column;
-      gap: var(--dc-space-3, 12px);
+      gap: var(--dc-space-4, 16px);
     }
     .stack h3 {
       margin: 0;
@@ -136,8 +141,7 @@ export const vaultStyles = [
     .scroll {
       overflow-x: auto;
     }
-    dc-card > .scroll,
-    dc-card > table {
+    dc-card > .scroll {
       margin: calc(-1 * var(--dc-space-4, 16px));
     }
     table.export td,
