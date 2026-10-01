@@ -40,7 +40,7 @@ export class OcPractitioners extends VaultScreen {
     const { practitioners } = this.store
     const practitioner = this.adding ? undefined : practitioners.find((p) => p.id === this.selected)
     const refs = this.store.sessionFields.filter((f) => f.kind === 'reference' && f.refType === 'practitioner').map((f) => f.name)
-    const counts = countBy(this.store.sessions, (s) => refs.map((r) => s.fields[r]).filter((id): id is string => typeof id === 'string'))
+    const counts = countBy(this.store.sessions, (s) => [...new Set(refs.map((r) => s.fields[r]).filter((id): id is string => typeof id === 'string'))])
     return listDetail({
       label: strings.practitioners,
       head: html`<dc-button

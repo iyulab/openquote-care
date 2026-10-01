@@ -190,7 +190,7 @@ export class OcSessionForm extends StoreElement {
     const session = this.edit
     if (session)
       return html`<dc-card data-role="correct-session">
-        <span slot="header">${strings.correctSession}</span>
+        <h3 slot="header">${strings.correctSession}</h3>
         <div class="stack">
           <dc-callout><p>${strings.correctSessionLead}</p></dc-callout>
           <div class="fields">${inputs.map((f) => this.input(f))}</div>

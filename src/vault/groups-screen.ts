@@ -122,7 +122,7 @@ export class OcGroups extends VaultScreen {
           ></oc-session-form>`
         : nothing}
       <dc-card data-role="members">
-        <span slot="header">${strings.groupMembers}</span>
+        <h3 slot="header">${strings.groupMembers}</h3>
         ${subjectPicker(store, strings.groupMembers, () => this.memberDraft ?? this.membersOf(group.id), (ids) => (this.memberDraft = ids))}
         <dc-button slot="footer" variant="secondary" ?disabled=${store.busy || !this.memberDraft} @click=${() => void this.saveMembers(group)}
           >${strings.saveMembers}</dc-button

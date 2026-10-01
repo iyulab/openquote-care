@@ -80,7 +80,7 @@ export class OcSubjectForm extends StoreElement {
     const store = this.store
     const inputs = inputFields(store.subjectFields)
     return html`<dc-card data-role="correct-subject">
-      <span slot="header">${strings.correctSubject}</span>
+      <h3 slot="header">${strings.correctSubject}</h3>
       <div class="stack">
         <dc-callout><p>${strings.correctSubjectLead}</p></dc-callout>
         <div class="fields">${inputs.map((f) => fieldInput(f, this.values[f.name] ?? '', (v) => (this.values = { ...this.values, [f.name]: v }), store.busy, this.choicesOf(f)))}</div>

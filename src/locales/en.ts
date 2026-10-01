@@ -279,7 +279,6 @@ export const en: Strings = {
   importAmbiguous: (name: string) => `More than one client is called "${name}" — add an ID column`,
   importApply: (create: number, update: number) => `Import (new ${create} · updated ${update})`,
   imported: (create: number, update: number) => `Added ${plural(create, 'client')} and updated ${update}.`,
-  sessions: (name: string) => `${name} — sessions`,
   noSessions: 'No sessions recorded.',
   newSession: 'New session',
   none: '(None)',

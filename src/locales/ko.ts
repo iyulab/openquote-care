@@ -281,7 +281,6 @@ export const ko = {
   importAmbiguous: (name: string) => `"${name}" 대상자가 여럿입니다 — 관리번호 열을 넣으세요`,
   importApply: (create: number, update: number) => `가져오기 (추가 ${create} · 갱신 ${update})`,
   imported: (create: number, update: number) => `대상자 ${create}명을 추가하고 ${update}명을 갱신했습니다.`,
-  sessions: (name: string) => `${name} — 회기`,
   noSessions: '기록한 회기가 없습니다.',
   newSession: '새 회기',
   none: '(없음)',
