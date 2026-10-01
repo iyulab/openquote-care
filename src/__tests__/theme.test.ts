@@ -42,6 +42,10 @@ describe('the app theme', () => {
     expect(css).not.toMatch(/--dc-table-header-bg\s*:/)
   })
 
+  it('sets notes and errors at the body size through the callout role, not a rule of its own', () => {
+    expect(css).toMatch(/--dc-callout-size\s*:\s*var\(--dc-font-size-md\)/)
+  })
+
   it.each(PAIRS)('%s reads at 4.5:1 on %s in every palette', (text, ground) => {
     for (const body of palettes()) {
       const t = get(body, text)!, g = get(body, ground)!

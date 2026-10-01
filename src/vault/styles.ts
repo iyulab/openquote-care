@@ -57,10 +57,6 @@ export const vaultStyles = [
     .error {
       color: var(--dc-color-danger-text, #b91c1c);
     }
-    /* Callout text at the body size; this outer rule outranks the component's own :host size. */
-    dc-callout {
-      font-size: var(--dc-font-size-md, 14px);
-    }
     /* Bottom-aligned, unlike the welcome screens' rows: here a row lines buttons up with labelled fields. */
     .row {
       display: flex;

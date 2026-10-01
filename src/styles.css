@@ -61,6 +61,8 @@
   --dc-card-radius: var(--dc-radius-lg);
   --dc-card-header-size: 14px;
   --dc-field-label-size: 13px;
+  /* Notes and errors read at the body size, not the small one. */
+  --dc-callout-size: var(--dc-font-size-md);
   --dc-field-hint-color: var(--dc-color-text-muted);
   --dc-table-header-color: var(--dc-color-text-muted);
   --dc-metric-accent-1: var(--oq-peach);
