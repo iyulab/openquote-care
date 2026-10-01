@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
-use openquote_care_vault::{BackupError, BackupReport, NewVault, Vault, VaultError, Watcher};
+use openquote_care_vault::{BackupError, BackupReport, NewVault, PlainCopyError, Vault, VaultError, Watcher};
 use serde_json::Value;
 
 use crate::bundle::{Bundle, BundleError, Track};
@@ -31,6 +31,8 @@ pub enum AppError {
     Bundle(BundleError),
     /// The folder chosen for the backup cannot hold it.
     Backup(BackupError),
+    /// The plain copy could not be written where it was asked for.
+    PlainCopy(PlainCopyError),
     Engine(EngineError),
     Io(io::Error),
 }
@@ -45,6 +47,7 @@ impl fmt::Display for AppError {
             Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
             Self::Bundle(e) => write!(f, "{e}"),
             Self::Backup(e) => write!(f, "{e}"),
+            Self::PlainCopy(e) => write!(f, "{e}"),
             Self::Engine(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "{e}"),
         }
@@ -65,6 +68,10 @@ impl AppError {
             Self::PackConflict(_) => "pack-conflict",
             Self::Bundle(_) => "bundle",
             Self::Backup(e) => backup_code(e),
+            Self::PlainCopy(PlainCopyError::Overlaps) => "plain-copy-overlaps",
+            Self::PlainCopy(PlainCopyError::Exists) => "plain-copy-exists",
+            Self::PlainCopy(PlainCopyError::BadName(_)) => "plain-copy-name",
+            Self::PlainCopy(PlainCopyError::Io(_)) => "io",
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
@@ -90,6 +97,12 @@ fn backup_code(e: &BackupError) -> &'static str {
         BackupError::Overlaps => "backup-overlaps",
         BackupError::HoldsOther => "backup-holds-other",
         BackupError::Io(_) => "io",
+    }
+}
+
+impl From<PlainCopyError> for AppError {
+    fn from(e: PlainCopyError) -> Self {
+        Self::PlainCopy(e)
     }
 }
 
@@ -362,6 +375,13 @@ impl App {
             }
             Ok(backup.status())
         })
+    }
+
+    /// Writes a copy of the open vault's records that reads without the app — `files`, as the
+    /// window made them — into a new folder `name` inside `folder`, apart from the vault. Returns
+    /// the new folder.
+    pub fn write_plain_copy(&self, folder: &Path, name: &str, files: &[(String, Vec<u8>)]) -> Result<String, AppError> {
+        self.with_open(|open| Ok(open.vault.write_plain_copy(folder, name, files)?.to_string_lossy().into_owned()))
     }
 
     /// Where this device keeps the open vault's backup, when the last backup ran and what came of
@@ -693,6 +713,22 @@ mod tests {
         app.close_vault();
         app.open_vault(dir.path(), "new pass".to_owned()).unwrap();
         assert_eq!(app.backup_status(), json!({ "folder": null }));
+    }
+
+    #[test]
+    fn a_plain_copy_is_written_apart_from_the_vault_and_says_why_when_it_cannot_be() {
+        let Some(app) = app() else { return };
+        let (dir, out) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let files = vec![("records.html".to_owned(), b"<p>records</p>".to_vec())];
+        assert_eq!(app.write_plain_copy(out.path(), "copy", &files).unwrap_err().code(), "no-vault");
+
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let folder = app.write_plain_copy(out.path(), "copy", &files).unwrap();
+        assert_eq!(fs::read(Path::new(&folder).join("records.html")).unwrap(), b"<p>records</p>");
+        assert_eq!(app.write_plain_copy(out.path(), "copy", &files).unwrap_err().code(), "plain-copy-exists");
+        assert_eq!(app.write_plain_copy(dir.path(), "copy", &files).unwrap_err().code(), "plain-copy-overlaps");
+        assert_eq!(app.write_plain_copy(out.path(), "../copy", &files).unwrap_err().code(), "plain-copy-name");
     }
 
     #[test]

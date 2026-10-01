@@ -7,9 +7,9 @@ pub mod locale;
 pub mod runtime;
 mod window;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tauri::{Emitter, Manager, State};
 
@@ -136,6 +136,19 @@ fn refresh(app: State<App>) -> CommandResult<Value> {
 #[tauri::command]
 fn set_backup(folder: Option<String>, app: State<App>) -> CommandResult<Value> {
     text(app.set_backup(folder.map(PathBuf::from).as_deref()))
+}
+
+/// One file of a plain copy, as the window made it.
+#[derive(Deserialize)]
+struct PlainFile {
+    name: String,
+    content: String,
+}
+
+#[tauri::command]
+fn write_plain_copy(folder: String, name: String, files: Vec<PlainFile>, app: State<App>) -> CommandResult<String> {
+    let files: Vec<(String, Vec<u8>)> = files.into_iter().map(|f| (f.name, f.content.into_bytes())).collect();
+    text(app.write_plain_copy(Path::new(&folder), &name, &files))
 }
 
 #[tauri::command]
@@ -280,6 +293,7 @@ pub fn run() {
             refresh,
             set_backup,
             backup_status,
+            write_plain_copy,
             compare_runs,
             run_report,
             run_export,

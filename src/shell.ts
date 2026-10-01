@@ -119,6 +119,9 @@ export const shell = {
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
   setBackup: (folder: string | null) => invoke<BackupStatus>('set_backup', { folder }),
   backupStatus: () => invoke<BackupStatus>('backup_status'),
+  /** Writes a copy that reads without the app into a new folder `name` inside `folder`; answers the new folder. */
+  writePlainCopy: (folder: string, name: string, files: { name: string; content: string }[]) =>
+    invoke<string>('write_plain_copy', { folder, name, files }),
   runs: () => invoke<KeptRun[]>('runs'),
   compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
   /** Which of a form run's pending records still wait for a person, with the codes each may take. */

@@ -728,6 +728,43 @@ const scenarios = {
     }
   },
 
+  async 'leaves a copy of every record that reads without the app, apart from the vault, content only when asked'(app, work) {
+    const said = '합성 상담 내용: 시험 불안을 이야기함'
+    await app.click('button', '기록 목록')
+    await app.click('li button', '전체 기록 사본 (앱 없이 읽기)')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-warning]')`, 'the warning that the copy has no passphrase')
+    // The folder picker is the system's; the screen's own method takes its answer.
+    const make = async (folder) => {
+      await mkdir(folder)
+      await app.cdp.evaluate(`__e2e.one('oc-export').makePlainCopy(${q(folder)}).then(() => true)`)
+      await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.startsWith('사본을 만들었습니다'))`, 'the copy made')
+      await app.noAlert()
+      const [made, ...more] = await readdir(folder)
+      assert.deepEqual(more, [], 'one new folder')
+      assert.match(made, /^Openquote 기록 사본 \d{4}-\d\d-\d\d \d{4}$/)
+      assert.deepEqual((await readdir(join(folder, made))).sort(), ['기록.html', '대상자.csv', '읽어보기.txt', '회기.csv'])
+      return join(folder, made)
+    }
+    const plain = join(dirname(work.vault), 'plain')
+    const copy = await make(plain)
+    const page = await readFile(join(copy, '기록.html'), 'utf8')
+    for (const name of ['가상 학생 1', '가상 학생 2', '가상 학생 3', '또래 집단', '상담자 가']) assert.ok(page.includes(name), name)
+    assert.ok(!page.includes(said), 'session content stays out unless asked for')
+    assert.ok((await readFile(join(copy, '회기.csv'), 'utf8')).startsWith('\uFEFF대상자,집단,'), 'a table a spreadsheet reads as UTF-8')
+
+    await app.cdp.evaluate(`(() => { __e2e.one('[data-role=plain-copy-narrative]').click(); return true })()`)
+    await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-narrative]').checked`, 'content asked for')
+    const withContent = join(dirname(work.vault), 'plain-with-content')
+    const second = await make(withContent)
+    assert.ok((await readFile(join(second, '기록.html'), 'utf8')).includes(said), 'asked for, the content is in the page')
+    assert.ok((await readFile(join(second, '회기.csv'), 'utf8')).includes(said), 'and in the table')
+
+    await app.cdp.evaluate(`__e2e.one('oc-export').makePlainCopy(${q(work.vault)}).then(() => true)`)
+    await app.alert('사본은 기록 폴더 안이나, 기록 폴더를 품은 폴더에 만들 수 없습니다. 떨어진 폴더를 고르세요.')
+    assert.ok(!(await readdir(work.vault)).some((f) => f.startsWith('Openquote')), 'no plain file inside the vault')
+    await rm(plain, { recursive: true, force: true })
+    await rm(withContent, { recursive: true, force: true })
+  },
   async 'names a scheme version no crosswalk leads to when its pack is applied'(app, work) {
     // A relabel-only revision still needs a crosswalk; without one every earlier value is unmapped there.
     const pack = join(dirname(work.vault), 'relabel-pack')
