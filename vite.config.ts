@@ -17,5 +17,7 @@ export default defineConfig({
   // The window's own tests; the scripts' tests run under node --test (npm run check:core).
   test: {
     include: ['src/**/*.test.ts'],
+    // theme.test.ts reads styles.css as text; vitest would otherwise blank it.
+    css: { include: [/styles\.css/] },
   },
 })
