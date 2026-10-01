@@ -159,6 +159,13 @@ export const ko = {
     group: '집단',
     members: '구성원',
     noSessions: '회기가 없습니다.',
+    history: '고친 기록',
+    historyWhen: '때',
+    historyDevice: '기기',
+    historyWhat: '무엇',
+    historyFields: '고친 칸',
+    sessionOn: (date: string) => `${date} 회기`,
+    reclassified: '(분류 개정에 맞춤)',
     readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean) =>
       [
         'Openquote Care 기록 사본',

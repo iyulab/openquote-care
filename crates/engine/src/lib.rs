@@ -163,6 +163,11 @@ impl Engine {
         self.call("GET", &format!("/entities/{entity_type}"), None)
     }
 
+    /// Every change each entity of a type was built from, oldest first.
+    pub fn history(&self, entity_type: &str) -> Result<Value, EngineError> {
+        self.call("GET", &format!("/entities/{entity_type}/history"), None)
+    }
+
     /// What the engine holds: counts, report forms, and files it could not read.
     pub fn summary(&self) -> Result<Value, EngineError> {
         self.call("GET", "/summary", None)

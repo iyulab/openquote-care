@@ -406,6 +406,24 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Lists_the_changes_each_entity_was_built_from_oldest_first()
+    {
+        await Post("/vault/load", Files(GoldenVault.School.Through(0)));
+        var created = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { created } });
+        var id = created["path"]!.GetValue<string>().Split('/')[1];
+        var renamed = await Post("/changes/update", new { type = "subject", id, fields = new { name = "someone else" } });
+        await Post("/vault/add", new { files = new[] { renamed } });
+
+        var history = (await Get("/entities/subject/history")).AsArray().Single(h => h!["id"]!.GetValue<string>() == id)!;
+        var changes = history["changes"]!.AsArray();
+        Assert.Equal(["create", "update"], changes.Select(c => c!["op"]!.GetValue<string>()));
+        Assert.Equal(["someone", "someone else"], changes.Select(c => c!["fields"]!["name"]!.GetValue<string>()));
+        Assert.All(changes, c => Assert.False(string.IsNullOrEmpty(c!["device"]!.GetValue<string>())));
+        Assert.True(changes[0]!["at"]!.GetValue<DateTimeOffset>() <= changes[1]!["at"]!.GetValue<DateTimeOffset>());
+    }
+
+    [Fact]
     public async Task Lays_a_month_out_as_an_export_forms_rows()
     {
         const string form = """

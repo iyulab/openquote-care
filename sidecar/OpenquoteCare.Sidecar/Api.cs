@@ -154,6 +154,12 @@ public sealed record EntityView(
 
 public sealed record HeadView(string ChangeId, string Device, JsonElement Value);
 
+/// <summary>The changes an entity was built from, oldest first.</summary>
+public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Changes);
+
+/// <summary>One change file: who wrote it, when, what it did, and the fields it set.</summary>
+public sealed record ChangeView(string Id, string Device, DateTimeOffset At, string Op, IReadOnlyDictionary<string, JsonElement> Fields);
+
 public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<SchemeItem> Items);
 
 /// <summary>A record waiting for a person: the field and value the form carries, and the codes to choose from.</summary>
@@ -207,6 +213,20 @@ internal static class Api
                 .Where(e => e.Reference.Type == type && !e.Destroyed)
                 .OrderBy(e => e.Reference.Id, StringComparer.Ordinal)
                 .Select(ViewOf)
+                .ToArray());
+
+        // Every change each entity of a type was built from, oldest first: read for a copy of the
+        // records that keeps their history, not for each screen.
+        app.MapGet("/entities/{type}/history", (string type, VaultSession session) =>
+            session.Current.Entities.Values
+                .Where(e => e.Reference.Type == type && !e.Destroyed)
+                .OrderBy(e => e.Reference.Id, StringComparer.Ordinal)
+                .Select(e => new EntityHistoryView(
+                    e.Reference.Id,
+                    [.. e.Changes
+                        .OrderBy(c => c.At)
+                        .ThenBy(c => c.Id, StringComparer.Ordinal)
+                        .Select(c => new ChangeView(c.Id, c.Device, c.At, c.Op.ToString().ToLowerInvariant(), c.Fields))]))
                 .ToArray());
 
         app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
@@ -460,6 +480,7 @@ internal static class Api
 [JsonSerializable(typeof(ExportTableView))]
 [JsonSerializable(typeof(SummaryView))]
 [JsonSerializable(typeof(EntityView[]))]
+[JsonSerializable(typeof(EntityHistoryView[]))]
 [JsonSerializable(typeof(SchemeView[]))]
 [JsonSerializable(typeof(PendingView[]))]
 [JsonSerializable(typeof(RunListItem[]))]

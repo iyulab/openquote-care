@@ -109,6 +109,11 @@ fn entities(entity_type: String, app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn history(entity_type: String, app: State<App>) -> CommandResult<Value> {
+    text(app.history(&entity_type))
+}
+
+#[tauri::command]
 fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
     text(app.apply_pack(&PathBuf::from(folder)))
 }
@@ -294,6 +299,7 @@ pub fn run() {
             set_backup,
             backup_status,
             write_plain_copy,
+            history,
             compare_runs,
             run_report,
             run_export,

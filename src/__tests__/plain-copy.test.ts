@@ -114,6 +114,23 @@ describe('plain copy', () => {
     expect(file(files, 'clients.csv').split('\r\n').slice(0, 3)).toEqual(['﻿Name,GRADE', 'Ann <b>,1', 'Zed,2'])
   })
 
+  it('lists the edits made after a record was first written, with when and on which device, content only when it goes in', () => {
+    const history = new Map([
+      ['s1', [{ id: 'c1', device: 'pc01', at: '2026-04-01T09:00:00Z', op: 'create' as const, fields: { name: 'Ann' } }, { id: 'c2', device: 'pc02', at: '2026-04-03T09:00:00Z', op: 'update' as const, fields: { name: 'Ann <b>' } }]],
+      ['x2', [{ id: 'c3', device: 'pc01', at: '2026-04-21T09:00:00Z', op: 'update' as const, fields: { note: 'private words' } }, { id: 'c4', device: 'pc01', at: '2026-04-22T09:00:00Z', op: 'reclassify' as const, fields: { topic: { scheme: 'topic', version: 2, code: 'peer' } } }]],
+    ])
+    const deviceName = (d: string) => ({ pc01: 'Room PC', pc02: 'Laptop' })[d] ?? d
+    const without = file(plainCopy({ ...source(false), history, deviceName }, en.plainCopy), 'records.html')
+    expect(without).toContain('<h3>Changes</h3>')
+    expect(without).toContain('Laptop</td><td>Ann &lt;b&gt;</td><td class="note">NAME: Ann &lt;b&gt;</td>')
+    expect(without).toContain('Session of 2026-04-20</td><td class="note">TOPIC: Peers (peer · topic v2)\n(moved to the revised classification)</td>')
+    expect(without).not.toContain('private words')
+    expect(without).not.toContain('>NAME: Ann</td>') // the first writing is the record itself, not an edit
+    const withIt = file(plainCopy({ ...source(true), history, deviceName }, en.plainCopy), 'records.html')
+    expect(withIt).toContain('NOTE: private words')
+    expect(file(plainCopy(source(false), en.plainCopy), 'records.html')).not.toContain('<h3>Changes</h3>')
+  })
+
   it('the note reads with Windows line ends', () => {
     expect(file(plainCopy(source(false), en.plainCopy), 'read-me.txt')).toMatch(/^Openquote Care records copy\r\n/)
   })

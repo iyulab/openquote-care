@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { Entity, PendingChoice, Scheme } from './records.js'
+import type { Entity, EntityHistory, PendingChoice, Scheme } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry, ReportEntry } from './forms.js'
@@ -104,6 +104,8 @@ export const shell = {
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
   record: (route: string, request: object) => invoke<string>('record', { route, request }),
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
+  /** Every change each entity of a type was built from, oldest first. */
+  history: (entityType: string) => invoke<EntityHistory[]>('history', { entityType }),
   schemes: () => invoke<Scheme[]>('schemes'),
   /** The fields the vault's packs declare for an entity type, labelled in the vault's locale; none without field definitions. */
   fields: (entityType: string) => invoke<FieldView[]>('fields', { entityType }),

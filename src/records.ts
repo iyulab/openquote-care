@@ -27,6 +27,21 @@ export interface Entity {
   missingBase?: string[]
 }
 
+/** The changes an entity was built from, oldest first. */
+export interface EntityHistory {
+  id: string
+  changes: ChangeEntry[]
+}
+
+/** One change file: the device that wrote it, when, what it did, and the fields it set. */
+export interface ChangeEntry {
+  id: string
+  device: string
+  at: string
+  op: 'create' | 'update' | 'reclassify' | 'destroy'
+  fields: Record<string, unknown>
+}
+
 /** One device's value for a field that was changed concurrently. */
 export interface FieldHead {
   changeId: string

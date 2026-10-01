@@ -54,6 +54,8 @@ export class OcExport extends VaultScreen {
     await store.run(async () => {
       const at = new Date()
       const words = strings.plainCopy
+      const kinds = ['subject', 'session', 'group'] as const
+      const history = new Map((await Promise.all(kinds.map((k) => shell.history(k)))).flat().map((h) => [h.id, h.changes]))
       const files = plainCopy(
         {
           vault: store.folder.split(/[\\/]/).filter(Boolean).at(-1) ?? '',
@@ -67,6 +69,8 @@ export class OcExport extends VaultScreen {
           sessionFields: store.sessionFields,
           valueText: (field, value) => valueText(store, field, value),
           withNarrative: this.withNarrative,
+          history,
+          deviceName: (device) => (summary ? deviceLabel(summary, device) : device),
         },
         words,
       )

@@ -780,6 +780,7 @@ const scenarios = {
     const page = await readFile(join(copy, '기록.html'), 'utf8')
     for (const name of ['가상 학생 1', '가상 학생 2', '가상 학생 3', '또래 집단', '상담자 가']) assert.ok(page.includes(name), name)
     assert.ok(!page.includes(said), 'session content stays out unless asked for')
+    assert.ok(page.includes('<h3>고친 기록</h3>'), 'the edits made after a record was first written, such as the grade taken in from pasted rows')
     assert.ok((await readFile(join(copy, '회기.csv'), 'utf8')).startsWith('\uFEFF대상자,집단,'), 'a table a spreadsheet reads as UTF-8')
 
     await app.cdp.evaluate(`(() => { __e2e.one('[data-role=plain-copy-narrative]').click(); return true })()`)

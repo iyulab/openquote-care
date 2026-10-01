@@ -423,6 +423,12 @@ impl App {
         self.with_open(|open| Ok(open.engine.entities(entity_type)?))
     }
 
+    /// Every change each entity of a type was built from, oldest first: who wrote it, when, what
+    /// it did and the fields it set.
+    pub fn history(&self, entity_type: &str) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.history(entity_type)?))
+    }
+
     /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. Returns the

@@ -154,6 +154,13 @@ export const en: Strings = {
     group: 'Group',
     members: 'Members',
     noSessions: 'No sessions.',
+    history: 'Changes',
+    historyWhen: 'When',
+    historyDevice: 'Device',
+    historyWhat: 'What',
+    historyFields: 'Fields changed',
+    sessionOn: (date: string) => `Session of ${date}`,
+    reclassified: '(moved to the revised classification)',
     readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean) =>
       [
         'Openquote Care records copy',

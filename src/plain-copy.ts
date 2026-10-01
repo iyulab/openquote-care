@@ -3,7 +3,7 @@
 // shell only decides where it may be written.
 
 import { listColumns, type FieldView } from './fields.js'
-import { text, type Classified, type Entity } from './records.js'
+import { text, type ChangeEntry, type Classified, type Entity } from './records.js'
 
 /** What the copy is made from. */
 export interface PlainCopySource {
@@ -21,6 +21,10 @@ export interface PlainCopySource {
   valueText(field: FieldView | undefined, value: unknown): string
   /** Whether written content (`narrative` fields) goes in. */
   withNarrative: boolean
+  /** The changes each entity was built from, by entity id; without it the copy has no changes section. */
+  history?: ReadonlyMap<string, ChangeEntry[]>
+  /** How a device reads to a person. */
+  deviceName?(device: string): string
 }
 
 /** The words of the copy, in the app's language. */
@@ -38,6 +42,13 @@ export interface PlainCopyWords {
   group: string
   members: string
   noSessions: string
+  history: string
+  historyWhen: string
+  historyDevice: string
+  historyWhat: string
+  historyFields: string
+  sessionOn: (date: string) => string
+  reclassified: string
   readMe: (files: PlainCopyWords['files'], withNarrative: boolean) => string
 }
 
@@ -127,6 +138,31 @@ function sessionTable(source: PlainCopySource, words: PlainCopyWords, columns: F
   return `<table><thead><tr>${heads.map((h) => `<th>${escape(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`
 }
 
+/**
+ * The edits made to `entities` after each was first written, oldest first: when, on which device,
+ * what, and the fields set — the fields the copy shows, so written content only when it goes in.
+ */
+function changesTable(source: PlainCopySource, words: PlainCopyWords, entries: { entity: Entity; what: string; fields: FieldView[] }[]): string {
+  const rows = entries
+    .flatMap(({ entity, what, fields }) =>
+      (source.history?.get(entity.id) ?? [])
+        .filter((c) => c.op === 'update' || c.op === 'reclassify')
+        .map((c) => {
+          const set = fields.filter((f) => f.name in c.fields).map((f) => `${f.label}: ${cell(source, f, c.fields[f.name])}`)
+          return { c, what, set: c.op === 'reclassify' ? [...set, words.reclassified] : set }
+        })
+        .filter((r) => r.set.length > 0),
+    )
+    .sort((a, b) => a.c.at.localeCompare(b.c.at) || a.c.id.localeCompare(b.c.id))
+  if (rows.length === 0) return ''
+  const heads = [words.historyWhen, words.historyDevice, words.historyWhat, words.historyFields]
+  const body = rows.map(
+    (r) =>
+      `<tr><td>${escape(stamp(new Date(r.c.at)))}</td><td>${escape(source.deviceName?.(r.c.device) ?? r.c.device)}</td><td>${escape(r.what)}</td><td class="note">${escape(r.set.join('\n'))}</td></tr>`,
+  )
+  return `<h3>${escape(words.history)}</h3><table><thead><tr>${heads.map((h) => `<th>${escape(h)}</th>`).join('')}</tr></thead><tbody>${body.join('')}</tbody></table>`
+}
+
 function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: FieldView[], sessionFields: FieldView[]): string {
   const subjects = byName(source.subjects)
   const anchor = (e: Entity) => `s-${e.id}`
@@ -147,6 +183,10 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
       fields.length ? `<dl>${fields.map(([k, v]) => `<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl>` : '',
       sessionTable(source, words, sessionFields, own, false),
       inGroups.length ? `<h3>${escape(words.groups)}</h3>${sessionTable(source, words, sessionFields, inGroups, true)}` : '',
+      changesTable(source, words, [
+        { entity: s, what: text(s, 'name'), fields: [...subjectFields, ...source.subjectFields.filter((f) => f.name === 'name')] },
+        ...own.map((x) => ({ entity: x, what: words.sessionOn(text(x, 'date')), fields: sessionFields })),
+      ]),
     )
   }
   if (source.groups.length) {
@@ -156,6 +196,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
         `<h3>${escape(text(g, 'name'))}</h3>`,
         `<p>${escape(words.members)}: ${escape(names(source.subjects, membersOf(g)))}</p>`,
         sessionTable(source, words, sessionFields, source.sessions.filter((x) => x.group === g.id), true),
+        changesTable(source, words, source.sessions.filter((x) => x.group === g.id).map((x) => ({ entity: x, what: words.sessionOn(text(x, 'date')), fields: sessionFields }))),
       )
     }
   }
