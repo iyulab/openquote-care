@@ -145,6 +145,11 @@ export const ko = {
   plainCopyMake: '사본 만들 폴더 선택',
   plainCopyPickTitle: '사본을 만들 폴더',
   plainCopyDone: (folder: string) => `사본을 만들었습니다: ${folder}`,
+  plainCopyNever: '이 컴퓨터에서 만든 사본이 없습니다.',
+  plainCopyLast: (at: number, folder: string, withNarrative: boolean) =>
+    `마지막 사본: ${new Date(at).toLocaleString('ko', { dateStyle: 'medium', timeStyle: 'short' })} · ${folder}${withNarrative ? ' · 상담 내용 포함' : ''}`,
+  plainCopyStale: (n: number) => `그 뒤 바뀐 기록이 ${n}건 있어 사본에는 없습니다. 사본을 다시 만들면 최신이 됩니다.`,
+  plainCopyFresh: '그 뒤 바뀐 기록은 없습니다.',
   plainCopy: {
     folder: (at: string) => `Openquote 기록 사본 ${at}`,
     files: { page: '기록.html', subjects: '대상자.csv', sessions: '회기.csv', readMe: '읽어보기.txt' },
@@ -167,9 +172,10 @@ export const ko = {
     historyFields: '고친 칸',
     sessionOn: (date: string) => `${date} 회기`,
     reclassified: '(분류 개정에 맞춤)',
-    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean) =>
+    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string) =>
       [
         'Openquote Care 기록 사본',
+        made,
         '',
         '이 폴더는 Openquote Care 기록 폴더의 내용을 앱 없이 읽을 수 있게 풀어 쓴 사본입니다.',
         '암호가 걸려 있지 않으므로 보관하는 곳을 조심하세요. 원본은 여전히 기록 폴더입니다.',

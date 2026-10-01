@@ -767,6 +767,7 @@ const scenarios = {
     await app.click('button', '기록 목록')
     await app.click('li button', '전체 기록 사본 (앱 없이 읽기)')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-warning]')`, 'the warning that the copy has no passphrase')
+    await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-last]')?.textContent.trim() === '이 컴퓨터에서 만든 사본이 없습니다.'`, 'no copy made yet')
     // The folder picker is the system's; the screen's own method takes its answer.
     const make = async (folder) => {
       await mkdir(folder)
@@ -786,6 +787,9 @@ const scenarios = {
     assert.ok(!page.includes(said), 'session content stays out unless asked for')
     assert.ok(page.includes('<h3>고친 기록</h3>'), 'the edits made after a record was first written, such as the grade taken in from pasted rows')
     assert.ok((await readFile(join(copy, '회기.csv'), 'utf8')).startsWith('\uFEFF대상자,집단,'), 'a table a spreadsheet reads as UTF-8')
+    assert.match((await readFile(join(copy, '읽어보기.txt'), 'utf8')).split('\r\n')[1], /^기록 폴더 「vault」 · .* · .*에서 만듦$/, 'the note says when and where the copy was made')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-fresh]')`, 'nothing changed since the copy')
+    assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes(${q(copy)})`), 'the last copy, by where it went')
 
     await app.cdp.evaluate(`(() => { __e2e.one('[data-role=plain-copy-narrative]').click(); return true })()`)
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-narrative]').checked`, 'content asked for')
@@ -797,6 +801,18 @@ const scenarios = {
     await app.cdp.evaluate(`__e2e.one('oc-export').makePlainCopy(${q(work.vault)}).then(() => true)`)
     await app.alert('사본은 기록 폴더 안이나, 기록 폴더를 품은 폴더에 만들 수 없습니다. 떨어진 폴더를 고르세요.')
     assert.ok(!(await readdir(work.vault)).some((f) => f.startsWith('Openquote')), 'no plain file inside the vault')
+
+    // A record changed after the copy: the screen says the copy no longer holds everything.
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 2')
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.type('반', '7')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
+    await app.click('button', '기록 목록')
+    await app.click('li button', '전체 기록 사본 (앱 없이 읽기)')
+    await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-stale]')?.textContent.startsWith('그 뒤 바뀐 기록이 1건 있어')`, 'the copy is behind by one change')
+    assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes('상담 내용 포함')`), 'the last copy held session content')
     await rm(plain, { recursive: true, force: true })
     await rm(withContent, { recursive: true, force: true })
   },

@@ -49,7 +49,7 @@ export interface PlainCopyWords {
   historyFields: string
   sessionOn: (date: string) => string
   reclassified: string
-  readMe: (files: PlainCopyWords['files'], withNarrative: boolean) => string
+  readMe: (files: PlainCopyWords['files'], withNarrative: boolean, made: string) => string
 }
 
 export interface PlainFile {
@@ -67,7 +67,7 @@ export function plainCopy(source: PlainCopySource, words: PlainCopyWords): Plain
     { name: words.files.page, content: page(source, words, subjectFields, sessionFields) },
     { name: words.files.subjects, content: subjectsCsv(source, words, subjectFields) },
     { name: words.files.sessions, content: sessionsCsv(source, words, sessionFields) },
-    { name: words.files.readMe, content: words.readMe(words.files, source.withNarrative).replaceAll('\n', '\r\n') },
+    { name: words.files.readMe, content: words.readMe(words.files, source.withNarrative, words.made(source.vault, stamp(source.at), source.device)).replaceAll('\n', '\r\n') },
   ]
 }
 

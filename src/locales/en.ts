@@ -140,6 +140,11 @@ export const en: Strings = {
   plainCopyMake: 'Choose a folder for the copy',
   plainCopyPickTitle: 'Folder for the copy',
   plainCopyDone: (folder: string) => `Copy made: ${folder}`,
+  plainCopyNever: 'No copy has been made on this computer.',
+  plainCopyLast: (at: number, folder: string, withNarrative: boolean) =>
+    `Last copy: ${new Date(at).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · ${folder}${withNarrative ? ' · with session content' : ''}`,
+  plainCopyStale: (n: number) => `${plural(n, 'change')} to the records came after it and ${n === 1 ? 'is' : 'are'} not in the copy. Making the copy again brings it up to date.`,
+  plainCopyFresh: 'No record changed after it.',
   plainCopy: {
     folder: (at: string) => `Openquote records copy ${at}`,
     files: { page: 'records.html', subjects: 'clients.csv', sessions: 'sessions.csv', readMe: 'read-me.txt' },
@@ -162,9 +167,10 @@ export const en: Strings = {
     historyFields: 'Fields changed',
     sessionOn: (date: string) => `Session of ${date}`,
     reclassified: '(moved to the revised classification)',
-    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean) =>
+    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string) =>
       [
         'Openquote Care records copy',
+        made,
         '',
         'This folder is a copy of an Openquote Care vault written out so it reads without the app.',
         'It has no passphrase, so be careful where you keep it. The original is still the vault.',

@@ -3,6 +3,7 @@ import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { toTsv, type ExportTable } from '../export.js'
+import { storeCopy, storedCopy, type LastCopy } from '../last-copy.js'
 import { plainCopy } from '../plain-copy.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
@@ -23,6 +24,24 @@ export class OcExport extends VaultScreen {
   @state() private plainPicked = false
   /** Whether written content goes into that copy: left out unless asked for. */
   @state() private withNarrative = false
+  /** The last copy this computer made of the vault, and how many changes the records have now. */
+  @state() private lastCopy: LastCopy | null = null
+  @state() private changesNow?: number
+
+  /** Every change the records a copy holds were built from: subjects, sessions, groups and practitioners. */
+  private async changes() {
+    const kinds = ['subject', 'session', 'group', 'practitioner'] as const
+    return new Map((await Promise.all(kinds.map((k) => shell.history(k)))).flat().map((h) => [h.id, h.changes]))
+  }
+
+  /** Reads what the screen says about the last copy: when it was made, and whether records changed since. */
+  private async readLastCopy() {
+    this.lastCopy = storedCopy(this.store.folder)
+    this.changesNow = undefined
+    if (!this.lastCopy) return
+    const history = await this.changes().catch(() => undefined)
+    if (history) this.changesNow = [...history.values()].reduce((n, c) => n + c.length, 0)
+  }
 
   private async runExport() {
     const store = this.store
@@ -54,8 +73,7 @@ export class OcExport extends VaultScreen {
     await store.run(async () => {
       const at = new Date()
       const words = strings.plainCopy
-      const kinds = ['subject', 'session', 'group'] as const
-      const history = new Map((await Promise.all(kinds.map((k) => shell.history(k)))).flat().map((h) => [h.id, h.changes]))
+      const history = await this.changes()
       const files = plainCopy(
         {
           vault: store.folder.split(/[\\/]/).filter(Boolean).at(-1) ?? '',
@@ -77,6 +95,10 @@ export class OcExport extends VaultScreen {
       const pad = (n: number) => String(n).padStart(2, '0')
       const name = words.folder(`${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}${pad(at.getMinutes())}`)
       const made = await shell.writePlainCopy(folder, name, files)
+      const changes = [...history.values()].reduce((n, c) => n + c.length, 0)
+      this.lastCopy = { at: at.getTime(), folder: made, withNarrative: this.withNarrative, changes }
+      this.changesNow = changes
+      storeCopy(store.folder, this.lastCopy)
       store.notice = strings.plainCopyDone(made)
     })
   }
@@ -90,7 +112,10 @@ export class OcExport extends VaultScreen {
   private pick(key: string) {
     this.documentOpen = true
     this.plainPicked = key === PLAIN_COPY
-    if (this.plainPicked) return this.store.set({ notice: '' })
+    if (this.plainPicked) {
+      void this.readLastCopy()
+      return this.store.set({ notice: '' })
+    }
     if (key === this.store.exportKey) return
     this.store.set({ exportKey: key, notice: '' })
     this.exportTable = undefined
@@ -133,10 +158,24 @@ export class OcExport extends VaultScreen {
         >${strings.plainCopyNarrative}</dc-checkbox
       >
       <p class="muted">${strings.plainCopyNarrativeLead}</p>
+      ${this.lastCopyLine()}
       <div class="row">
         <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.choosePlainCopyFolder()}>${strings.plainCopyMake}</dc-button>
       </div>
       ${noticeLine(this.store)}`
+  }
+
+  /** When this computer last made a copy, and whether records changed after it. */
+  private lastCopyLine() {
+    const last = this.lastCopy
+    if (!last) return html`<p class="muted" data-role="plain-copy-last">${strings.plainCopyNever}</p>`
+    const after = this.changesNow === undefined ? 0 : this.changesNow - last.changes
+    return html`<p class="muted" data-role="plain-copy-last">${strings.plainCopyLast(last.at, last.folder, last.withNarrative)}</p>
+      ${this.changesNow === undefined
+        ? nothing
+        : after > 0
+          ? html`<p class="error" data-role="plain-copy-stale">${strings.plainCopyStale(after)}</p>`
+          : html`<p class="muted" data-role="plain-copy-fresh">${strings.plainCopyFresh}</p>`}`
   }
 
   /** The chosen form's list for a month, ready to copy. */
