@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { nameField } from './parts.js'
+import { listDetail, nameField } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
 import { sessionTable, subjectPicker, toggled } from './session-parts.js'
@@ -13,6 +13,10 @@ import { sessionTable, subjectPicker, toggled } from './session-parts.js'
 export class OcGroups extends VaultScreen {
   @state() private selectedGroup?: string
   @state() private groupName = ''
+  /** The document is the form for adding a group, rather than a group's members and sessions. */
+  @state() private adding = false
+  /** While the window is narrow: the document shows instead of the list. */
+  @state() private documentOpen = false
   /** The selected group's members as being edited; undefined while unchanged. */
   @state() private memberDraft?: string[]
   /** Who took part in the group session being recorded; undefined means the group's members. */
@@ -35,6 +39,8 @@ export class OcGroups extends VaultScreen {
     this.selectedGroup = id
     this.memberDraft = undefined
     this.attendeeDraft = undefined
+    this.adding = false
+    this.documentOpen = true
   }
 
   private async saveMembers(group: Entity) {
@@ -59,29 +65,37 @@ export class OcGroups extends VaultScreen {
   }
 
   protected screen() {
-    const { busy, groups } = this.store
-    const group = groups.find((g) => g.id === this.selectedGroup)
+    const { groups } = this.store
+    const group = this.adding ? undefined : groups.find((g) => g.id === this.selectedGroup)
+    return listDetail({
+      label: strings.groups,
+      head: html`<dc-button
+        variant="secondary"
+        size="sm"
+        @click=${() => {
+          this.adding = true
+          this.documentOpen = true
+        }}
+        >${strings.newGroup}</dc-button
+      >`,
+      entries: groups.map((g) => ({ id: g.id, label: text(g, 'name') })),
+      selected: this.adding ? undefined : this.selectedGroup,
+      select: (id) => this.selectGroup(id),
+      empty: strings.noGroups,
+      document: this.adding ? this.addForm() : group ? this.groupDetail(group) : html`<p class="muted">${strings.pickGroup}</p>`,
+      open: this.documentOpen,
+      back: () => (this.documentOpen = false),
+    })
+  }
+
+  private addForm() {
+    const busy = this.store.busy
     const addGroup = () => void this.addGroup()
-    return html`<div class="columns">
-      <section>
-        <div class="row">
-          ${nameField(busy, strings.groupName, this.groupName, (v) => (this.groupName = v), addGroup)}
-          <dc-button variant="secondary" ?disabled=${busy} @click=${addGroup}>${strings.addGroup}</dc-button>
-        </div>
-        ${groups.length === 0
-          ? html`<p class="muted">${strings.noGroups}</p>`
-          : html`<ul aria-label=${strings.groups}>
-              ${groups.map(
-                (g) => html`<li>
-                  <button aria-current=${g.id === this.selectedGroup ? 'true' : 'false'} @click=${() => this.selectGroup(g.id)}>
-                    ${text(g, 'name')}
-                  </button>
-                </li>`,
-              )}
-            </ul>`}
-      </section>
-      <section>${group ? this.groupDetail(group) : html`<p class="muted">${strings.pickGroup}</p>`}</section>
-    </div>`
+    return html`<h2>${strings.addGroup}</h2>
+      <div class="row">
+        ${nameField(busy, strings.groupName, this.groupName, (v) => (this.groupName = v), addGroup)}
+        <dc-button variant="primary" ?disabled=${busy} @click=${addGroup}>${strings.addGroup}</dc-button>
+      </div>`
   }
 
   private groupDetail(group: Entity) {

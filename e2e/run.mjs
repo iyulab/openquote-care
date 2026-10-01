@@ -319,6 +319,7 @@ const scenarios = {
 
     // Changed back while open with a passphrase, for the scenarios that follow.
     await app.click('button', '기기')
+    await app.click('button', '암호')
     await app.type('새 암호', PASSPHRASE)
     await app.type('새 암호 다시 입력', PASSPHRASE)
     await app.click('dc-button', '암호 바꾸기')
@@ -334,10 +335,12 @@ const scenarios = {
   },
 
   async 'asks for a practitioner before a session can be recorded'(app) {
+    await app.click('dc-button', '＋ 새 대상자')
     await app.type('대상자 이름', '가상 학생 1')
     await app.click('dc-button', '대상자 추가')
     await app.cdp.waitFor(`__e2e.all('p').some((p) => p.textContent.includes('담당자를 먼저 추가하세요'))`, 'the practitioner hint')
     await app.click('button', '담당자')
+    await app.click('dc-button', '＋ 새 담당자')
     await app.type('담당자 이름', '상담자 가')
     await app.click('dc-button', '담당자 추가')
     await app.cdp.waitFor(`__e2e.all('li').some((li) => li.textContent.trim() === '상담자 가')`, 'the practitioner listed')
@@ -401,7 +404,7 @@ const scenarios = {
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표 topic v1→v2'))`, 'the revision applied')
     await app.noAlert()
-    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="양식"]').value`), 'monthly-topic@2', 'the new form is offered')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('nav[aria-label="보고 양식"] button[aria-current=true]').dataset.entry`), 'monthly-topic@2', 'the new form is picked')
     assert.ok(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류 버전에 맞춘 양식이 없습니다'))`),
       'the pack brought no export form for topic v2: the list form left behind is named')
     assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표가 없는 분류'))`), false,
@@ -481,6 +484,7 @@ const scenarios = {
 
   async 'names this device, and the name is what the vault shows for it'(app, work) {
     await app.click('button', '기기')
+    await app.click('button', '이 기기 이름')
     await app.cdp.waitFor(`__e2e.all('p').some((p) => p.textContent.includes('아직 이름이 붙은 기기가 없습니다'))`, 'no device named yet')
     await app.type('이 기기 이름', '상담실 PC')
     await app.click('dc-button', '저장')
@@ -495,6 +499,8 @@ const scenarios = {
     // The folder picker is the system's; the window's own method takes its answer.
     const copy = join(dirname(work.vault), 'backup')
     await mkdir(copy)
+    await app.click('button', '기기')
+    await app.click('button', '자동 백업')
     await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(copy)}).then(() => true)`)
     await app.cdp.waitFor(`(__e2e.one('[data-role=backup-status]')?.textContent ?? '').startsWith('마지막 백업')`, 'the first backup')
     await app.noAlert()
@@ -592,11 +598,13 @@ const scenarios = {
     await app.noAlert()
   },
   async 'records a group session once and counts each person who took part'(app, work) {
+    await app.click('dc-button', '＋ 새 대상자')
     await app.type('대상자 이름', '가상 학생 2')
     await app.click('dc-button', '대상자 추가')
     await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.textContent.trim() === '가상 학생 2')`, 'the second subject')
 
     await app.click('button', '집단')
+    await app.click('dc-button', '＋ 새 집단')
     await app.type('집단 이름', '또래 집단')
     await app.click('dc-button', '집단 추가')
     await app.cdp.waitFor(`__e2e.all('[data-role=members] dc-checkbox[data-subject]').length === 2`, 'the members to pick from')
@@ -624,6 +632,7 @@ const scenarios = {
   },
   async 'adds and updates subjects from rows pasted out of a spreadsheet'(app) {
     await app.click('button', '대상자')
+    await app.click('dc-button', '＋ 새 대상자')
     const paste = ['이름\t학년\t반', '가상 학생 1\t2\t3', '가상 학생 3\t1\t4', ''].join('\n')
     await app.cdp.evaluate(`(() => {
       const zone = __e2e.one('dc-paste-rows-zone').shadowRoot.querySelector('textarea')
@@ -644,10 +653,36 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the session of the new subject')
     await app.noAlert()
   },
+  async 'lays out the menu, a list to pick from and the document picked, and folds the menu to its icons'(app) {
+    await app.click('button', '대상자')
+    await app.click('li button', '가상 학생 3')
+    // Three columns side by side: the menu, the list as wide as the menu, the document taking the rest.
+    const widths = () =>
+      app.cdp.evaluate(`(() => {
+        const width = (el) => Math.round(el.getBoundingClientRect().width)
+        const nav = __e2e.one('nav[aria-label="대상자"]')
+        const doc = __e2e.one('oc-subjects').shadowRoot.querySelector('section.document')
+        return { menu: width(__e2e.one('dp-sidebar')), list: width(nav.closest('dp-list-detail').shadowRoot.querySelector('.list')), document: width(doc) }
+      })()`)
+    const open = await widths()
+    assert.equal(open.list, open.menu, 'the list is as wide as the menu')
+    assert.ok(open.document > 2 * open.list, `the document takes the rest (${JSON.stringify(open)})`)
+    assert.ok(await app.cdp.evaluate(`__e2e.all('h2').some((h) => h.textContent.includes('가상 학생 3'))`), 'the document is the one picked')
+
+    await app.click('button[aria-label="메뉴 접기/펼치기"]')
+    await app.cdp.waitFor(`__e2e.one('dp-sidebar').hasAttribute('collapsed')`, 'the menu folded to its icons')
+    const folded = await widths()
+    assert.ok(folded.menu < open.menu, 'the folded menu is narrower')
+    assert.equal(folded.list, open.list, 'the list keeps its width')
+    assert.ok(folded.document > open.document, 'the document takes the room given up')
+    await app.click('button[aria-label="메뉴 접기/펼치기"]')
+    await app.cdp.waitFor(`!__e2e.one('dp-sidebar').hasAttribute('collapsed')`, 'the menu unfolded')
+    await app.noAlert()
+  },
   async 'lists the sessions of a month in an export form, ready to paste'(app) {
     // The export form came with the vault, from the pack it was made with.
     await app.click('button', '기록 목록')
-    await app.cdp.waitFor(`!!__e2e.one('select[aria-label="목록 양식"]')`, 'the export form offered')
+    await app.cdp.waitFor(`!!__e2e.one('nav[aria-label="목록 양식"] button[aria-current=true]')`, 'the export form offered, and picked')
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
@@ -871,9 +906,11 @@ const scenarios = {
     assert.deepEqual((await readdir(join(vault, 'packs'))).sort(), ['care', 'en'], 'only the core and the English labels')
 
     await app.click('button', 'Practitioners')
+    await app.click('dc-button', '+ New practitioner')
     await app.type('Practitioner name', 'Counselor A')
     await app.click('dc-button', 'Add practitioner')
     await app.click('button', 'Clients')
+    await app.click('dc-button', '+ New client')
     await app.type('Client name', 'Client One')
     await app.click('dc-button', 'Add client')
     await app.click('li button', 'Client One')

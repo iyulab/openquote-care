@@ -100,6 +100,7 @@ export const ko = {
   idleOption: (minutes: number) => (minutes === 0 ? '사용 안 함' : `${minutes}분 동안 사용하지 않으면`),
   idleLockLead: '이 컴퓨터에만 적용됩니다. 잠기면 열려 있던 기록이 화면에서 사라지고, 암호를 입력해야 다시 볼 수 있습니다.',
   cancel: '취소',
+  backToList: '← 목록으로',
   refresh: '다시 읽기',
   toggleSidebar: '메뉴 접기/펼치기',
   navLabel: '탐색',
@@ -111,6 +112,8 @@ export const ko = {
   navDevices: '기기',
 
   report: '월 보고',
+  reportForms: '보고 양식',
+  pickReportForm: '양식을 고르면 그 양식의 월 보고가 여기에 보입니다.',
   reportForm: '양식',
   reportFormOption: (label: string, version: number) => `${label} (v${version})`,
   year: '연도',
@@ -123,6 +126,8 @@ export const ko = {
   reportTotal: '계',
 
   exportTitle: '기록 목록 내보내기',
+  exportForms: '목록 양식',
+  pickExportForm: '양식을 고르면 그 양식의 기록 목록이 여기에 보입니다.',
   exportLead: '한 달의 회기를 양식의 열 순서대로 늘어놓습니다. 표를 복사해 기관 업로드 엑셀이나 다른 양식에 붙여 넣으세요. 기록 폴더에는 아무것도 남지 않습니다.',
   exportForm: '목록 양식',
   makeExport: '목록 만들기',
@@ -197,7 +202,8 @@ export const ko = {
   packIssues: (n: number) => `데이터 팩끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 팩이나 파일이 있는지 확인하세요.`,
 
   subjects: '대상자',
-  noSubjects: '대상자가 없습니다. 이름을 입력해 추가하세요.',
+  noSubjects: '대상자가 없습니다. 「새 대상자」로 추가하세요.',
+  newSubject: '＋ 새 대상자',
   subjectName: '대상자 이름',
   addSubject: '대상자 추가',
   pickSubject: '대상자를 고르면 회기가 여기에 보입니다.',
@@ -234,6 +240,8 @@ export const ko = {
   conflictResolved: '동시 수정을 정리했습니다.',
 
   devices: '기기',
+  settingsList: '설정 항목',
+  passphraseSection: '암호',
   devicesLead: '이 기록 폴더를 쓰는 기기마다 이름을 붙여 두면, 두 기기에서 서로 모르게 고친 칸이 어느 기기의 것인지 이름으로 보입니다. 이름은 기록 폴더에 저장되어 모든 기기가 봅니다.',
   deviceName: '이 기기 이름',
   saveDeviceName: '저장',
@@ -265,7 +273,8 @@ export const ko = {
   backupDiffers: (n: number) => `사본에 내용이 다른 파일이 ${n}개 있어 덮어쓰지 않았습니다. 새 빈 폴더에 백업을 다시 만드는 것이 안전합니다.`,
 
   groups: '집단',
-  noGroups: '집단이 없습니다. 이름을 입력해 추가하세요. 여러 대상자를 한 번에 만나는 집단 상담을 여기에 기록합니다.',
+  noGroups: '집단이 없습니다. 「새 집단」으로 추가하세요. 여러 대상자를 한 번에 만나는 집단 상담을 여기에 기록합니다.',
+  newGroup: '＋ 새 집단',
   groupName: '집단 이름',
   addGroup: '집단 추가',
   pickGroup: '집단을 고르면 구성원과 회기가 여기에 보입니다.',
@@ -274,7 +283,9 @@ export const ko = {
   attendees: '참여자',
 
   practitioners: '담당자',
-  noPractitioners: '담당자가 없습니다. 월 보고의 열은 담당자별로 나뉩니다.',
+  noPractitioners: '담당자가 없습니다. 「새 담당자」로 추가하세요. 월 보고의 열은 담당자별로 나뉩니다.',
+  newPractitioner: '＋ 새 담당자',
+  pickPractitioner: '담당자를 고르면 맡은 회기가 여기에 보입니다.',
   practitionerName: '담당자 이름',
   addPractitioner: '담당자 추가',
 

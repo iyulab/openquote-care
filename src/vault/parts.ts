@@ -19,6 +19,48 @@ export function nameField(busy: boolean, label: string, value: string, set: (v: 
   </label>`
 }
 
+/** One entry of a screen's list: what it picks (also its `data-entry`), and what it reads as. */
+export interface ListEntry {
+  id: string
+  label: string
+}
+
+/**
+ * A screen as a list beside the document of the one picked from it: the list only picks (anything
+ * that adds to it is a button above it, opening its form as the document), and each side scrolls on
+ * its own. While the window is narrow one side shows at a time, and the document has a way back.
+ */
+export function listDetail(o: {
+  label: string
+  head?: unknown
+  entries: ListEntry[]
+  selected?: string
+  select: (id: string) => void
+  empty: string
+  document: unknown
+  open: boolean
+  back: () => void
+}) {
+  return html`<dp-list-detail ?detail-open=${o.open}>
+    <nav slot="list" class="pane list" aria-label=${o.label}>
+      ${o.head ? html`<div class="list-head">${o.head}</div>` : nothing}
+      ${o.entries.length === 0
+        ? html`<p class="muted">${o.empty}</p>`
+        : html`<ul>
+            ${o.entries.map(
+              (e) => html`<li>
+                <button data-entry=${e.id} aria-current=${e.id === o.selected ? 'true' : 'false'} @click=${() => o.select(e.id)}>${e.label}</button>
+              </li>`,
+            )}
+          </ul>`}
+    </nav>
+    <section class="pane document">
+      <div class="back"><dc-button variant="ghost" size="sm" @click=${o.back}>${strings.backToList}</dc-button></div>
+      ${o.document}
+    </section>
+  </dp-list-detail>`
+}
+
 /** The year and month the report and export screens work on. */
 export function periodFields(store: VaultStore) {
   return html`<label>

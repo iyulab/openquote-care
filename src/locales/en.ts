@@ -95,6 +95,7 @@ export const en: Strings = {
   idleOption: (minutes: number) => (minutes === 0 ? 'Never' : `After ${plural(minutes, 'minute')} without use`),
   idleLockLead: 'Applies to this computer only. When it locks, the open records leave the screen, and the passphrase shows them again.',
   cancel: 'Cancel',
+  backToList: '← Back to the list',
   refresh: 'Reload',
   toggleSidebar: 'Collapse or expand the sidebar',
   navLabel: 'Navigation',
@@ -106,6 +107,8 @@ export const en: Strings = {
   navDevices: 'Devices',
 
   report: 'Monthly report',
+  reportForms: 'Report forms',
+  pickReportForm: 'Choose a form to see its monthly report here.',
   reportForm: 'Form',
   reportFormOption: (label: string, version: number) => `${label} (v${version})`,
   year: 'Year',
@@ -118,6 +121,8 @@ export const en: Strings = {
   reportTotal: 'Total',
 
   exportTitle: 'Export a record list',
+  exportForms: 'List forms',
+  pickExportForm: 'Choose a form to see its record list here.',
   exportLead: "Lists a month's sessions in the form's column order. Copy the table and paste it into your organization's upload spreadsheet or another form. Nothing is kept in the vault.",
   exportForm: 'List form',
   makeExport: 'Make list',
@@ -195,7 +200,8 @@ export const en: Strings = {
   packIssues: (n: number) => `Data packs disagree in ${plural(n, 'place')}. Check whether a pack or file is missing.`,
 
   subjects: 'Clients',
-  noSubjects: 'No clients yet. Type a name to add one.',
+  noSubjects: 'No clients yet. Add one with “New client”.',
+  newSubject: '+ New client',
   subjectName: 'Client name',
   addSubject: 'Add client',
   pickSubject: 'Choose a client to see their sessions here.',
@@ -233,6 +239,8 @@ export const en: Strings = {
   conflictResolved: 'The conflicting edit is settled.',
 
   devices: 'Devices',
+  settingsList: 'Settings',
+  passphraseSection: 'Passphrase',
   devicesLead:
     'Name each device that uses this vault, and a field changed on two devices without seeing each other shows which device each value came from. Names are recorded in the vault, so every device sees them.',
   deviceName: 'Name of this device',
@@ -266,7 +274,8 @@ export const en: Strings = {
   backupDiffers: (n: number) => `The copy holds ${plural(n, 'file')} with other content; they were not overwritten. Making the backup again in a new empty folder is safer.`,
 
   groups: 'Groups',
-  noGroups: 'No groups yet. Type a name to add one. Record group sessions — meeting several clients at once — here.',
+  noGroups: 'No groups yet. Add one with “New group”. Record group sessions — meeting several clients at once — here.',
+  newGroup: '+ New group',
   groupName: 'Group name',
   addGroup: 'Add group',
   pickGroup: 'Choose a group to see its members and sessions here.',
@@ -275,7 +284,9 @@ export const en: Strings = {
   attendees: 'Participants',
 
   practitioners: 'Practitioners',
-  noPractitioners: 'No practitioners yet. The columns of the monthly report are split by practitioner.',
+  noPractitioners: 'No practitioners yet. Add one with “New practitioner”. The columns of the monthly report are split by practitioner.',
+  newPractitioner: '+ New practitioner',
+  pickPractitioner: 'Choose a practitioner to see the sessions they kept here.',
   practitionerName: 'Practitioner name',
   addPractitioner: 'Add practitioner',
 

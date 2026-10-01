@@ -1,12 +1,36 @@
 import { css } from 'lit'
+import { desktopMedia } from '@iyulab/desktop-patterns/breakpoints'
 
 /** The look every vault screen shares. */
 export const vaultStyles = css`
-  .columns {
-    display: grid;
-    grid-template-columns: minmax(200px, 280px) 1fr;
-    gap: var(--dc-space-5, 24px);
-    align-items: start;
+  .pane {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dc-space-3, 12px);
+    box-sizing: border-box;
+    min-height: 100%;
+  }
+  .pane.document {
+    min-width: 0;
+  }
+  .pane.list li button {
+    font-size: var(--dc-font-size-md, 13px);
+  }
+  .list-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--dc-space-1, 4px);
+  }
+  @media ${desktopMedia} {
+    .back {
+      display: none;
+    }
+    .pane.list {
+      padding-inline-end: var(--dc-space-3, 12px);
+    }
+    .pane.document {
+      padding-inline-start: var(--dc-space-6, 24px);
+    }
   }
   section {
     display: flex;

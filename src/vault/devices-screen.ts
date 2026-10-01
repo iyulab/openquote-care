@@ -6,8 +6,11 @@ import { MIN_PASSPHRASE, passphraseProblem } from '../flow.js'
 import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../idle.js'
 import { shell, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
-import { deviceLabel, nameField, noticeLine } from './parts.js'
+import { deviceLabel, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
+
+/** What the devices screen lists to pick from: its settings, each a document of its own. */
+export type DeviceSection = 'name' | 'idle' | 'backup' | 'passphrase'
 
 /** This computer in the vault: its name, the devices writing to the vault, the idle lock, the backup and the passphrase. */
 @customElement('oc-devices')
@@ -20,6 +23,9 @@ export class OcDevices extends VaultScreen {
   @state() private newPassphrase = ''
   @state() private newPassphraseAgain = ''
   @state() private passphraseNotice = ''
+  @state() private section: DeviceSection = 'name'
+  /** While the window is narrow: the document shows instead of the list. */
+  @state() private documentOpen = false
   /** The summary the device name last followed. */
   private seen?: VaultSummary
 
@@ -31,6 +37,12 @@ export class OcDevices extends VaultScreen {
     const savedName = this.seen?.devices[this.seen.device] ?? ''
     if (summary && this.deviceName === savedName) this.deviceName = summary.devices[summary.device] ?? ''
     this.seen = summary
+  }
+
+  /** Opens one setting's document (what the frame's hints lead to). */
+  show(section: DeviceSection) {
+    this.section = section
+    this.documentOpen = true
   }
 
   private async saveDeviceName() {
@@ -86,7 +98,7 @@ export class OcDevices extends VaultScreen {
                 : nothing,
           backup.differs?.length ? html`<p class="error" data-role="backup-differs">${strings.backupDiffers(backup.differs.length)}</p>` : nothing,
         ]
-    return html`<h3>${strings.backup}</h3>
+    return html`<h2>${strings.backup}</h2>
       <p class="muted">${strings.backupLead}</p>
       ${lines}
       <div class="row" data-role="backup">
@@ -111,12 +123,32 @@ export class OcDevices extends VaultScreen {
   }
 
   protected screen() {
+    const sections: { id: DeviceSection; label: string }[] = [
+      { id: 'name', label: strings.deviceName },
+      { id: 'idle', label: strings.idleLock },
+      { id: 'backup', label: strings.backup },
+      { id: 'passphrase', label: strings.passphraseSection },
+    ]
+    const document = { name: () => this.nameSection(), idle: () => this.idleSection(), backup: () => this.backupSection(), passphrase: () => this.passphraseSection() }
+    return listDetail({
+      label: strings.settingsList,
+      entries: sections,
+      selected: this.section,
+      select: (id) => this.show(id as DeviceSection),
+      empty: '',
+      document: document[this.section](),
+      open: this.documentOpen,
+      back: () => (this.documentOpen = false),
+    })
+  }
+
+  /** This computer's name, and the names of every device writing to the vault. */
+  private nameSection() {
     const { busy, summary } = this.store
     const save = () => void this.saveDeviceName()
-    const change = () => void this.changePassphrase()
     const label = (d: string) => deviceLabel(summary, d)
     const named = Object.keys(summary?.devices ?? {}).sort((a, b) => this.store.names.compare(label(a), label(b)))
-    return html`<section>
+    return html`<h2>${strings.deviceName}</h2>
       <p class="muted">${strings.devicesLead}</p>
       <div class="row">
         ${nameField(busy, strings.deviceName, this.deviceName, (v) => (this.deviceName = v), save)}
@@ -128,8 +160,11 @@ export class OcDevices extends VaultScreen {
         ? html`<p class="muted">${strings.noNamedDevices}</p>`
         : html`<ul class="plain" aria-label=${strings.knownDevices}>
             ${named.map((d) => html`<li data-device=${d}>${label(d)}</li>`)}
-          </ul>`}
-      <h3>${strings.idleLock}</h3>
+          </ul>`}`
+  }
+
+  private idleSection() {
+    return html`<h2>${strings.idleLock}</h2>
       <div class="row" data-role="idle-lock">
         <label>
           ${strings.idleLock}
@@ -141,9 +176,13 @@ export class OcDevices extends VaultScreen {
           ></dc-select>
         </label>
       </div>
-      <p class="muted">${strings.idleLockLead}</p>
-      ${this.backupSection()}
-      <h3>${strings.changePassphrase}</h3>
+      <p class="muted">${strings.idleLockLead}</p>`
+  }
+
+  private passphraseSection() {
+    const busy = this.store.busy
+    const change = () => void this.changePassphrase()
+    return html`<h2>${strings.changePassphrase}</h2>
       ${this.openedWithKey ? html`<p class="muted" role="status">${strings.openedWithKey}</p>` : nothing}
       <p class="muted">${strings.changePassphraseLead}</p>
       <div class="row" data-role="change-passphrase">
@@ -152,8 +191,7 @@ export class OcDevices extends VaultScreen {
         <dc-button variant="secondary" ?disabled=${busy} @click=${change}>${strings.changePassphrase}</dc-button>
       </div>
       <p class="muted">${strings.passphraseHint(MIN_PASSPHRASE)}</p>
-      ${this.passphraseNotice ? html`<p role="status" class="muted" data-role="passphrase-changed">${this.passphraseNotice}</p>` : nothing}
-    </section>`
+      ${this.passphraseNotice ? html`<p role="status" class="muted" data-role="passphrase-changed">${this.passphraseNotice}</p>` : nothing}`
   }
 }
 

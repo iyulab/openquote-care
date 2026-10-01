@@ -5,7 +5,7 @@ import { conflictsOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
-import { nameField, noticeLine } from './parts.js'
+import { listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
 import { conflictPanel, sessionTable, toggled } from './session-parts.js'
@@ -15,6 +15,10 @@ import { conflictPanel, sessionTable, toggled } from './session-parts.js'
 export class OcSubjects extends VaultScreen {
   @state() private subjectName = ''
   @state() private selected?: string
+  /** The document is the form for adding subjects, rather than a subject's records. */
+  @state() private adding = false
+  /** While the window is narrow: the document shows instead of the list. */
+  @state() private documentOpen = false
   /** Pasted subject rows, planned but not yet written. */
   @state() private importPlan?: ImportPlan
   /** The session whose concurrent changes are open for a person to settle. */
@@ -29,7 +33,7 @@ export class OcSubjects extends VaultScreen {
       const path = await shell.record('/changes/subject', { fields: { name } })
       this.subjectName = ''
       await this.store.load()
-      this.selected = path.split('/')[1]
+      this.pick(path.split('/')[1])
     })
   }
 
@@ -58,44 +62,56 @@ export class OcSubjects extends VaultScreen {
     })
   }
 
+  private pick(id: string) {
+    this.selected = id
+    this.adding = false
+    this.documentOpen = true
+  }
+
+  private startAdding() {
+    this.adding = true
+    this.documentOpen = true
+  }
+
   protected screen() {
-    const { busy, subjects } = this.store
-    const subject = subjects.find((s) => s.id === this.selected)
-    const addSubject = () => void this.addSubject()
-    return html`<div class="columns">
-      <section>
-        <div class="row">
-          ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
-          <dc-button variant="secondary" ?disabled=${busy} @click=${addSubject}>${strings.addSubject}</dc-button>
-        </div>
-        <dc-paste-rows-zone
-          placeholder=${strings.importPaste}
-          @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
-            this.store.set({ notice: '' })
-            this.importPlan = planImport(e.detail.rows, this.store.subjects, headingIndex(this.store.subjectFields))
-          }}
-        ></dc-paste-rows-zone>
-        ${noticeLine(this.store)}
-        ${subjects.length === 0
-          ? html`<p class="muted">${strings.noSubjects}</p>`
-          : html`<ul aria-label=${strings.subjects}>
-              ${subjects.map(
-                (s) => html`<li>
-                  <button aria-current=${s.id === this.selected ? 'true' : 'false'} @click=${() => (this.selected = s.id)}>
-                    ${text(s, 'name')}
-                  </button>
-                </li>`,
-              )}
-            </ul>`}
-      </section>
-      <section>
-        ${this.importPlan
+    const { subjects } = this.store
+    const subject = this.adding ? undefined : subjects.find((s) => s.id === this.selected)
+    return listDetail({
+      label: strings.subjects,
+      head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>`,
+      entries: subjects.map((s) => ({ id: s.id, label: text(s, 'name') })),
+      selected: this.adding ? undefined : this.selected,
+      select: (id) => this.pick(id),
+      empty: strings.noSubjects,
+      document: this.adding
+        ? this.importPlan
           ? this.importPreview(this.importPlan)
-          : subject
-            ? this.subjectDetail(subject)
-            : html`<p class="muted">${strings.pickSubject}</p>`}
-      </section>
-    </div>`
+          : this.addForm()
+        : subject
+          ? this.subjectDetail(subject)
+          : html`<p class="muted">${strings.pickSubject}</p>${noticeLine(this.store)}`,
+      open: this.documentOpen,
+      back: () => (this.documentOpen = false),
+    })
+  }
+
+  /** Adding subjects: one by name, or many from rows pasted out of a spreadsheet. */
+  private addForm() {
+    const busy = this.store.busy
+    const addSubject = () => void this.addSubject()
+    return html`<h2>${strings.addSubject}</h2>
+      <div class="row">
+        ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
+        <dc-button variant="primary" ?disabled=${busy} @click=${addSubject}>${strings.addSubject}</dc-button>
+      </div>
+      <dc-paste-rows-zone
+        placeholder=${strings.importPaste}
+        @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
+          this.store.set({ notice: '' })
+          this.importPlan = planImport(e.detail.rows, this.store.subjects, headingIndex(this.store.subjectFields))
+        }}
+      ></dc-paste-rows-zone>
+      ${noticeLine(this.store)}`
   }
 
   private importPreview(plan: ImportPlan) {

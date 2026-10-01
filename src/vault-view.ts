@@ -1,7 +1,9 @@
 import { LitElement, css, html, nothing } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { desktopMinWidth } from '@iyulab/desktop-patterns/breakpoints'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { text } from './records.js'
+import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import type { VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
 import { StoreController, VaultStore } from './vault/store.js'
@@ -11,6 +13,7 @@ import './vault/groups-screen.js'
 import './vault/report-screen.js'
 import './vault/export-screen.js'
 import './vault/practitioners-screen.js'
+import type { DeviceSection, OcDevices } from './vault/devices-screen.js'
 import './vault/devices-screen.js'
 
 type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
@@ -43,7 +46,14 @@ export class OcVault extends LitElement {
   @property({ attribute: false }) adopted: string[] = []
 
   @state() private view: View = 'subjects'
-  @state() private sidebarOpen = true
+  /** The sidebar as a drawer, while the window is narrow: closed until asked for. */
+  @state() private sidebarOpen = false
+  /** The sidebar folded to its icon rail, while the window is wide; kept on this computer. */
+  @state() private rail = sidebarRail()
+  @state() private wide = false
+
+  private readonly wideQuery = matchMedia(`(min-width: ${desktopMinWidth}px)`)
+  private readonly onWidth = () => (this.wide = this.wideQuery.matches)
 
   private readonly store = new VaultStore()
 
@@ -59,10 +69,13 @@ export class OcVault extends LitElement {
     void this.store.resumeBackup()
     if (this.adopted.length > 0) this.store.notice = strings.adopted(this.adopted)
     window.addEventListener('focus', this.onFocus)
+    this.wideQuery.addEventListener('change', this.onWidth)
+    this.onWidth()
   }
 
   disconnectedCallback() {
     window.removeEventListener('focus', this.onFocus)
+    this.wideQuery.removeEventListener('change', this.onWidth)
     this.store.disconnect()
     super.disconnectedCallback()
   }
@@ -91,6 +104,22 @@ export class OcVault extends LitElement {
     this.dispatchEvent(new Event('oc-close', { bubbles: true, composed: true }))
   }
 
+  /** The toolbar's toggle: folds the sidebar to its rail in a wide window, opens the drawer in a narrow one. */
+  private toggleSidebar() {
+    if (!this.wide) {
+      this.sidebarOpen = !this.sidebarOpen
+      return
+    }
+    this.rail = !this.rail
+    setSidebarRail(this.rail)
+  }
+
+  /** Goes to the devices screen, with one of its settings open. */
+  private goToDevices(section: DeviceSection) {
+    this.view = 'devices'
+    this.renderRoot.querySelector<OcDevices>('oc-devices')?.show(section)
+  }
+
   private lockNow() {
     this.dispatchEvent(new Event('oc-lock', { bubbles: true, composed: true }))
   }
@@ -100,9 +129,10 @@ export class OcVault extends LitElement {
     const view = this.view
     const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices }[view]
     return html`
-      <dp-shell ?sidebar-open=${this.sidebarOpen}>
+      <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
           slot="sidebar"
+          ?collapsed=${this.rail && this.wide}
           header=${this.folder.split(/[\\/]/).filter(Boolean).at(-1) ?? strings.appName}
           nav-label=${strings.navLabel}
           active-id=${view}
@@ -116,6 +146,7 @@ export class OcVault extends LitElement {
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
+            this.sidebarOpen = false
             store.set({ error: undefined, notice: '' })
           }}
         ></dp-sidebar>
@@ -124,13 +155,14 @@ export class OcVault extends LitElement {
           heading=${heading}
           show-toggle
           toggle-label=${strings.toggleSidebar}
-          @dp-toolbar-toggle=${() => (this.sidebarOpen = !this.sidebarOpen)}
+          ?expanded=${this.wide ? !this.rail : this.sidebarOpen}
+          @dp-toolbar-toggle=${() => this.toggleSidebar()}
         >
           <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${store.busy} @click=${() => void this.refresh()}>${strings.refresh}</dc-button>
           <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${store.busy} @click=${() => this.lockNow()}>${strings.lockNow}</dc-button>
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
-        <dp-page>
+        <dp-page fill max-width="full">
           ${this.unreadableView()} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           <oc-subjects .store=${store} ?active=${view === 'subjects'}></oc-subjects>
           <oc-groups .store=${store} ?active=${view === 'groups'}></oc-groups>
@@ -153,7 +185,7 @@ export class OcVault extends LitElement {
     if (!this.openedWithKey || this.view === 'devices') return nothing
     return html`<p class="row muted" role="status" data-role="key-hint">
       ${strings.openedWithKey}
-      <dc-button variant="ghost" size="sm" @click=${() => (this.view = 'devices')}>${strings.goChangePassphrase}</dc-button>
+      <dc-button variant="ghost" size="sm" @click=${() => this.goToDevices('passphrase')}>${strings.goChangePassphrase}</dc-button>
     </p>`
   }
 
@@ -163,7 +195,7 @@ export class OcVault extends LitElement {
     if (!s || this.view === 'devices' || Object.keys(s.devices).length === 0 || s.device in s.devices) return nothing
     return html`<p class="row muted" role="status" data-role="name-hint">
       ${strings.nameThisDevice}
-      <dc-button variant="ghost" size="sm" @click=${() => (this.view = 'devices')}>${strings.goNameThisDevice}</dc-button>
+      <dc-button variant="ghost" size="sm" @click=${() => this.goToDevices('name')}>${strings.goNameThisDevice}</dc-button>
     </p>`
   }
 

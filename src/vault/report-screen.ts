@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { comparable, headCount, layOut, type Comparison, type Group, type KeptRun, type RunRecord } from '../report.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, formBehind, noticeLine, periodFields } from './parts.js'
+import { applyPackButton, formBehind, listDetail, noticeLine, periodFields } from './parts.js'
 import { blankLabel, columnAxis, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -19,6 +19,8 @@ export class OcReport extends VaultScreen {
   @state() private keptRuns: KeptRun[] = []
   @state() private compareWith = ''
   @state() private comparison?: Comparison
+  /** While the window is narrow: the document shows instead of the list. */
+  @state() private documentOpen = false
 
   private async runReport() {
     const store = this.store
@@ -97,34 +99,48 @@ export class OcReport extends VaultScreen {
     await this.reveal('evidence')
   }
 
+  /** Picks the form to report on; a report of another form leaves the document with what goes with it. */
+  private pick(key: string) {
+    this.documentOpen = true
+    if (key === this.store.reportKey) return
+    this.store.set({ reportKey: key })
+    this.result = undefined
+    this.evidence = undefined
+    this.pendingChoices = undefined
+    this.comparison = undefined
+  }
+
   protected screen() {
     const store = this.store
-    const busy = store.busy
     const reports = store.summary?.reports ?? []
-    if (reports.length === 0)
-      return html`<p class="muted">${strings.noReports}</p>
-        ${applyPackButton(store)}
-        ${noticeLine(store)}`
-    return html`<section>
+    const chosen = reports.find((r) => `${r.name}@${r.version}` === store.reportKey)
+    return listDetail({
+      label: strings.reportForms,
+      entries: reports.map((r) => ({ id: `${r.name}@${r.version}`, label: strings.reportFormOption(r.label, r.version) })),
+      selected: store.reportKey,
+      select: (key) => this.pick(key),
+      empty: strings.noReports,
+      document: chosen
+        ? this.formDocument(strings.reportFormOption(chosen.label, chosen.version))
+        : html`${reports.length > 0 ? html`<p class="muted">${strings.pickReportForm}</p>` : nothing} ${applyPackButton(store)} ${noticeLine(store)}`,
+      open: this.documentOpen,
+      back: () => (this.documentOpen = false),
+    })
+  }
+
+  /** The chosen form's report: the month to count, the counts, and what they are made of. */
+  private formDocument(title: string) {
+    const store = this.store
+    const busy = store.busy
+    return html`<h2>${title}</h2>
       <div class="row">
-        <label>
-          ${strings.reportForm}
-          <dc-select
-            aria-label=${strings.reportForm}
-            .options=${reports.map((r) => ({ value: `${r.name}@${r.version}`, label: strings.reportFormOption(r.label, r.version) }))}
-            .value=${store.reportKey}
-            ?disabled=${busy}
-            @change=${(e: Event) => store.set({ reportKey: (e.target as HTMLSelectElement).value })}
-          ></dc-select>
-        </label>
         ${periodFields(store)}
         <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
         ${applyPackButton(store)}
       </div>
-      ${formBehind(reports, store.reportKey)}
+      ${formBehind(store.summary?.reports ?? [], store.reportKey)}
       ${noticeLine(store)}
-      ${this.result ? this.reportTable(this.result) : nothing}
-    </section>`
+      ${this.result ? this.reportTable(this.result) : nothing}`
   }
 
   private reportTable(result: RunRecord) {
