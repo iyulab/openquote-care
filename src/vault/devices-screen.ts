@@ -80,6 +80,26 @@ export class OcDevices extends VaultScreen {
     if (typeof folder === 'string') await this.store.setBackup(folder)
   }
 
+  /** What the backup says the vault lost or holds damaged, and the way back where there is one. */
+  private backupFindings() {
+    const { busy, backup } = this.store
+    const { missing = [], damaged = [], damagedInBackup = [], unresolved = [] } = backup
+    // Copies that differ but were not compared (the comparison could not read a folder) are told
+    // the way unresolved ones are: nothing is to be thrown away.
+    const unknown = unresolved.length || (missing.length + damaged.length + damagedInBackup.length === 0 ? (backup.differs?.length ?? 0) : 0)
+    return [
+      missing.length
+        ? html`<p class="error" data-role="backup-missing">${strings.backupMissing(missing.length)}</p>
+            <div class="row">
+              <dc-button variant="primary" ?disabled=${busy} data-role="backup-restore" @click=${() => void this.store.restoreFromBackup()}>${strings.backupRestore}</dc-button>
+            </div>`
+        : nothing,
+      damaged.length ? html`<p class="error" data-role="backup-damaged">${strings.backupDamaged(damaged.length)}</p>` : nothing,
+      damagedInBackup.length ? html`<p class="error" data-role="backup-damaged-in-backup">${strings.backupDamagedInBackup(damagedInBackup.length)}</p>` : nothing,
+      unknown ? html`<p class="error" data-role="backup-unresolved">${strings.backupUnresolved(unknown)}</p>` : nothing,
+    ]
+  }
+
   /** Where the backup is kept and how the last one went, in words. */
   private backupSection() {
     const { busy, backup, backupProblem } = this.store
@@ -96,11 +116,12 @@ export class OcDevices extends VaultScreen {
               : backup.at !== undefined
                 ? html`<p class="muted" data-role="backup-status">${strings.backupDone(new Date(backup.at).toLocaleString(), backup.copied ?? 0)}</p>`
                 : nothing,
-          backup.differs?.length ? html`<p class="error" data-role="backup-differs">${strings.backupDiffers(backup.differs.length)}</p>` : nothing,
+          ...this.backupFindings(),
         ]
     return html`<h2>${strings.backup}</h2>
       <p class="muted">${strings.backupLead}</p>
       ${lines}
+      ${noticeLine(this.store)}
       <div class="row" data-role="backup">
         <dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.chooseBackup()}>${strings.backupChoose}</dc-button>
         ${folder ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.store.setBackup(null)}>${strings.backupStop}</dc-button>` : nothing}

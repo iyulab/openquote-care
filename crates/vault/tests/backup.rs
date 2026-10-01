@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use age::secrecy::SecretString;
-use openquote_care_vault::{BackupError, KEY_FILE, Vault, VaultError};
+use openquote_care_vault::{BackupComparison, BackupError, KEY_FILE, Vault, VaultError};
 
 fn pass(p: &str) -> SecretString {
     SecretString::from(p.to_owned())
@@ -136,4 +136,93 @@ fn a_missing_backup_folder_fails_the_backup_and_nothing_else() {
     assert!(matches!(vault.back_up(&gone), Err(BackupError::Io(_))));
     vault.write_new("subjects/s1/0001.dev1.json", RECORD).unwrap();
     assert_eq!(vault.read_all().unwrap().files.len(), 1);
+}
+
+/// A vault holding three records, backed up whole.
+fn backed_up() -> (tempfile::TempDir, tempfile::TempDir, Vault) {
+    let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    let (vault, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    for name in ["0001", "0002", "0003"] {
+        vault.write_new(&format!("subjects/s1/{name}.dev1.json"), RECORD).unwrap();
+    }
+    vault.back_up(backup.path()).unwrap();
+    (dir, backup, vault)
+}
+
+fn record(root: &Path, name: &str) -> std::path::PathBuf {
+    root.join("subjects").join("s1").join(format!("{name}.dev1.json.age"))
+}
+
+fn cut_in_half(path: &Path) {
+    let bytes = fs::read(path).unwrap();
+    fs::write(path, &bytes[..bytes.len() / 2]).unwrap();
+}
+
+#[test]
+fn a_record_file_gone_from_the_vault_is_listed_by_the_next_whole_backup() {
+    let (dir, backup, vault) = backed_up();
+    fs::remove_file(record(dir.path(), "0002")).unwrap();
+
+    let report = vault.back_up(backup.path()).unwrap();
+
+    assert_eq!(report.only_in_backup, vec!["subjects/s1/0002.dev1.json.age".to_owned()]);
+    assert!(vault.back_up_written(backup.path(), &[]).unwrap().only_in_backup.is_empty(), "a backup after a write lists no folder");
+}
+
+#[test]
+fn comparing_tells_lost_files_from_damage_on_either_side() {
+    let (dir, backup, vault) = backed_up();
+    fs::remove_file(record(dir.path(), "0001")).unwrap();
+    cut_in_half(&record(dir.path(), "0002"));
+    cut_in_half(&record(backup.path(), "0003"));
+
+    let comparison = vault.compare_backup(backup.path()).unwrap();
+
+    assert_eq!(
+        comparison,
+        BackupComparison {
+            missing: vec!["subjects/s1/0001.dev1.json.age".to_owned()],
+            damaged: vec!["subjects/s1/0002.dev1.json.age".to_owned()],
+            damaged_in_backup: vec!["subjects/s1/0003.dev1.json.age".to_owned()],
+            unresolved: vec![],
+        }
+    );
+}
+
+#[test]
+fn copies_neither_of_which_decrypts_are_left_unresolved() {
+    let (dir, backup, vault) = backed_up();
+    fs::write(record(dir.path(), "0001"), b"one thing").unwrap();
+    fs::write(record(backup.path(), "0001"), b"another").unwrap();
+    fs::remove_file(record(dir.path(), "0002")).unwrap();
+    fs::write(record(backup.path(), "0002"), b"nor this").unwrap();
+
+    let comparison = vault.compare_backup(backup.path()).unwrap();
+
+    assert_eq!(comparison.unresolved, vec!["subjects/s1/0001.dev1.json.age".to_owned(), "subjects/s1/0002.dev1.json.age".to_owned()]);
+    assert!(comparison.missing.is_empty() && comparison.damaged.is_empty());
+}
+
+#[test]
+fn a_vault_and_its_whole_backup_compare_equal() {
+    let (_dir, backup, vault) = backed_up();
+    assert!(vault.compare_backup(backup.path()).unwrap().is_empty());
+}
+
+#[test]
+fn restoring_copies_back_the_lost_files_byte_for_byte_and_leaves_a_damaged_one() {
+    let (dir, backup, vault) = backed_up();
+    let lost = fs::read(record(dir.path(), "0001")).unwrap();
+    fs::remove_file(record(dir.path(), "0001")).unwrap();
+    cut_in_half(&record(dir.path(), "0002"));
+    let damaged = fs::read(record(dir.path(), "0002")).unwrap();
+
+    assert_eq!(vault.restore_from_backup(backup.path()).unwrap(), 1);
+
+    assert_eq!(fs::read(record(dir.path(), "0001")).unwrap(), lost);
+    assert_eq!(fs::read(record(dir.path(), "0002")).unwrap(), damaged, "a record file is never replaced");
+    let comparison = vault.compare_backup(backup.path()).unwrap();
+    assert!(comparison.missing.is_empty());
+    assert_eq!(comparison.damaged, vec!["subjects/s1/0002.dev1.json.age".to_owned()]);
+    assert_eq!(vault.restore_from_backup(backup.path()).unwrap(), 0, "restoring again copies nothing");
 }

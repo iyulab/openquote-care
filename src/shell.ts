@@ -80,6 +80,14 @@ export interface BackupStatus {
   keyReplaced?: boolean
   /** Files the backup holds with other content than the vault: named, never replaced. */
   differs?: string[]
+  /** Record files the vault lost that the backup holds sound: what restoring copies back. */
+  missing?: string[]
+  /** Record files damaged in the vault, with a sound copy in the backup. */
+  damaged?: string[]
+  /** Record files damaged in the backup, sound in the vault. */
+  damagedInBackup?: string[]
+  /** Record files the two copies hold differently where which one is sound cannot be told. */
+  unresolved?: string[]
   /** Why the last backup did not go through, as an error code. */
   error?: string
 }
@@ -121,6 +129,8 @@ export const shell = {
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
   setBackup: (folder: string | null) => invoke<BackupStatus>('set_backup', { folder }),
   backupStatus: () => invoke<BackupStatus>('backup_status'),
+  /** Copies the record files the vault lost back from its backup; the vault is read again with them. */
+  restoreFromBackup: () => invoke<{ restored: number; backup: BackupStatus }>('restore_from_backup'),
   /** Writes a copy that reads without the app into a new folder `name` inside `folder`; answers the new folder. */
   writePlainCopy: (folder: string, name: string, files: { name: string; content: string }[]) =>
     invoke<string>('write_plain_copy', { folder, name, files }),

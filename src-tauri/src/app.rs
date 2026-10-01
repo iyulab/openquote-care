@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use age::secrecy::SecretString;
 use openquote_care_engine::{Engine, EngineError, OpenVault, PlainFile};
-use openquote_care_vault::{BackupError, BackupReport, NewVault, PlainCopyError, Vault, VaultError, Watcher};
+use openquote_care_vault::{BackupComparison, BackupError, BackupReport, NewVault, PlainCopyError, Vault, VaultError, Watcher};
 use serde_json::Value;
 
 use crate::bundle::{Bundle, BundleError, Track};
@@ -165,11 +165,24 @@ struct Backup {
     folder: Option<PathBuf>,
     /// When the last backup ran (milliseconds since 1970) and what came of it.
     last: Option<(u128, Result<BackupReport, String>)>,
+    /// What the vault lost or holds damaged, by its backup: compared when a backup found record
+    /// files only the backup holds or holds differently, and kept until a backup of the whole vault
+    /// finds none.
+    comparison: Option<BackupComparison>,
 }
 
 impl Backup {
-    fn note(&mut self, result: Result<BackupReport, BackupError>) {
+    /// Notes how a backup of `vault` went — of the whole vault when `whole` — and compares the two
+    /// copies when it found a sign that the vault lost a file or holds one damaged.
+    fn note(&mut self, vault: &Vault, result: Result<BackupReport, BackupError>, whole: bool) {
         let at = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or_default();
+        if let (Ok(report), Some(folder)) = (&result, &self.folder) {
+            if !report.only_in_backup.is_empty() || !report.differs.is_empty() {
+                self.comparison = vault.compare_backup(folder).ok().filter(|c| !c.is_empty());
+            } else if whole {
+                self.comparison = None;
+            }
+        }
         self.last = Some((at, result.map_err(|e| backup_code(&e).to_owned())));
     }
 
@@ -188,6 +201,12 @@ impl Backup {
                 }
                 Err(code) => status["error"] = serde_json::json!(code),
             }
+        }
+        if let Some(c) = &self.comparison {
+            status["missing"] = serde_json::json!(c.missing);
+            status["damaged"] = serde_json::json!(c.damaged);
+            status["damagedInBackup"] = serde_json::json!(c.damaged_in_backup);
+            status["unresolved"] = serde_json::json!(c.unresolved);
         }
         status
     }
@@ -371,7 +390,8 @@ impl App {
             *backup = Backup::default();
             if let Some(folder) = folder {
                 backup.folder = Some(folder.to_path_buf());
-                backup.note(open.vault.back_up(folder));
+                let result = open.vault.back_up(folder);
+                backup.note(&open.vault, result, true);
             }
             Ok(backup.status())
         })
@@ -403,7 +423,22 @@ impl App {
             Some(paths) => vault.back_up_written(&folder, &paths.iter().map(String::as_str).collect::<Vec<_>>()),
             None => vault.back_up(&folder),
         };
-        backup.note(result);
+        backup.note(vault, result, written.is_none());
+    }
+
+    /// Copies the record files the open vault lost back from its backup, reads the vault again
+    /// with them, and returns how many it copied with what [`App::backup_status`] returns. A
+    /// damaged record file stays as it is: the vault never replaces one.
+    pub fn restore_from_backup(&self) -> Result<Value, AppError> {
+        self.with_open(|open| {
+            let Some(folder) = self.backup.lock().unwrap().folder.clone() else {
+                return Err(AppError::Backup(BackupError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "no backup is kept"))));
+            };
+            let restored = open.vault.restore_from_backup(&folder)?;
+            let summary = open.reload()?;
+            self.back_up(&open.vault, None);
+            Ok(serde_json::json!({ "restored": restored, "summary": summary, "backup": self.backup_status() }))
+        })
     }
 
     /// Asks the engine for a change (`route` is one of its `/changes/…` routes) and keeps it in
@@ -719,6 +754,43 @@ mod tests {
         app.close_vault();
         app.open_vault(dir.path(), "new pass".to_owned()).unwrap();
         assert_eq!(app.backup_status(), json!({ "folder": null }));
+    }
+
+    #[test]
+    fn a_record_file_the_vault_lost_is_named_by_its_backup_and_restored_from_it() {
+        let Some(app) = app() else { return };
+        let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.set_backup(Some(backup.path())).unwrap();
+        for name in ["one", "two", "three"] {
+            app.record("/changes/subject", json!({ "fields": { "name": name } })).unwrap();
+        }
+        let subjects: Vec<String> = vault_files(dir.path()).into_keys().filter(|p| p.starts_with("subjects/")).collect();
+        assert_eq!(subjects.len(), 3);
+        app.close_vault();
+
+        // A sync client takes one record file away and cuts another short.
+        fs::remove_file(dir.path().join(&subjects[0])).unwrap();
+        let cut = fs::read(dir.path().join(&subjects[1])).unwrap();
+        fs::write(dir.path().join(&subjects[1]), &cut[..cut.len() / 2]).unwrap();
+
+        app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        let status = app.set_backup(Some(backup.path())).unwrap();
+        assert_eq!(status["missing"], json!([subjects[0]]), "{status}");
+        assert_eq!(status["damaged"], json!([subjects[1]]), "{status}");
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1);
+
+        let restored = app.restore_from_backup().unwrap();
+        assert_eq!(restored["restored"], 1);
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 2, "the lost record is back");
+        assert_eq!(restored["backup"]["missing"], json!([]));
+        assert_eq!(restored["backup"]["damaged"], json!([subjects[1]]), "a damaged record file is left as it is");
+        assert_eq!(fs::read(dir.path().join(&subjects[1])).unwrap(), &cut[..cut.len() / 2]);
+
+        // A write after it keeps what the comparison found; the next whole backup compares again.
+        app.record("/changes/subject", json!({ "fields": { "name": "four" } })).unwrap();
+        assert_eq!(app.backup_status()["damaged"], json!([subjects[1]]));
     }
 
     #[test]

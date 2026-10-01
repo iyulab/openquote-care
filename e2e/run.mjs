@@ -517,6 +517,41 @@ const scenarios = {
     await rm(copy, { recursive: true, force: true })
   },
 
+  async 'names what the vault lost by its backup, and brings back a record file that went missing'(app, work) {
+    const copy = join(dirname(work.vault), 'backup-restore')
+    await mkdir(copy)
+    await app.click('button', '자동 백업')
+    await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(copy)}).then(() => true)`)
+    await app.cdp.waitFor(`(__e2e.one('[data-role=backup-status]')?.textContent ?? '').startsWith('마지막 백업')`, 'the first backup')
+
+    // A sync client takes one record file away and cuts another short; the window notices by itself.
+    const subjects = join(work.vault, 'subjects')
+    const folder = join(subjects, (await readdir(subjects))[0])
+    const [gone, cut] = (await readdir(folder)).filter((f) => f.endsWith('.json.age')).sort().slice(-2).map((f) => join(folder, f))
+    const [goneBytes, cutBytes] = [await readFile(gone), await readFile(cut)]
+    await rm(gone)
+    await writeFile(cut, cutBytes.subarray(0, cutBytes.length >> 1))
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=backup-missing]') && !!__e2e.one('[data-role=backup-damaged]')`, 'the lost and the damaged file named')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=backup-missing]').textContent`), /없어진 기록 파일이 1개/)
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=backup-damaged]').textContent`), /손상되어 읽을 수 없습니다.*백업 폴더를 지우거나 다른 폴더로 바꾸지 마세요/)
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=backup-unresolved]')`), false, 'which copy is sound is told')
+
+    await app.click('dc-button', '백업에서 되살리기')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=backup-missing]')`, 'the lost file restored')
+    await app.noAlert()
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[role=status]')?.textContent.trim()`), '기록 파일 1개를 백업에서 되살렸습니다.')
+    assert.deepEqual(await readFile(gone), goneBytes, 'the file once written, byte for byte')
+    assert.deepEqual(await readFile(cut), cutBytes.subarray(0, cutBytes.length >> 1), 'a damaged record file is not replaced')
+    assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=backup-damaged]')`), 'and is still named')
+
+    // Put the damaged file right by hand, as a person copying it from the backup would.
+    await writeFile(cut, cutBytes)
+    await app.cdp.waitFor(`!__e2e.one('[data-role=unreadable]')`, 'nothing left unreadable')
+    await app.click('dc-button', '백업 끄기')
+    await app.cdp.waitFor(`__e2e.one('[data-role=backup-status]')?.textContent.trim() === '사용하지 않습니다.'`, 'the backup stopped')
+    await rm(copy, { recursive: true, force: true })
+  },
+
   async 'takes in what another program writes to the vault folder, without being asked'(app, work) {
     // A file arriving from outside (here: a copy under a name its content does not match, so the
     // engine reports it as unreadable) shows up with no refresh button and no window focus.

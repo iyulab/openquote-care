@@ -5,13 +5,19 @@
 //! recovery key. Record files never change once written, so bringing a backup up to date is
 //! copying the files it lacks; the key file is the one file that is replaced, so a changed
 //! passphrase changes it in the backup too and the old passphrase stops opening either copy.
+//!
+//! Because a record file never changes or goes away, a backup also tells what the vault lost: a
+//! record file only the backup holds was taken from the vault, and one the two copies hold
+//! differently is damaged in one of them. [`Vault::compare_backup`] says which, and
+//! [`Vault::restore_from_backup`] copies the lost files back.
 
+use std::collections::BTreeSet;
 use std::fmt;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::{collect_files, key_opens, relative_path, Vault, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
+use crate::{collect_files, encrypted_files, key_opens, relative_path, Vault, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
 
 /// Why a folder cannot hold a vault's backup, or a backup could not be brought up to date.
 #[derive(Debug)]
@@ -52,6 +58,32 @@ pub struct BackupReport {
     /// Record files the backup holds with other content than the vault has, by path. Left as they
     /// are — a record file is never replaced — and named so a person can look.
     pub differs: Vec<String>,
+    /// Record files only the backup holds, by path — files the vault lost. Listed by a backup of
+    /// the whole vault ([`Vault::back_up`]) only; see [`Vault::compare_backup`] for what they hold.
+    pub only_in_backup: Vec<String>,
+}
+
+/// What comparing a vault with its backup found, by record file path.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct BackupComparison {
+    /// Files only the backup holds, sound: lost from the vault, and what
+    /// [`Vault::restore_from_backup`] copies back.
+    pub missing: Vec<String>,
+    /// Files the vault holds but cannot decrypt while the backup's copy decrypts: damaged in the
+    /// vault, with a sound copy in the backup.
+    pub damaged: Vec<String>,
+    /// Files the backup holds but cannot decrypt while the vault's copy decrypts.
+    pub damaged_in_backup: Vec<String>,
+    /// Files the two copies hold differently where neither or both decrypt, and files only the
+    /// backup holds that do not decrypt: which copy is the file once written cannot be told.
+    pub unresolved: Vec<String>,
+}
+
+impl BackupComparison {
+    /// Whether the two copies hold the same record files, as far as the backup goes.
+    pub fn is_empty(&self) -> bool {
+        self.missing.is_empty() && self.damaged.is_empty() && self.damaged_in_backup.is_empty() && self.unresolved.is_empty()
+    }
 }
 
 impl Vault {
@@ -92,7 +124,65 @@ impl Vault {
             .map(|p| relative_path(&self.root, p))
             .filter(|r| r == VAULT_FILE || r == KEY_FILE || r.ends_with(ENCRYPTED_EXTENSION))
             .collect();
-        self.copy_into(&target, relatives)
+        let mut report = self.copy_into(&target, relatives)?;
+        let in_vault = record_files(&self.root)?;
+        report.only_in_backup = record_files(&target)?.into_iter().filter(|r| !in_vault.contains(r)).collect();
+        Ok(report)
+    }
+
+    /// Compares every record file of the vault with its backup in `target`, decrypting the copies
+    /// that differ to tell which is sound. Reads both folders whole: run it when a backup reported
+    /// files only it holds, or files it holds differently, not after every write.
+    pub fn compare_backup(&self, target: &Path) -> Result<BackupComparison, BackupError> {
+        let target = self.backup_folder(target)?;
+        let in_vault = record_files(&self.root)?;
+        let opens = |bytes: &[u8]| age::decrypt(&self.identity, bytes).is_ok();
+        let mut comparison = BackupComparison::default();
+        for relative in record_files(&target)? {
+            let backup = fs::read(target.join(&relative))?;
+            let vault = if in_vault.contains(&relative) { read_if_present(&self.root.join(&relative))? } else { None };
+            let Some(vault) = vault else {
+                if opens(&backup) { comparison.missing.push(relative) } else { comparison.unresolved.push(relative) }
+                continue;
+            };
+            if vault == backup {
+                continue;
+            }
+            match (opens(&vault), opens(&backup)) {
+                (false, true) => comparison.damaged.push(relative),
+                (true, false) => comparison.damaged_in_backup.push(relative),
+                _ => comparison.unresolved.push(relative),
+            }
+        }
+        Ok(comparison)
+    }
+
+    /// Copies the record files the vault lost back from its backup in `target` — the files
+    /// [`Vault::compare_backup`] finds missing — as new files, byte for byte, so each is the file
+    /// that was once written. A damaged file is left as it is: the vault never replaces a record
+    /// file. Returns how many files it copied.
+    pub fn restore_from_backup(&self, target: &Path) -> Result<usize, BackupError> {
+        let missing = self.compare_backup(target)?.missing;
+        let target = self.backup_folder(target)?;
+        let mut restored = 0;
+        for relative in missing {
+            let content = fs::read(target.join(&relative))?;
+            let path = self.root.join(&relative);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            self.own.record(&path, &content);
+            match tauri_kit_fs::write_atomic_new(&path, &content) {
+                Ok(()) => restored += 1,
+                Err(e) => {
+                    self.own.forget(&path);
+                    if e.kind() != io::ErrorKind::AlreadyExists {
+                        return Err(e.into()); // AlreadyExists: another device restored it first
+                    }
+                }
+            }
+        }
+        Ok(restored)
     }
 
     /// Brings the backup in `target` up to date with the record files at `written` (their paths
@@ -158,5 +248,19 @@ impl Vault {
             return Err(BackupError::Overlaps);
         }
         Ok(target.to_path_buf())
+    }
+}
+
+/// The record files in the vault folder `root` (not the declaration, not the key file), as paths
+/// relative to it.
+fn record_files(root: &Path) -> io::Result<BTreeSet<String>> {
+    Ok(encrypted_files(root)?.iter().map(|p| relative_path(root, p)).collect())
+}
+
+fn read_if_present(path: &Path) -> io::Result<Option<Vec<u8>>> {
+    match fs::read(path) {
+        Ok(content) => Ok(Some(content)),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
     }
 }

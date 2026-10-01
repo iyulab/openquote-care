@@ -24,7 +24,7 @@ use tauri_kit_watch::{OwnWrites, Watch};
 pub use tauri_kit_watch::Watcher;
 
 mod backup;
-pub use backup::{BackupError, BackupReport};
+pub use backup::{BackupComparison, BackupError, BackupReport};
 
 mod plain;
 pub use plain::PlainCopyError;

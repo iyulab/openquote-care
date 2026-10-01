@@ -23,7 +23,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - The app in Korean or English, following the system's display language
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time
-- An automatic backup: a second copy of the vault, still encrypted, kept up to date in a folder of your choosing on this computer — another drive or a USB stick
+- An automatic backup: a second copy of the vault, still encrypted, kept up to date in a folder of your choosing on this computer — another drive or a USB stick. When a record file goes missing from the vault, the backup notices and offers to bring it back
 - A whole-record copy that reads without the app, written on request into a folder apart from the vault: one page per vault for a browser (each subject's fields, sessions and later edits), two tables for a spreadsheet and a note on what the copy is. It has no passphrase, so the app says so; session content goes in only when asked for
 - Every screen laid out the same way: the menu, a list to pick from (subjects, groups, practitioners, forms, settings), and the document of the one picked. The menu folds to its icons; in a narrow window the list and the document take turns
 - Opening the vault with the recovery kit when the passphrase is forgotten, and changing the passphrase — the old one then stops opening the vault on every device

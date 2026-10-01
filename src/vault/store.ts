@@ -210,6 +210,16 @@ export class VaultStore extends EventTarget {
     })
   }
 
+  /** Copies the record files the vault lost back from its backup, and says how many came back. */
+  async restoreFromBackup() {
+    this.set({ notice: '' })
+    await this.run(async () => {
+      const { restored } = await shell.restoreFromBackup()
+      await this.load()
+      this.notice = strings.backupRestored(restored)
+    })
+  }
+
   /** Takes up the backup this computer keeps for the vault. A folder it cannot use is said, and kept for next time. */
   async resumeBackup() {
     const folder = storedBackup(this.folder)

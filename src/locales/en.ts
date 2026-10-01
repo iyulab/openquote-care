@@ -317,7 +317,14 @@ export const en: Strings = {
   backupTo: (folder: string) => `Backup folder: ${folder}`,
   backupDone: (at: string, copied: number) => `Last backup ${at} · ${plural(copied, 'new file')}`,
   backupFailed: (reason: string) => `The backup did not go through. ${reason} Records are still saved in this vault.`,
-  backupDiffers: (n: number) => `The copy holds ${plural(n, 'file')} with other content; they were not overwritten. Making the backup again in a new empty folder is safer.`,
+  backupMissing: (n: number) => `${plural(n, 'record file')} went missing from this vault. The backup still holds them, so they can be restored.`,
+  backupRestore: 'Restore from the backup',
+  backupRestored: (n: number) => (n ? `${plural(n, 'record file')} restored from the backup.` : 'There was nothing to restore.'),
+  backupDamaged: (n: number) =>
+    `${plural(n, 'record file')} in this vault ${n === 1 ? 'is' : 'are'} damaged and cannot be read. The backup holds a sound copy — do not delete the backup folder or switch to another one. Opening the backup folder as a vault shows those records.`,
+  backupDamagedInBackup: (n: number) => `${plural(n, 'file')} in the backup ${n === 1 ? 'is' : 'are'} damaged. The originals in this vault are sound. Making the backup again in a new empty folder gives you a sound copy.`,
+  backupUnresolved: (n: number) =>
+    `This vault and its backup hold ${plural(n, 'file')} differently, and which copy is sound cannot be told. Leave both folders as they are — delete or change neither.`,
 
   groups: 'Groups',
   noGroups: 'No groups yet. Add one with “New group”. Record group sessions — meeting several clients at once — here.',

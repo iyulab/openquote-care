@@ -157,6 +157,11 @@ fn write_plain_copy(folder: String, name: String, files: Vec<PlainFile>, app: St
 }
 
 #[tauri::command]
+fn restore_from_backup(app: State<App>) -> CommandResult<Value> {
+    text(app.restore_from_backup())
+}
+
+#[tauri::command]
 fn backup_status(app: State<App>) -> Value {
     app.backup_status()
 }
@@ -298,6 +303,7 @@ pub fn run() {
             refresh,
             set_backup,
             backup_status,
+            restore_from_backup,
             write_plain_copy,
             history,
             compare_runs,

@@ -316,7 +316,14 @@ export const ko = {
   backupTo: (folder: string) => `백업 폴더: ${folder}`,
   backupDone: (at: string, copied: number) => `마지막 백업 ${at} · 새 파일 ${copied}개`,
   backupFailed: (reason: string) => `백업이 되지 않았습니다. ${reason} 기록은 이 기록 폴더에 그대로 저장됩니다.`,
-  backupDiffers: (n: number) => `사본에 내용이 다른 파일이 ${n}개 있어 덮어쓰지 않았습니다. 새 빈 폴더에 백업을 다시 만드는 것이 안전합니다.`,
+  backupMissing: (n: number) => `기록 폴더에서 없어진 기록 파일이 ${n}개 있습니다. 백업에 그대로 남아 있어 되살릴 수 있습니다.`,
+  backupRestore: '백업에서 되살리기',
+  backupRestored: (n: number) => (n ? `기록 파일 ${n}개를 백업에서 되살렸습니다.` : '되살릴 파일이 없습니다.'),
+  backupDamaged: (n: number) =>
+    `기록 폴더의 기록 파일 ${n}개가 손상되어 읽을 수 없습니다. 백업에는 성한 사본이 있습니다 — 백업 폴더를 지우거나 다른 폴더로 바꾸지 마세요. 백업 폴더를 기록 폴더로 열면 그 기록이 보입니다.`,
+  backupDamagedInBackup: (n: number) => `백업의 파일 ${n}개가 손상되었습니다. 기록 폴더의 원본은 성합니다. 새 빈 폴더에 백업을 다시 만들면 성한 사본을 갖게 됩니다.`,
+  backupUnresolved: (n: number) =>
+    `기록 폴더와 백업에서 내용이 다른 파일이 ${n}개 있는데, 어느 쪽이 성한지 알 수 없습니다. 기록 폴더와 백업 폴더를 모두 그대로 두세요 — 어느 것도 지우거나 바꾸지 마세요.`,
 
   groups: '집단',
   noGroups: '집단이 없습니다. 「새 집단」으로 추가하세요. 여러 대상자를 한 번에 만나는 집단 상담을 여기에 기록합니다.',
