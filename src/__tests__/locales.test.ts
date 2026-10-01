@@ -27,10 +27,13 @@ describe('locale tables', () => {
   })
 
   // The people who use the app are not IT specialists: the folder of records is a record folder, the
-  // secret that opens it is a password, and the key on the kit has one name wherever it appears.
+  // secret that opens it is a password, and the key on the kit has one name wherever it appears. A
+  // data pack is classification material, a field definition a record item, a crosswalk a
+  // correspondence table, and the engine is not named at all; a classification has editions (판).
   it('the Korean table calls things by everyday words', () => {
     const text = JSON.stringify(ko, (_k, v: unknown) => (typeof v === 'function' ? String(v) : v))
-    for (const word of ['볼트', '패스프레이즈', '사이드바']) expect(text).not.toContain(word)
+    for (const word of ['볼트', '패스프레이즈', '사이드바', '데이터 팩', '칸 정의', '연계표', '엔진']) expect(text).not.toContain(word)
+    expect(text).not.toMatch(/\bv\$\{/)
   })
 
   it('names the key on the recovery kit the way the recovery field does', () => {

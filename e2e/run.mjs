@@ -405,12 +405,12 @@ const scenarios = {
     // "relation" splits in two, so its session waits for a person instead of being guessed.
     const pack = join(root, 'tests', 'golden', 'steps', '2')
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표 topic v1→v2'))`, 'the revision applied')
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('분류 대응표 topic 1판→2판'))`, 'the revision applied')
     await app.noAlert()
     assert.equal(await app.cdp.evaluate(`__e2e.one('nav[aria-label="보고 양식"] button[aria-current=true]').dataset.entry`), 'monthly-topic@2', 'the new form is picked')
-    assert.ok(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류 버전에 맞춘 양식이 없습니다'))`),
+    assert.ok(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류 판에 맞춘 양식이 없습니다'))`),
       'the pack brought no export form for topic v2: the list form left behind is named')
-    assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표가 없는 분류'))`), false,
+    assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류'))`), false,
       'topic v2 came with its v1→v2 crosswalk: no scheme is left unlinked')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-form-behind]')`), false, 'the chosen report form is in the latest version')
 
@@ -449,8 +449,8 @@ const scenarios = {
   async 'explains how this report differs from the one before it'(app) {
     const offered = await app.cdp.evaluate(`[...__e2e.one('select[aria-label="이전 산출과 비교"]').options].map((o) => o.textContent.trim())`)
     assert.equal(offered.length, 2, 'the two earlier runs of April (v1, v2) and none of other periods or this one')
-    assert.match(offered[0], / · v2 · 전체 2$/, 'the most recent earlier run first')
-    assert.match(offered[1], / · v1 · 전체 2$/)
+    assert.match(offered[0], / · 2판 · 전체 2$/, 'the most recent earlier run first')
+    assert.match(offered[1], / · 1판 · 전체 2$/)
     await app.click('dc-button', '비교')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=comparison-counts]')`, 'the comparison')
     await app.noAlert()
@@ -764,7 +764,7 @@ const scenarios = {
       ['2026-04-20', '2026', '가상 학생 3', '1', '1', '4'],
     ], 'in date order, the group session once with both attendees, and the grade and class a session kept')
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
-    assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /v1 기준/, 'the form says which scheme version it lags')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /1판 기준/, 'the form says which scheme version it lags')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
   },
   async 'records what was said in a session, and keeps it out of the list form'(app, work) {
@@ -841,7 +841,7 @@ const scenarios = {
     await writeFile(join(pack, 'schemes', 'method', 'v2.json'),
       JSON.stringify({ format: 'openquote.scheme/0', scheme: 'method', version: 2, items: [{ code: 'interview', label: '개인 면담' }] }))
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('연계표가 없는 분류가 있습니다: 분류 method v2'))`,
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류가 있습니다: 분류 method 2판'))`,
       'the unlinked version named')
     await app.noAlert()
   },

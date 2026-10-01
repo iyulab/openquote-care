@@ -57,6 +57,10 @@ jobs:
       - name: Check every file names the same app version
         run: node scripts/check-versions.mjs
 
+      # The screens build (`npm run build`, run by `tauri build`) bundles without type-checking.
+      - name: Type-check the screens
+        run: npm run typecheck
+
       - name: Publish the engine sidecar
         run: npm run publish:sidecar
 

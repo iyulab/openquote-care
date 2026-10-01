@@ -35,7 +35,7 @@ export const ko = {
   passphraseHint: (min: number) => `${min}자 이상. 기록 폴더를 열 때마다 입력합니다.`,
   create: '만들기',
   track: '분야와 지역',
-  trackHint: '기록 폴더가 처음 갖출 칸·분류·양식의 묶음입니다. 만든 뒤에도 데이터 팩을 적용해 넓힐 수 있습니다.',
+  trackHint: '기록 폴더가 처음 갖출 칸·분류·양식의 묶음입니다. 만든 뒤에도 분류 자료를 적용해 넓힐 수 있습니다.',
   open: '열기',
   back: '뒤로',
   working: '처리하고 있습니다…',
@@ -69,17 +69,17 @@ export const ko = {
       case 'scheme':
         return `분류 ${f.name} ${f.version}판`
       case 'crosswalk':
-        return `분류 ${f.name} ${f.from}판→${f.to}판 연계표`
+        return `분류 ${f.name} ${f.from}판→${f.to}판 대응표`
       case 'report':
         return `보고 양식 ${f.name} ${f.version}판`
       case 'export':
         return `내보내기 양식 ${f.name} ${f.version}판`
       case 'pack':
-        return `데이터 팩 ${f.name} ${f.version}판의 목록`
+        return `분류 자료 ${f.name} ${f.version}판의 목록`
       case 'labels':
-        return `데이터 팩 ${f.name} ${f.version}판의 이름표`
+        return `분류 자료 ${f.name} ${f.version}판의 이름표`
       case 'fields':
-        return `데이터 팩 ${f.name} ${f.version}판의 ${f.type} 칸 정의`
+        return `분류 자료 ${f.name} ${f.version}판의 ${f.type} 기록 항목`
       case 'run':
         return `${f.year}년 보고 산출 기록`
       case 'other':
@@ -116,7 +116,7 @@ export const ko = {
   reportForms: '보고 양식',
   pickReportForm: '양식을 고르면 그 양식의 월 보고가 여기에 보입니다.',
   reportForm: '양식',
-  reportFormOption: (label: string, version: number) => `${label} (v${version})`,
+  reportFormOption: (label: string, version: number) => `${label} (${version}판)`,
   year: '연도',
   month: '월',
   monthOption: (m: number) => `${m}월`,
@@ -184,8 +184,8 @@ export const ko = {
   },
   exportWithheld: (columns: string[]) => `${columns.join(', ')} 열은 상담 내용을 담는 칸이라 비워 두었습니다. 내용은 앱 밖으로 옮기지 않습니다.`,
   exportGaps: (pending: number, unmapped: number) =>
-    `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 버전에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 버전의 목록 양식을 쓰세요.`,
-  noExports: '이 기록 폴더에는 목록 양식이 없습니다. 데이터 팩을 적용하면 생깁니다.',
+    `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 판에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 판의 목록 양식을 쓰세요.`,
+  noExports: '이 기록 폴더에는 목록 양식이 없습니다. 분류 자료를 적용하면 생깁니다.',
   headCount: (n: number) => ` (${n}명)`,
   headCountHint: '건수 옆 괄호는 인원입니다 — 같은 사람은 한 번, 집단 상담은 참여자마다 셉니다.',
   noValue: (label: string) => `(${label} 없음)`,
@@ -193,7 +193,7 @@ export const ko = {
   pending: '재분류 대기',
   pendingHint: '분류 체계가 바뀌어 한 기록이 여러 새 분류로 갈 수 있습니다. 사람이 골라야 칸에 들어갑니다.',
   unmapped: '연계 없음',
-  unmappedHint: '연계표에 없는 옛 분류의 기록입니다. 분류 체계 자료를 확인하세요.',
+  unmappedHint: '분류 대응표에 없는 옛 분류의 기록입니다. 분류 자료를 확인하세요.',
   blankHint: '이 칸을 비워 두고 기록했습니다. 전체에는 들고, 어느 줄에도 들지 않습니다.',
   grandTotal: '전체',
   evidence: (what: string, n: number) => `${what} — 근거 기록 ${n}건`,
@@ -208,8 +208,8 @@ export const ko = {
   compareWith: '이전 산출과 비교',
   compare: '비교',
   noEarlierRun: '같은 양식·기간의 이전 산출 기록이 없습니다.',
-  runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · v${version} · 전체 ${total}`,
-  comparisonTitle: (earlierVersion: number, laterVersion: number) => `이전 산출(v${earlierVersion})과 지금 산출(v${laterVersion})의 차이`,
+  runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · ${version}판 · 전체 ${total}`,
+  comparisonTitle: (earlierVersion: number, laterVersion: number) => `이전 산출(${earlierVersion}판)과 지금 산출(${laterVersion}판)의 차이`,
   comparisonCounts: (late: number, removed: number, revised: number, moved: number, unchanged: number) =>
     `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
   changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', moved: '기록 수정' },
@@ -218,35 +218,35 @@ export const ko = {
   changeKindHint: {
     late: '이전 산출 뒤에 입력된 기록입니다.',
     removed: '이전 산출 뒤에 지워졌거나 기간에서 벗어난 기록입니다.',
-    revised: '기록은 그대로이고, 분류 체계 개정의 연계표가 새 자리로 옮겼습니다.',
+    revised: '기록은 그대로이고, 분류 개정의 대응표가 새 자리로 옮겼습니다.',
     moved: '기록의 분류나 담당자를 사람이 고쳐 자리가 바뀌었습니다.',
   },
   before: '이전',
   after: '지금',
   nowhere: '—',
   applyPack: '분류 개정 적용',
-  applyPackTitle: '적용할 분류 자료(데이터 팩) 폴더 선택',
+  applyPackTitle: '적용할 분류 자료 폴더 선택',
   packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}`,
   packNothingNew: '이 자료에는 기록 폴더에 없는 새 분류·양식이 없습니다.',
   packFormsBehind: (forms: string[]) =>
-    `새 분류 버전에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 버전 양식이 든 자료를 적용하세요.`,
+    `새 분류 판에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 판 양식이 든 자료를 적용하세요.`,
   packSchemeUnlinked: (versions: string[]) =>
-    `이전 버전에서 이어지는 연계표가 없는 분류가 있습니다: ${versions.join(', ')}. 이름만 바꾼 개정이어도 연계표가 있어야 예전 기록이 새 버전으로 옮겨집니다 — 없으면 새 버전 양식에서 '연계 없음'이 됩니다.`,
+    `이전 판에서 이어지는 대응표가 없는 분류가 있습니다: ${versions.join(', ')}. 이름만 바꾼 개정이어도 대응표가 있어야 예전 기록이 새 판으로 옮겨집니다 — 없으면 새 판 양식에서 '연계 없음'이 됩니다.`,
   formBehind: (lags: { scheme: string; version: number; latest: number }[]) =>
-    `이 양식은 ${lags.map((l) => `분류 ${l.scheme} v${l.version}`).join(', ')} 기준입니다(최신은 ${lags.map((l) => `v${l.latest}`).join(', ')}). 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 버전 양식으로 내세요.`,
+    `이 양식은 ${lags.map((l) => `분류 ${l.scheme} ${l.version}판`).join(', ')} 기준입니다(최신은 ${lags.map((l) => `${l.latest}판`).join(', ')}). 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 판 양식으로 내세요.`,
   definition: {
-    scheme: (name: string, version: number) => `분류 ${name} v${version}`,
-    crosswalk: (name: string, from: number, to: number) => `연계표 ${name} v${from}→v${to}`,
-    report: (name: string, version: number) => `양식 ${name} v${version}`,
-    export: (name: string, version: number) => `내보내기 양식 ${name} v${version}`,
-    pack: (name: string, version: number) => `데이터 팩 ${name} v${version}`,
-    labels: (name: string, version: number, locale: string) => `이름표 ${name} v${version} (${locale})`,
-    fields: (name: string, version: number, type: string) => `칸 정의 ${name} v${version} (${type})`,
+    scheme: (name: string, version: number) => `분류 ${name} ${version}판`,
+    crosswalk: (name: string, from: number, to: number) => `분류 대응표 ${name} ${from}판→${to}판`,
+    report: (name: string, version: number) => `양식 ${name} ${version}판`,
+    export: (name: string, version: number) => `내보내기 양식 ${name} ${version}판`,
+    pack: (name: string, version: number) => `분류 자료 ${name} ${version}판`,
+    labels: (name: string, version: number, locale: string) => `이름표 ${name} ${version}판 (${locale})`,
+    fields: (name: string, version: number, type: string) => `기록 항목 ${name} ${version}판 (${type})`,
   },
   /** A pack whose manifest came along: named by its label rather than by its files. */
-  packApplied: (label: string, version: number) => `데이터 팩 「${label}」 ${version}판을 적용했습니다.`,
-  adopted: (tracks: string[]) => `이 기록 폴더를 「${tracks.join(', ')}」 데이터 팩으로 맞추고 칸 정의를 더했습니다. 있던 기록과 분류는 그대로입니다.`,
-  packIssues: (n: number) => `데이터 팩끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 팩이나 파일이 있는지 확인하세요.`,
+  packApplied: (label: string, version: number) => `분류 자료 「${label}」 ${version}판을 적용했습니다.`,
+  adopted: (tracks: string[]) => `이 기록 폴더를 「${tracks.join(', ')}」 분류 자료로 맞추고 기록 항목을 더했습니다. 있던 기록과 분류는 그대로입니다.`,
+  packIssues: (n: number) => `분류 자료끼리 맞지 않는 곳이 ${n}곳 있습니다. 빠진 자료나 파일이 있는지 확인하세요.`,
 
   subjects: '대상자',
   noSubjects: '대상자가 없습니다. 「새 대상자」로 추가하세요.',
@@ -272,7 +272,7 @@ export const ko = {
   noSessions: '기록한 회기가 없습니다.',
   newSession: '새 회기',
   none: '(없음)',
-  noFieldDefinitions: '이 기록 폴더에는 회기 칸 정의가 없습니다. 칸 정의가 담긴 데이터 팩을 적용하세요.',
+  noFieldDefinitions: '이 기록 폴더에는 회기 기록 항목이 없습니다. 기록 항목이 담긴 분류 자료를 적용하세요.',
   addFirst: (label: string) => `회기를 기록하려면 ${label}${objectParticle(label)} 먼저 추가하세요.`,
   missing: (label: string) => `‘${label}’ 칸을 채우세요.`,
   showNote: (label: string) => `${label} 보기`,
@@ -326,7 +326,7 @@ export const ko = {
   backupStop: '백업 끄기',
   backupOff: '사용하지 않습니다.',
   backupTo: (folder: string) => `백업 폴더: ${folder}`,
-  backupDone: (at: string, copied: number) => `마지막 백업 ${at} · 새 파일 ${copied}개`,
+  backupDone: (at: number, copied: number) => `마지막 백업 ${new Date(at).toLocaleString('ko', { dateStyle: 'medium', timeStyle: 'short' })} · 새 파일 ${copied}개`,
   backupFailed: (reason: string) => `백업이 되지 않았습니다. ${reason} 기록은 이 기록 폴더에 그대로 저장됩니다.`,
   backupMissing: (n: number) => `기록 폴더에서 없어진 기록 파일이 ${n}개 있습니다. 백업에 그대로 남아 있어 되살릴 수 있습니다.`,
   backupRestore: '백업에서 되살리기',
@@ -366,7 +366,7 @@ export const ko = {
     'kit-not-confirmed': '복구 키트를 먼저 확인하세요.',
     'kit-mismatch': '복구 키의 마지막 글자와 다릅니다. 다시 확인하세요.',
     'not-a-pack': '이 폴더에는 분류나 보고 양식 자료가 없습니다.',
-    'pack-conflict': '기록 폴더에 같은 이름의 다른 분류·양식이 이미 있어 아무것도 적용하지 않았습니다. 자료의 버전을 확인하세요.',
+    'pack-conflict': '기록 폴더에 같은 이름의 다른 분류·양식이 이미 있어 아무것도 적용하지 않았습니다. 자료의 판을 확인하세요.',
     'already-exists': '이 폴더는 이미 기록 폴더입니다. 기록 폴더 열기를 쓰세요.',
     'not-a-vault': '이 폴더는 기록 폴더가 아닙니다.',
     'declaration-missing': '이 폴더에서 기록 폴더임을 알리는 파일(vault.json)이 없어졌습니다. 암호 파일과 기록 파일은 남아 있어, 그 파일을 되살리면 전처럼 열립니다.',
@@ -382,9 +382,9 @@ export const ko = {
     'plain-copy-exists': '그 폴더에 같은 이름의 사본이 이미 있습니다. 잠시 뒤 다시 만들거나 다른 폴더를 고르세요.',
     'plain-copy-name': '사본 파일 이름을 만들 수 없습니다.',
     'not-a-choice': '이 기록은 더 이상 그 분류를 기다리지 않습니다. 다른 기기에서 이미 골랐을 수 있습니다. 대기 목록을 다시 여세요.',
-    bundle: '앱에 들어 있는 데이터 팩을 읽지 못했습니다. 앱을 다시 설치해야 할 수 있습니다.',
-    'engine-start': '기록 엔진이 시작되지 않았습니다. 앱을 다시 설치해야 할 수 있습니다.',
-    engine: '기록 엔진이 요청을 처리하지 못했습니다.',
+    bundle: '앱에 들어 있는 분류 자료를 읽지 못했습니다. 앱을 다시 설치해야 할 수 있습니다.',
+    'engine-start': '앱이 기록을 열 준비를 하지 못했습니다. 앱을 다시 설치해야 할 수 있습니다.',
+    engine: '앱이 이 요청을 처리하지 못했습니다.',
     io: '파일을 읽거나 쓰지 못했습니다.',
     unknown: '작업을 끝내지 못했습니다.',
   },

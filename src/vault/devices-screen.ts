@@ -116,7 +116,7 @@ export class OcDevices extends VaultScreen {
             : backup.error
               ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backup.error))}</p>`
               : backup.at !== undefined
-                ? html`<p class="muted" data-role="backup-status">${strings.backupDone(new Date(backup.at).toLocaleString(), backup.copied ?? 0)}</p>`
+                ? html`<p class="muted" data-role="backup-status">${strings.backupDone(backup.at, backup.copied ?? 0)}</p>`
                 : nothing,
           ...this.backupFindings(),
         ]

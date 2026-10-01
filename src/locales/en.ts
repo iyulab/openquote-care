@@ -327,7 +327,7 @@ export const en: Strings = {
   backupStop: 'Stop backing up',
   backupOff: 'Off.',
   backupTo: (folder: string) => `Backup folder: ${folder}`,
-  backupDone: (at: string, copied: number) => `Last backup ${at} · ${plural(copied, 'new file')}`,
+  backupDone: (at: number, copied: number) => `Last backup ${new Date(at).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · ${plural(copied, 'new file')}`,
   backupFailed: (reason: string) => `The backup did not go through. ${reason} Records are still saved in this vault.`,
   backupMissing: (n: number) => `${plural(n, 'record file')} went missing from this vault. The backup still holds them, so they can be restored.`,
   backupRestore: 'Restore from the backup',

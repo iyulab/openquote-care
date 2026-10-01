@@ -13,7 +13,7 @@
     "publish:sidecar": "node scripts/publish-sidecar.mjs",
     "bundle": "npm run publish:sidecar && tauri build --config src-tauri/tauri.bundle.conf.json",
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build:e2e": "tauri build --debug --no-bundle --config src-tauri/tauri.e2e.conf.json",
