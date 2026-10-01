@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { nothing, type TemplateResult } from 'lit'
-import { listEntry, errorCallout } from '../vault/parts.js'
+import { listEntry, errorCallout, countBy } from '../vault/parts.js'
 
 /** A template and the templates in its values, as one markup string. */
 function flat(t: unknown): string {
@@ -33,4 +33,13 @@ describe('error callout', () => {
   })
 
   it('is nothing without an error', () => expect(errorCallout(undefined)).toBe(nothing))
+})
+
+describe('countBy', () => {
+  it('counts sessions per id', () => {
+    const counts = countBy([{ people: ['a', 'b'] }, { people: ['a'] }] as never, (s: { people: string[] }) => s.people)
+    expect(counts.get('a')).toBe(2)
+    expect(counts.get('b')).toBe(1)
+    expect(counts.get('c')).toBeUndefined()
+  })
 })

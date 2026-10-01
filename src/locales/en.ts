@@ -299,6 +299,7 @@ export const en: Strings = {
   correctSubject: 'Correct the subject',
   correctSubjectLead: 'Only the fields you change are written, as a record of their own; the subject as first written is kept too.',
   subjectCorrected: 'The subject was corrected.',
+  sessionHistory: 'Sessions',
   sessionCount: (n: number) => plural(n, 'session'),
   conflict: 'Edited on two devices',
   conflictTitle: 'Fields changed on two devices without seeing each other',

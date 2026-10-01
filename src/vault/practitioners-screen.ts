@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { listDetail, nameField } from './parts.js'
+import { countBy, listDetail, nameField } from './parts.js'
 import { VaultScreen } from './screen.js'
 import { sessionTable, toggled } from './session-parts.js'
 
@@ -39,6 +39,8 @@ export class OcPractitioners extends VaultScreen {
   protected screen() {
     const { practitioners } = this.store
     const practitioner = this.adding ? undefined : practitioners.find((p) => p.id === this.selected)
+    const refs = this.store.sessionFields.filter((f) => f.kind === 'reference' && f.refType === 'practitioner').map((f) => f.name)
+    const counts = countBy(this.store.sessions, (s) => refs.map((r) => s.fields[r]).filter((id): id is string => typeof id === 'string'))
     return listDetail({
       label: strings.practitioners,
       head: html`<dc-button
@@ -50,7 +52,7 @@ export class OcPractitioners extends VaultScreen {
         }}
         >${strings.newPractitioner}</dc-button
       >`,
-      entries: practitioners.map((p) => ({ id: p.id, label: text(p, 'name') })),
+      entries: practitioners.map((p) => ({ id: p.id, label: text(p, 'name'), meta: strings.sessionCount(counts.get(p.id) ?? 0) })),
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),
       empty: strings.noPractitioners,
@@ -67,11 +69,11 @@ export class OcPractitioners extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const add = () => void this.addPractitioner()
-    return html`<h2>${strings.addPractitioner}</h2>
-      <div class="row">
+    return html`<dp-page-header eyebrow=${strings.practitioners} heading=${strings.addPractitioner}></dp-page-header>
+      <dc-card>
         ${nameField(busy, strings.practitionerName, this.practitionerName, (v) => (this.practitionerName = v), add)}
-        <dc-button variant="primary" ?disabled=${busy} @click=${add}>${strings.addPractitioner}</dc-button>
-      </div>`
+        <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${add}>${strings.addPractitioner}</dc-button>
+      </dc-card>`
   }
 
   /** The sessions whose practitioner reference — whichever field the packs give it — points at this one. */
@@ -79,16 +81,26 @@ export class OcPractitioners extends VaultScreen {
     const store = this.store
     const refs = store.sessionFields.filter((f) => f.kind === 'reference' && f.refType === 'practitioner').map((f) => f.name)
     const sessions = newestFirst(store.sessions.filter((s) => refs.some((r) => s.fields[r] === practitioner.id)))
-    return html`<h2>${strings.sessions(text(practitioner, 'name'))}</h2>
-      ${sessions.length === 0
-        ? html`<p class="muted">${strings.noSessions}</p>`
-        : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
-            ${sessionTable(store, {
-              sessions,
-              attendees: true,
-              openNotes: this.openNotes,
-              toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
-            })}`}`
+    return html`<dp-page-header
+        eyebrow=${strings.practitioners}
+        heading=${text(practitioner, 'name')}
+        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+      ></dp-page-header>
+      <section>
+        <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
+        ${sessions.length === 0
+          ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
+          : html`<dc-card
+              ><div class="scroll">
+                ${sessionTable(store, {
+                  sessions,
+                  attendees: true,
+                  openNotes: this.openNotes,
+                  toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+                })}
+              </div></dc-card
+            >`}
+      </section>`
   }
 }
 

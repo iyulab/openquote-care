@@ -79,15 +79,15 @@ export class OcSubjectForm extends StoreElement {
   render() {
     const store = this.store
     const inputs = inputFields(store.subjectFields)
-    return html`<div class="form" data-role="correct-subject">
-      <h3>${strings.correctSubject}</h3>
-      <p class="muted">${strings.correctSubjectLead}</p>
-      <div class="row">${inputs.map((f) => fieldInput(f, this.values[f.name] ?? '', (v) => (this.values = { ...this.values, [f.name]: v }), store.busy, this.choicesOf(f)))}</div>
-      <div class="row">
-        <dc-button variant="primary" ?disabled=${store.busy} @click=${() => void this.save()}>${strings.saveCorrection}</dc-button>
-        <dc-button variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+    return html`<dc-card data-role="correct-subject">
+      <span slot="header">${strings.correctSubject}</span>
+      <div class="stack">
+        <dc-callout><p>${strings.correctSubjectLead}</p></dc-callout>
+        <div class="fields">${inputs.map((f) => fieldInput(f, this.values[f.name] ?? '', (v) => (this.values = { ...this.values, [f.name]: v }), store.busy, this.choicesOf(f)))}</div>
       </div>
-    </div>`
+      <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+      <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.save()}>${strings.saveCorrection}</dc-button>
+    </dc-card>`
   }
 }
 

@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { listDetail, nameField, noticeLine } from './parts.js'
+import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
 import { sessionTable, subjectPicker, toggled } from './session-parts.js'
@@ -70,6 +70,7 @@ export class OcGroups extends VaultScreen {
   protected screen() {
     const { groups } = this.store
     const group = this.adding ? undefined : groups.find((g) => g.id === this.selectedGroup)
+    const counts = countBy(this.store.sessions, (s) => (s.group ? [s.group] : []))
     return listDetail({
       label: strings.groups,
       head: html`<dc-button
@@ -81,7 +82,7 @@ export class OcGroups extends VaultScreen {
         }}
         >${strings.newGroup}</dc-button
       >`,
-      entries: groups.map((g) => ({ id: g.id, label: text(g, 'name') })),
+      entries: groups.map((g) => ({ id: g.id, label: text(g, 'name'), meta: strings.sessionCount(counts.get(g.id) ?? 0) })),
       selected: this.adding ? undefined : this.selectedGroup,
       select: (id) => this.selectGroup(id),
       empty: strings.noGroups,
@@ -94,11 +95,11 @@ export class OcGroups extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const addGroup = () => void this.addGroup()
-    return html`<h2>${strings.addGroup}</h2>
-      <div class="row">
+    return html`<dp-page-header eyebrow=${strings.groups} heading=${strings.addGroup}></dp-page-header>
+      <dc-card>
         ${nameField(busy, strings.groupName, this.groupName, (v) => (this.groupName = v), addGroup)}
-        <dc-button variant="primary" ?disabled=${busy} @click=${addGroup}>${strings.addGroup}</dc-button>
-      </div>`
+        <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${addGroup}>${strings.addGroup}</dc-button>
+      </dc-card>`
   }
 
   private groupDetail(group: Entity) {
@@ -106,7 +107,11 @@ export class OcGroups extends VaultScreen {
     const sessions = newestFirst(store.sessions.filter((s) => s.group === group.id))
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
-      <h2>${strings.sessions(text(group, 'name'))}</h2>
+      <dp-page-header
+        eyebrow=${strings.groups}
+        heading=${text(group, 'name')}
+        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+      ></dp-page-header>
       ${correcting
         ? html`<oc-session-form
             .store=${store}
@@ -116,14 +121,13 @@ export class OcGroups extends VaultScreen {
             @oc-edit-cancelled=${() => (this.correcting = undefined)}
           ></oc-session-form>`
         : nothing}
-      <div class="form" data-role="members">
+      <dc-card data-role="members">
+        <span slot="header">${strings.groupMembers}</span>
         ${subjectPicker(store, strings.groupMembers, () => this.memberDraft ?? this.membersOf(group.id), (ids) => (this.memberDraft = ids))}
-        <div class="row">
-          <dc-button variant="secondary" ?disabled=${store.busy || !this.memberDraft} @click=${() => void this.saveMembers(group)}
-            >${strings.saveMembers}</dc-button
-          >
-        </div>
-      </div>
+        <dc-button slot="footer" variant="secondary" ?disabled=${store.busy || !this.memberDraft} @click=${() => void this.saveMembers(group)}
+          >${strings.saveMembers}</dc-button
+        >
+      </dc-card>
       <oc-session-form
         .store=${store}
         .holder=${{ kind: 'group', id: group.id }}
@@ -131,19 +135,25 @@ export class OcGroups extends VaultScreen {
         @oc-session-recorded=${() => (this.attendeeDraft = undefined)}
         >${subjectPicker(store, strings.attendees, () => this.attendeesOf(group.id), (ids) => (this.attendeeDraft = ids))}</oc-session-form
       >
-      ${sessions.length === 0
-        ? html`<p class="muted">${strings.noSessions}</p>`
-        : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
-            ${sessionTable(store, {
-              sessions,
-              attendees: true,
-              openNotes: this.openNotes,
-              toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
-              correct: (id) => {
-                this.store.set({ notice: '' })
-                this.correcting = id
-              },
-            })}`}
+      <section>
+        <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
+        ${sessions.length === 0
+          ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
+          : html`<dc-card
+              ><div class="scroll">
+                ${sessionTable(store, {
+                  sessions,
+                  attendees: true,
+                  openNotes: this.openNotes,
+                  toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+                  correct: (id) => {
+                    this.store.set({ notice: '' })
+                    this.correcting = id
+                  },
+                })}
+              </div></dc-card
+            >`}
+      </section>
       ${noticeLine(store)}
     `
   }

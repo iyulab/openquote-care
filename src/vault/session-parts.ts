@@ -96,7 +96,7 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
               (c, i) =>
                 html`<td>
                   ${c}
-                  ${i === 0 && store.corrected.has(s.id) ? html`<span class="cell muted" data-role="corrected">${strings.corrected}</span>` : nothing}
+                  ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
                   ${i === 0 && t.correct
                     ? html`<button class="cell" data-role="correct" ?disabled=${store.busy} @click=${() => t.correct!(s.id)}>${strings.correct}</button>`
                     : nothing}
@@ -127,10 +127,10 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
 export function conflictPanel(store: VaultStore, session: Entity, settle: (field: string, value: unknown) => void) {
   const defs = store.sessionFields
   const date = defs.find((f) => f.kind === 'date')
-  return html`<div class="form" data-role="settle">
+  return html`<dc-callout variant="warning" data-role="settle"><div class="stack">
     <h3>${strings.conflictTitle}${date ? ` · ${valueText(store, date, session.fields[date.name])}` : ''}</h3>
-    <p class="muted">${strings.conflictLead}</p>
-    ${(session.missingBase?.length ?? 0) > 0 ? html`<p class="muted" data-role="missing-base">${strings.conflictMissingBase}</p>` : nothing}
+    <p>${strings.conflictLead}</p>
+    ${(session.missingBase?.length ?? 0) > 0 ? html`<p data-role="missing-base">${strings.conflictMissingBase}</p>` : nothing}
     ${conflictsOf(session).map(
       ({ field, heads }) => html`<div class="row">
         <span>${labelOfField(defs, field)}</span>
@@ -146,5 +146,5 @@ export function conflictPanel(store: VaultStore, session: Entity, settle: (field
         )}
       </div>`,
     )}
-  </div>`
+  </div></dc-callout>`
 }

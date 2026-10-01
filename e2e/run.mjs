@@ -313,7 +313,7 @@ const scenarios = {
     await app.click('dc-button', '＋ 새 담당자')
     await app.type('담당자 이름', '상담자 가')
     await app.click('dc-button', '담당자 추가')
-    await app.cdp.waitFor(`__e2e.all('li').some((li) => li.textContent.trim() === '상담자 가')`, 'the practitioner listed')
+    await app.cdp.waitFor(`__e2e.all('li').some((li) => li.querySelector('.label')?.textContent.trim() === '상담자 가')`, 'the practitioner listed')
     await app.noAlert()
   },
 
@@ -616,7 +616,7 @@ const scenarios = {
     await app.click('dc-button', '＋ 새 대상자')
     await app.type('대상자 이름', '가상 학생 2')
     await app.click('dc-button', '대상자 추가')
-    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.textContent.trim() === '가상 학생 2')`, 'the second subject')
+    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.querySelector('.label')?.textContent.trim() === '가상 학생 2')`, 'the second subject')
 
     await app.click('button', '집단')
     await app.click('dc-button', '＋ 새 집단')
@@ -657,7 +657,7 @@ const scenarios = {
     await app.cdp.waitFor(`!!__e2e.one('[data-role=import-tally]')`, 'the pasted rows planned')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=import-tally]').textContent.trim()`), '추가 1 · 갱신 1 · 그대로 0 · 문제 0')
     await app.click('dc-button', '가져오기 (추가 1 · 갱신 1)')
-    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.textContent.trim() === '가상 학생 3')`, 'the new subject listed')
+    await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.querySelector('.label')?.textContent.trim() === '가상 학생 3')`, 'the new subject listed')
     await app.noAlert()
 
     // A session keeps the grade and class of the day it was recorded.

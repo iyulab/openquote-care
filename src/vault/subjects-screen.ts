@@ -5,7 +5,7 @@ import { conflictsOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
-import { listDetail, nameField, noticeLine } from './parts.js'
+import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
 import './subject-form.js'
@@ -83,10 +83,11 @@ export class OcSubjects extends VaultScreen {
   protected screen() {
     const { subjects } = this.store
     const subject = this.adding ? undefined : subjects.find((s) => s.id === this.selected)
+    const counts = countBy(this.store.sessions, (s) => s.people)
     return listDetail({
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>`,
-      entries: subjects.map((s) => ({ id: s.id, label: text(s, 'name') })),
+      entries: subjects.map((s) => ({ id: s.id, label: text(s, 'name'), meta: strings.sessionCount(counts.get(s.id) ?? 0) })),
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),
       empty: strings.noSubjects,
@@ -106,18 +107,20 @@ export class OcSubjects extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const addSubject = () => void this.addSubject()
-    return html`<h2>${strings.addSubject}</h2>
-      <div class="row">
-        ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
-        <dc-button variant="primary" ?disabled=${busy} @click=${addSubject}>${strings.addSubject}</dc-button>
-      </div>
-      <dc-paste-rows-zone
-        placeholder=${strings.importPaste}
-        @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
-          this.store.set({ notice: '' })
-          this.importPlan = planImport(e.detail.rows, this.store.subjects, headingIndex(this.store.subjectFields))
-        }}
-      ></dc-paste-rows-zone>
+    return html`<dp-page-header eyebrow=${strings.subjects} heading=${strings.addSubject}></dp-page-header>
+      <dc-card>
+        <div class="stack">
+          ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
+          <dc-paste-rows-zone
+            placeholder=${strings.importPaste}
+            @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
+              this.store.set({ notice: '' })
+              this.importPlan = planImport(e.detail.rows, this.store.subjects, headingIndex(this.store.subjectFields))
+            }}
+          ></dc-paste-rows-zone>
+        </div>
+        <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${addSubject}>${strings.addSubject}</dc-button>
+      </dc-card>
       ${noticeLine(this.store)}`
   }
 
@@ -138,31 +141,33 @@ export class OcSubjects extends VaultScreen {
         : r.kind === 'same'
           ? text(this.store.subjects.find((s) => s.id === r.subject) ?? ({ fields: {} } as Entity), 'name')
           : ''
-    return html`<div class="form" data-role="import">
-      <h3>${strings.importTitle}</h3>
+    return html`<section data-role="import">
+      <dp-page-header eyebrow=${strings.subjects} heading=${strings.importTitle}></dp-page-header>
       <p class="muted" data-role="import-tally">${strings.importTally(counts.create, counts.update, counts.same, counts.problem)}</p>
       ${plan.missingName ? html`<p class="error">${strings.importMissingName}</p>` : nothing}
       ${plan.unknownHeadings.length > 0 ? html`<p class="muted">${strings.importUnknown(plan.unknownHeadings)}</p>` : nothing}
-      <div class="scroll">
-        <table>
-          <tbody>
-            ${plan.rows.map(
-              (r) => html`<tr data-import-row=${r.line} data-kind=${r.kind}>
-                <td class="num">${r.line}</td>
-                <td class=${r.kind === 'problem' ? 'error' : ''}>${status(r)}</td>
-                <td>${shown(r)}</td>
-              </tr>`,
-            )}
-          </tbody>
-        </table>
-      </div>
+      <dc-card>
+        <div class="scroll">
+          <table>
+            <tbody>
+              ${plan.rows.map(
+                (r) => html`<tr data-import-row=${r.line} data-kind=${r.kind}>
+                  <td class="num">${r.line}</td>
+                  <td class=${r.kind === 'problem' ? 'error' : ''}>${status(r)}</td>
+                  <td>${shown(r)}</td>
+                </tr>`,
+              )}
+            </tbody>
+          </table>
+        </div>
+      </dc-card>
       <div class="row">
         <dc-button variant="primary" ?disabled=${busy || !plan.ready || counts.create + counts.update === 0} @click=${() => void this.importSubjects(plan)}
           >${strings.importApply(counts.create, counts.update)}</dc-button
         >
         <dc-button variant="secondary" ?disabled=${busy} @click=${() => (this.importPlan = undefined)}>${strings.cancel}</dc-button>
       </div>
-    </div>`
+    </section>`
   }
 
   private subjectDetail(subject: Entity) {
@@ -171,15 +176,18 @@ export class OcSubjects extends VaultScreen {
     const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
-      <div class="row">
-        <h2>${strings.sessions(text(subject, 'name'))}</h2>
+      <dp-page-header
+        eyebrow=${strings.subjects}
+        heading=${text(subject, 'name')}
+        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+      >
         ${this.correctingSubject
           ? nothing
-          : html`<dc-button variant="ghost" size="sm" data-role="correct-subject-open" ?disabled=${store.busy} @click=${() => {
+          : html`<dc-button slot="actions" variant="secondary" size="sm" data-role="correct-subject-open" ?disabled=${store.busy} @click=${() => {
               store.set({ notice: '' })
               this.correctingSubject = true
             }}>${strings.correctSubject}</dc-button>`}
-      </div>
+      </dp-page-header>
       ${this.correctingSubject
         ? html`<oc-subject-form
             .store=${store}
@@ -199,19 +207,25 @@ export class OcSubjects extends VaultScreen {
           ></oc-session-form>`
         : nothing}
       <oc-session-form .store=${store} .holder=${{ kind: 'subject', id: subject.id }}></oc-session-form>
-      ${sessions.length === 0
-        ? html`<p class="muted">${strings.noSessions}</p>`
-        : html`<p class="muted">${strings.sessionCount(sessions.length)}</p>
-            ${sessionTable(store, {
-              sessions,
-              openNotes: this.openNotes,
-              toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
-              settle: (id) => (this.settling = id),
-              correct: (id) => {
-                this.store.set({ notice: '' })
-                this.correcting = id
-              },
-            })}`}
+      <section>
+        <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
+        ${sessions.length === 0
+          ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
+          : html`<dc-card
+              ><div class="scroll">
+                ${sessionTable(store, {
+                  sessions,
+                  openNotes: this.openNotes,
+                  toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+                  settle: (id) => (this.settling = id),
+                  correct: (id) => {
+                    this.store.set({ notice: '' })
+                    this.correcting = id
+                  },
+                })}
+              </div></dc-card
+            >`}
+      </section>
       ${noticeLine(store)}
     `
   }

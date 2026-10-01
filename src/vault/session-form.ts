@@ -189,23 +189,25 @@ export class OcSessionForm extends StoreElement {
     if (unmet) return html`<p class="muted">${strings.addFirst(unmet.label)}</p>`
     const session = this.edit
     if (session)
-      return html`<div class="form" data-role="correct-session">
-        <h3>${strings.correctSession}</h3>
-        <p class="muted">${strings.correctSessionLead}</p>
-        <div class="row">${inputs.map((f) => this.input(f))}</div>
-        <div class="row">
-          <dc-button variant="primary" ?disabled=${store.busy} @click=${() => void this.saveCorrection(session)}>${strings.saveCorrection}</dc-button>
-          <dc-button variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+      return html`<dc-card data-role="correct-session">
+        <span slot="header">${strings.correctSession}</span>
+        <div class="stack">
+          <dc-callout><p>${strings.correctSessionLead}</p></dc-callout>
+          <div class="fields">${inputs.map((f) => this.input(f))}</div>
         </div>
-      </div>`
-    return html`<div class="form">
-      <h3>${strings.newSession}</h3>
-      <div class="row">${inputs.map((f) => this.input(f))}</div>
-      <slot></slot>
-      <div class="row">
-        <dc-button variant="primary" ?disabled=${store.busy} @click=${() => void this.recordSession()}>${strings.recordSession}</dc-button>
-      </div>
-    </div>`
+        <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+        <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.saveCorrection(session)}>${strings.saveCorrection}</dc-button>
+      </dc-card>`
+    return html`<section>
+      <dc-section-heading marker size="lg" heading=${strings.newSession}></dc-section-heading>
+      <dc-card>
+        <div class="stack">
+          <div class="fields">${inputs.map((f) => this.input(f))}</div>
+          <slot></slot>
+        </div>
+        <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.recordSession()}>${strings.recordSession}</dc-button>
+      </dc-card>
+    </section>`
   }
 }
 

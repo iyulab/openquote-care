@@ -1,6 +1,7 @@
 import { html, nothing } from 'lit'
 import { open } from '@tauri-apps/plugin-dialog'
 import type { FormEntry } from '../forms.js'
+import type { Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import type { VaultStore } from './store.js'
@@ -16,6 +17,13 @@ export function nameField(busy: boolean, label: string, value: string, set: (v: 
       @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && !busy && submit()}
     ></dc-input>
   </dc-field>`
+}
+
+/** How many sessions each id appears in, by the ids a session names. */
+export function countBy(sessions: Entity[], ids: (s: Entity) => readonly string[]) {
+  const counts = new Map<string, number>()
+  for (const s of sessions) for (const id of ids(s)) counts.set(id, (counts.get(id) ?? 0) + 1)
+  return counts
 }
 
 /** One entry of a screen's list: what it picks (also its `data-entry`), what it reads as, and a line about it. */

@@ -75,6 +75,16 @@ export const vaultStyles = [
     .fields > .wide {
       grid-column: 1 / -1;
     }
+    /* The body of a card or callout: its parts one under another. */
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-3, 12px);
+    }
+    .stack h3 {
+      margin: 0;
+      font-size: var(--dc-font-size-md, 14px);
+    }
     ul {
       list-style: none;
       margin: 0;

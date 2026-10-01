@@ -301,6 +301,7 @@ export const ko = {
   correctSubject: '대상자 정보 고치기',
   correctSubjectLead: '바꾼 칸만 새 기록으로 남고, 처음 쓴 정보도 그대로 보관됩니다.',
   subjectCorrected: '대상자 정보를 고쳤습니다.',
+  sessionHistory: '지난 회기',
   sessionCount: (n: number) => `회기 ${n}건`,
   conflict: '동시 수정',
   conflictTitle: '두 기기에서 서로 모르게 고친 칸',
