@@ -13,6 +13,9 @@ const objectParticle = (word: string) => {
 export const ko = {
   appName: 'Openquote Care',
   tagline: '이어지는 기록, 근거 있는 통계',
+  welcomeLead: '상담 기록은 이 PC의 기록 폴더에 암호로 잠겨 보관됩니다. 보고 기준이 바뀌어도 다시 세지 않아도 됩니다.',
+  welcomeFacts: ['인터넷 없이 동작', '기록은 이 PC에만', '백업 사본을 다른 곳에'],
+  welcomeOpenLead: '암호 또는 복구 키로 엽니다.',
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.ko.webviewMissing,
   diagnosticsNotice:

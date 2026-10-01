@@ -6,6 +6,8 @@ import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell, type TrackView } from './shell.js'
 import { inAppLanguage, strings } from './strings.js'
+import { dialogueMark, quoteMark } from './brand-mark.js'
+import { errorCallout } from './vault/parts.js'
 import './vault-view.js'
 
 /**
@@ -26,14 +28,6 @@ export class OcApp extends LitElement {
       display: block;
       height: 100%;
     }
-    .center {
-      max-width: 560px;
-      margin: 0 auto;
-      padding: var(--dc-space-6, 32px) var(--dc-space-4, 16px);
-      display: flex;
-      flex-direction: column;
-      gap: var(--dc-space-4, 16px);
-    }
     h1,
     h2 {
       margin: 0;
@@ -51,12 +45,6 @@ export class OcApp extends LitElement {
       align-items: center;
       flex-wrap: wrap;
     }
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: var(--dc-space-1, 4px);
-      font-size: 13px;
-    }
     .folder {
       font-family: var(--dc-font-mono, ui-monospace, monospace);
       font-size: 12px;
@@ -66,11 +54,87 @@ export class OcApp extends LitElement {
       font-family: var(--dc-font-mono, ui-monospace, monospace);
       font-size: 15px;
       line-height: 1.8;
-      padding: var(--dc-space-3, 12px);
-      border: 1px solid var(--dc-color-border, #ddd);
+      padding: var(--dc-space-3, 12px) var(--dc-space-4, 16px);
       border-radius: var(--dc-radius-md, 6px);
+      background: var(--dc-color-secondary-subtle, #eef2ff);
+      color: var(--dc-color-text, #1a1a1e);
       user-select: all;
       word-spacing: 0.4em;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-4, 16px);
+    }
+    .center {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 56px var(--dc-space-4, 16px);
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-4, 16px);
+    }
+    .center dc-card {
+      --dc-card-elevation: var(--dc-elevation-2);
+    }
+    .welcome {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+      min-height: 100%;
+    }
+    .hero {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-5, 20px);
+      padding: 56px;
+    }
+    .product {
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-2, 8px);
+    }
+    .product h1 {
+      margin: 0;
+      font-size: var(--dc-font-size-lg, 15px);
+      font-weight: var(--dc-font-weight-semibold, 600);
+    }
+    .lead-title {
+      font-size: 30px;
+      font-weight: var(--dc-font-weight-bold, 700);
+      line-height: var(--dc-line-height-tight, 1.3);
+      letter-spacing: -0.02em;
+      text-wrap: balance;
+    }
+    .lead {
+      max-width: 34em;
+      font-size: var(--dc-font-size-lg, 15px);
+      color: var(--dc-color-text-secondary, #55555c);
+    }
+    .facts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dc-space-2, 8px);
+      margin-top: auto;
+    }
+    .side {
+      display: grid;
+      align-content: center;
+      gap: var(--dc-space-4, 16px);
+      padding: 40px;
+      background: var(--oq-sidebar, var(--dc-color-surface, #f7f7f8));
+      border-left: 1px solid var(--dc-color-rule, #e2e2e4);
+    }
+    .side dc-card {
+      --dc-card-elevation: var(--dc-elevation-2);
+    }
+    @media (max-width: 1023px) {
+      .welcome {
+        grid-template-columns: 1fr;
+      }
+      .side {
+        border-left: 0;
+        border-top: 1px solid var(--dc-color-rule, #e2e2e4);
+      }
     }
     ul {
       margin: 0;
@@ -78,9 +142,6 @@ export class OcApp extends LitElement {
       display: flex;
       flex-direction: column;
       gap: var(--dc-space-1, 4px);
-    }
-    .error {
-      color: var(--dc-color-danger, #b00020);
     }
     .detail {
       font-size: 12px;
@@ -91,8 +152,13 @@ export class OcApp extends LitElement {
       border-bottom: 1px solid currentColor;
     }
     @media print {
-      .no-print {
+      .no-print,
+      [slot='footer'] {
         display: none;
+      }
+      .key {
+        background: none;
+        border: 1px solid #000;
       }
     }
   `
@@ -272,15 +338,8 @@ export class OcApp extends LitElement {
         @oc-idle-changed=${() => this.armIdle()}
       ></oc-vault>`
     }
-    return html`<dp-page><div class="center">${this.body()}${this.errorLine()}</div></dp-page>`
-  }
-
-  private errorLine() {
-    if (!this.error) return nothing
-    return html`<div class="error" role="alert">
-      <p>${this.error.text}</p>
-      ${this.error.detail ? html`<p class="detail muted">${strings.errorDetail(this.error.detail)}</p>` : nothing}
-    </div>`
+    if (s.name === 'welcome') return html`<div class="welcome">${this.welcome()}</div>${errorCallout(this.error)}`
+    return html`<dp-page><div class="center">${this.body()}${errorCallout(this.error)}</div></dp-page>`
   }
 
   private body() {
@@ -301,13 +360,22 @@ export class OcApp extends LitElement {
 
   private welcome() {
     return html`
-      <h1>${strings.appName}</h1>
-      <p class="muted">${strings.tagline}</p>
-      <div class="row">
-        <dc-button variant="primary" @click=${() => this.go({ name: 'create' })}>${strings.createVault}</dc-button>
-        <dc-button variant="secondary" @click=${() => this.go({ name: 'open' })}>${strings.openVault}</dc-button>
+      <div class="hero">
+        <span class="product">${quoteMark(18)}<h1>${strings.appName}</h1></span>
+        <span class="mark">${dialogueMark(132)}</span>
+        <p class="lead-title">${strings.tagline}</p>
+        <p class="lead">${strings.welcomeLead}</p>
+        <div class="facts">${strings.welcomeFacts.map((f) => html`<dc-badge>${f}</dc-badge>`)}</div>
       </div>
-      ${this.diagnostics ? html`<p class="muted detail" data-role="diagnostics">${strings.diagnosticsNotice}</p>` : nothing}
+      <div class="side">
+        <dc-card>
+          <span slot="header">${strings.openVault}</span>
+          <p class="muted">${strings.welcomeOpenLead}</p>
+          <dc-button slot="footer" variant="primary" @click=${() => this.go({ name: 'open' })}>${strings.openVault}</dc-button>
+        </dc-card>
+        <dc-button variant="secondary" @click=${() => this.go({ name: 'create' })}>${strings.createVault}</dc-button>
+        ${this.diagnostics ? html`<p class="muted detail" data-role="diagnostics">${strings.diagnosticsNotice}</p>` : nothing}
+      </div>
     `
   }
 
@@ -320,9 +388,8 @@ export class OcApp extends LitElement {
     `
   }
 
-  private passphraseField(label: string, value: string, set: (v: string) => void, submit: () => void) {
-    return html`<label>
-      ${label}
+  private passphraseField(label: string, value: string, set: (v: string) => void, submit: () => void, hint?: string) {
+    return html`<dc-field label=${label} hint=${hint ?? ''}>
       <dc-input
         type="password"
         aria-label=${label}
@@ -331,27 +398,26 @@ export class OcApp extends LitElement {
         @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
         @keydown=${(e: KeyboardEvent) => this.onEnter(e, submit)}
       ></dc-input>
-    </label>`
+    </dc-field>`
   }
 
   private actions(label: string, action: () => void) {
-    return html`<div class="row">
-      <dc-button variant="primary" ?disabled=${this.busy} @click=${action}>${this.busy ? strings.working : label}</dc-button>
-      <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button>
-    </div>`
+    return html`
+      <dc-button slot="footer" variant="ghost" ?disabled=${this.busy} @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button>
+      <dc-button slot="footer" variant="primary" ?disabled=${this.busy} @click=${action}>${this.busy ? strings.working : label}</dc-button>
+    `
   }
 
   private createForm() {
     const submit = () => void this.create()
-    return html`
-      <h2>${strings.createVault}</h2>
-      ${this.folderField(strings.pickCreateFolderTitle)}
-      ${this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
-      ${this.passphraseField(strings.passphraseAgain, this.again, (v) => (this.again = v), submit)}
-      <p class="muted">${strings.passphraseHint(MIN_PASSPHRASE)}</p>
-      ${this.tracks.length > 1
-        ? html`<label>
-              ${strings.track}
+    return html`<dc-card>
+      <h2 slot="header">${strings.createVault}</h2>
+      <div class="stack">
+        ${this.folderField(strings.pickCreateFolderTitle)}
+        ${this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
+        ${this.passphraseField(strings.passphraseAgain, this.again, (v) => (this.again = v), submit, strings.passphraseHint(MIN_PASSPHRASE))}
+        ${this.tracks.length > 1
+          ? html`<dc-field label=${strings.track} hint=${strings.trackHint}>
               <dc-select
                 aria-label=${strings.track}
                 .options=${this.tracks.map((t) => ({ value: t.id, label: t.label }))}
@@ -359,22 +425,22 @@ export class OcApp extends LitElement {
                 ?disabled=${this.busy}
                 @change=${(e: Event) => (this.track = (e.target as HTMLSelectElement).value)}
               ></dc-select>
-            </label>
-            <p class="muted">${strings.trackHint}</p>`
-        : nothing}
+            </dc-field>`
+          : nothing}
+      </div>
       ${this.actions(strings.create, submit)}
-    `
+    </dc-card>`
   }
 
   private openForm() {
     const submit = () => void this.openVault()
-    return html`
-      <h2>${strings.openVault}</h2>
-      ${this.screen.name === 'open' && this.screen.locked ? html`<p class="muted" role="status" data-role="locked">${strings.locked}</p>` : nothing}
-      ${this.folderField(strings.pickOpenFolderTitle)}
-      ${this.withKey
-        ? html`<label>
-              ${strings.recoveryKey}
+    return html`<dc-card>
+      <h2 slot="header">${strings.openVault}</h2>
+      <div class="stack">
+        ${this.screen.name === 'open' && this.screen.locked ? html`<dc-callout role="status" data-role="locked"><p>${strings.locked}</p></dc-callout>` : nothing}
+        ${this.folderField(strings.pickOpenFolderTitle)}
+        ${this.withKey
+          ? html`<dc-field label=${strings.recoveryKey} hint=${strings.recoveryKeyHint}>
               <dc-input
                 aria-label=${strings.recoveryKey}
                 .value=${this.recoveryKey}
@@ -382,60 +448,61 @@ export class OcApp extends LitElement {
                 @input=${(e: Event) => (this.recoveryKey = (e.target as HTMLInputElement).value)}
                 @keydown=${(e: KeyboardEvent) => this.onEnter(e, submit)}
               ></dc-input>
-            </label>
-            <p class="muted">${strings.recoveryKeyHint}</p>`
-        : this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
-      ${this.actions(strings.open, submit)}
-      ${this.declarationMissing
-        ? html`<div class="row" data-role="restore-declaration">
-            <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.restoreDeclarationAndOpen()}>${strings.restoreDeclaration}</dc-button>
-          </div>`
-        : nothing}
-      <div class="row">
-        <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => (this.withKey = !this.withKey)}
-          >${this.withKey ? strings.openWithPassphrase : strings.openWithKey}</dc-button
-        >
+            </dc-field>`
+          : this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
+        ${this.declarationMissing
+          ? html`<div class="row" data-role="restore-declaration">
+              <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.restoreDeclarationAndOpen()}>${strings.restoreDeclaration}</dc-button>
+            </div>`
+          : nothing}
+        <div class="row">
+          <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => (this.withKey = !this.withKey)}
+            >${this.withKey ? strings.openWithPassphrase : strings.openWithKey}</dc-button
+          >
+        </div>
       </div>
-    `
+      ${this.actions(strings.open, submit)}
+    </dc-card>`
   }
 
   private kit(key: string, folder: string) {
     const submit = () => void this.confirmKit(folder)
-    return html`
-      <h2>${strings.kitTitle}</h2>
-      <p>${strings.kitLead}</p>
-      <p class="folder">${folder}</p>
-      <div>
-        <p class="muted">${strings.kitKey}</p>
-        <div class="key" data-role="key">${groupKey(key).join(' ')}</div>
+    return html`<dc-card>
+      <h2 slot="header">${strings.kitTitle}</h2>
+      <div class="stack">
+        <p>${strings.kitLead}</p>
+        <p class="folder">${folder}</p>
+        <div>
+          <p class="muted">${strings.kitKey}</p>
+          <div class="key" data-role="key">${groupKey(key).join(' ')}</div>
+        </div>
+        <dc-callout variant="warning">
+          <ul>
+            ${strings.kitWarnings.map((w) => html`<li>${w}</li>`)}
+          </ul>
+        </dc-callout>
+        <p class="muted">${strings.kitWithoutApp}</p>
+        <p class="muted">${strings.kitPassphraseChange}</p>
+        <div class="write-in" data-role="kit-backup">
+          <p class="muted">${strings.kitBackupWriteIn}</p>
+          <div class="write-in-line"></div>
+        </div>
+        <div class="row no-print">
+          <dc-button variant="secondary" @click=${() => window.print()}>${strings.print}</dc-button>
+        </div>
+        <dc-field class="no-print" label=${strings.kitConfirmLabel(KIT_TAIL)}>
+          <dc-input
+            aria-label=${strings.kitConfirmLabel(KIT_TAIL)}
+            .value=${this.tail}
+            ?disabled=${this.busy}
+            @input=${(e: Event) => (this.tail = (e.target as HTMLInputElement).value)}
+            @keydown=${(e: KeyboardEvent) => this.onEnter(e, submit)}
+          ></dc-input>
+        </dc-field>
       </div>
-      <ul>
-        ${strings.kitWarnings.map((w) => html`<li>${w}</li>`)}
-      </ul>
-      <p class="muted">${strings.kitWithoutApp}</p>
-      <p class="muted">${strings.kitPassphraseChange}</p>
-      <div class="write-in" data-role="kit-backup">
-        <p class="muted">${strings.kitBackupWriteIn}</p>
-        <div class="write-in-line"></div>
-      </div>
-      <div class="row no-print">
-        <dc-button variant="secondary" @click=${() => window.print()}>${strings.print}</dc-button>
-      </div>
-      <label class="no-print">
-        ${strings.kitConfirmLabel(KIT_TAIL)}
-        <dc-input
-          aria-label=${strings.kitConfirmLabel(KIT_TAIL)}
-          .value=${this.tail}
-          ?disabled=${this.busy}
-          @input=${(e: Event) => (this.tail = (e.target as HTMLInputElement).value)}
-          @keydown=${(e: KeyboardEvent) => this.onEnter(e, submit)}
-        ></dc-input>
-      </label>
-      <div class="row no-print">
-        <dc-button variant="primary" ?disabled=${this.busy} @click=${submit}>${strings.kitConfirm}</dc-button>
-        <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => void this.closeVault()}>${strings.cancel}</dc-button>
-      </div>
-    `
+      <dc-button slot="footer" class="no-print" variant="ghost" ?disabled=${this.busy} @click=${() => void this.closeVault()}>${strings.cancel}</dc-button>
+      <dc-button slot="footer" class="no-print" variant="primary" ?disabled=${this.busy} @click=${submit}>${strings.kitConfirm}</dc-button>
+    </dc-card>`
   }
 
 }
