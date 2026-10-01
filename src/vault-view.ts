@@ -146,9 +146,9 @@ export class OcVault extends LitElement {
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
-            this.sidebarOpen = false
             store.set({ error: undefined, notice: '' })
           }}
+          @dp-sidebar-activate=${() => (this.sidebarOpen = false)}
         ></dp-sidebar>
         <dp-toolbar
           slot="toolbar"

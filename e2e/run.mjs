@@ -679,6 +679,36 @@ const scenarios = {
     await app.cdp.waitFor(`!__e2e.one('dp-sidebar').hasAttribute('collapsed')`, 'the menu unfolded')
     await app.noAlert()
   },
+  async 'in a narrow window shows the list or the document picked, with a way back, and the menu as a drawer'(app) {
+    await app.cdp.send('Emulation.setDeviceMetricsOverride', { width: 800, height: 700, deviceScaleFactor: 0, mobile: false })
+    try {
+      const shown = (js) => app.cdp.evaluate(`(() => { const el = ${js}; return !!el && el.getBoundingClientRect().width > 0 })()`)
+      const list = `__e2e.one('nav[aria-label="대상자"]')`
+      const doc = `__e2e.one('oc-subjects').shadowRoot.querySelector('section.document')`
+      await app.cdp.waitFor(`!__e2e.one('dp-shell').hasAttribute('sidebar-open') && __e2e.one('dp-sidebar').getBoundingClientRect().width === 0`, 'the menu out of the way')
+
+      await app.click('button[aria-label="메뉴 접기/펼치기"]')
+      await app.cdp.waitFor(`__e2e.one('dp-shell').hasAttribute('sidebar-open')`, 'the menu as a drawer')
+      assert.equal(await app.cdp.evaluate(`__e2e.one('dp-sidebar').hasAttribute('collapsed')`), false, 'a drawer shows the menu in full')
+      await app.click('button', '대상자')
+      await app.cdp.waitFor(`!__e2e.one('dp-shell').hasAttribute('sidebar-open')`, 'the drawer gives way to what was picked')
+
+      // A document left open from the wide window shows alone now: back to the list first.
+      if (await app.cdp.evaluate(`__e2e.one('nav[aria-label="대상자"]').closest('dp-list-detail').hasAttribute('detail-open')`)) await app.click('dc-button', '← 목록으로')
+      await app.cdp.waitFor(`(() => { const el = ${list}; return !!el && el.getBoundingClientRect().width > 0 })()`, 'the list alone')
+      assert.equal(await shown(doc), false, 'no document beside the list')
+      await app.click('li button', '가상 학생 1')
+      await app.cdp.waitFor(`(() => { const el = ${doc}; return !!el && el.getBoundingClientRect().width > 0 })()`, 'the document alone')
+      assert.equal(await shown(list), false, 'the list gives way to the document')
+      assert.ok(await app.cdp.evaluate(`__e2e.all('h2').some((h) => h.textContent.includes('가상 학생 1'))`), 'the one picked')
+      await app.click('dc-button', '← 목록으로')
+      await app.cdp.waitFor(`(() => { const el = ${list}; return !!el && el.getBoundingClientRect().width > 0 })()`, 'back at the list')
+    } finally {
+      await app.cdp.send('Emulation.clearDeviceMetricsOverride')
+    }
+    await app.cdp.waitFor(`__e2e.one('dp-sidebar').getBoundingClientRect().width > 0`, 'the menu beside the content again')
+    await app.noAlert()
+  },
   async 'lists the sessions of a month in an export form, ready to paste'(app) {
     // The export form came with the vault, from the pack it was made with.
     await app.click('button', '기록 목록')
