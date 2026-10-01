@@ -19,8 +19,7 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
     case 'number':
     case 'text':
       if (f.tier === 'narrative')
-        return html`<label class="wide">
-          ${f.label}
+        return html`<dc-field class="wide" label=${f.label} ?required=${f.required}>
           <dc-textarea
             aria-label=${f.label}
             data-field=${f.name}
@@ -29,9 +28,8 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
             ?disabled=${busy}
             @input=${(e: Event) => set((e.target as HTMLTextAreaElement).value)}
           ></dc-textarea>
-        </label>`
-      return html`<label>
-        ${f.label}
+        </dc-field>`
+      return html`<dc-field label=${f.label} ?required=${f.required}>
         <dc-input
           type=${f.kind === 'text' ? 'text' : f.kind}
           aria-label=${f.label}
@@ -40,11 +38,10 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
           ?disabled=${busy}
           @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
         ></dc-input>
-      </label>`
+      </dc-field>`
     case 'coded':
     case 'reference':
-      return html`<label>
-        ${f.label}
+      return html`<dc-field label=${f.label} ?required=${f.required}>
         <dc-select
           aria-label=${f.label}
           data-field=${f.name}
@@ -54,7 +51,7 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
           ?disabled=${busy}
           @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
         ></dc-select>
-      </label>`
+      </dc-field>`
     default:
       return nothing
   }

@@ -319,7 +319,7 @@ const scenarios = {
 
   async 'records sessions under a subject, newest first'(app, work) {
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 1')
+    await app.click('li button .label', '가상 학생 1')
     await app.setDate('날짜', '2026-04-02')
     await app.choose('주제', 'learning')
     await app.choose('방법', 'special/school-violence')
@@ -576,7 +576,7 @@ const scenarios = {
     await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
-    await app.click('li button', '가상 학생 1')
+    await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
     assert.equal((await app.sessionRows())[1][2], '특별 › 학교폭력')
     await app.click('dc-button', '다시 읽기')
@@ -661,7 +661,7 @@ const scenarios = {
     await app.noAlert()
 
     // A session keeps the grade and class of the day it was recorded.
-    await app.click('li button', '가상 학생 3')
+    await app.click('li button .label', '가상 학생 3')
     await app.setDate('날짜', '2026-04-20')
     await app.choose('주제', 'family')
     await app.click('dc-button', '회기 기록')
@@ -670,7 +670,7 @@ const scenarios = {
   },
   async 'lays out the menu, a list to pick from and the document picked, and folds the menu to its icons'(app) {
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 3')
+    await app.click('li button .label', '가상 학생 3')
     // Three columns side by side: the menu, the list as wide as the menu, the document taking the rest.
     const widths = () =>
       app.cdp.evaluate(`(() => {
@@ -712,7 +712,7 @@ const scenarios = {
       if (await app.cdp.evaluate(`__e2e.one('nav[aria-label="대상자"]').closest('dp-list-detail').hasAttribute('detail-open')`)) await app.click('dc-button', '← 목록으로')
       await app.cdp.waitFor(`(() => { const el = ${list}; return !!el && el.getBoundingClientRect().width > 0 })()`, 'the list alone')
       assert.equal(await shown(doc), false, 'no document beside the list')
-      await app.click('li button', '가상 학생 1')
+      await app.click('li button .label', '가상 학생 1')
       await app.cdp.waitFor(`(() => { const el = ${doc}; return !!el && el.getBoundingClientRect().width > 0 })()`, 'the document alone')
       assert.equal(await shown(list), false, 'the list gives way to the document')
       assert.ok(await app.cdp.evaluate(`__e2e.all('h2').some((h) => h.textContent.includes('가상 학생 1'))`), 'the one picked')
@@ -747,7 +747,7 @@ const scenarios = {
   async 'records what was said in a session, and keeps it out of the list form'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 3')
+    await app.click('li button .label', '가상 학생 3')
     await app.setDate('날짜', '2026-05-07')
     await app.choose('주제', 'relation-peer')
     await app.write('상담 내용', said)
@@ -776,7 +776,7 @@ const scenarios = {
   async 'leaves a copy of every record that reads without the app, apart from the vault, content only when asked'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'
     await app.click('button', '기록 목록')
-    await app.click('li button', '전체 기록 사본 (앱 없이 읽기)')
+    await app.click('li button .label', '전체 기록 사본 (앱 없이 읽기)')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-warning]')`, 'the warning that the copy has no passphrase')
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-last]')?.textContent.trim() === '이 컴퓨터에서 만든 사본이 없습니다.'`, 'no copy made yet')
     // The folder picker is the system's; the screen's own method takes its answer.
@@ -815,13 +815,13 @@ const scenarios = {
 
     // A record changed after the copy: the screen says the copy no longer holds everything.
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 2')
+    await app.click('li button .label', '가상 학생 2')
     await app.click('dc-button', '대상자 정보 고치기')
     await app.type('반', '7')
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
     await app.click('button', '기록 목록')
-    await app.click('li button', '전체 기록 사본 (앱 없이 읽기)')
+    await app.click('li button .label', '전체 기록 사본 (앱 없이 읽기)')
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-stale]')?.textContent.startsWith('그 뒤 바뀐 기록이 1건 있어')`, 'the copy is behind by one change')
     assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes('상담 내용 포함')`), 'the last copy held session content')
     await rm(plain, { recursive: true, force: true })
@@ -865,7 +865,7 @@ const scenarios = {
 
   async 'shows a field two edits changed without seeing each other, until a person picks one'(app, work) {
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 1')
+    await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length > 0`, 'the sessions')
     const id = await app.cdp.evaluate(`__e2e.one('tr[data-session]').dataset.session`)
     const date = (await app.sessionRows())[0][0].slice(0, 8) // the month of the first session, 'YYYY-MM-'
@@ -896,7 +896,7 @@ const scenarios = {
 
   async 'says a conflict may only be a change not yet synced, and it clears when that change arrives'(app, work) {
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 1')
+    await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length > 0`, 'the sessions')
     const id = await app.cdp.evaluate(`__e2e.one('tr[data-session]').dataset.session`)
     const date = (await app.sessionRows())[0][0].slice(0, 8)
@@ -926,7 +926,7 @@ const scenarios = {
 
   async 'keeps two sessions recorded on the same day as two'(app, work) {
     await app.click('button', '대상자')
-    await app.click('li button', '가상 학생 1')
+    await app.click('li button .label', '가상 학생 1')
     const before = (await app.sessionRows()).length
     const recordFiles = async () => (await readdir(join(work.vault, 'subjects'), { recursive: true })).filter((f) => f.endsWith('.age')).length
     const filesBefore = await recordFiles()
@@ -1082,7 +1082,7 @@ const scenarios = {
     await app.click('dc-button', '+ New client')
     await app.type('Client name', 'Client One')
     await app.click('dc-button', 'Add client')
-    await app.click('li button', 'Client One')
+    await app.click('li button .label', 'Client One')
     await app.setDate('Date', '2026-04-02')
     await app.choose('Concern', 'anxiety')
     await app.choose('Mode', 'video')

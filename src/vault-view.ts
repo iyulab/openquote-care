@@ -6,6 +6,7 @@ import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import type { VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
+import { errorCallout } from './vault/parts.js'
 import { StoreController, VaultStore } from './vault/store.js'
 import { vaultStyles } from './vault/styles.js'
 import './vault/subjects-screen.js'
@@ -223,12 +224,7 @@ export class OcVault extends LitElement {
   }
 
   private errorLine() {
-    const error = this.store.error
-    if (!error) return nothing
-    return html`<div class="error" role="alert">
-      <p>${error.text}</p>
-      ${error.detail ? html`<p class="detail muted">${strings.errorDetail(error.detail)}</p>` : nothing}
-    </div>`
+    return errorCallout(this.store.error)
   }
 
   /** The files that could not be read, each with why — folded under the count. */

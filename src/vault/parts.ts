@@ -7,8 +7,7 @@ import type { VaultStore } from './store.js'
 
 /** A text field that submits on Enter. */
 export function nameField(busy: boolean, label: string, value: string, set: (v: string) => void, submit: () => void) {
-  return html`<label>
-    ${label}
+  return html`<dc-field label=${label}>
     <dc-input
       aria-label=${label}
       .value=${value}
@@ -16,13 +15,23 @@ export function nameField(busy: boolean, label: string, value: string, set: (v: 
       @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
       @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && !busy && submit()}
     ></dc-input>
-  </label>`
+  </dc-field>`
 }
 
-/** One entry of a screen's list: what it picks (also its `data-entry`), and what it reads as. */
+/** One entry of a screen's list: what it picks (also its `data-entry`), what it reads as, and a line about it. */
 export interface ListEntry {
   id: string
   label: string
+  meta?: string
+}
+
+/** One entry of a list: its name, and a line about it under the name when there is one. */
+export function listEntry(e: ListEntry, selected: string | undefined, select: (id: string) => void) {
+  return html`<li>
+    <button data-entry=${e.id} aria-current=${e.id === selected ? 'true' : 'false'} @click=${() => select(e.id)}
+      ><span class="label">${e.label}</span>${e.meta ? html`<span class="meta">${e.meta}</span>` : nothing}</button
+    >
+  </li>`
 }
 
 /**
@@ -45,13 +54,9 @@ export function listDetail(o: {
     <nav slot="list" class="pane list" aria-label=${o.label}>
       ${o.head ? html`<div class="list-head">${o.head}</div>` : nothing}
       ${o.entries.length === 0
-        ? html`<p class="muted">${o.empty}</p>`
+        ? html`<dc-empty-state description=${o.empty}></dc-empty-state>`
         : html`<ul>
-            ${o.entries.map(
-              (e) => html`<li>
-                <button data-entry=${e.id} aria-current=${e.id === o.selected ? 'true' : 'false'} @click=${() => o.select(e.id)}>${e.label}</button>
-              </li>`,
-            )}
+            ${o.entries.map((e) => listEntry(e, o.selected, o.select))}
           </ul>`}
     </nav>
     <section class="pane document">
@@ -63,8 +68,7 @@ export function listDetail(o: {
 
 /** The year and month the report and export screens work on. */
 export function periodFields(store: VaultStore) {
-  return html`<label>
-      ${strings.year}
+  return html`<dc-field label=${strings.year}>
       <dc-input
         type="number"
         aria-label=${strings.year}
@@ -74,9 +78,8 @@ export function periodFields(store: VaultStore) {
         ?disabled=${store.busy}
         @input=${(e: Event) => store.set({ year: Number((e.target as HTMLInputElement).value) })}
       ></dc-input>
-    </label>
-    <label>
-      ${strings.month}
+    </dc-field>
+    <dc-field label=${strings.month}>
       <dc-select
         aria-label=${strings.month}
         .options=${Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: strings.monthOption(i + 1) }))}
@@ -84,12 +87,21 @@ export function periodFields(store: VaultStore) {
         ?disabled=${store.busy}
         @change=${(e: Event) => store.set({ month: Number((e.target as HTMLSelectElement).value) })}
       ></dc-select>
-    </label>`
+    </dc-field>`
 }
 
 /** The store's message, when there is one. */
 export function noticeLine(store: VaultStore) {
   return store.notice ? html`<p role="status" class="muted">${store.notice}</p>` : nothing
+}
+
+/** A failure, said where it happened: a danger callout the screen reader announces. */
+export function errorCallout(error: { text: string; detail?: string } | undefined) {
+  if (!error) return nothing
+  return html`<dc-callout variant="danger" role="alert">
+    <p>${error.text}</p>
+    ${error.detail ? html`<p class="detail">${strings.errorDetail(error.detail)}</p>` : nothing}
+  </dc-callout>`
 }
 
 /** Says so when the chosen form classifies by a scheme version older than the vault's latest. */
