@@ -79,7 +79,7 @@ The dividing question is **"does it finish with the user's own device resources?
 - No account, no login, no multi-user model inside the app. Several devices sharing a folder is supported; people are not modelled.
 - No field for national identification numbers or similar unique identifiers, in the core or in official packs. The app assigns its own management numbers.
 - No automatic decision on a split category, a conflicting edit or a crisis-related classification.
-- No calls to third-party servers in the default state. The one allowed exception is content-free error diagnostics — built so that they cannot carry record values, paths or messages — sent only to a collector the publisher owns and silently dropped when it cannot be reached.
+- No calls to third-party servers in the default state. The one allowed exception is content-free error diagnostics — built so that they cannot carry record values, paths or messages — kept in a file on the device the person can read (exactly what would be sent) and sent only to a collector the publisher owns, later if it cannot be reached now.
 - No model distributed with the app is trained on real counseling records. If synthetic and public data are not enough, the answer is adaptation on the device, never collecting records.
 
 ### Licensing and contributions

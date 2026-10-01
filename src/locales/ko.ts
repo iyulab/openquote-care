@@ -19,7 +19,7 @@ export const ko = {
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.ko.webviewMissing,
   diagnosticsNotice:
-    '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·폴더 이름은 보내지 않으며, 인터넷이 없으면 보내지 않고 버립니다.',
+    '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·폴더 이름은 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
 
   createVault: '새 기록 폴더 만들기',
   openVault: '기록 폴더 열기',

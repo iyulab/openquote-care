@@ -158,7 +158,7 @@ class App {
 const scenarios = {
   async 'says on the first screen when this installation reports errors'(app) {
     // A collector nothing listens on: the notice depends on the configuration, not on delivery.
-    await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=http://127.0.0.1:9/' })
+    await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
     await app.cdp.waitFor(`!!__e2e.one('[data-role="diagnostics"]')`, 'the diagnostics notice')
     await app.restart()
     await app.heading('Openquote Care')

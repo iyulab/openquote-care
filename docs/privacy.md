@@ -10,24 +10,24 @@ The app writes records, encrypted, only to the vault folder you choose — which
 
 Released installers report the app's own failures to the publisher, so that defects can be found and fixed while the app is young. Builds made from source send nothing unless a collector is configured for them.
 
-**When.** A report is sent when the app crashes, when it cannot start because the system's web view runtime (Microsoft Edge WebView2) is missing, or when an action fails through the app's own fault — the engine not starting or answering with an error, or a file operation failing. A wrong passphrase, a folder that is not a vault and other situations a person can resolve are not reported.
+**When.** A report is written when the app crashes, when it cannot start because the system's web view runtime (Microsoft Edge WebView2) is missing, or when an action fails through the app's own fault — the engine not starting or answering with an error, or a file operation failing. A wrong passphrase, a folder that is not a vault and other situations a person can resolve are not reported.
 
 **What.** A report holds only:
 
 | Field | Example |
 | --- | --- |
-| Event | `app.panic`, `webview.missing` or `command.failed` |
-| Failure code | `engine-start`, `engine` or `io` |
-| Place in the app's source | `src-tauri/src/lib.rs:42` (a place inside a dependency is reported as `dependency`) |
+| The part of the app that failed | `shell` (the app's own process) or `host` (its engine) |
+| What failed: the error's type, or the app's own name for the failure | `Panic`, `WebviewMissing`, `CommandFailed`, `System.FormatException` |
+| Places in the app's own code: a source file and position in the app, or the engine's own methods | `src/lib.rs:42:9`, `Openquote.Vault.VaultReader.Read` |
+| The app's failure code | `engine-start`, `engine` or `io` |
 | The engine's HTTP status, when it answered | `500` |
-| When the engine failed unexpectedly: the error's type and the method in the engine where it happened | `System.FormatException`, `Openquote.Vault.VaultReader.Read` |
-| App version, operating system, architecture | `0.1.0`, `windows`, `x86_64` |
+| App version, operating system, architecture, time (UTC) | `0.1.3`, `windows`, `x86_64`, `2026-10-02T09:00:00Z` |
 
-The report types have no field for record values, file paths, vault names or error messages, so none can be included by accident; the engine's two names are kept only when they are plain identifiers.
+A report is built only from what is listed here, never by removing what looks private: a name that is not a plain identifier is replaced whole by `Unrecognized`, a place outside the app's own code (a dependency, a path on the machine that built it) is left out whole, and there is no field for record values, file paths, vault names or error messages, so none can be included by accident.
 
-**Where.** Reports go to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and are kept for 30 days.
+**Kept on the device first.** Each report is written as one line to `diagnostics/reports.jsonl` in the app's own data folder on this computer (on Windows, `%LOCALAPPDATA%\com.iyulab.openquote-care`), outside every vault — exactly what would be sent, readable with any text editor. The same failure is written once per run, at most fifty reports per run, and the file is cut back to its newest reports once it passes 1 MB.
 
-**How much.** At most ten reports per run, sent in the background. A report that cannot be delivered — offline, or on a network that blocks it — is dropped; nothing is stored or retried, and the app works the same.
+**Where.** When sending is on, what the file gained since the last send goes, in the background when the app opens and after each new report, to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and is kept there for 30 days. A report that cannot go out — offline, on a network that blocks it, or while the service is busy — stays in the file and goes the next time; the app works the same either way.
 
 ## Usage information
 

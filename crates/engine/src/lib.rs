@@ -15,6 +15,8 @@ use openquote_care_vault::{UndecryptableFile, Vault, VaultError};
 use serde_json::{Value, json};
 use tauri_kit_sidecar::loopback::{Loopback, LoopbackOptions};
 
+pub use tauri_kit_sidecar::loopback::Fault;
+
 const READY_PREFIX: &str = "openquote-sidecar ready port=";
 const TOKEN_ENV: &str = "OPENQUOTE_SIDECAR_TOKEN";
 
@@ -23,8 +25,10 @@ const TOKEN_ENV: &str = "OPENQUOTE_SIDECAR_TOKEN";
 pub enum EngineError {
     /// The sidecar could not be started, or stopped before announcing its port.
     Start(String),
-    /// The sidecar answered with an error status.
-    Status(u16, String),
+    /// The sidecar answered with an error status: the status, the answer, and what went wrong
+    /// inside it when it failed unexpectedly (its exception type and its own methods, never the
+    /// message).
+    Status(u16, String, Option<Fault>),
     /// The request did not complete.
     Transport(String),
     /// The vault refused the operation.
@@ -35,7 +39,7 @@ impl fmt::Display for EngineError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Start(m) => write!(f, "the engine did not start: {m}"),
-            Self::Status(s, m) => write!(f, "the engine answered {s}: {m}"),
+            Self::Status(s, m, _) => write!(f, "the engine answered {s}: {m}"),
             Self::Transport(m) => write!(f, "the engine could not be reached: {m}"),
             Self::Vault(e) => write!(f, "{e}"),
         }
@@ -93,7 +97,8 @@ impl Engine {
         }
         .map_err(|e| EngineError::Transport(e.to_string()))?;
         if !response.is_success() {
-            return Err(EngineError::Status(response.status, response.body));
+            let fault = response.fault();
+            return Err(EngineError::Status(response.status, response.body, fault));
         }
         if response.body.is_empty() {
             return Ok(Value::Null);

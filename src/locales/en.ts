@@ -14,7 +14,7 @@ export const en: Strings = {
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.en.webviewMissing,
   diagnosticsNotice:
-    'When the app itself fails, this installation sends the publisher only the kind of error, where in the code it happened and the app version. It never sends record content, file paths or vault names, and with no internet it drops the report instead of sending it.',
+    'When the app itself fails, this installation sends the publisher only the kind of error, where in the code it happened and the app version. It never sends record content, file paths or vault names. Each report is first written to the app\'s own folder on this computer, outside every vault, and with no internet it goes out the next time the app opens.',
 
   createVault: 'Create a vault',
   openVault: 'Open a vault',

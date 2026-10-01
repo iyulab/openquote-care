@@ -1,163 +1,60 @@
-//! Error diagnostics, content-free by construction.
+//! Error diagnostics, content-free by construction — reports built with `tauri-kit-diagnostics`.
 //!
 //! When the shell fails in a way that is its own fault — a panic, the engine not starting or
-//! answering with an error, a file operation failing — it can report that the failure happened.
-//! What a report may hold is fixed by the types below: an event name, a code from the shell's own
-//! list, a place in the app's own source (`file:line`), an HTTP status, the type and method of an
-//! unexpected failure inside the engine, and the app version, operating system and architecture.
-//! There is no field a record value, a file path, a vault name or an error message could travel
-//! in; the engine's two names are checked to be plain identifiers before they are kept.
+//! answering with an error, a file operation failing — it writes a report of that failure to a
+//! file in the app's local data folder, outside every vault: one JSON line per failure, readable,
+//! exactly what would be sent. A report holds what the crate allows and nothing else: the part of
+//! the app that failed (a layer), a plain type or code name, frames of the app's own code (a place
+//! in the shell's source, or the engine's own methods), the shell's failure code and the engine's
+//! HTTP status as details, and the app version, operating system and architecture. There is no
+//! field a record value, a file path, a vault name or an error message could travel in.
 //!
-//! Reporting is off unless a connection string is configured — through the
+//! Sending is off unless a connection string is configured — through the
 //! `OPENQUOTE_DIAGNOSTICS_CONNECTION` environment variable, or embedded at build time under the
-//! same name. Development and test builds, and builds without it, send nothing. A report is sent
-//! once, in the background; if it cannot be delivered it is dropped, never stored or retried.
+//! same name. When it is on, what the file gained since the last send goes out in the background
+//! at launch and after each new report; what cannot go out now (no network, the service busy)
+//! stays in the file for a later launch. Development and test builds, and builds without it,
+//! only keep the file.
 
 use std::panic::Location;
-use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::{Arc, OnceLock};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-use serde_json::{Map, Value, json};
+use openquote_care_engine::Fault;
+use tauri_kit_diagnostics::{FrameRule, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Sink, trim};
 
-/// The only switch: absent or blank means no reports.
+/// The only switch: absent or blank means nothing is sent.
 pub const CONNECTION_VAR: &str = "OPENQUOTE_DIAGNOSTICS_CONNECTION";
 
-/// At most this many reports leave one run of the app, so a failure repeating in a loop cannot
-/// turn into a stream.
-const MAX_REPORTS: u32 = 10;
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Where reports go, from an Application Insights connection string.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Connection {
-    instrumentation_key: String,
-    track_url: String,
+/// The configured destination: the environment variable first, then the build-time value. Anything
+/// partial or malformed gives `None`, which turns sending off rather than sending elsewhere.
+pub fn configured_sink() -> Option<Sink> {
+    std::env::var(CONNECTION_VAR)
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| option_env!("OPENQUOTE_DIAGNOSTICS_CONNECTION").map(str::to_owned))
+        .and_then(|raw| Sink::parse(&raw))
 }
 
-impl Connection {
-    /// Reads `InstrumentationKey` and `IngestionEndpoint` from a connection string. Anything
-    /// partial or malformed gives `None`, which turns reporting off rather than sending elsewhere.
-    pub fn parse(raw: &str) -> Option<Connection> {
-        let mut key = None;
-        let mut endpoint = None;
-        for part in raw.split(';') {
-            let Some((k, v)) = part.split_once('=') else { continue };
-            let v = v.trim();
-            match k.trim() {
-                "InstrumentationKey" if !v.is_empty() => key = Some(v),
-                "IngestionEndpoint" if !v.is_empty() => endpoint = Some(v),
-                _ => {}
-            }
-        }
-        Some(Connection {
-            instrumentation_key: key?.to_owned(),
-            track_url: format!("{}/v2/track", endpoint?.trim_end_matches('/')),
-        })
-    }
-
-    /// The configured connection: the environment variable first, then the build-time value.
-    pub fn configured() -> Option<Connection> {
-        std::env::var(CONNECTION_VAR)
-            .ok()
-            .filter(|s| !s.trim().is_empty())
-            .or_else(|| option_env!("OPENQUOTE_DIAGNOSTICS_CONNECTION").map(str::to_owned))
-            .and_then(|raw| Connection::parse(&raw))
-    }
+/// The shell's own Rust code. A panic or call site is a path relative to the workspace root, in
+/// `src-tauri` or in one of the workspace's `crates`; anything else (a dependency, whose path
+/// is absolute on the build machine) keeps no frame.
+fn shell() -> Layer {
+    Layer::new("shell", RustSource::default().roots(["src-tauri", "crates"]))
 }
 
-/// A place in the app's own source. A location outside this workspace (a dependency, whose path
-/// would include the build machine's folders) is reported only as `dependency`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SourcePlace {
-    file: &'static str,
-    line: u32,
+/// The engine sidecar: its own .NET methods, by name only.
+fn host() -> Layer {
+    Layer::new("host", FrameRule::dotnet_method())
 }
 
-impl SourcePlace {
-    pub fn of(location: &Location<'static>) -> SourcePlace {
-        SourcePlace { file: location.file(), line: location.line() }
-    }
-
-    fn render(&self) -> String {
-        if std::path::Path::new(self.file).is_absolute() || self.file.contains("registry") {
-            "dependency".to_owned()
-        } else {
-            format!("{}:{}", self.file.replace('\\', "/"), self.line)
-        }
-    }
-}
-
-/// An unexpected failure inside the engine, as it answers one: the exception's type and the
-/// method in its own code where it was thrown — never the message.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EngineFault {
-    pub kind: String,
-    pub at: Option<String>,
-}
-
-impl EngineFault {
-    /// Reads the engine's answer to a failed request (`{"fault":{"type":…,"at":…}}`). Anything
-    /// else, or a name that is not a plain identifier, gives nothing.
-    pub fn from_answer(body: &str) -> Option<EngineFault> {
-        let answer: Value = serde_json::from_str(body).ok()?;
-        let fault = answer.get("fault")?;
-        let kind = identifier(fault.get("type")?.as_str()?)?;
-        let at = fault.get("at").and_then(Value::as_str).and_then(identifier);
-        Some(EngineFault { kind, at })
-    }
-}
-
-/// `name` when it is a dotted identifier such as `System.FormatException` or
-/// `Openquote.Vault.VaultReader.Read` (generic and compiler-generated names included), else nothing.
-fn identifier(name: &str) -> Option<String> {
-    let plain = !name.is_empty()
-        && name.len() <= 200
-        && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '`' | '<' | '>' | '+'));
-    plain.then(|| name.to_owned())
-}
-
-/// Every report the shell can make.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Report {
-    /// The shell panicked at this place. The panic message is never included.
-    Panic { at: SourcePlace },
-    /// A command failed through the shell's own fault. `code` comes from the shell's list of
-    /// failure codes; `status` is the engine's HTTP status, when it answered with one, and
-    /// `fault` what the engine said went wrong, when it failed unexpectedly.
-    CommandFailed { code: &'static str, at: SourcePlace, status: Option<u16>, fault: Option<EngineFault> },
-    /// The app could not start because the system's web view runtime is missing. Carries only
-    /// the facts every report has, so the publisher can see how often installs end up without it.
-    WebviewMissing,
-}
-
-impl Report {
-    fn name(&self) -> &'static str {
-        match self {
-            Report::Panic { .. } => "app.panic",
-            Report::CommandFailed { .. } => "command.failed",
-            Report::WebviewMissing => "webview.missing",
-        }
-    }
-
-    fn properties(&self) -> Vec<(&'static str, String)> {
-        match self {
-            Report::Panic { at } => vec![("at", at.render())],
-            Report::WebviewMissing => vec![],
-            Report::CommandFailed { code, at, status, fault } => {
-                let mut p = vec![("code", (*code).to_owned()), ("at", at.render())];
-                if let Some(s) = status {
-                    p.push(("status", s.to_string()));
-                }
-                if let Some(f) = fault {
-                    p.push(("faultType", f.kind.clone()));
-                    if let Some(at) = &f.at {
-                        p.push(("faultAt", at.clone()));
-                    }
-                }
-                p
-            }
-        }
-    }
+/// A place in the shell's source, as a stack line its layer reads.
+fn place(location: &Location<'_>) -> String {
+    format!("{}:{}:{}", location.file(), location.line(), location.column())
 }
 
 /// The failure codes that are the app's own fault and worth a report. The rest (a wrong
@@ -166,171 +63,247 @@ pub fn is_fault(code: &str) -> bool {
     matches!(code, "engine-start" | "engine" | "io")
 }
 
-/// The app's version, operating system and architecture: the facts every report carries.
-#[derive(Clone, Debug)]
-struct Facts {
-    app_version: &'static str,
-    os: &'static str,
-    arch: &'static str,
-}
-
-impl Facts {
-    fn current() -> Facts {
-        Facts { app_version: env!("CARGO_PKG_VERSION"), os: std::env::consts::OS, arch: std::env::consts::ARCH }
+/// The report of a command that failed through the app's own fault. When the engine said what
+/// went wrong inside it, the report is the engine's (its exception type, its methods); otherwise
+/// it is the shell's, at the command's call site. Either way the shell's code and the engine's
+/// HTTP status, when it answered with one, go along as details.
+pub fn command_report(code: &str, at: &Location<'_>, status: Option<u16>, fault: Option<&Fault>) -> Report {
+    let report = match fault {
+        Some(fault) => Report::new(&host(), &fault.kind, &fault.frames.join("\n"), VERSION),
+        None => Report::new(&shell(), "CommandFailed", &place(at), VERSION),
+    };
+    let report = report.detail("code", code);
+    match status {
+        Some(status) => report.detail("status", &status.to_string()),
+        None => report,
     }
 }
 
-/// The Application Insights event envelope for one report. Only the fields named here are written.
-fn envelope(report: &Report, connection: &Connection, facts: &Facts, time: &str) -> Value {
-    let mut properties = Map::new();
-    properties.insert("appVersion".into(), json!(facts.app_version));
-    properties.insert("os".into(), json!(facts.os));
-    properties.insert("arch".into(), json!(facts.arch));
-    for (k, v) in report.properties() {
-        properties.insert(k.into(), json!(v));
-    }
-    json!({
-        "name": "Microsoft.ApplicationInsights.Event",
-        "time": time,
-        "iKey": connection.instrumentation_key,
-        "tags": { "ai.cloud.role": "openquote-care", "ai.application.ver": facts.app_version },
-        "data": { "baseType": "EventData", "baseData": { "ver": 2, "name": report.name(), "properties": properties } }
-    })
+/// The report of a panic: where it happened, never what it said.
+pub fn panic_report(at: &Location<'_>) -> Report {
+    Report::new(&shell(), "Panic", &place(at), VERSION)
 }
 
-/// Sends reports to one connection, in the background, at most [`MAX_REPORTS`] per run.
+/// The report of a launch that found no web view runtime — so the publisher can see how often
+/// installs end up without it.
+pub fn webview_missing_report() -> Report {
+    Report::new(&shell(), "WebviewMissing", "", VERSION)
+}
+
+/// Where this installation keeps its reports: a folder in the app's local data, beside (never
+/// inside) anything a vault holds.
+pub fn folder(app_local_data: &Path) -> PathBuf {
+    app_local_data.join("diagnostics")
+}
+
+/// The app's local data folder as Tauri resolves it, before Tauri has started — the reports of a
+/// launch that ends before any window (a missing web view runtime) belong in the same place.
+pub fn app_local_data(identifier: &str) -> Option<PathBuf> {
+    dirs::data_local_dir().map(|dir| dir.join(identifier))
+}
+
+/// One launch's reports: written to the file, and sent from it when a destination is configured.
 pub struct Diagnostics {
-    connection: Connection,
-    sent: Arc<AtomicU32>,
+    reporter: Reporter,
+    sender: Option<Sender>,
 }
 
 impl Diagnostics {
-    pub fn new(connection: Connection) -> Diagnostics {
-        Diagnostics { connection, sent: Arc::new(AtomicU32::new(0)) }
+    /// Reports kept in `folder`, sent to `sink` when there is one. Trims the file first: it is
+    /// evidence of recent failures, not an archive.
+    pub fn new(folder: &Path, sink: Option<Sink>) -> Diagnostics {
+        let (file, sent) = (folder.join("reports.jsonl"), folder.join("reports.sent"));
+        let _ = trim(&file, &sent, MAX_FILE_BYTES);
+        let sender = sink.map(|sink| Sender::new(sink, file.clone(), sent));
+        Diagnostics { reporter: Reporter::new(file), sender }
     }
 
-    /// Sends one report without waiting for it. Returns the sending thread, or `None` when the
-    /// report was not sent (the run's limit reached, or no thread could be started). Never
-    /// panics: it is also called from the panic hook.
-    pub fn send(&self, report: Report) -> Option<std::thread::JoinHandle<()>> {
-        if self.sent.fetch_add(1, Ordering::Relaxed) >= MAX_REPORTS {
-            return None;
+    /// Whether reports leave this device.
+    pub fn sends(&self) -> bool {
+        self.sender.is_some()
+    }
+
+    /// Sends what the file holds that has not gone out yet, in the background.
+    pub fn send_pending(&self) -> Option<mpsc::Receiver<()>> {
+        self.sender.as_ref().map(Sender::start)
+    }
+
+    /// Writes the report (once per failure per launch, up to the crate's limit) and, when it was
+    /// new and sending is on, starts sending it. Never panics: the panic hook calls it.
+    pub fn record(&self, report: Report) -> Option<mpsc::Receiver<()>> {
+        match self.reporter.record(report) {
+            Ok(true) => self.send_pending(),
+            _ => None,
         }
-        let body = envelope(&report, &self.connection, &Facts::current(), &now_rfc3339());
-        let url = self.connection.track_url.clone();
-        std::thread::Builder::new()
-            .name("diagnostics".into())
-            .spawn(move || {
-                let _ = agent().post(&url).header("Content-Type", "application/json").send_json(json!([body]));
-            })
-            .ok()
     }
 }
 
-/// An HTTP client that trusts the operating system's certificate store (so it works behind a
-/// network that inspects TLS with its own certificate) and gives up after a few seconds.
-fn agent() -> ureq::Agent {
-    ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(5)))
-        .tls_config(ureq::tls::TlsConfig::builder().provider(ureq::tls::TlsProvider::NativeTls).build())
-        .build()
-        .new_agent()
+/// Sends the file's new reports, one send at a time: a send asked for while one runs makes that
+/// one go round again rather than racing it over the record of how far has been sent.
+struct Sender {
+    sink: Sink,
+    file: PathBuf,
+    sent: PathBuf,
+    state: Arc<Mutex<SendState>>,
 }
 
-static REPORTER: OnceLock<Diagnostics> = OnceLock::new();
+#[derive(Default)]
+struct SendState {
+    running: bool,
+    again: bool,
+    waiting: Vec<mpsc::Sender<()>>,
+}
 
-/// Whether this run reports errors — so the window can say so.
+impl Sender {
+    fn new(sink: Sink, file: PathBuf, sent: PathBuf) -> Sender {
+        Sender { sink, file, sent, state: Arc::default() }
+    }
+
+    /// Starts a send, or asks the running one to go round again. The receiver hears when the file
+    /// has been sent as far as it then reached (or the send gave up until later).
+    fn start(&self) -> mpsc::Receiver<()> {
+        let (done, heard) = mpsc::channel();
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        state.waiting.push(done);
+        if state.running {
+            state.again = true;
+            return heard;
+        }
+        state.running = true;
+        drop(state);
+        let (sink, file, sent, state) = (self.sink.clone(), self.file.clone(), self.sent.clone(), self.state.clone());
+        let spawned = std::thread::Builder::new().name("diagnostics".into()).spawn(move || {
+            let agent = Sink::agent();
+            loop {
+                let waiting = {
+                    let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+                    s.again = false;
+                    std::mem::take(&mut s.waiting)
+                };
+                // What could not go out stays in the file for a later send.
+                let _ = sink.send_pending(&agent, &file, &sent);
+                for done in waiting {
+                    let _ = done.send(());
+                }
+                let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+                if !s.again {
+                    s.running = false;
+                    for done in s.waiting.drain(..) {
+                        let _ = done.send(());
+                    }
+                    break;
+                }
+            }
+        });
+        if spawned.is_err() {
+            let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+            s.running = false;
+            s.waiting.clear();
+        }
+        heard
+    }
+}
+
+static DIAGNOSTICS: OnceLock<Diagnostics> = OnceLock::new();
+
+/// Whether this installation sends reports — so the window can say so.
 pub fn enabled() -> bool {
-    REPORTER.get().is_some()
+    DIAGNOSTICS.get().is_some_and(Diagnostics::sends)
 }
 
-/// Turns reporting on for this run when a connection is configured, including a report of any
-/// panic. Does nothing otherwise.
-pub fn install() {
-    let Some(connection) = Connection::configured() else { return };
-    if REPORTER.set(Diagnostics::new(connection)).is_err() {
+/// Starts this launch's reports for the app `identifier` names: trims the file, sends what earlier
+/// launches left (when sending is on), and reports any panic. Does nothing when the app's local
+/// data folder cannot be found.
+pub fn install(identifier: &str) {
+    let Some(data) = app_local_data(identifier) else { return };
+    if DIAGNOSTICS.set(Diagnostics::new(&folder(&data), configured_sink())).is_err() {
         return;
+    }
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.send_pending();
     }
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
-        if let (Some(reporter), Some(location)) = (REPORTER.get(), info.location()) {
-            let place = SourcePlace { file: leak_file(location.file()), line: location.line() };
-            if let Some(thread) = reporter.send(Report::Panic { at: place }) {
-                // Give the report a moment before the process may end.
-                let _ = thread.join();
-            }
+        if let (Some(diagnostics), Some(location)) = (DIAGNOSTICS.get(), info.location()) {
+            diagnostics.record(panic_report(location));
         }
         previous(info);
     }));
 }
 
-/// Reports a failed command when reporting is on and the failure is the app's own fault.
-pub fn command_failed(code: &'static str, at: &'static Location<'static>, status: Option<u16>, fault: Option<EngineFault>) {
-    if let Some(reporter) = REPORTER.get()
+/// Reports a failed command when the failure is the app's own fault.
+pub fn command_failed(code: &str, at: &Location<'_>, status: Option<u16>, fault: Option<&Fault>) {
+    if let Some(diagnostics) = DIAGNOSTICS.get()
         && is_fault(code)
     {
-        reporter.send(Report::CommandFailed { code, at: SourcePlace::of(at), status, fault });
+        diagnostics.record(command_report(code, at, status, fault));
     }
 }
 
-/// Reports that the web view runtime is missing, when reporting is on. Returns the sending thread
-/// so the caller can give it a moment before the process ends.
-pub fn webview_missing() -> Option<std::thread::JoinHandle<()>> {
-    REPORTER.get().and_then(|reporter| reporter.send(Report::WebviewMissing))
-}
-
-/// A panic location's file lives as long as the binary for code in this workspace, but the hook
-/// only sees a borrowed `&str`; the few panics a run can report make leaking the copy harmless.
-fn leak_file(file: &str) -> &'static str {
-    Box::leak(file.to_owned().into_boxed_str())
-}
-
-/// Now as `YYYY-MM-DDTHH:MM:SSZ` in UTC, without a date library.
-fn now_rfc3339() -> String {
-    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
-    rfc3339(secs)
-}
-
-fn rfc3339(epoch_secs: u64) -> String {
-    let days = (epoch_secs / 86_400) as i64;
-    let rem = epoch_secs % 86_400;
-    // Civil date from days since the epoch (Howard Hinnant's algorithm).
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let day = doy - (153 * mp + 2) / 5 + 1;
-    let month = if mp < 10 { mp + 3 } else { mp - 9 };
-    let year = yoe + era * 400 + i64::from(month <= 2);
-    format!("{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}Z", rem / 3600, rem % 3600 / 60, rem % 60)
+/// Reports that the web view runtime is missing, and gives the report up to `wait` to go out
+/// before the launch ends.
+pub fn webview_missing(wait: Duration) {
+    if let Some(heard) = DIAGNOSTICS.get().and_then(|d| d.record(webview_missing_report())) {
+        let _ = heard.recv_timeout(wait);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{BufRead, BufReader, Read, Write};
-    use std::net::TcpListener;
+    use std::collections::BTreeMap;
 
-    const CONNECTION: &str = "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://region.in.example.com/;LiveEndpoint=https://live.example.com/";
-
-    fn place() -> SourcePlace {
-        SourcePlace { file: "src-tauri/src/lib.rs", line: 42 }
+    fn line(file: &Path) -> Vec<serde_json::Value> {
+        std::fs::read_to_string(file).unwrap().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
     }
 
     #[test]
-    fn a_connection_string_names_the_key_and_where_to_send() {
-        let c = Connection::parse(CONNECTION).unwrap();
-        assert_eq!(c.instrumentation_key, "00000000-0000-0000-0000-000000000000");
-        assert_eq!(c.track_url, "https://region.in.example.com/v2/track");
-        assert_eq!(Connection::parse("InstrumentationKey=k;IngestionEndpoint=https://x").unwrap().track_url, "https://x/v2/track");
+    fn a_call_site_in_the_shell_keeps_its_place() {
+        // The place the compiler gives this very line — the shape every shell report starts from.
+        let report = command_report("io", Location::caller(), None, None);
+        assert_eq!(report.layer, "shell");
+        assert_eq!(report.kind, "CommandFailed");
+        assert_eq!(report.frames.len(), 1, "the call site is the app's own code: {}", place(Location::caller()));
+        assert!(report.frames[0].starts_with("src/diagnostics.rs:"), "{:?}", report.frames);
+        assert_eq!(report.details, BTreeMap::from([("code".to_owned(), "io".to_owned())]));
     }
 
     #[test]
-    fn a_partial_or_blank_connection_string_turns_reporting_off() {
-        for raw in ["", "  ", "nonsense", "InstrumentationKey=k", "IngestionEndpoint=https://x/", "InstrumentationKey=;IngestionEndpoint=https://x/"] {
-            assert_eq!(Connection::parse(raw), None, "{raw:?}");
+    fn a_place_outside_the_workspace_keeps_no_frame() {
+        let shell = shell();
+        for stack in [
+            "C:\\Users\\someone\\.cargo\\registry\\src\\x\\lib.rs:1:1",
+            "/home/someone/.cargo/registry/src/x/lib.rs:1:1",
+            "src-tauri/../secret/lib.rs:1:1",
+        ] {
+            assert!(Report::new(&shell, "Panic", stack, VERSION).frames.is_empty(), "{stack}");
+        }
+        assert_eq!(Report::new(&shell, "Panic", "crates\\vault\\src\\lib.rs:7:3", VERSION).frames, ["vault/src/lib.rs:7:3"]);
+    }
+
+    #[test]
+    fn an_engine_fault_is_the_engines_report_with_the_shells_code_and_status() {
+        let fault = Fault {
+            kind: "System.FormatException".into(),
+            at: Some("Openquote.Vault.VaultReader.Read".into()),
+            frames: vec!["Openquote.Vault.VaultReader.Read".into(), "OpenquoteCare.Sidecar.Api.Load".into()],
+        };
+        let report = command_report("engine", Location::caller(), Some(500), Some(&fault));
+        assert_eq!(report.layer, "host");
+        assert_eq!(report.kind, "System.FormatException");
+        assert_eq!(report.frames, ["Openquote.Vault.VaultReader.Read", "OpenquoteCare.Sidecar.Api.Load"]);
+        assert_eq!(report.details, BTreeMap::from([("code".to_owned(), "engine".to_owned()), ("status".to_owned(), "500".to_owned())]));
+    }
+
+    #[test]
+    fn nothing_from_the_engine_that_could_carry_content_is_kept() {
+        let fault = Fault { kind: "a record, 2026.json".into(), at: None, frames: vec!["가상 학생".into(), "C:\\Users\\someone\\x.cs:line 3".into()] };
+        let report = command_report("engine", Location::caller(), Some(500), Some(&fault));
+        assert_eq!(report.kind, tauri_kit_diagnostics::UNRECOGNIZED_KIND);
+        assert!(report.frames.iter().all(|f| f.is_ascii()), "{:?}", report.frames);
+        let text = serde_json::to_string(&report).unwrap();
+        for leaked in ["record", "가상", "someone"] {
+            assert!(!text.contains(leaked), "{leaked} in {text}");
         }
     }
 
@@ -345,124 +318,47 @@ mod tests {
     }
 
     #[test]
-    fn a_place_outside_the_workspace_is_not_spelled_out() {
-        assert_eq!(place().render(), "src-tauri/src/lib.rs:42");
-        assert_eq!(SourcePlace { file: "crates\\engine\\src\\lib.rs", line: 7 }.render(), "crates/engine/src/lib.rs:7");
-        for file in ["C:\\Users\\someone\\.cargo\\registry\\src\\x\\lib.rs", "/home/someone/.cargo/registry/src/x/lib.rs"] {
-            assert_eq!(SourcePlace { file, line: 1 }.render(), "dependency");
+    fn a_panic_and_a_missing_web_view_are_the_shells() {
+        let panic = panic_report(Location::caller());
+        assert_eq!((panic.layer.as_str(), panic.kind.as_str(), panic.frames.len()), ("shell", "Panic", 1));
+        let missing = webview_missing_report();
+        assert_eq!((missing.layer.as_str(), missing.kind.as_str()), ("shell", "WebviewMissing"));
+        assert!(missing.frames.is_empty() && missing.details.is_empty());
+    }
+
+    #[test]
+    fn reports_stay_in_the_app_folder_and_without_a_destination_nothing_is_sent() {
+        let data = tempfile::tempdir().unwrap();
+        let diagnostics = Diagnostics::new(&folder(data.path()), None);
+        assert!(!diagnostics.sends());
+        assert!(diagnostics.record(webview_missing_report()).is_none(), "nothing to wait for");
+        // The same failure again is the same report.
+        assert!(diagnostics.record(webview_missing_report()).is_none());
+        let lines = line(&data.path().join("diagnostics").join("reports.jsonl"));
+        assert_eq!(lines.len(), 1);
+        assert_eq!(lines[0]["kind"], "WebviewMissing");
+        assert!(!data.path().join("diagnostics").join("reports.sent").exists());
+    }
+
+    #[test]
+    fn a_destination_needs_a_key_and_an_https_endpoint() {
+        assert!(Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://region.in.example.com/").is_some());
+        for raw in ["", "nonsense", "InstrumentationKey=k", "InstrumentationKey=k;IngestionEndpoint=http://127.0.0.1:9/"] {
+            assert!(Sink::parse(raw).is_none(), "{raw:?}");
         }
     }
 
     #[test]
-    fn an_envelope_carries_only_the_listed_fields() {
-        let c = Connection::parse(CONNECTION).unwrap();
-        let facts = Facts { app_version: "0.1.0", os: "windows", arch: "x86_64" };
-        let reports = [Report::Panic { at: place() }, Report::CommandFailed { code: "engine", at: place(), status: Some(500), fault: Some(EngineFault { kind: "System.FormatException".into(), at: Some("Openquote.Vault.VaultReader.Read".into()) }) }];
-        for report in reports {
-            let env = envelope(&report, &c, &facts, "2026-09-29T00:00:00Z");
-            assert_eq!(env["iKey"], "00000000-0000-0000-0000-000000000000");
-            assert_eq!(env["data"]["baseData"]["name"], report.name());
-            let keys: Vec<&str> = env["data"]["baseData"]["properties"].as_object().unwrap().keys().map(String::as_str).collect();
-            for key in &keys {
-                assert!(["appVersion", "os", "arch", "at", "code", "status", "faultType", "faultAt"].contains(key), "unlisted field {key}");
-            }
-        }
-        let env = envelope(&Report::CommandFailed { code: "io", at: place(), status: None, fault: None }, &c, &facts, "t");
-        assert_eq!(env["data"]["baseData"]["properties"], json!({ "appVersion": "0.1.0", "os": "windows", "arch": "x86_64", "code": "io", "at": "src-tauri/src/lib.rs:42" }));
-        let env = envelope(&Report::WebviewMissing, &c, &facts, "t");
-        assert_eq!(env["data"]["baseData"]["name"], "webview.missing");
-        assert_eq!(env["data"]["baseData"]["properties"], json!({ "appVersion": "0.1.0", "os": "windows", "arch": "x86_64" }));
-    }
-
-    #[test]
-    fn keeps_only_plain_names_from_the_engine_answer() {
-        let answer = r#"{"fault":{"type":"System.FormatException","at":"OpenquoteCare.Sidecar.Api.<>c.<Map>b__0_1"}}"#;
-        assert_eq!(
-            EngineFault::from_answer(answer),
-            Some(EngineFault { kind: "System.FormatException".into(), at: Some("OpenquoteCare.Sidecar.Api.<>c.<Map>b__0_1".into()) })
-        );
-        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"System.FormatException"}}"#).unwrap().at, None);
-        // Anything that could carry content is dropped rather than cleaned.
-        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"a record, 2026.json"}}"#), None);
-        assert_eq!(EngineFault::from_answer(r#"{"fault":{"type":"X","at":"가상 학생"}}"#).unwrap().at, None);
-        assert_eq!(EngineFault::from_answer(&format!(r#"{{"fault":{{"type":"{}"}}}}"#, "A".repeat(201))), None);
-        assert_eq!(EngineFault::from_answer(r#"{"error":"already in the vault"}"#), None);
-        assert_eq!(EngineFault::from_answer("not json"), None);
-    }
-
-    #[test]
-    fn times_are_utc_calendar_times() {
-        assert_eq!(rfc3339(0), "1970-01-01T00:00:00Z");
-        assert_eq!(rfc3339(1_000_000_000), "2001-09-09T01:46:40Z");
-        assert_eq!(rfc3339(1_709_164_800), "2024-02-29T00:00:00Z");
-    }
-
-    /// A stand-in ingestion endpoint on the loopback address: answers each request with 200 and
-    /// hands back the bodies it received.
-    fn collector(requests: usize) -> (String, std::thread::JoinHandle<Vec<Value>>) {
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}", listener.local_addr().unwrap());
-        let thread = std::thread::spawn(move || {
-            let mut bodies = Vec::new();
-            for stream in listener.incoming().take(requests) {
-                let mut stream = stream.unwrap();
-                let mut reader = BufReader::new(stream.try_clone().unwrap());
-                let mut length = 0;
-                loop {
-                    let mut line = String::new();
-                    reader.read_line(&mut line).unwrap();
-                    if line == "\r\n" {
-                        break;
-                    }
-                    if let Some(v) = line.to_ascii_lowercase().strip_prefix("content-length:") {
-                        length = v.trim().parse().unwrap();
-                    }
-                }
-                let mut body = vec![0; length];
-                reader.read_exact(&mut body).unwrap();
-                bodies.push(serde_json::from_slice(&body).unwrap());
-                stream.write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n").unwrap();
-            }
-            bodies
-        });
-        (url, thread)
-    }
-
-    #[test]
-    fn a_report_reaches_the_collector_and_a_run_sends_at_most_its_limit() {
-        let (url, collected) = collector(MAX_REPORTS as usize);
-        let reporter = Diagnostics::new(Connection::parse(&format!("InstrumentationKey=k;IngestionEndpoint={url}")).unwrap());
-        let mut threads = Vec::new();
-        for _ in 0..MAX_REPORTS {
-            threads.push(reporter.send(Report::CommandFailed { code: "engine-start", at: place(), status: None, fault: None }).unwrap());
-        }
-        assert!(reporter.send(Report::Panic { at: place() }).is_none(), "the run's limit holds");
-        for t in threads {
-            t.join().unwrap();
-        }
-        let bodies = collected.join().unwrap();
-        assert_eq!(bodies.len(), MAX_REPORTS as usize);
-        assert_eq!(bodies[0][0]["data"]["baseData"]["name"], "command.failed");
-        assert_eq!(bodies[0][0]["data"]["baseData"]["properties"]["code"], "engine-start");
-    }
-
-    /// Needs the network: the operating system's TLS completes a handshake with the public
-    /// ingestion endpoint, which then refuses the made-up key with an HTTP status.
-    #[test]
-    #[ignore = "needs the network"]
-    fn the_client_speaks_tls_with_the_systems_certificates() {
-        let result = agent().post("https://dc.services.visualstudio.com/v2/track").header("Content-Type", "application/json").send_json(json!([]));
-        match result {
-            Ok(_) | Err(ureq::Error::StatusCode(_)) => {}
-            Err(e) => panic!("no HTTP answer: {e}"),
-        }
-    }
-
-    #[test]
-    fn an_unreachable_collector_costs_nothing_but_the_report() {
-        // Nothing listens on this port once the listener is gone.
-        let port = TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-        let reporter = Diagnostics::new(Connection::parse(&format!("InstrumentationKey=k;IngestionEndpoint=http://127.0.0.1:{port}")).unwrap());
-        reporter.send(Report::Panic { at: place() }).unwrap().join().unwrap();
+    fn a_send_that_cannot_reach_the_destination_keeps_the_report_and_says_when_it_gave_up() {
+        let data = tempfile::tempdir().unwrap();
+        // Nothing listens on port 9 of the loopback address: the send fails fast and gives up.
+        let sink = Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/").unwrap();
+        let diagnostics = Diagnostics::new(&folder(data.path()), Some(sink));
+        assert!(diagnostics.sends());
+        let heard = diagnostics.record(panic_report(Location::caller())).expect("a send started");
+        heard.recv_timeout(Duration::from_secs(30)).expect("the send finished");
+        let folder = folder(data.path());
+        assert_eq!(line(&folder.join("reports.jsonl")).len(), 1, "the report stays for a later launch");
+        assert!(!folder.join("reports.sent").exists(), "nothing was recorded as sent");
     }
 }

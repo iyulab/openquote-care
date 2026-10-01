@@ -39,7 +39,7 @@ fn text<T>(r: Result<T, AppError>) -> CommandResult<T> {
     let at = std::panic::Location::caller();
     r.map_err(|e| {
         let (status, fault) = match &e {
-            AppError::Engine(openquote_care_engine::EngineError::Status(status, body)) => (Some(*status), diagnostics::EngineFault::from_answer(body)),
+            AppError::Engine(openquote_care_engine::EngineError::Status(status, _, fault)) => (Some(*status), fault.as_ref()),
             _ => (None, None),
         };
         diagnostics::command_failed(e.code(), at, status, fault);
@@ -262,14 +262,13 @@ const VAULT_CHANGED: &str = "vault-changed";
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    diagnostics::install();
+    let context = tauri::generate_context!();
+    diagnostics::install(&context.config().identifier);
     // Tauri would stop with an English message of its own; say it in the person's language first.
     if let Some(message) = runtime::check() {
-        let sending = diagnostics::webview_missing();
         runtime::alert(&message);
-        if let Some(thread) = sending {
-            let _ = thread.join();
-        }
+        // The person has read the message by now; the report gets a moment more to go out.
+        diagnostics::webview_missing(std::time::Duration::from_secs(5));
         std::process::exit(1);
     }
     let builder = tauri::Builder::default();
@@ -322,7 +321,7 @@ pub fn run() {
             run_report,
             run_export,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Openquote Care");
 }
 

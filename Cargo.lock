@@ -675,7 +675,6 @@ version = "0.18.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a373e3602691c3cdea496d2f0ee5935151e6168fe87739483c463db1b2f2f87"
 dependencies = [
- "percent-encoding",
  "time",
  "version_check",
 ]
@@ -687,24 +686,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9885fa71e26b8ab7855e2ec7cae6e9b380edff76cd052e07c683a0319d51b3a2"
 dependencies = [
  "futures",
-]
-
-[[package]]
-name = "cookie_store"
-version = "0.22.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15b2c103cf610ec6cae3da84a766285b42fd16aad564758459e6ecf128c75206"
-dependencies = [
- "cookie",
- "document-features",
- "idna",
- "indexmap 2.14.2",
- "log",
- "serde",
- "serde_derive",
- "serde_json",
- "time",
- "url",
 ]
 
 [[package]]
@@ -1101,15 +1082,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "document-features"
-version = "0.2.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
-dependencies = [
- "litrs",
-]
-
-[[package]]
 name = "dom_query"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1190,7 +1162,7 @@ dependencies = [
  "rustc_version",
  "toml 1.1.6+spec-1.1.0",
  "vswhom",
- "winreg",
+ "winreg 0.55.0",
 ]
 
 [[package]]
@@ -2653,12 +2625,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d9d19d1d6efa0109d2f65ff4c85cddd50bd572e5a00127ab10987290bcefae"
 
 [[package]]
-name = "litrs"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
-
-[[package]]
 name = "lock_api"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3133,6 +3099,7 @@ name = "openquote-care"
 version = "0.1.2"
 dependencies = [
  "age",
+ "dirs",
  "getrandom 0.3.4",
  "openquote-care-engine",
  "openquote-care-test-support",
@@ -3141,11 +3108,11 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "tauri-kit-diagnostics",
  "tauri-kit-webview",
  "tauri-plugin-dialog",
  "tauri-plugin-single-instance",
  "tempfile",
- "ureq",
  "windows-sys 0.61.2",
 ]
 
@@ -4643,10 +4610,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "tauri-kit-fs"
-version = "0.9.1"
+name = "tauri-kit-diagnostics"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7f893a41e64586f7f83ce840c4ae487f6fad040f811d79acf32b2440eecda48"
+checksum = "92f934410272834753d2dc20b271bec46e4efa25e29578093f286afcb664e135"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri-kit-fs",
+ "ureq",
+]
+
+[[package]]
+name = "tauri-kit-fs"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dfdb898c4372c60b14fef0b6a021c52b2704efa51724a77634bb6d4f473abbc2"
 dependencies = [
  "dunce",
  "libc",
@@ -4656,21 +4635,23 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-sidecar"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20b6aec58fa3376342361703b78b07be4515cc3ca4708da12bf984f7b7653eff"
+checksum = "82254f320a45bc1e2a85bda6a2d4349d6489f8dc080d0631b0f59024189d1a25"
 dependencies = [
  "getrandom 0.3.4",
  "libc",
+ "serde",
+ "serde_json",
  "ureq",
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "tauri-kit-watch"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d1797462f4d5db925e63ec81f93871de046413945e24cc23d54a7c421604c72"
+checksum = "f4af3aa54a4b134ed8aa64eace20b6bf6b7547005b4ccd2744527f86fd33274b"
 dependencies = [
  "notify-debouncer-full",
  "tauri-kit-fs",
@@ -4678,9 +4659,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-webview"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "725f48c06b38d3ea27771ffac23e89c8c82e1da2e4dc35d7c97d8117a6efba7b"
+checksum = "e89d4da41bb6220153f06d57c16d5fe119362c3a7e6eef968c18c3cdb4633289"
 dependencies = [
  "webview2-com",
  "windows-core",
@@ -5306,17 +5287,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a7ac20be9b7726e0bbdbf974c059676d9acb1cd414961f570a4e8231cacd7fc"
 dependencies = [
  "base64 0.23.1",
- "cookie_store",
  "der 0.8.2",
  "log",
  "native-tls",
  "percent-encoding",
  "rustls-pki-types",
- "serde",
- "serde_json",
  "ureq-proto",
  "utf8-zero",
  "webpki-root-certs",
+ "winreg 0.56.0",
 ]
 
 [[package]]
@@ -6054,6 +6033,16 @@ checksum = "cb5a765337c50e9ec252c2069be9bf91c7df47afb103b642ba3a53bf8101be97"
 dependencies = [
  "cfg-if",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "winreg"
+version = "0.56.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
+dependencies = [
+ "cfg-if",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

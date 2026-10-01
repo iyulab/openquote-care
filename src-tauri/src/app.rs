@@ -87,7 +87,7 @@ impl AppError {
             },
             Self::Engine(EngineError::Start(_)) => "engine-start",
             // The engine refused a choice the record is not waiting for (another device chose first).
-            Self::Engine(EngineError::Status(422, _)) => "not-a-choice",
+            Self::Engine(EngineError::Status(422, ..)) => "not-a-choice",
             Self::Engine(_) => "engine",
             Self::Io(_) => "io",
         }

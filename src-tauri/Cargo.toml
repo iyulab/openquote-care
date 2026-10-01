@@ -26,9 +26,10 @@ getrandom = "0.3"
 openquote-care-engine = { path = "../crates/engine" }
 openquote-care-vault = { path = "../crates/vault" }
 age = "0.12"
-# The same client the engine crate uses, with TLS from the operating system for diagnostics.
-ureq = { version = "3", default-features = false, features = ["json", "native-tls"] }
+tauri-kit-diagnostics = { workspace = true, features = ["appinsights"] }
 tauri-kit-webview.workspace = true
+# The app's local data folder before Tauri starts, resolved as Tauri resolves it.
+dirs = "7"
 
 [dev-dependencies]
 openquote-care-test-support = { path = "../crates/test-support" }
