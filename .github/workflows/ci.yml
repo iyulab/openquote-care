@@ -29,6 +29,7 @@ jobs:
 
       - run: npm ci
       - run: npm run check:core
+      - run: npm run check:tokens
       - run: npm run typecheck
       - run: npm test
 

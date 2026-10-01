@@ -26,6 +26,7 @@ npm run verify -- --installed   # and the installer: bundle, install, run, unins
 The checks it runs:
 
 ```sh
+npm run check:tokens                     # every --dc-* design token the UI reads is defined
 npm run typecheck && npm test            # UI
 dotnet test --solution OpenquoteCare.slnx
 npm run build                            # the shell embeds dist/
