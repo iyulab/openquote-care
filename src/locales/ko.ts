@@ -20,6 +20,15 @@ export const ko = {
   webviewMissing: native.ko.webviewMissing,
   diagnosticsNotice:
     '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·폴더 이름은 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
+  diagnosticsOffNotice: '이 설치본은 앱 자체 오류를 적지도 보내지도 않도록 꺼 두었습니다.',
+  diagnosticsView: '보내는 내용 보기',
+  diagnosticsTitle: '오류 보고',
+  diagnosticsLead:
+    '앱 자체 오류가 나면 아래와 같은 줄을 이 컴퓨터의 앱 폴더에 적어 두었다가 발행자에게 보냅니다. 한 줄이 보고 하나이고, 여기 보이는 것이 보내는 내용 전부입니다.',
+  diagnosticsOffLead: '꺼 두는 동안에는 오류를 적지도 보내지도 않습니다. 이미 적힌 줄은 아래에 그대로 보입니다.',
+  diagnosticsNone: '아직 적힌 오류 보고가 없습니다.',
+  diagnosticsTurnOff: '보내지 않기',
+  diagnosticsTurnOn: '다시 보내기',
 
   createVault: '새 기록 폴더 만들기',
   openVault: '기록 폴더 열기',

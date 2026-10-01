@@ -160,6 +160,25 @@ const scenarios = {
     // A collector nothing listens on: the notice depends on the configuration, not on delivery.
     await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
     await app.cdp.waitFor(`!!__e2e.one('[data-role="diagnostics"]')`, 'the diagnostics notice')
+    // An error the window's code did not catch is written down as its type, never its message.
+    await app.cdp.evaluate(`(setTimeout(() => { throw new TypeError('가상 학생 1') }), true)`)
+    await app.click('dc-button', '보내는 내용 보기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="reports"]')`, 'the reports screen')
+    const lines = await app.cdp.waitFor(
+      `(() => { const pre = __e2e.one('[data-role="report-lines"]'); return pre && pre.textContent.includes('"webview"') ? pre.textContent : false })()`,
+      'the window error among the reports',
+    )
+    const report = lines.trim().split('\n').map((l) => JSON.parse(l)).find((r) => r.layer === 'webview')
+    assert.equal(report.kind, 'TypeError')
+    assert.doesNotMatch(lines, /가상/, 'the message stays out of the report')
+    // Turned off, it stays off on the next launch, and the first screen says so.
+    await app.click('dc-button', '보내지 않기')
+    await app.cdp.waitFor(`__e2e.all('dc-button').some((b) => b.textContent.trim() === '다시 보내기')`, 'the switch to send again')
+    await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
+    await app.cdp.waitFor(`(__e2e.one('[data-role="diagnostics"]')?.textContent ?? '').includes('꺼 두었습니다')`, 'the notice that reports are off')
+    await app.click('dc-button', '보내는 내용 보기')
+    await app.click('dc-button', '다시 보내기')
+    await app.cdp.waitFor(`__e2e.all('dc-button').some((b) => b.textContent.trim() === '보내지 않기')`, 'reports on again')
     await app.restart()
     await app.heading('Openquote Care')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')

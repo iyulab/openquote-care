@@ -15,6 +15,15 @@ export const en: Strings = {
   webviewMissing: native.en.webviewMissing,
   diagnosticsNotice:
     'When the app itself fails, this installation sends the publisher only the kind of error, where in the code it happened and the app version. It never sends record content, file paths or vault names. Each report is first written to the app\'s own folder on this computer, outside every vault, and with no internet it goes out the next time the app opens.',
+  diagnosticsOffNotice: 'Error reports are turned off on this installation: the app neither writes down nor sends its own errors.',
+  diagnosticsView: 'See what is sent',
+  diagnosticsTitle: 'Error reports',
+  diagnosticsLead:
+    'When the app itself fails, it writes a line like the ones below to its own folder on this computer and sends it to the publisher. Each line is one report, and what you see here is everything that is sent.',
+  diagnosticsOffLead: 'While reports are turned off, errors are neither written down nor sent. Lines already written still show below.',
+  diagnosticsNone: 'No error has been reported yet.',
+  diagnosticsTurnOff: 'Stop sending',
+  diagnosticsTurnOn: 'Send again',
 
   createVault: 'Create a vault',
   openVault: 'Open a vault',

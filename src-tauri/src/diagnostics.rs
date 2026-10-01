@@ -18,12 +18,13 @@
 
 use std::panic::Location;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use openquote_care_engine::Fault;
-use tauri_kit_diagnostics::{FrameRule, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Sink, trim};
+use tauri_kit_diagnostics::{FrameRule, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Sink, WebBundle, trim};
 
 /// The only switch: absent or blank means nothing is sent.
 pub const CONNECTION_VAR: &str = "OPENQUOTE_DIAGNOSTICS_CONNECTION";
@@ -45,6 +46,12 @@ pub fn configured_sink() -> Option<Sink> {
 /// is absolute on the build machine) keeps no frame.
 fn shell() -> Layer {
     Layer::new("shell", RustSource::default().roots(["src-tauri", "crates"]))
+}
+
+/// The window: scripts of the app's own bundle. A page served by a development server counts only
+/// in a development build.
+fn webview() -> Layer {
+    Layer::new("webview", WebBundle::default().dev_server(cfg!(debug_assertions)))
 }
 
 /// The engine sidecar: its own .NET methods, by name only.
@@ -90,6 +97,12 @@ pub fn webview_missing_report() -> Report {
     Report::new(&shell(), "WebviewMissing", "", VERSION)
 }
 
+/// The report of an error the window did not handle: its type name and its stack, of which only
+/// the frames in the app's own bundle are kept — never the message.
+pub fn window_report(kind: &str, stack: &str) -> Report {
+    Report::new(&webview(), kind, stack, VERSION)
+}
+
 /// Where this installation keeps its reports: a folder in the app's local data, beside (never
 /// inside) anything a vault holds.
 pub fn folder(app_local_data: &Path) -> PathBuf {
@@ -102,10 +115,23 @@ pub fn app_local_data(identifier: &str) -> Option<PathBuf> {
     dirs::data_local_dir().map(|dir| dir.join(identifier))
 }
 
-/// One launch's reports: written to the file, and sent from it when a destination is configured.
+/// One launch's reports: written to the file, and sent from it when a destination is configured
+/// and the person has not turned reporting off.
 pub struct Diagnostics {
     reporter: Reporter,
     sender: Option<Sender>,
+    /// Present while the person has turned reporting off; kept beside the reports.
+    off_marker: PathBuf,
+    off: AtomicBool,
+}
+
+/// What the window shows about reporting.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+pub struct Status {
+    /// This installation has a destination for reports.
+    pub configured: bool,
+    /// Reports are written and sent: configured, and not turned off.
+    pub sending: bool,
 }
 
 impl Diagnostics {
@@ -115,22 +141,65 @@ impl Diagnostics {
         let (file, sent) = (folder.join("reports.jsonl"), folder.join("reports.sent"));
         let _ = trim(&file, &sent, MAX_FILE_BYTES);
         let sender = sink.map(|sink| Sender::new(sink, file.clone(), sent));
-        Diagnostics { reporter: Reporter::new(file), sender }
+        let off_marker = folder.join("reporting-off");
+        let off = AtomicBool::new(off_marker.exists());
+        Diagnostics { reporter: Reporter::new(file), sender, off_marker, off }
     }
 
     /// Whether reports leave this device.
     pub fn sends(&self) -> bool {
-        self.sender.is_some()
+        self.sender.is_some() && !self.off.load(Ordering::Relaxed)
+    }
+
+    pub fn status(&self) -> Status {
+        Status { configured: self.sender.is_some(), sending: self.sends() }
+    }
+
+    /// Turns reporting on or off, for this launch and the next ones. Off, the app neither writes
+    /// nor sends reports; on again, it sends what the file still holds.
+    pub fn set_sending(&self, on: bool) -> std::io::Result<()> {
+        if on {
+            match std::fs::remove_file(&self.off_marker) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+                _ => {}
+            }
+        } else {
+            if let Some(dir) = self.off_marker.parent() {
+                std::fs::create_dir_all(dir)?;
+            }
+            std::fs::write(&self.off_marker, b"")?;
+        }
+        self.off.store(!on, Ordering::Relaxed);
+        if on {
+            self.send_pending();
+        }
+        Ok(())
+    }
+
+    /// The reports as the file holds them, one JSON object per line — exactly what is sent. None
+    /// written yet is an empty text.
+    pub fn reports(&self) -> std::io::Result<String> {
+        match std::fs::read_to_string(self.reporter.file()) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+            read => read,
+        }
     }
 
     /// Sends what the file holds that has not gone out yet, in the background.
     pub fn send_pending(&self) -> Option<mpsc::Receiver<()>> {
+        if self.off.load(Ordering::Relaxed) {
+            return None;
+        }
         self.sender.as_ref().map(Sender::start)
     }
 
     /// Writes the report (once per failure per launch, up to the crate's limit) and, when it was
-    /// new and sending is on, starts sending it. Never panics: the panic hook calls it.
+    /// new and sending is on, starts sending it. Writes nothing while reporting is off. Never
+    /// panics: the panic hook calls it.
     pub fn record(&self, report: Report) -> Option<mpsc::Receiver<()>> {
+        if self.off.load(Ordering::Relaxed) {
+            return None;
+        }
         match self.reporter.record(report) {
             Ok(true) => self.send_pending(),
             _ => None,
@@ -206,9 +275,27 @@ impl Sender {
 
 static DIAGNOSTICS: OnceLock<Diagnostics> = OnceLock::new();
 
-/// Whether this installation sends reports — so the window can say so.
-pub fn enabled() -> bool {
-    DIAGNOSTICS.get().is_some_and(Diagnostics::sends)
+/// Whether this installation has a destination for reports and sends them — so the window can say
+/// so, and offer to turn it off.
+pub fn status() -> Status {
+    DIAGNOSTICS.get().map_or(Status { configured: false, sending: false }, Diagnostics::status)
+}
+
+/// Turns reporting on or off (see [`Diagnostics::set_sending`]).
+pub fn set_sending(on: bool) -> std::io::Result<()> {
+    DIAGNOSTICS.get().map_or(Ok(()), |d| d.set_sending(on))
+}
+
+/// The reports written so far (see [`Diagnostics::reports`]).
+pub fn reports() -> std::io::Result<String> {
+    DIAGNOSTICS.get().map_or(Ok(String::new()), Diagnostics::reports)
+}
+
+/// Reports an error the window did not handle.
+pub fn window_failed(kind: &str, stack: &str) {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.record(window_report(kind, stack));
+    }
 }
 
 /// Starts this launch's reports for the app `identifier` names: trims the file, sends what earlier
@@ -324,6 +411,49 @@ mod tests {
         let missing = webview_missing_report();
         assert_eq!((missing.layer.as_str(), missing.kind.as_str()), ("shell", "WebviewMissing"));
         assert!(missing.frames.is_empty() && missing.details.is_empty());
+    }
+
+    #[test]
+    fn a_window_error_keeps_its_type_and_the_bundles_frames_only() {
+        let stack = "TypeError: cannot read 'title' of 가상 학생\n    at save (http://tauri.localhost/assets/index-a1.js:3:120)\n    at https://example.com/x.js:1:1\n    at C:\\Users\\someone\\x.js:1:1";
+        let report = window_report("TypeError", stack);
+        assert_eq!((report.layer.as_str(), report.kind.as_str()), ("webview", "TypeError"));
+        assert_eq!(report.frames, ["save index-a1.js:3:120"]);
+        let text = serde_json::to_string(&report).unwrap();
+        for leaked in ["title", "가상", "example", "someone"] {
+            assert!(!text.contains(leaked), "{leaked} in {text}");
+        }
+        assert_eq!(window_report("a name, with words", "").kind, tauri_kit_diagnostics::UNRECOGNIZED_KIND);
+    }
+
+    #[test]
+    fn turned_off_nothing_is_written_or_sent_and_it_stays_off_on_the_next_launch() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        let sink = || Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/");
+        let diagnostics = Diagnostics::new(&folder, sink());
+        assert_eq!(diagnostics.status(), Status { configured: true, sending: true });
+        assert_eq!(diagnostics.reports().unwrap(), "", "nothing written yet");
+        diagnostics.set_sending(false).unwrap();
+        assert_eq!(diagnostics.status(), Status { configured: true, sending: false });
+        assert!(diagnostics.record(webview_missing_report()).is_none());
+        assert!(diagnostics.send_pending().is_none());
+        assert!(!folder.join("reports.jsonl").exists(), "nothing written while off");
+        // The next launch remembers.
+        let next = Diagnostics::new(&folder, sink());
+        assert_eq!(next.status(), Status { configured: true, sending: false });
+        next.set_sending(true).unwrap();
+        assert_eq!(Diagnostics::new(&folder, sink()).status(), Status { configured: true, sending: true });
+        let heard = next.record(webview_missing_report()).expect("written and being sent");
+        heard.recv_timeout(Duration::from_secs(30)).expect("the send finished");
+        assert!(next.reports().unwrap().contains("\"WebviewMissing\""));
+    }
+
+    #[test]
+    fn without_a_destination_there_is_nothing_to_turn_off() {
+        let data = tempfile::tempdir().unwrap();
+        let diagnostics = Diagnostics::new(&folder(data.path()), None);
+        assert_eq!(diagnostics.status(), Status { configured: false, sending: false });
     }
 
     #[test]

@@ -19,6 +19,9 @@ import '@iyulab/desktop-compact/textarea'
 import '@iyulab/desktop-compact/paste-rows-zone'
 import { shell } from './shell.js'
 import { useLocale } from './strings.js'
+import { reportUnhandledErrors } from './window-errors.js'
+
+reportUnhandledErrors(window, shell.reportWindowError)
 
 // The language is settled before the app's modules load, so everything they draw is in it.
 const locale = useLocale(await shell.uiLocale().catch(() => navigator.language))

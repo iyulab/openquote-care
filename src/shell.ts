@@ -5,6 +5,13 @@ import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry, ReportEntry } from './forms.js'
 
+/** Error reporting on this installation: whether it has somewhere to send reports, and whether it does. */
+export interface DiagnosticsStatus {
+  configured: boolean
+  /** Configured and not turned off. */
+  sending: boolean
+}
+
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
 export interface VaultFileKind {
   kind: 'subject' | 'group' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'pack' | 'labels' | 'fields' | 'run' | 'other'
@@ -113,8 +120,14 @@ export const shell = {
   closeVault: () => invoke<void>('close_vault'),
   /** The app's language as a language tag: the system's display language, or `OPENQUOTE_UI_LOCALE` when set. */
   uiLocale: () => invoke<string>('ui_locale'),
-  /** Whether this installation reports the app's own errors (content-free; see docs/privacy.md). */
-  diagnosticsEnabled: () => invoke<boolean>('diagnostics_enabled'),
+  /** Whether this installation reports the app's own errors (content-free; see docs/privacy.md), and whether it is turned on. */
+  diagnosticsStatus: () => invoke<DiagnosticsStatus>('diagnostics_status'),
+  /** Turns reporting on or off, remembered for the next launches. Off, nothing is written or sent. */
+  setDiagnosticsSending: (on: boolean) => invoke<void>('set_diagnostics_sending', { on }),
+  /** The reports written so far, one JSON object per line — exactly what is sent; empty when none. */
+  diagnosticsReports: () => invoke<string>('diagnostics_reports'),
+  /** Hands an error the window did not handle to the shell, which keeps only its type and the app's own frames. */
+  reportWindowError: (kind: string, stack: string) => invoke<void>('report_window_error', { kind, stack }),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
   record: (route: string, request: object) => invoke<string>('record', { route, request }),
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),

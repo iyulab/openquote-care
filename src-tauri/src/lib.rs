@@ -182,8 +182,25 @@ fn ui_locale() -> String {
 }
 
 #[tauri::command]
-fn diagnostics_enabled() -> bool {
-    diagnostics::enabled()
+fn diagnostics_status() -> diagnostics::Status {
+    diagnostics::status()
+}
+
+#[tauri::command]
+fn set_diagnostics_sending(on: bool) -> CommandResult<()> {
+    text(diagnostics::set_sending(on).map_err(AppError::from))
+}
+
+#[tauri::command]
+fn diagnostics_reports() -> CommandResult<String> {
+    text(diagnostics::reports().map_err(AppError::from))
+}
+
+/// An error the window did not handle: its type name and stack, of which the report keeps only
+/// what the diagnostics allow.
+#[tauri::command]
+fn report_window_error(kind: String, stack: String) {
+    diagnostics::window_failed(&kind, &stack);
 }
 
 #[tauri::command]
@@ -303,7 +320,10 @@ pub fn run() {
             fields,
             in_force,
             vault_summary,
-            diagnostics_enabled,
+            diagnostics_status,
+            set_diagnostics_sending,
+            diagnostics_reports,
+            report_window_error,
             ui_locale,
             tracks,
             apply_pack,
