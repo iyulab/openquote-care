@@ -195,6 +195,10 @@ export const en: Strings = {
   exportGaps: (pending: number, unmapped: number) =>
     `Some rows have an empty category — ${pending} awaiting reclassification, ${unmapped} not in this form's classification version. Settle those awaiting in the monthly report; if the classification was revised, use the new version of the list form.`,
   noExports: 'This vault has no list forms. Applying a data pack adds them.',
+  countUnit: 'records',
+  metricPeople: 'People',
+  peopleUnit: 'people',
+  showRecords: 'Show records',
   headCount: (n: number) => ` (${plural(n, 'person', 'people')})`,
   headCountHint: 'The number in brackets is people — each person once, and each participant of a group session.',
   noValue: (label: string) => `(No ${label.toLowerCase()})`,

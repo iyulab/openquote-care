@@ -199,6 +199,10 @@ export const ko = {
   exportGaps: (pending: number, unmapped: number) =>
     `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 판에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 판의 목록 양식을 쓰세요.`,
   noExports: '이 기록 폴더에는 목록 양식이 없습니다. 분류 자료를 적용하면 생깁니다.',
+  countUnit: '건',
+  metricPeople: '인원',
+  peopleUnit: '명',
+  showRecords: '기록 보기',
   headCount: (n: number) => ` (${n}명)`,
   headCountHint: '건수 옆 괄호는 인원입니다 — 같은 사람은 한 번, 집단 상담은 참여자마다 셉니다.',
   noValue: (label: string) => `(${label} 없음)`,

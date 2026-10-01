@@ -132,18 +132,19 @@ export class OcReport extends VaultScreen {
   private formDocument(title: string) {
     const store = this.store
     const busy = store.busy
-    return html`<h2>${title}</h2>
-      <div class="row">
-        ${periodFields(store)}
-        <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
-        ${applyPackButton(store)}
-      </div>
+    return html`<dp-page-header eyebrow=${strings.report} heading=${title}>
+        <div slot="actions" class="row">
+          ${periodFields(store)}
+          ${applyPackButton(store)}
+          <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
+        </div>
+      </dp-page-header>
       ${formBehind(store.summary?.reports ?? [], store.reportKey)}
       ${noticeLine(store)}
-      ${this.result ? this.reportTable(this.result) : nothing}`
+      ${this.result ? this.reportTable(this.result, title) : nothing}`
   }
 
-  private reportTable(result: RunRecord) {
+  private reportTable(result: RunRecord, title: string) {
     const store = this.store
     const table = layOut(result, store.schemes, columnAxis(store, formOf(store, result)))
     // The head count beside a record count, when the run recorded people.
@@ -151,40 +152,36 @@ export class OcReport extends VaultScreen {
       const n = records.length === 0 ? null : headCount(result, records)
       return n === null ? nothing : html`<span class="people" data-role="people">${strings.headCount(n)}</span>`
     }
+    const metric = (group: 'pending' | 'unmapped' | 'blank' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' = '') => {
+      const n = g.records.length === 0 ? null : headCount(result, g.records)
+      return html`<dc-metric data-group=${group} label=${label} value=${String(g.count)} unit=${strings.countUnit} accent=${accent}>
+        ${n === null ? nothing : html`<span data-role="people">${strings.headCount(n)}</span>`}
+        ${g.count === 0 ? nothing : html`<button class="cell" @click=${open}>${strings.showRecords}</button>`}
+        ${group === 'pending' && g.count > 0 ? html`<dc-badge slot="label-extra" variant="warning">${g.count}</dc-badge>` : nothing}
+      </dc-metric>`
+    }
+    const peopleTotal = table.total.records.length === 0 ? null : headCount(result, table.total.records)
     const count = (title: string, group: Group) =>
       group.count === 0
         ? html`<td class="num">0</td>`
         : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(title, group)}>${group.count}</button>${people(group.records)}</td>`
     return html`
       <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
-      <table class="groups">
-        <tbody>
-          <tr data-group="pending">
-            <th>${strings.pending}</th>
-            ${table.pending.count === 0
-              ? html`<td class="num">0</td>`
-              : html`<td class="num"><button class="cell" @click=${() => void this.showPending(result)}>${table.pending.count}</button>${people(table.pending.records)}</td>`}
-            <td class="muted">${strings.pendingHint}</td>
-          </tr>
-          <tr data-group="unmapped">
-            <th>${strings.unmapped}</th>
-            ${count(strings.unmapped, table.unmapped)}
-            <td class="muted">${strings.unmappedHint}</td>
-          </tr>
-          ${table.blank.count === 0
-            ? nothing
-            : html`<tr data-group="blank">
-                <th>${blankLabel(store, formOf(store, result))}</th>
-                ${count(blankLabel(store, formOf(store, result)), table.blank)}
-                <td class="muted">${strings.blankHint}</td>
-              </tr>`}
-          <tr data-group="total">
-            <th>${strings.grandTotal}</th>
-            ${count(strings.grandTotal, table.total)}
-            <td></td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="metrics">
+        ${metric('total', strings.grandTotal, table.total, () => void this.showEvidence(strings.grandTotal, table.total), '1')}
+        ${peopleTotal === null ? nothing : html`<dc-metric accent="2" label=${strings.metricPeople} value=${String(peopleTotal)} unit=${strings.peopleUnit}></dc-metric>`}
+        ${metric('pending', strings.pending, table.pending, () => void this.showPending(result))}
+        ${metric('unmapped', strings.unmapped, table.unmapped, () => void this.showEvidence(strings.unmapped, table.unmapped))}
+        ${table.blank.count === 0 ? nothing : metric('blank', blankLabel(store, formOf(store, result)), table.blank, () => void this.showEvidence(blankLabel(store, formOf(store, result)), table.blank))}
+      </div>
+      <dl class="legend">
+        ${table.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
+        ${table.unmapped.count > 0 ? html`<div><dt>${strings.unmapped}</dt><dd>${strings.unmappedHint}</dd></div>` : nothing}
+        ${table.blank.count > 0 ? html`<div><dt>${blankLabel(store, formOf(store, result))}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
+      </dl>
+      <section>
+        <dc-section-heading marker size="lg" heading=${title}></dc-section-heading>
+        <dc-card><div class="scroll">
       <table class="report">
         <thead>
           <tr>
@@ -210,6 +207,8 @@ export class OcReport extends VaultScreen {
           </tr>
         </tfoot>
       </table>
+        </div></dc-card>
+      </section>
       ${result.people ? html`<p class="muted" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
       ${this.compareControls(result)}
       ${this.comparison
@@ -226,8 +225,7 @@ export class OcReport extends VaultScreen {
     const offered = comparable(this.keptRuns, result)
     if (offered.length === 0) return html`<p class="muted">${strings.noEarlierRun}</p>`
     return html`<div class="row">
-      <label>
-        ${strings.compareWith}
+      <dc-field label=${strings.compareWith}>
         <dc-select
           aria-label=${strings.compareWith}
           .options=${offered.map((k) => ({ value: k.id, label: strings.runOption(k.at, k.report.version, k.total) }))}
@@ -235,7 +233,7 @@ export class OcReport extends VaultScreen {
           ?disabled=${this.store.busy}
           @change=${(e: Event) => (this.compareWith = (e.target as HTMLSelectElement).value)}
         ></dc-select>
-      </label>
+      </dc-field>
       <dc-button variant="secondary" ?disabled=${this.store.busy} @click=${() => void this.compareRuns()}>${strings.compare}</dc-button>
     </div>`
   }

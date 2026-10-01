@@ -81,7 +81,7 @@ export function comparisonView(store: VaultStore, c: Comparison) {
   const date = (id: string) => (byId.get(id) ? period.of(byId.get(id)!) : '')
   changed.sort((a, b) => date(b.id).localeCompare(date(a.id)) || a.id.localeCompare(b.id))
   return html`<section data-role="comparison">
-    <h3>${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}</h3>
+    <dc-section-heading marker size="lg" heading=${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}></dc-section-heading>
     <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.revised.length, c.moved.length, c.unchanged.length)}</p>
     ${changed.length === 0
       ? html`<p class="muted">${strings.noDifference}</p>`
@@ -90,7 +90,7 @@ export function comparisonView(store: VaultStore, c: Comparison) {
               .filter((k) => changed.some((ch) => ch.kind === k))
               .map((k) => html`<div><dt>${strings.changeKind[k]}</dt><dd>${strings.changeKindHint[k]}</dd></div>`)}
           </dl>
-          <table>
+          <dc-card><div class="scroll"><table>
             <thead>
               <tr>
                 <th>${period.label}</th>
@@ -112,7 +112,7 @@ export function comparisonView(store: VaultStore, c: Comparison) {
                 </tr>`
               })}
             </tbody>
-          </table>`}
+          </table></div></dc-card>`}
   </section>`
 }
 
@@ -128,9 +128,9 @@ export function pendingList(
   const period = periodOf(store, formOf(store, run))
   const labelIn = (scheme: string, version: number, code: string) => labelOf(store.schemes, { scheme, version, code })
   return html`<section data-role="pending">
-    <h3>${strings.reclassifyTitle(choices.length)}</h3>
+    <dc-section-heading marker size="lg" heading=${strings.reclassifyTitle(choices.length)}></dc-section-heading>
     <p class="muted">${strings.reclassifyLead}</p>
-    <table>
+    <dc-card><div class="scroll"><table>
       <thead>
         <tr>
           <th>${period.label}</th>
@@ -166,7 +166,7 @@ export function pendingList(
           </tr>`
         })}
       </tbody>
-    </table>
+    </table></div></dc-card>
   </section>`
 }
 
@@ -181,8 +181,8 @@ export function evidenceList(store: VaultStore, run: RunRecord, title: string, g
   const row = defs.find((f) => f.name === rowField)
   const rows = newestFirst(group.records.map((id) => byId.get(id)).filter((s): s is Entity => !!s))
   return html`<section data-role="evidence">
-    <h3>${strings.evidence(title, group.count)}</h3>
-    <table>
+    <dc-section-heading marker size="lg" heading=${strings.evidence(title, group.count)}></dc-section-heading>
+    <dc-card><div class="scroll"><table>
       <thead>
         <tr>
           <th>${period.label}</th>
@@ -199,6 +199,6 @@ export function evidenceList(store: VaultStore, run: RunRecord, title: string, g
           </tr>`,
         )}
       </tbody>
-    </table>
+    </table></div></dc-card>
   </section>`
 }

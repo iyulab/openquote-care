@@ -354,7 +354,7 @@ const scenarios = {
     assert.deepEqual(await row('family'), ['가정', '0', '0'], 'an empty row still shows')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '2 (1명)', 'two sessions, the same person counted once')
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=head-count-hint]')`), 'the head count is explained')
-    const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
+    const group = (name) => app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=${name}]'); return m ? (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() : null })()`)
     assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['0', '0', '2 (1명)'])
 
     await app.cdp.evaluate(`(() => { __e2e.one('tr[data-row=learning] button.cell').click(); return true })()`)
@@ -386,7 +386,7 @@ const scenarios = {
     const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual((await row('academic')).slice(1), ['1 (1명)', '1 (1명)'], 'the 1:1 category carried over to its new code')
     assert.deepEqual((await row('relation-peer')).slice(1), ['0', '0'], 'the split category is not guessed')
-    const group = (name) => app.cdp.evaluate(`__e2e.one('tr[data-group=${name}]').children[1].textContent.trim()`)
+    const group = (name) => app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=${name}]'); return m ? (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() : null })()`)
     assert.deepEqual([await group('pending'), await group('unmapped'), await group('total')], ['1 (1명)', '0', '2 (1명)'])
 
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
@@ -395,7 +395,7 @@ const scenarios = {
   },
 
   async 'lets a person settle the split category, and the report counts it there'(app, work) {
-    await app.cdp.evaluate(`(() => { __e2e.one('tr[data-group=pending] button.cell').click(); return true })()`)
+    await app.cdp.evaluate(`(() => { __e2e.one('dc-metric[data-group=pending] button.cell').click(); return true })()`)
     await app.cdp.waitFor(`__e2e.all('tr[data-pending]').length === 1`, 'the pending session')
     const offered = await app.cdp.evaluate(`__e2e.all('tr[data-pending] dc-button').map((b) => b.textContent.trim())`)
     assert.deepEqual(offered, ['또래관계', '교사관계'], 'only the codes the crosswalk allows')
@@ -404,10 +404,10 @@ const scenarios = {
     await app.noAlert()
 
     await app.click('dc-button', '산출')
-    await app.cdp.waitFor(`__e2e.one('tr[data-group=pending]')?.children[1].textContent.trim() === '0'`, 'nothing pending')
+    await app.cdp.waitFor(`(() => { const m = __e2e.one('dc-metric[data-group=pending]'); return m && (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() === '0' })()`, 'nothing pending')
     const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row=${code}]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual((await row('relation-peer')).slice(1), ['1 (1명)', '1 (1명)'])
-    assert.equal(await app.cdp.evaluate(`__e2e.one('tr[data-group=total]').children[1].textContent.trim()`), '2 (1명)', 'the total did not move')
+    assert.equal(await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=total]'); return (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() })()`), '2 (1명)', 'the total did not move')
     assert.equal(await app.cdp.evaluate(`__e2e.all('[role=status]').length`), 0, 'the "produce again" hint is gone once produced')
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal((await readdir(join(work.vault, 'subjects', subjects[0]))).length, 4, 'the choice is a new file; the session file is untouched')
@@ -641,7 +641,7 @@ const scenarios = {
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
-    await app.cdp.waitFor(`__e2e.one('tr[data-group=total]')?.children[1].textContent.trim() === '3 (2명)'`, 'one more session, one more person')
+    await app.cdp.waitFor(`(() => { const m = __e2e.one('dc-metric[data-group=total]'); return m && (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() === '3 (2명)' })()`, 'one more session, one more person')
     const row = await app.cdp.evaluate(`[...__e2e.one('tr[data-row=relation-peer]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual(row.slice(1), ['2 (2명)', '2 (2명)'], 'the settled session and the group session; the first student counted once')
   },
@@ -1104,10 +1104,10 @@ const scenarios = {
     await app.type('Year', '2026')
     await app.choose('Month', '4')
     await app.click('dc-button', 'Run')
-    await app.cdp.waitFor(`__e2e.one('tr[data-group=total]')?.children[1].textContent.trim() === '2 (1 person)'`, 'both sessions in the total')
-    const blank = await app.cdp.evaluate(`[...(__e2e.one('tr[data-group=blank]')?.children ?? [])].map((c) => c.textContent.trim())`)
-    assert.deepEqual(blank.slice(0, 2), ['(No concern)', '1 (1 person)'], 'the session without a concern, apart from the rows')
-    assert.equal(await app.cdp.evaluate(`__e2e.one('tr[data-group=unmapped]').children[1].textContent.trim()`), '0', 'not a gap in a crosswalk')
+    await app.cdp.waitFor(`(() => { const m = __e2e.one('dc-metric[data-group=total]'); return m && (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() === '2 (1 person)' })()`, 'both sessions in the total')
+    const blank = await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=blank]'); return m ? [m.label, (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim()] : [] })()`)
+    assert.deepEqual(blank, ['(No concern)', '1 (1 person)'], 'the session without a concern, apart from the rows')
+    assert.equal(await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=unmapped]'); return (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() })()`), '0', 'not a gap in a crosswalk')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1 person)', 'one session in the rows')
 
     // Every screen, every text node and every name a screen reader or tooltip gives, shadow roots included.
