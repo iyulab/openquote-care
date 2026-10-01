@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Openquote" />
+    <PackageReference Include="TauriKit.Sidecar.Loopback" />
   </ItemGroup>
 
   <ItemGroup>

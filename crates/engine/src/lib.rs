@@ -8,15 +8,15 @@
 use std::fmt;
 use std::path::Path;
 use std::process::Command;
-use std::time::Duration;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use openquote_care_vault::{UndecryptableFile, Vault, VaultError};
 use serde_json::{Value, json};
-use tauri_kit_sidecar::{LineReadiness, Output, Sidecar};
+use tauri_kit_sidecar::loopback::{Loopback, LoopbackOptions};
 
 const READY_PREFIX: &str = "openquote-sidecar ready port=";
+const TOKEN_ENV: &str = "OPENQUOTE_SIDECAR_TOKEN";
 
 /// Why talking to the engine failed.
 #[derive(Debug)]
@@ -72,70 +72,33 @@ impl PlainFile {
 
 /// A running engine sidecar. Dropping it stops the process.
 pub struct Engine {
-    _sidecar: Sidecar,
-    agent: ureq::Agent,
-    base: String,
-    authorization: String,
+    loopback: Loopback,
 }
 
 impl Engine {
     /// Starts the sidecar executable for `device`, with a fresh token, and waits for it to
     /// announce its port.
     pub fn start(executable: &Path, device: &str) -> Result<Engine, EngineError> {
-        let mut secret = [0u8; 32];
-        getrandom::fill(&mut secret).map_err(|e| EngineError::Start(e.to_string()))?;
-        let token: String = secret.iter().map(|b| format!("{b:02x}")).collect();
-
         let mut command = Command::new(executable);
-        command.env("OPENQUOTE_SIDECAR_TOKEN", &token).env("OPENQUOTE_DEVICE", device);
-        let mut sidecar = Sidecar::spawn(command, Output::Lines { stderr: None }).map_err(|e| EngineError::Start(e.to_string()))?;
-
-        let port = match sidecar
-            .wait_line(Duration::from_secs(30), |line| line.starts_with(READY_PREFIX))
-            .map_err(|e| EngineError::Start(e.to_string()))?
-        {
-            LineReadiness::Line(line) => line[READY_PREFIX.len()..]
-                .trim()
-                .parse::<u16>()
-                .map_err(|_| EngineError::Start(format!("unexpected readiness line: {line}")))?,
-            LineReadiness::Exited(status) => return Err(EngineError::Start(format!("exited with {status}"))),
-            LineReadiness::TimedOut => return Err(EngineError::Start("no readiness line within 30 s".to_owned())),
-        };
-
-        let agent: ureq::Agent = ureq::Agent::config_builder()
-            .http_status_as_error(false)
-            .proxy(None)
-            .timeout_global(Some(Duration::from_secs(120)))
-            .build()
-            .into();
-        Ok(Engine { _sidecar: sidecar, agent, base: format!("http://127.0.0.1:{port}"), authorization: format!("Bearer {token}") })
+        command.env("OPENQUOTE_DEVICE", device);
+        let loopback = Loopback::start(command, &LoopbackOptions::new(TOKEN_ENV, READY_PREFIX)).map_err(|e| EngineError::Start(e.to_string()))?;
+        Ok(Engine { loopback })
     }
 
     fn call(&self, method: &str, path: &str, body: Option<Value>) -> Result<Value, EngineError> {
-        let url = format!("{}{path}", self.base);
-        let response = match (method, body) {
-            ("GET", _) => self.agent.get(&url).header("Authorization", &self.authorization).call(),
-            (_, body) => self
-                .agent
-                .post(&url)
-                .header("Authorization", &self.authorization)
-                .send_json(body.unwrap_or(Value::Null)),
-        };
-        let mut response = response.map_err(|e| EngineError::Transport(e.to_string()))?;
-        let status = response.status().as_u16();
-        let text = response
-            .body_mut()
-            .with_config()
-            .limit(256 * 1024 * 1024)
-            .read_to_string()
-            .map_err(|e| EngineError::Transport(e.to_string()))?;
-        if !(200..300).contains(&status) {
-            return Err(EngineError::Status(status, text));
+        let client = self.loopback.client();
+        let response = match method {
+            "GET" => client.get(path),
+            _ => client.post_json(path, &body.unwrap_or(Value::Null).to_string()),
         }
-        if text.is_empty() {
+        .map_err(|e| EngineError::Transport(e.to_string()))?;
+        if !response.is_success() {
+            return Err(EngineError::Status(response.status, response.body));
+        }
+        if response.body.is_empty() {
             return Ok(Value::Null);
         }
-        serde_json::from_str(&text).map_err(|e| EngineError::Transport(e.to_string()))
+        serde_json::from_str(&response.body).map_err(|e| EngineError::Transport(e.to_string()))
     }
 
     fn files(files: &[PlainFile]) -> Value {

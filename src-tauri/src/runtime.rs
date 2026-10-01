@@ -8,6 +8,7 @@
 use std::collections::HashMap;
 
 use serde::Deserialize;
+use tauri_kit_webview::Runtime;
 
 use crate::locale;
 
@@ -39,22 +40,12 @@ pub fn missing_message(tag: &str) -> Message {
 
 /// The message to show when no web view runtime can be found, or `None` when one can.
 pub fn check() -> Option<Message> {
-    tauri::webview_version().err().map(|_| missing_message(&locale::ui_locale()))
+    (tauri_kit_webview::runtime() == Runtime::Missing).then(|| missing_message(&locale::ui_locale()))
 }
 
-/// Shows the message and waits for the person to close it.
-#[cfg(windows)]
+/// Shows the message before any window exists and waits for the person to close it.
 pub fn alert(message: &Message) {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{MessageBoxW, MB_ICONERROR, MB_OK};
-    let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
-    let (title, body) = (wide(&message.title), wide(&message.body));
-    // SAFETY: both strings are NUL-terminated and outlive the call; no owner window.
-    unsafe { MessageBoxW(std::ptr::null_mut(), body.as_ptr(), title.as_ptr(), MB_OK | MB_ICONERROR) };
-}
-
-#[cfg(not(windows))]
-pub fn alert(message: &Message) {
-    eprintln!("{}\n\n{}", message.title, message.body);
+    tauri_kit_webview::alert(&message.title, &message.body);
 }
 
 #[cfg(test)]

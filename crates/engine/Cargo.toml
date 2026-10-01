@@ -10,11 +10,9 @@ publish = false
 
 [dependencies]
 base64 = "0.22"
-getrandom = "0.3"
 openquote-care-vault = { path = "../vault" }
 serde_json = "1"
-tauri-kit-sidecar.workspace = true
-ureq = { version = "3", default-features = false, features = ["json"] }
+tauri-kit-sidecar = { workspace = true, features = ["loopback"] }
 
 [dev-dependencies]
 openquote-care-test-support = { path = "../test-support" }

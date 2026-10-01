@@ -28,17 +28,15 @@ openquote-care-vault = { path = "../crates/vault" }
 age = "0.12"
 # The same client the engine crate uses, with TLS from the operating system for diagnostics.
 ureq = { version = "3", default-features = false, features = ["json", "native-tls"] }
+tauri-kit-webview.workspace = true
 
 [dev-dependencies]
 openquote-care-test-support = { path = "../crates/test-support" }
 tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
-# The web view's own interfaces, at the versions Tauri's runtime uses, to clear what it remembered.
-webview2-com = "0.39"
-windows-core = "0.62"
-# A message box the shell can show before any window exists.
-windows-sys = { version = "0.61", features = ["Win32_Globalization", "Win32_UI_WindowsAndMessaging"] }
+# The person's display languages.
+windows-sys = { version = "0.61", features = ["Win32_Globalization"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"

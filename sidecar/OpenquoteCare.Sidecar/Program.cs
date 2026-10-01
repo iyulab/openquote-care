@@ -6,23 +6,19 @@
 // It listens on 127.0.0.1 only, on a port the system picks, and announces that port as its first
 // line of standard output: "openquote-sidecar ready port=<n>".
 
-using System.Security.Cryptography;
-using System.Text;
 using OpenquoteCare.Sidecar;
+using TauriKit.Sidecar.Loopback;
 
-var token = Environment.GetEnvironmentVariable("OPENQUOTE_SIDECAR_TOKEN");
+var token = LoopbackHost.ReadToken("OPENQUOTE_SIDECAR_TOKEN");
 var device = Environment.GetEnvironmentVariable("OPENQUOTE_DEVICE");
-if (string.IsNullOrEmpty(token) || token.Length < 32 || string.IsNullOrEmpty(device))
+if (token is null || string.IsNullOrEmpty(device))
 {
     Console.Error.WriteLine("OPENQUOTE_SIDECAR_TOKEN (32+ characters) and OPENQUOTE_DEVICE are required");
     return 2;
 }
 
 var app = SidecarHost.Build(args, token, device, TimeProvider.System, port: 0);
-await app.StartAsync();
-var port = new Uri(app.Urls.First()).Port;
-Console.WriteLine($"openquote-sidecar ready port={port}");
-await app.WaitForShutdownAsync();
+await app.RunAnnouncingAsync("openquote-sidecar ready port=");
 return 0;
 
 namespace OpenquoteCare.Sidecar
@@ -32,35 +28,18 @@ namespace OpenquoteCare.Sidecar
     {
         public static WebApplication Build(string[] args, string token, string device, TimeProvider clock, int? port)
         {
-            var builder = WebApplication.CreateSlimBuilder(args);
-            builder.Logging.ClearProviders();
-            if (port is { } p) builder.WebHost.ConfigureKestrel(k => k.Listen(System.Net.IPAddress.Loopback, p));
+            var builder = LoopbackHost.CreateSlimBuilder(args, port);
             builder.Services.AddSingleton<VaultSession>();
             builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResolverChain.Insert(0, SidecarJson.Default));
 
             var app = builder.Build();
-            var expected = Encoding.UTF8.GetBytes("Bearer " + token);
-            app.Use(async (context, next) =>
+            app.UseBearerToken(token);
+            app.UseFaults(new FaultOptions
             {
-                var given = Encoding.UTF8.GetBytes(context.Request.Headers.Authorization.ToString());
-                if (!CryptographicOperations.FixedTimeEquals(given, expected))
-                {
-                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                    return;
-                }
-                try
-                {
-                    await next(context);
-                }
-                catch (InvalidOperationException e) when (e.Message == "no vault is loaded")
-                {
-                    context.Response.StatusCode = StatusCodes.Status409Conflict;
-                }
-                catch (Exception e) when (!context.Response.HasStarted)
-                {
-                    context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    await context.Response.WriteAsJsonAsync(new FaultResponse(Fault.Of(e)), SidecarJson.Default.FaultResponse);
-                }
+                // A failure is placed at the innermost frame in the engine or this sidecar; its message,
+                // which can quote record content or a path, is never sent.
+                OwnNamespaces = ["Openquote.", "OpenquoteCare."],
+                StatusFor = e => e is InvalidOperationException { Message: "no vault is loaded" } ? StatusCodes.Status409Conflict : null,
             });
             Api.Map(app, device, clock);
             return app;
