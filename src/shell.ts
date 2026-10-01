@@ -102,6 +102,8 @@ export const shell = {
   createVault: (folder: string, passphrase: string, track?: string) => invoke<string>('create_vault', { folder, passphrase, track }),
   confirmRecoveryKit: (typed: string) => invoke<void>('confirm_recovery_kit', { typed }),
   openVault: (folder: string, passphrase: string) => invoke<VaultSummary>('open_vault', { folder, passphrase }),
+  /** Writes back the vault declaration a vault folder lost (it still holds its key file). */
+  restoreDeclaration: (folder: string) => invoke<void>('restore_declaration', { folder }),
   /** Opens with the recovery key from the kit, for a forgotten passphrase. */
   openVaultWithKey: (folder: string, recoveryKey: string) => invoke<VaultSummary>('open_vault_with_key', { folder, recoveryKey }),
   /** Sets a new passphrase for the open vault; the old one stops opening it on every device. */

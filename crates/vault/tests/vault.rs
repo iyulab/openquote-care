@@ -244,6 +244,26 @@ fn folders_that_are_not_encrypted_vaults_are_refused() {
 }
 
 #[test]
+fn a_vault_that_lost_its_declaration_is_named_and_the_declaration_put_back() {
+    let dir = tempfile::tempdir().unwrap();
+    let (vault, kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    vault.write_new("subjects/s1/0001.dev1.json", b"{}").unwrap();
+    let declaration = fs::read(dir.path().join(VAULT_FILE)).unwrap();
+    fs::remove_file(dir.path().join(VAULT_FILE)).unwrap();
+
+    assert!(matches!(Vault::unlock(dir.path(), pass("correct horse")), Err(VaultError::DeclarationMissing)));
+    assert!(matches!(Vault::recover(dir.path(), kit.secret_key()), Err(VaultError::DeclarationMissing)));
+    Vault::restore_declaration(dir.path()).unwrap();
+    assert_eq!(fs::read(dir.path().join(VAULT_FILE)).unwrap(), declaration, "the declaration every vault of this format has");
+    assert_eq!(Vault::unlock(dir.path(), pass("correct horse")).unwrap().read_all().unwrap().files.len(), 1);
+    Vault::restore_declaration(dir.path()).unwrap(); // already there: another device put it back first
+
+    let empty = tempfile::tempdir().unwrap();
+    assert!(matches!(Vault::restore_declaration(empty.path()), Err(VaultError::NotAVault)), "a folder without a key file is no vault");
+    assert!(!empty.path().join(VAULT_FILE).exists());
+}
+
+#[test]
 fn a_vault_in_a_newer_format_is_refused_as_newer_not_as_foreign() {
     let newer = tempfile::tempdir().unwrap();
     fs::write(newer.path().join(VAULT_FILE), "{

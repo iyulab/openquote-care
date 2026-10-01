@@ -993,6 +993,20 @@ const scenarios = {
     await app.alert('이 폴더는 기록 폴더가 아닙니다.')
   },
 
+  async 'puts back the file that marks a vault folder when only it went missing, and opens'(app, work) {
+    const declaration = join(work.vault, 'vault.json')
+    const before = await readFile(declaration)
+    await rm(declaration)
+    await app.pickFolder(work.vault)
+    await app.type('암호', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.alert('이 폴더에서 기록 폴더임을 알리는 파일(vault.json)이 없어졌습니다. 암호 파일과 기록 파일은 남아 있어, 그 파일을 되살리면 전처럼 열립니다.')
+    await app.click('dc-button', '그 파일을 되살리고 열기')
+    await app.vaultOpen()
+    await app.noAlert()
+    assert.deepEqual(await readFile(declaration), before, 'the declaration every vault of this format has')
+  },
+
   // Last: it ends the app, so the web view writes out its profile before the scan.
   async 'makes a vault on the neutral English track, records on it, and shows no Korean anywhere'(app, work) {
     // The core and English packs only: no school or Korean pack, and the window in English.

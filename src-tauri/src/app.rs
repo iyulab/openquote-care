@@ -75,6 +75,7 @@ impl AppError {
             Self::Engine(EngineError::Vault(e)) => match e {
                 VaultError::AlreadyExists => "already-exists",
                 VaultError::NotAVault => "not-a-vault",
+                VaultError::DeclarationMissing => "declaration-missing",
                 VaultError::NewerFormat => "newer-format",
                 VaultError::NotEncrypted => "not-encrypted",
                 VaultError::WrongPassphrase => "wrong-passphrase",
@@ -302,6 +303,12 @@ impl App {
                 Err(AppError::NoVault)
             }
         }
+    }
+
+    /// Writes the vault declaration back into `folder`, a vault folder that lost it (see
+    /// [`Vault::restore_declaration`]); the vault then opens as before.
+    pub fn restore_declaration(&self, folder: &Path) -> Result<(), AppError> {
+        Ok(Vault::restore_declaration(folder)?)
     }
 
     /// Opens the vault in `folder` with its passphrase. Returns the engine's summary, which lists

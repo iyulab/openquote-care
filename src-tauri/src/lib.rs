@@ -79,6 +79,11 @@ fn confirm_recovery_kit(typed: String, app: State<App>) -> CommandResult<()> {
 }
 
 #[tauri::command]
+fn restore_declaration(folder: String, app: State<App>) -> CommandResult<()> {
+    text(app.restore_declaration(&PathBuf::from(folder)))
+}
+
+#[tauri::command]
 fn open_vault(folder: String, passphrase: String, app: State<App>) -> CommandResult<Value> {
     text(app.open_vault(&PathBuf::from(folder), passphrase))
 }
@@ -303,6 +308,7 @@ pub fn run() {
             refresh,
             set_backup,
             backup_status,
+            restore_declaration,
             restore_from_backup,
             write_plain_copy,
             history,

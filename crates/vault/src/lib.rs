@@ -52,6 +52,9 @@ pub enum VaultError {
     AlreadyExists,
     /// The folder has no vault declaration, or one this version does not understand.
     NotAVault,
+    /// The folder holds a vault key file but its declaration is gone: [`Vault::restore_declaration`]
+    /// puts it back.
+    DeclarationMissing,
     /// The folder holds a vault in a newer format than this version reads. Opening it anyway
     /// could miscount what this version does not know about, so it is refused.
     NewerFormat,
@@ -76,6 +79,7 @@ impl fmt::Display for VaultError {
         match self {
             Self::AlreadyExists => f.write_str("the folder already holds a vault"),
             Self::NotAVault => f.write_str("the folder holds no vault this version can open"),
+            Self::DeclarationMissing => f.write_str("the folder holds a vault key file but no vault declaration"),
             Self::NewerFormat => f.write_str("the vault is in a newer format than this version reads"),
             Self::NotEncrypted => f.write_str("the vault is not encrypted"),
             Self::WrongPassphrase => f.write_str("the passphrase does not open this vault"),
@@ -182,6 +186,20 @@ impl Vault {
         let identity = x25519::Identity::generate();
         let key_file = wrap_key(&identity, passphrase)?;
         Ok(NewVault { root: root.to_path_buf(), identity, key_file })
+    }
+
+    /// Writes the vault declaration back into `root`, a vault folder that lost it — one that still
+    /// holds its key file. The declaration is the same in every vault of this format, so it is
+    /// written as a new file; nothing the folder holds changes. Another device putting it back
+    /// first is not an error.
+    pub fn restore_declaration(root: &Path) -> Result<(), VaultError> {
+        if !root.join(KEY_FILE).is_file() {
+            return Err(VaultError::NotAVault);
+        }
+        match write_new(&root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes()) {
+            Err(VaultError::AlreadyExists) => check_declaration(root),
+            other => other,
+        }
     }
 
     /// Unlocks the vault in `root` with its passphrase.
@@ -348,6 +366,7 @@ fn wrap_key(identity: &x25519::Identity, passphrase: SecretString) -> Result<Str
 
 fn check_declaration(root: &Path) -> Result<(), VaultError> {
     let text = fs::read_to_string(root.join(VAULT_FILE)).map_err(|e| match e.kind() {
+        io::ErrorKind::NotFound if root.join(KEY_FILE).is_file() => VaultError::DeclarationMissing,
         io::ErrorKind::NotFound => VaultError::NotAVault,
         _ => VaultError::Io(e),
     })?;

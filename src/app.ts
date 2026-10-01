@@ -103,6 +103,8 @@ export class OcApp extends LitElement {
   /** Whether the open screen takes the recovery key instead of the passphrase. */
   @state() private withKey = false
   @state() private recoveryKey = ''
+  /** The folder chosen to open lost its vault declaration but still holds its key file. */
+  @state() private declarationMissing = false
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
   /** Whether this installation reports the app's own errors; the first screen says so. */
@@ -155,13 +157,17 @@ export class OcApp extends LitElement {
     this.tail = ''
     this.withKey = false
     this.recoveryKey = ''
+    this.declarationMissing = false
     this.error = undefined
     this.armIdle()
   }
 
   private async pickFolder(title: string) {
     const path = await open({ directory: true, title })
-    if (typeof path === 'string') this.folder = path
+    if (typeof path === 'string') {
+      this.folder = path
+      this.declarationMissing = false
+    }
   }
 
   /** Runs one shell call with the busy flag up, showing its failure instead of throwing. */
@@ -216,11 +222,23 @@ export class OcApp extends LitElement {
       const summary = await (withKey ? shell.openVaultWithKey(folder, this.recoveryKey) : shell.openVault(folder, this.passphrase)).catch((e: unknown) => {
         // With the key file damaged or gone, the passphrase cannot open the vault: the recovery key is what is asked next.
         if (!withKey && isCommandError(e) && e.code === 'damaged-key-file') this.withKey = true
+        this.declarationMissing = isCommandError(e) && e.code === 'declaration-missing'
         throw e
       })
       const adopted = summary.adopted ? [inAppLanguage(summary.adopted.label, summary.adopted.track)] : undefined
       this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted })
     })
+  }
+
+  /** Writes back the declaration the chosen folder lost, then opens it as asked. */
+  private async restoreDeclarationAndOpen() {
+    const folder = this.folder
+    if (!folder) return
+    await this.run(async () => {
+      await shell.restoreDeclaration(folder)
+      this.declarationMissing = false
+    })
+    if (!this.declarationMissing && !this.error) await this.openVault()
   }
 
   /** Closes the vault, or drops a new one still waiting on its kit: nothing of it was written. */
@@ -362,6 +380,11 @@ export class OcApp extends LitElement {
             <p class="muted">${strings.recoveryKeyHint}</p>`
         : this.passphraseField(strings.passphrase, this.passphrase, (v) => (this.passphrase = v), submit)}
       ${this.actions(strings.open, submit)}
+      ${this.declarationMissing
+        ? html`<div class="row" data-role="restore-declaration">
+            <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.restoreDeclarationAndOpen()}>${strings.restoreDeclaration}</dc-button>
+          </div>`
+        : nothing}
       <div class="row">
         <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => (this.withKey = !this.withKey)}
           >${this.withKey ? strings.openWithPassphrase : strings.openWithKey}</dc-button
