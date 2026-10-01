@@ -1,6 +1,6 @@
 {
   "name": "openquote-care",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Counselling records that stay yours, and monthly reports that survive a change of categories",
   "license": "AGPL-3.0-only",
