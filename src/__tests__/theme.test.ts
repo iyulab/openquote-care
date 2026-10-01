@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import raw from '../styles.css?raw'
+import appRaw from '../app.ts?raw'
 
 const css = raw.replace(/\/\*[\s\S]*?\*\//g, '')
 
@@ -55,5 +56,14 @@ describe('the app theme', () => {
     expect(print).toMatch(/--dc-selection-bg\s*:\s*transparent/)
     // A card that raises itself (the welcome and setup cards) reads the base elevations, not the card role.
     for (const level of [1, 2, 3]) expect(print).toMatch(new RegExp(`--dc-elevation-${level}\\s*:\\s*none`))
+    // A warning (the recovery kit's) prints its edge in ink.
+    expect(get(print, '--dc-color-warning')).toBe('#000000')
+  })
+
+  it('prints a card without the footer its hidden buttons leave behind', () => {
+    const app = appRaw.replace(/\/\*[\s\S]*?\*\//g, '')
+    const print = app.match(/@media print\s*\{([\s\S]*?)\n\s{4}\}/)
+    expect(print, 'a print block in the app styles').toBeTruthy()
+    expect(print![1]).toMatch(/dc-card::part\(footer\)\s*\{\s*display:\s*none;?\s*\}/)
   })
 })

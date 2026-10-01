@@ -156,6 +156,10 @@ export class OcApp extends LitElement {
       [slot='footer'] {
         display: none;
       }
+      /* The footer holds only buttons, hidden above; without this its empty band and rule still print. */
+      dc-card::part(footer) {
+        display: none;
+      }
       .key {
         background: none;
         border: 1px solid #000;

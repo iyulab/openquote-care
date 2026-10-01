@@ -172,6 +172,7 @@ body {
     --dc-color-rule: #999999;
     --dc-color-accent-text: #000000;
     --dc-color-secondary-text: #000000;
+    --dc-color-warning: #000000;
     --dc-color-accent-subtle: transparent;
     --dc-color-secondary-subtle: transparent;
     --dc-color-success-subtle: transparent;
