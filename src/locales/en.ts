@@ -343,6 +343,8 @@ export const en: Strings = {
   backupPickTitle: 'Choose an empty folder for the backup',
   backupStop: 'Stop backing up',
   backupOff: 'Off.',
+  backupOffBadge: 'Off',
+  backupOkBadge: 'OK',
   backupTo: (folder: string) => `Backup folder: ${folder}`,
   backupWriteDown: 'Write this location in the “Backup location” space of the recovery kit.',
   backupCopyHint:

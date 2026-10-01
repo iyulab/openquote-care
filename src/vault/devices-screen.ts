@@ -98,25 +98,28 @@ export class OcDevices extends VaultScreen {
     const unknown = unresolved.length || (missing.length + damaged.length + damagedInBackup.length === 0 ? (backup.differs?.length ?? 0) : 0)
     return [
       missing.length
-        ? html`<p class="error" data-role="backup-missing">${strings.backupMissing(missing.length)}</p>
-            <div class="row">
-              <dc-button variant="primary" ?disabled=${busy} data-role="backup-restore" @click=${() => void this.store.restoreFromBackup()}>${strings.backupRestore}</dc-button>
-            </div>`
+        ? html`<dc-callout variant="warning" data-role="backup-missing">
+            <p>${strings.backupMissing(missing.length)}</p>
+            <dc-button slot="actions" variant="primary" ?disabled=${busy} data-role="backup-restore" @click=${() => void this.store.restoreFromBackup()}>${strings.backupRestore}</dc-button>
+          </dc-callout>`
         : nothing,
       damaged.length
-        ? html`<p class="error" data-role="backup-damaged">${strings.backupDamaged(damaged.length)}</p>
+        ? html`<dc-callout variant="warning" data-role="backup-damaged">
+              <p>${strings.backupDamaged(damaged.length)}</p>
+              ${this.confirmingReplace
+                ? nothing
+                : html`<dc-button slot="actions" variant="primary" ?disabled=${busy} data-role="backup-replace" @click=${() => (this.confirmingReplace = true)}>${strings.backupReplace}</dc-button>`}
+            </dc-callout>
             ${this.confirmingReplace
-              ? html`<p data-role="backup-replace-confirm">${strings.backupReplaceConfirm(damaged.length)}</p>
-                  <div class="row">
-                    <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.replaceDamaged()}>${strings.backupReplaceYes}</dc-button>
-                    <dc-button variant="secondary" ?disabled=${busy} @click=${() => (this.confirmingReplace = false)}>${strings.cancel}</dc-button>
-                  </div>`
-              : html`<div class="row">
-                  <dc-button variant="primary" ?disabled=${busy} data-role="backup-replace" @click=${() => (this.confirmingReplace = true)}>${strings.backupReplace}</dc-button>
-                </div>`}`
+              ? html`<dc-callout variant="danger">
+                  <p data-role="backup-replace-confirm">${strings.backupReplaceConfirm(damaged.length)}</p>
+                  <dc-button slot="actions" variant="primary" ?disabled=${busy} @click=${() => void this.replaceDamaged()}>${strings.backupReplaceYes}</dc-button>
+                  <dc-button slot="actions" variant="secondary" ?disabled=${busy} @click=${() => (this.confirmingReplace = false)}>${strings.cancel}</dc-button>
+                </dc-callout>`
+              : nothing}`
         : nothing,
-      damagedInBackup.length ? html`<p class="error" data-role="backup-damaged-in-backup">${strings.backupDamagedInBackup(damagedInBackup.length)}</p>` : nothing,
-      unknown ? html`<p class="error" data-role="backup-unresolved">${strings.backupUnresolved(unknown)}</p>` : nothing,
+      damagedInBackup.length ? html`<dc-callout variant="warning" data-role="backup-damaged-in-backup"><p>${strings.backupDamagedInBackup(damagedInBackup.length)}</p></dc-callout>` : nothing,
+      unknown ? html`<dc-callout variant="warning" data-role="backup-unresolved"><p>${strings.backupUnresolved(unknown)}</p></dc-callout>` : nothing,
     ]
   }
 
@@ -126,21 +129,20 @@ export class OcDevices extends VaultScreen {
     const folder = backup.folder ?? (backupProblem ? storedBackup(this.store.folder) : null)
     const reason = (code: string) => (strings.errors as Record<string, string>)[code] ?? strings.errors.unknown
     const lines = !folder
-      ? [html`<p class="muted" data-role="backup-status">${strings.backupOff}</p>`]
+      ? [html`<div class="row"><dc-badge>${strings.backupOffBadge}</dc-badge><p class="muted" data-role="backup-status">${strings.backupOff}</p></div>`]
       : [
           html`<p data-role="backup-folder">${strings.backupTo(folder)}</p>`,
           html`<p class="muted" data-role="backup-write-down">${strings.backupWriteDown}</p>`,
           backupProblem
-            ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backupProblem))}</p>`
+            ? html`<dc-callout variant="danger" data-role="backup-status"><p>${strings.backupFailed(reason(backupProblem))}</p></dc-callout>`
             : backup.error
-              ? html`<p class="error" data-role="backup-status">${strings.backupFailed(reason(backup.error))}</p>`
+              ? html`<dc-callout variant="danger" data-role="backup-status"><p>${strings.backupFailed(reason(backup.error))}</p></dc-callout>`
               : backup.at !== undefined
-                ? html`<p class="muted" data-role="backup-status">${strings.backupDone(backup.at, backup.copied ?? 0)}</p>`
+                ? html`<div class="row"><dc-badge variant="success">${strings.backupOkBadge}</dc-badge><p class="muted" data-role="backup-status">${strings.backupDone(backup.at, backup.copied ?? 0)}</p></div>`
                 : nothing,
           ...this.backupFindings(),
         ]
-    return html`<h2>${strings.backup}</h2>
-      <p class="muted">${strings.backupLead}</p>
+    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.backup} description=${strings.backupLead}></dp-page-header>
       ${lines}
       ${noticeLine(this.store)}
       <div class="row" data-role="backup">
@@ -151,8 +153,7 @@ export class OcDevices extends VaultScreen {
 
   private passphraseInput(label: string, value: string, set: (v: string) => void, submit: () => void) {
     const busy = this.store.busy
-    return html`<label>
-      ${label}
+    return html`<dc-field label=${label}>
       <dc-input
         type="password"
         aria-label=${label}
@@ -161,7 +162,7 @@ export class OcDevices extends VaultScreen {
         @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
         @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && !busy && submit()}
       ></dc-input>
-    </label>`
+    </dc-field>`
   }
 
   protected screen() {
@@ -190,14 +191,13 @@ export class OcDevices extends VaultScreen {
     const save = () => void this.saveDeviceName()
     const label = (d: string) => deviceLabel(summary, d)
     const named = Object.keys(summary?.devices ?? {}).sort((a, b) => this.store.names.compare(label(a), label(b)))
-    return html`<h2>${strings.deviceName}</h2>
-      <p class="muted">${strings.devicesLead}</p>
+    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.deviceName} description=${strings.devicesLead}></dp-page-header>
       <div class="row">
         ${nameField(busy, strings.deviceName, this.deviceName, (v) => (this.deviceName = v), save)}
         <dc-button variant="secondary" ?disabled=${busy} @click=${save}>${strings.saveDeviceName}</dc-button>
       </div>
       ${noticeLine(this.store)}
-      <h3>${strings.knownDevices}</h3>
+      <dc-section-heading marker size="lg" heading=${strings.knownDevices}></dc-section-heading>
       ${named.length === 0
         ? html`<p class="muted">${strings.noNamedDevices}</p>`
         : html`<ul class="plain" aria-label=${strings.knownDevices}>
@@ -206,31 +206,28 @@ export class OcDevices extends VaultScreen {
   }
 
   private idleSection() {
-    return html`<h2>${strings.idleLock}</h2>
+    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.idleLock} description=${strings.idleLockLead}></dp-page-header>
       <div class="row" data-role="idle-lock">
-        <label>
-          ${strings.idleLock}
+        <dc-field label=${strings.idleLock}>
           <dc-select
             aria-label=${strings.idleLock}
             .options=${IDLE_CHOICES.map((m) => ({ value: String(m), label: strings.idleOption(m) }))}
             .value=${String(this.idleChoice)}
             @change=${(e: Event) => this.chooseIdle(Number((e.target as HTMLSelectElement).value))}
           ></dc-select>
-        </label>
-      </div>
-      <p class="muted">${strings.idleLockLead}</p>`
+        </dc-field>
+      </div>`
   }
 
   private passphraseSection() {
     const busy = this.store.busy
     const change = () => void this.changePassphrase()
-    return html`<h2>${strings.changePassphrase}</h2>
+    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.changePassphrase} description=${strings.changePassphraseLead}></dp-page-header>
       ${this.keyFileLost
-        ? html`<p class="error" role="alert" data-role="key-file-lost">${strings.keyFileLost}</p>`
+        ? html`<dc-callout variant="warning" role="alert" data-role="key-file-lost"><p>${strings.keyFileLost}</p></dc-callout>`
         : this.openedWithKey
           ? html`<p class="muted" role="status">${strings.openedWithKey}</p>`
           : nothing}
-      <p class="muted">${strings.changePassphraseLead}</p>
       <div class="row" data-role="change-passphrase">
         ${this.passphraseInput(strings.newPassphrase, this.newPassphrase, (v) => (this.newPassphrase = v), change)}
         ${this.passphraseInput(strings.newPassphraseAgain, this.newPassphraseAgain, (v) => (this.newPassphraseAgain = v), change)}

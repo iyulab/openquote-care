@@ -147,9 +147,8 @@ export class OcExport extends VaultScreen {
   /** The copy of every record that reads without the app: what it is, that it is unprotected, and where it goes. */
   private plainCopyDocument() {
     const busy = this.store.busy
-    return html`<h2>${strings.plainCopyEntry}</h2>
-      <p class="muted">${strings.plainCopyLead}</p>
-      <p class="error" data-role="plain-copy-warning">${strings.plainCopyWarning}</p>
+    return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${strings.plainCopyEntry} description=${strings.plainCopyLead}></dp-page-header>
+      <dc-callout variant="warning" data-role="plain-copy-warning"><p>${strings.plainCopyWarning}</p></dc-callout>
       <dc-checkbox
         data-role="plain-copy-narrative"
         .checked=${this.withNarrative}
@@ -174,7 +173,7 @@ export class OcExport extends VaultScreen {
       ${this.changesNow === undefined
         ? nothing
         : after > 0
-          ? html`<p class="error" data-role="plain-copy-stale">${strings.plainCopyStale(after)}</p>`
+          ? html`<dc-callout variant="warning" data-role="plain-copy-stale"><p>${strings.plainCopyStale(after)}</p></dc-callout>`
           : html`<p class="muted" data-role="plain-copy-fresh">${strings.plainCopyFresh}</p>`}`
   }
 
@@ -183,15 +182,15 @@ export class OcExport extends VaultScreen {
     const store = this.store
     const busy = store.busy
     const table = this.exportTable
-    return html`<h2>${title}</h2>
-      <p class="muted">${strings.exportLead}</p>
-      <div class="row">
-        ${periodFields(store)}
-        <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
-        ${table && table.rows.length > 0
-          ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`
-          : nothing}
-      </div>
+    return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${title} description=${strings.exportLead}>
+        <div slot="actions" class="row">
+          ${periodFields(store)}
+          <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
+          ${table && table.rows.length > 0
+            ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`
+            : nothing}
+        </div>
+      </dp-page-header>
       ${formBehind(store.summary?.exports ?? [], store.exportKey)}
       ${noticeLine(store)}
       ${table ? this.tableView(table) : nothing}`
@@ -201,11 +200,11 @@ export class OcExport extends VaultScreen {
     const gaps = table.pending.length + table.unmapped.length
     return html`
       <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
-      ${gaps > 0 ? html`<p class="error" data-role="export-gaps">${strings.exportGaps(table.pending.length, table.unmapped.length)}</p>` : nothing}
+      ${gaps > 0 ? html`<dc-callout variant="warning" data-role="export-gaps"><p>${strings.exportGaps(table.pending.length, table.unmapped.length)}</p></dc-callout>` : nothing}
       ${table.withheld.length > 0 ? html`<p class="muted" data-role="export-withheld">${strings.exportWithheld(table.withheld)}</p>` : nothing}
       ${table.rows.length === 0
         ? html`<p class="muted">${strings.exportEmpty}</p>`
-        : html`<div class="scroll">
+        : html`<dc-card><div class="scroll">
             <table class="export">
               <thead>
                 <tr>
@@ -216,7 +215,7 @@ export class OcExport extends VaultScreen {
                 ${table.rows.map((r) => html`<tr data-export-row=${r.record}>${r.cells.map((c) => html`<td>${c}</td>`)}</tr>`)}
               </tbody>
             </table>
-          </div>`}
+          </div></dc-card>`}
     `
   }
 }

@@ -342,6 +342,8 @@ export const ko = {
   backupPickTitle: '백업을 둘 빈 폴더 선택',
   backupStop: '백업 끄기',
   backupOff: '사용하지 않습니다.',
+  backupOffBadge: '꺼짐',
+  backupOkBadge: '정상',
   backupTo: (folder: string) => `백업 폴더: ${folder}`,
   backupWriteDown: '복구 키트의 「백업 위치」 칸에 이 위치를 적어 두세요.',
   backupCopyHint:
