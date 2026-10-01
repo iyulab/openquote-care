@@ -35,6 +35,7 @@ await withInstalled(
   async (target) => {
     assert.ok(existsSync(join(target, 'sidecar', 'openquote-care-sidecar.exe')), 'the engine sidecar is bundled')
     assert.ok(existsSync(join(target, 'packs', 'tracks.json')), 'the tracks are bundled')
+    assert.ok(existsSync(join(target, 'licenses', 'Pretendard-OFL.txt')), 'the font license is bundled')
     // Every pack the tracks start from, and every pack they build on, with each file it lists.
     for (const pack of readdirSync(join(root, 'packs'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
       for (const name of readdirSync(join(root, 'packs', pack, 'packs', pack))) {

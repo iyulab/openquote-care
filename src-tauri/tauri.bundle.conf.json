@@ -3,6 +3,7 @@
   "bundle": {
     "resources": {
       "../packs": "packs",
+      "../LICENSES": "licenses",
       "../sidecar/publish/openquote-care-sidecar.exe": "sidecar/openquote-care-sidecar.exe"
     },
     "windows": {
