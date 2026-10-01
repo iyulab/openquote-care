@@ -6,6 +6,7 @@ import { asDraft, changedFields } from '../correction.js'
 import { choices, latest, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
+import { fieldInput, type Choice } from './field-input.js'
 import { StoreElement } from './screen.js'
 import type { Holder } from './session-parts.js'
 
@@ -168,70 +169,15 @@ export class OcSessionForm extends StoreElement {
 
   private input(f: FieldView) {
     const store = this.store
-    const busy = store.busy
-    const value = this.draft[f.name] ?? ''
-    const set = (v: string) => this.setValue(f.name, v)
-    switch (f.kind) {
-      case 'date':
-      case 'number':
-      case 'text':
-        if (f.tier === 'narrative')
-          return html`<label class="wide">
-            ${f.label}
-            <dc-textarea
-              aria-label=${f.label}
-              data-field=${f.name}
-              .value=${value}
-              .rows=${4}
-              ?disabled=${busy}
-              @input=${(e: Event) => set((e.target as HTMLTextAreaElement).value)}
-            ></dc-textarea>
-          </label>`
-        return html`<label>
-          ${f.label}
-          <dc-input
-            type=${f.kind === 'text' ? 'text' : f.kind}
-            aria-label=${f.label}
-            data-field=${f.name}
-            .value=${value}
-            ?disabled=${busy}
-            @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
-          ></dc-input>
-        </label>`
-      case 'coded': {
+    const choicesOf = (): Choice[] => {
+      if (f.kind === 'coded') {
         const scheme = this.schemeFor(f)
-        const options = scheme ? choices(scheme) : []
-        return html`<label>
-          ${f.label}
-          <dc-select
-            aria-label=${f.label}
-            data-field=${f.name}
-            .options=${f.required ? options : [{ value: '', label: strings.none }, ...options]}
-            .value=${value}
-            placeholder=${f.label}
-            ?disabled=${busy}
-            @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
-          ></dc-select>
-        </label>`
+        return scheme ? choices(scheme) : []
       }
-      case 'reference': {
-        const options = store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
-        return html`<label>
-          ${f.label}
-          <dc-select
-            aria-label=${f.label}
-            data-field=${f.name}
-            .options=${f.required ? options : [{ value: '', label: strings.none }, ...options]}
-            .value=${value}
-            placeholder=${f.label}
-            ?disabled=${busy}
-            @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
-          ></dc-select>
-        </label>`
-      }
-      default:
-        return nothing
+      if (f.kind === 'reference') return store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
+      return []
     }
+    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, choicesOf())
   }
 
   render() {

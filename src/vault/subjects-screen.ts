@@ -8,6 +8,7 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
+import './subject-form.js'
 import { conflictPanel, sessionTable, toggled } from './session-parts.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
@@ -27,6 +28,8 @@ export class OcSubjects extends VaultScreen {
   @state() private openNotes = new Set<string>()
   /** The session open for correcting. */
   @state() private correcting?: string
+  /** The subject's own record is open for correcting. */
+  @state() private correctingSubject = false
 
   private async addSubject() {
     const name = this.subjectName.trim()
@@ -66,6 +69,7 @@ export class OcSubjects extends VaultScreen {
 
   private pick(id: string) {
     this.correcting = undefined
+    this.correctingSubject = false
     this.selected = id
     this.adding = false
     this.documentOpen = true
@@ -167,7 +171,23 @@ export class OcSubjects extends VaultScreen {
     const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
-      <h2>${strings.sessions(text(subject, 'name'))}</h2>
+      <div class="row">
+        <h2>${strings.sessions(text(subject, 'name'))}</h2>
+        ${this.correctingSubject
+          ? nothing
+          : html`<dc-button variant="ghost" size="sm" data-role="correct-subject-open" ?disabled=${store.busy} @click=${() => {
+              store.set({ notice: '' })
+              this.correctingSubject = true
+            }}>${strings.correctSubject}</dc-button>`}
+      </div>
+      ${this.correctingSubject
+        ? html`<oc-subject-form
+            .store=${store}
+            .subject=${subject}
+            @oc-subject-edited=${() => (this.correctingSubject = false)}
+            @oc-edit-cancelled=${() => (this.correctingSubject = false)}
+          ></oc-subject-form>`
+        : nothing}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
         ? html`<oc-session-form

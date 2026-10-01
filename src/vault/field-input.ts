@@ -1,0 +1,61 @@
+import { html, nothing } from 'lit'
+import type { FieldView } from '../fields.js'
+import { strings } from '../strings.js'
+
+/** A choice a coded or reference field offers. */
+export interface Choice {
+  value: string
+  label: string
+}
+
+/**
+ * The input for one field a vault's packs declare, by what the field holds: a line (or, for written
+ * content, a box) for text, a date or a number; a dropdown of `choices` for a classification or a
+ * reference, with "none" first unless the field is required.
+ */
+export function fieldInput(f: FieldView, value: string, set: (v: string) => void, busy: boolean, choices: Choice[] = []) {
+  switch (f.kind) {
+    case 'date':
+    case 'number':
+    case 'text':
+      if (f.tier === 'narrative')
+        return html`<label class="wide">
+          ${f.label}
+          <dc-textarea
+            aria-label=${f.label}
+            data-field=${f.name}
+            .value=${value}
+            .rows=${4}
+            ?disabled=${busy}
+            @input=${(e: Event) => set((e.target as HTMLTextAreaElement).value)}
+          ></dc-textarea>
+        </label>`
+      return html`<label>
+        ${f.label}
+        <dc-input
+          type=${f.kind === 'text' ? 'text' : f.kind}
+          aria-label=${f.label}
+          data-field=${f.name}
+          .value=${value}
+          ?disabled=${busy}
+          @input=${(e: Event) => set((e.target as HTMLInputElement).value)}
+        ></dc-input>
+      </label>`
+    case 'coded':
+    case 'reference':
+      return html`<label>
+        ${f.label}
+        <dc-select
+          aria-label=${f.label}
+          data-field=${f.name}
+          .options=${f.required ? choices : [{ value: '', label: strings.none }, ...choices]}
+          .value=${value}
+          placeholder=${f.label}
+          ?disabled=${busy}
+          @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
+        ></dc-select>
+      </label>`
+    default:
+      return nothing
+  }
+}

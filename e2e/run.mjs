@@ -984,6 +984,29 @@ const scenarios = {
     for (const [i, f] of filesBefore.entries()) assert.deepEqual(await readFile(join(work.vault, 'subjects', f)), contentBefore[i], `${f} is untouched`)
   },
 
+  async 'corrects what the record of a subject holds, starting from it, as an edit of its own'(app, work) {
+    const recordFiles = async () => (await readdir(join(work.vault, 'subjects'), { recursive: true })).filter((f) => f.endsWith('.age')).length
+    const filesBefore = await recordFiles()
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-subject]')`, 'the subject form')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('input[aria-label="이름"]').value`), '가상 학생 1', 'the form starts from the record')
+    await app.type('학교', '가상 중학교')
+    await app.click('dc-button', '고친 내용 저장')
+    const said = (text) => `__e2e.all('[role=status]').some((el) => el.textContent.trim() === ${q(text)})`
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]') && ${said('대상자 정보를 고쳤습니다.')}`, 'the subject corrected')
+    await app.noAlert()
+    assert.equal(await recordFiles(), filesBefore + 1, 'the correction is a file of its own')
+
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.cdp.waitFor(`__e2e.one('input[aria-label="학교"]')?.value === '가상 중학교'`, 'the record now holds it')
+    await app.setDate('이름', '') // sets any input's value, a date's or not
+    await app.click('dc-button', '고친 내용 저장')
+    await app.alert('‘이름’ 칸을 채우세요.')
+    await app.click('dc-button', '취소')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the form left')
+    assert.equal(await recordFiles(), filesBefore + 1, 'an empty required field writes nothing')
+  },
+
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
     await app.click('dc-button', '기록 폴더 닫기')
     const keyFile = join(work.vault, 'keys', 'vault-key.age')
