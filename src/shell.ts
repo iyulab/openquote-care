@@ -67,6 +67,8 @@ export interface VaultSummary {
   locales: string[]
   /** On opening: the track a vault made before packs named themselves was taken onto, with its names per language. */
   adopted?: { track: string; label: Record<string, string> }
+  /** On opening: the folder is a backup this app keeps of another vault. */
+  backupCopy?: boolean
   /** Opened with the recovery key while the key file is missing or damaged: only a new passphrase mends it. */
   keyFileLost?: boolean
   [key: string]: unknown

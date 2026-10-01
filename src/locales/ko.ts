@@ -334,6 +334,8 @@ export const ko = {
   backupOff: '사용하지 않습니다.',
   backupTo: (folder: string) => `백업 폴더: ${folder}`,
   backupWriteDown: '복구 키트의 「백업 위치」 칸에 이 위치를 적어 두세요.',
+  backupCopyHint:
+    '이 폴더는 자동 백업 사본입니다. 여기에 쓴 기록은 원래 기록 폴더에 들어가지 않습니다. 원래 기록 폴더를 쓸 수 없을 때만 여기서 이어 가고, 다시 쓸 수 있게 되면 원래 기록 폴더를 여세요.',
   backupDone: (at: number, copied: number) => `마지막 백업 ${new Date(at).toLocaleString('ko', { dateStyle: 'medium', timeStyle: 'short' })} · 새 파일 ${copied}개`,
   backupFailed: (reason: string) => `백업이 되지 않았습니다. ${reason} 기록은 이 기록 폴더에 그대로 저장됩니다.`,
   backupMissing: (n: number) => `기록 폴더에서 없어진 기록 파일이 ${n}개 있습니다. 백업에 그대로 남아 있어 되살릴 수 있습니다.`,

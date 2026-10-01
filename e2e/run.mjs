@@ -476,7 +476,9 @@ const scenarios = {
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=backup-write-down]').textContent`), /복구 키트/, 'says to write the backup folder on the kit')
     await app.noAlert()
     const files = async (root) => (await readdir(root, { recursive: true })).map((f) => f.replaceAll('\\', '/')).sort()
-    assert.deepEqual(await files(copy), await files(work.vault), 'the copy holds every file of the vault, as it is on disk')
+    const mark = 'openquote-care-backup.json'
+    assert.ok((await files(copy)).includes(mark), 'the copy carries the mark that says it is a backup')
+    assert.deepEqual((await files(copy)).filter((f) => f !== mark), await files(work.vault), 'the copy holds every file of the vault, as it is on disk')
 
     await app.cdp.evaluate(`__e2e.one('oc-vault').setBackup(${q(work.vault)}).then(() => true)`)
     await app.alert('백업 폴더는 기록 폴더 안이나, 기록 폴더를 품은 폴더일 수 없습니다. 떨어진 폴더를 고르세요.')

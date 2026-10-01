@@ -44,6 +44,8 @@ export class OcVault extends LitElement {
   @property({ type: Boolean }) openedWithKey = false
   /** Opened with the recovery key while the key file is missing or damaged: a new passphrase is the next step, not a choice. */
   @property({ type: Boolean }) keyFileLost = false
+  /** The folder is a backup this app keeps of another vault, opened in its place. */
+  @property({ type: Boolean }) backupCopy = false
   /** The packs the vault took on as it opened, by label: said once, on the first screen. */
   @property({ attribute: false }) adopted: string[] = []
 
@@ -170,7 +172,7 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page fill max-width="full">
-          ${this.unreadableView()} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
+          ${this.unreadableView()} ${this.backupCopyHint()} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           <oc-subjects .store=${store} ?active=${view === 'subjects'}></oc-subjects>
           <oc-groups .store=${store} ?active=${view === 'groups'}></oc-groups>
           <oc-report .store=${store} ?active=${view === 'report'}></oc-report>
@@ -186,6 +188,12 @@ export class OcVault extends LitElement {
         </dp-page>
       </dp-shell>
     `
+  }
+
+  /** A backup opened in place of the vault it copies: what is written here stays here. */
+  private backupCopyHint() {
+    if (!this.backupCopy) return nothing
+    return html`<p class="row muted" role="status" data-role="backup-copy">${strings.backupCopyHint}</p>`
   }
 
   /** Opened with the recovery key: offer a new passphrase, in case the old one is forgotten — or, with

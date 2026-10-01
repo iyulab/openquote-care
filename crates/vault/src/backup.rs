@@ -17,7 +17,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use crate::{collect_files, encrypted_files, key_file_sound, key_opens, read_if_present, relative_path, Vault, DAMAGED_EXTENSION, DAMAGED_FOLDER, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
+use crate::{collect_files, encrypted_files, key_file_sound, key_opens, read_if_present, relative_path, Vault, BACKUP_MARKER, DAMAGED_EXTENSION, DAMAGED_FOLDER, ENCRYPTED_EXTENSION, KEY_FILE, VAULT_FILE};
 
 /// Why a folder cannot hold a vault's backup, or a backup could not be brought up to date.
 #[derive(Debug)]
@@ -86,6 +86,9 @@ impl BackupComparison {
     }
 }
 
+/// What the backup mark says to a person who opens the file.
+const BACKUP_MARKER_CONTENT: &[u8] = b"{\n  \"kind\": \"backup\",\n  \"note\": \"A copy of a vault that Openquote Care keeps up to date. It opens as that vault; records written here do not reach it.\"\n}\n";
+
 impl Vault {
     /// Checks that `target` can hold this vault's backup: an existing folder apart from the vault
     /// that is empty, or holds this vault's backup already (a vault declaration and only record
@@ -102,7 +105,7 @@ impl Vault {
         }
         for path in paths {
             let relative = relative_path(&target, &path);
-            if relative == VAULT_FILE || relative == KEY_FILE {
+            if relative == VAULT_FILE || relative == KEY_FILE || relative == BACKUP_MARKER {
                 continue;
             }
             if !relative.ends_with(ENCRYPTED_EXTENSION) || key_opens(&self.identity, &fs::read(&path)?) != Some(true) {
@@ -243,6 +246,11 @@ impl Vault {
 
     fn copy_into(&self, target: &Path, relatives: Vec<String>) -> Result<BackupReport, BackupError> {
         let mut report = BackupReport::default();
+        // The mark goes in first: a backup is never without it, even one a failure cut short.
+        match tauri_kit_fs::write_atomic_new(&target.join(BACKUP_MARKER), BACKUP_MARKER_CONTENT) {
+            Err(e) if e.kind() != io::ErrorKind::AlreadyExists => return Err(e.into()),
+            _ => {}
+        }
         for relative in relatives {
             let from = self.root.path().join(&relative);
             let to = target.join(&relative);

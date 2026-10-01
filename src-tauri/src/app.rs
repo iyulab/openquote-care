@@ -344,6 +344,11 @@ impl App {
         if let Some(track) = adopted {
             summary["adopted"] = serde_json::json!({ "track": track.id, "label": track.label });
         }
+        // A backup opened as the vault it copies (the original lost, say): the window says so for
+        // as long as it is open, since what is written here does not reach the original.
+        if open.vault.is_backup_copy() {
+            summary["backupCopy"] = serde_json::json!(true);
+        }
         *self.stage.lock().unwrap() = self.opened(open);
         Ok(summary)
     }
@@ -758,7 +763,9 @@ mod tests {
         assert_eq!(app.backup_status()["copied"], 1, "the new record");
         app.run_report("monthly-topic", 1, 2026, 4).unwrap();
         assert_eq!(app.backup_status()["copied"], 1, "the run record");
-        assert_eq!(vault_files(backup.path()), vault_files(dir.path()));
+        let mut in_backup = vault_files(backup.path());
+        assert!(in_backup.remove(openquote_care_vault::BACKUP_MARKER).is_some(), "the backup carries its mark");
+        assert_eq!(in_backup, vault_files(dir.path()));
 
         app.change_passphrase("new pass".to_owned()).unwrap();
         assert_eq!(app.backup_status()["keyReplaced"], true);
@@ -786,6 +793,23 @@ mod tests {
         app.close_vault();
         app.open_vault(dir.path(), "new pass".to_owned()).unwrap();
         assert_eq!(app.backup_status(), json!({ "folder": null }));
+    }
+
+    #[test]
+    fn a_backup_opened_in_place_of_its_vault_says_it_is_a_copy() {
+        let Some(app) = app() else { return };
+        let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.set_backup(Some(backup.path())).unwrap();
+        app.record("/changes/subject", json!({ "fields": { "name": "one" } })).unwrap();
+        app.close_vault();
+
+        let copy = app.open_vault(backup.path(), "pass".to_owned()).unwrap();
+        assert_eq!(copy["backupCopy"], true);
+        assert_eq!(app.entities("subject").unwrap().as_array().unwrap().len(), 1, "the copy holds the records");
+        app.close_vault();
+        assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("backupCopy").is_none());
     }
 
     #[test]

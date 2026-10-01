@@ -17,7 +17,7 @@ type Screen =
   | { name: 'create' }
   | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
-  | { name: 'vault'; folder: string; withKey?: boolean; keyFileLost?: boolean; adopted?: string[] }
+  | { name: 'vault'; folder: string; withKey?: boolean; keyFileLost?: boolean; adopted?: string[]; backupCopy?: boolean }
 
 @customElement('oc-app')
 export class OcApp extends LitElement {
@@ -231,7 +231,7 @@ export class OcApp extends LitElement {
         throw e
       })
       const adopted = summary.adopted ? [inAppLanguage(summary.adopted.label, summary.adopted.track)] : undefined
-      this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted })
+      this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted, backupCopy: summary.backupCopy === true })
     })
   }
 
@@ -266,6 +266,7 @@ export class OcApp extends LitElement {
         .openedWithKey=${s.withKey ?? false}
         .keyFileLost=${s.keyFileLost ?? false}
         .adopted=${s.adopted ?? []}
+        .backupCopy=${s.backupCopy ?? false}
         @oc-close=${() => void this.closeVault()}
         @oc-lock=${() => void this.lock()}
         @oc-idle-changed=${() => this.armIdle()}

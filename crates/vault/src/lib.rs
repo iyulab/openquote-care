@@ -45,6 +45,10 @@ pub const DAMAGED_FOLDER: &str = "damaged";
 /// Added to a damaged record file's name when it is moved aside, so it no longer ends in the
 /// encrypted extension.
 pub const DAMAGED_EXTENSION: &str = ".damaged";
+/// The file that marks a folder as a backup this app keeps ([`Vault::back_up`]): at the root,
+/// outside the vault layout, so the backup still opens as the vault it copies — and the app can
+/// say it is a copy ([`Vault::is_backup_copy`]).
+pub const BACKUP_MARKER: &str = "openquote-care-backup.json";
 
 const VAULT_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
 
@@ -298,6 +302,12 @@ impl Vault {
     /// a passphrase opens it is known only by trying one.
     pub fn key_file_sound(&self) -> bool {
         key_file_sound(self.root.path())
+    }
+
+    /// Whether this vault is a backup this app keeps of another (its folder holds
+    /// [`BACKUP_MARKER`]). Records written here do not reach the vault it copies.
+    pub fn is_backup_copy(&self) -> bool {
+        self.root.path().join(BACKUP_MARKER).is_file()
     }
 
     /// The vault key's public half, to which every record file is encrypted.

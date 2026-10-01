@@ -335,6 +335,8 @@ export const en: Strings = {
   backupOff: 'Off.',
   backupTo: (folder: string) => `Backup folder: ${folder}`,
   backupWriteDown: 'Write this location in the “Backup location” space of the recovery kit.',
+  backupCopyHint:
+    'This folder is a backup copy. Records written here do not reach the original vault. Carry on here only while the original cannot be used, and open the original again once it can.',
   backupDone: (at: number, copied: number) => `Last backup ${new Date(at).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · ${plural(copied, 'new file')}`,
   backupFailed: (reason: string) => `The backup did not go through. ${reason} Records are still saved in this vault.`,
   backupMissing: (n: number) => `${plural(n, 'record file')} went missing from this vault. The backup still holds them, so they can be restored.`,

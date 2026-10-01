@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use age::secrecy::SecretString;
-use openquote_care_vault::{BackupComparison, BackupError, DAMAGED_FOLDER, KEY_FILE, Vault, VaultError};
+use openquote_care_vault::{BACKUP_MARKER, BackupComparison, BackupError, DAMAGED_FOLDER, KEY_FILE, Vault, VaultError};
 
 fn pass(p: &str) -> SecretString {
     SecretString::from(p.to_owned())
@@ -39,9 +39,11 @@ fn a_backup_is_the_vault_again_and_opens_with_the_same_passphrase() {
     let report = vault.back_up(backup.path()).unwrap();
 
     assert_eq!(report.copied, 4, "the declaration, the key file and two records");
-    assert_eq!(files_under(backup.path()), files_under(dir.path()));
+    assert_eq!(without_mark(backup.path()), files_under(dir.path()));
     let copy = Vault::unlock(backup.path(), pass("correct horse")).unwrap();
     assert_eq!(copy.read_all().unwrap().files, vault.read_all().unwrap().files);
+    assert!(copy.is_backup_copy() && !vault.is_backup_copy(), "the copy says it is one");
+    vault.check_backup(backup.path()).unwrap();
     for (path, bytes) in files_under(backup.path()) {
         assert!(!bytes.windows(22).any(|w| w == b"PLAINTEXT-MARKER-7f3a\"".as_slice()), "{path} holds plaintext");
     }
@@ -60,7 +62,7 @@ fn only_what_the_backup_lacks_is_copied() {
     let report = vault.back_up_written(backup.path(), &["subjects/s1/0003.dev1.json"]).unwrap();
     assert_eq!(report.copied, 1);
     assert!(!report.key_replaced);
-    assert_eq!(files_under(backup.path()), files_under(dir.path()));
+    assert_eq!(without_mark(backup.path()), files_under(dir.path()));
 }
 
 #[test]
@@ -139,6 +141,12 @@ fn a_missing_backup_folder_fails_the_backup_and_nothing_else() {
 }
 
 /// A vault holding three records, backed up whole.
+/// The files of a backup folder but its mark, which must be there.
+fn without_mark(backup: &Path) -> Vec<(String, Vec<u8>)> {
+    assert!(backup.join(BACKUP_MARKER).is_file(), "a backup carries its mark");
+    files_under(backup).into_iter().filter(|(path, _)| path != BACKUP_MARKER).collect()
+}
+
 fn backed_up() -> (tempfile::TempDir, tempfile::TempDir, Vault) {
     let (dir, backup) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     let (vault, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
