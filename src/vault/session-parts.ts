@@ -62,6 +62,8 @@ export interface SessionTable {
   toggleNote(id: string): void
   /** Opens a session's concurrent changes for a person to settle; without it, they are not offered. */
   settle?(id: string): void
+  /** Opens a session to correct; without it, correcting is not offered. */
+  correct?(id: string): void
 }
 
 /**
@@ -94,6 +96,10 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
               (c, i) =>
                 html`<td>
                   ${c}
+                  ${i === 0 && store.corrected.has(s.id) ? html`<span class="cell muted" data-role="corrected">${strings.corrected}</span>` : nothing}
+                  ${i === 0 && t.correct
+                    ? html`<button class="cell" data-role="correct" ?disabled=${store.busy} @click=${() => t.correct!(s.id)}>${strings.correct}</button>`
+                    : nothing}
                   ${i === 0 && t.settle && conflictsOf(s).length > 0
                     ? html`<button class="cell conflict" data-role="conflict" @click=${() => t.settle!(s.id)}>${strings.conflict}</button>`
                     : nothing}

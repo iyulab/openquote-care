@@ -25,6 +25,8 @@ export class OcSubjects extends VaultScreen {
   @state() private settling?: string
   /** Sessions whose written content is open under their row. */
   @state() private openNotes = new Set<string>()
+  /** The session open for correcting. */
+  @state() private correcting?: string
 
   private async addSubject() {
     const name = this.subjectName.trim()
@@ -63,6 +65,7 @@ export class OcSubjects extends VaultScreen {
   }
 
   private pick(id: string) {
+    this.correcting = undefined
     this.selected = id
     this.adding = false
     this.documentOpen = true
@@ -162,9 +165,19 @@ export class OcSubjects extends VaultScreen {
     const store = this.store
     const sessions = newestFirst(store.sessions.filter((s) => s.people.includes(subject.id)))
     const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
+    const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
       <h2>${strings.sessions(text(subject, 'name'))}</h2>
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
+      ${correcting
+        ? html`<oc-session-form
+            .store=${store}
+            .holder=${{ kind: 'subject', id: subject.id }}
+            .edit=${correcting}
+            @oc-session-edited=${() => (this.correcting = undefined)}
+            @oc-edit-cancelled=${() => (this.correcting = undefined)}
+          ></oc-session-form>`
+        : nothing}
       <oc-session-form .store=${store} .holder=${{ kind: 'subject', id: subject.id }}></oc-session-form>
       ${sessions.length === 0
         ? html`<p class="muted">${strings.noSessions}</p>`
@@ -174,7 +187,12 @@ export class OcSubjects extends VaultScreen {
               openNotes: this.openNotes,
               toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
               settle: (id) => (this.settling = id),
+              correct: (id) => {
+                this.store.set({ notice: '' })
+                this.correcting = id
+              },
             })}`}
+      ${noticeLine(store)}
     `
   }
 }

@@ -1,9 +1,9 @@
-import { html } from 'lit'
+import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { listDetail, nameField } from './parts.js'
+import { listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
 import { sessionTable, subjectPicker, toggled } from './session-parts.js'
@@ -23,6 +23,8 @@ export class OcGroups extends VaultScreen {
   @state() private attendeeDraft?: string[]
   /** Sessions whose written content is open under their row. */
   @state() private openNotes = new Set<string>()
+  /** The session open for correcting. */
+  @state() private correcting?: string
 
   private async addGroup() {
     const name = this.groupName.trim()
@@ -36,6 +38,7 @@ export class OcGroups extends VaultScreen {
   }
 
   private selectGroup(id: string) {
+    this.correcting = undefined
     this.selectedGroup = id
     this.memberDraft = undefined
     this.attendeeDraft = undefined
@@ -101,8 +104,18 @@ export class OcGroups extends VaultScreen {
   private groupDetail(group: Entity) {
     const store = this.store
     const sessions = newestFirst(store.sessions.filter((s) => s.group === group.id))
+    const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
       <h2>${strings.sessions(text(group, 'name'))}</h2>
+      ${correcting
+        ? html`<oc-session-form
+            .store=${store}
+            .holder=${{ kind: 'group', id: group.id }}
+            .edit=${correcting}
+            @oc-session-edited=${() => (this.correcting = undefined)}
+            @oc-edit-cancelled=${() => (this.correcting = undefined)}
+          ></oc-session-form>`
+        : nothing}
       <div class="form" data-role="members">
         ${subjectPicker(store, strings.groupMembers, () => this.memberDraft ?? this.membersOf(group.id), (ids) => (this.memberDraft = ids))}
         <div class="row">
@@ -126,7 +139,12 @@ export class OcGroups extends VaultScreen {
               attendees: true,
               openNotes: this.openNotes,
               toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
+              correct: (id) => {
+                this.store.set({ notice: '' })
+                this.correcting = id
+              },
             })}`}
+      ${noticeLine(store)}
     `
   }
 }

@@ -55,6 +55,8 @@ export class VaultStore extends EventTarget {
   folder = ''
   /** The backup this computer keeps of the vault, as the shell last reported it. */
   backup: BackupStatus = { folder: null }
+  /** Sessions corrected after they were first written, by id: each correction is a change of its own. */
+  corrected: ReadonlySet<string> = new Set()
   /** Why the backup remembered for this vault could not be taken up when it opened, as an error code. */
   backupProblem?: string
 
@@ -135,7 +137,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, backup] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, backup, sessionHistory] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -146,9 +148,11 @@ export class VaultStore extends EventTarget {
       shell.fields('subject'),
       // Every write is followed by a backup: its outcome is read with the rest.
       shell.backupStatus(),
+      shell.history('session'),
     ])
     if (!current()) return
     this.backup = backup
+    this.corrected = new Set(sessionHistory.filter((h) => h.changes.some((c) => c.op === 'update')).map((h) => h.id))
     // A form standing on a hidden field is never shown; the sidecar decides which those are.
     const { reports, exports } = (this.summary = {
       ...summary,

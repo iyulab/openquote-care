@@ -168,8 +168,11 @@ class App {
   }
 
   /** The rows of the sessions table, as cell texts. */
+  /** The session rows as their values read: a cell's own buttons and marks (`.cell`) left out. */
   sessionRows() {
-    return this.cdp.evaluate(`__e2e.all('tr[data-session]').map((tr) => [...tr.children].map((td) => td.textContent.trim()))`)
+    return this.cdp.evaluate(
+      `__e2e.all('tr[data-session]').map((tr) => [...tr.children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }))`,
+    )
   }
 
   heading(text) {
@@ -948,6 +951,37 @@ const scenarios = {
     const sameDay = (await app.sessionRows()).filter((row) => row[0] === '2026-06-15').map((row) => row[1]).sort()
     assert.deepEqual(sameDay, ['가정', '또래관계'], 'both sessions of the day are shown, neither replacing the other')
     assert.equal(await recordFiles(), filesBefore + 2, 'one file for each session')
+  },
+
+  async 'corrects a saved session: only the changed field is written, and the session says it was corrected'(app, work) {
+    const recordFiles = async () => (await readdir(join(work.vault, 'subjects'), { recursive: true })).filter((f) => f.endsWith('.age')).sort()
+    const filesBefore = await recordFiles()
+    const contentBefore = await Promise.all(filesBefore.map((f) => readFile(join(work.vault, 'subjects', f))))
+    const row = `__e2e.all('tr[data-session]').find((tr) => tr.children[0].textContent.includes('2026-06-15') && tr.children[1].textContent.trim() === '가정')`
+    const id = await app.cdp.evaluate(`${row}?.dataset.session`)
+    assert.ok(id, 'the family session of 15 June')
+    await app.cdp.evaluate(`${row}.querySelector('[data-role=correct]').click()`)
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-session]')`, 'the correction form')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('input[aria-label="날짜"]')[0].value`), '2026-06-15', 'the form starts from what the session holds')
+
+    await app.click('dc-button', '고친 내용 저장')
+    const said = (text) => `__e2e.all('[role=status]').some((el) => el.textContent.trim() === ${q(text)})`
+    await app.cdp.waitFor(said('바뀐 칸이 없습니다.'), 'nothing changed, nothing written', { timeoutMs: 5000 }).catch(async (e) => {
+      throw new Error(`${e.message} — shown: ${await app.cdp.evaluate(`__e2e.all('[role=status], [role=alert]').map((el) => el.textContent.trim()).join(' / ')`)}`)
+    })
+    assert.deepEqual(await recordFiles(), filesBefore)
+
+    await app.setDate('날짜', '2026-06-16')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-session]') && ${said('회기를 고쳤습니다.')}`, 'the session corrected')
+    await app.noAlert()
+    const corrected = (await app.sessionRows()).filter((r) => r[1] === '가정' && r[0].startsWith('2026-06-1'))
+    assert.deepEqual(corrected.map((r) => r[0]), ['2026-06-16'], 'the session shows its corrected date')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('tr[data-session="${id}"] [data-role=corrected]')`), true, 'and says it was corrected')
+
+    const filesAfter = await recordFiles()
+    assert.equal(filesAfter.length, filesBefore.length + 1, 'the correction is a file of its own')
+    for (const [i, f] of filesBefore.entries()) assert.deepEqual(await readFile(join(work.vault, 'subjects', f)), contentBefore[i], `${f} is untouched`)
   },
 
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
