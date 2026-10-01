@@ -39,4 +39,12 @@ describe('the app theme', () => {
       expect(contrast(t, g), `${t} on ${g}`).toBeGreaterThanOrEqual(4.5)
     }
   })
+
+  it('prints ink on paper whatever the palette, with a selector that outranks the dark ones', () => {
+    const print = css.match(/@media print\s*\{\s*([^{}]*)\{([^{}]*)\}/)
+    expect(print, 'a print block').toBeTruthy()
+    expect(print![1].trim()).toBe(':root:root:root')
+    expect(get(print![2], '--dc-color-text')).toBe('#000000')
+    expect(get(print![2], '--dc-color-bg')).toBe('#ffffff')
+  })
 })

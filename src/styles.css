@@ -158,10 +158,25 @@ body {
 
 /* Printing (the recovery kit, a report) prints ink on paper: no grounds, no shadows, no bands. */
 @media print {
-  :root {
+  /* Three :root keeps this above the dark palettes (:root:not([data-theme='light']), :root[data-theme='dark']),
+     so a dark setting never prints light text on white paper. */
+  :root:root:root {
     --dc-color-bg: #ffffff;
+    --dc-color-surface: #ffffff;
     --dc-color-surface-raised: #ffffff;
+    --dc-color-surface-hover: #ffffff;
     --dc-color-text: #000000;
+    --dc-color-text-secondary: #333333;
+    --dc-color-text-muted: #333333;
+    --dc-color-border: #999999;
+    --dc-color-rule: #999999;
+    --dc-color-accent-text: #000000;
+    --dc-color-secondary-text: #000000;
+    --dc-color-accent-subtle: transparent;
+    --dc-color-secondary-subtle: transparent;
+    --dc-color-success-subtle: transparent;
+    --dc-color-warning-subtle: transparent;
+    --dc-color-danger-subtle: transparent;
     --dc-card-elevation: none;
     --dc-card-border: 1px solid #999999;
     --dc-metric-accent-1: transparent;

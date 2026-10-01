@@ -18,6 +18,6 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     // theme.test.ts reads styles.css as text; vitest would otherwise blank it.
-    css: { include: [/styles\.css/] },
+    css: { include: [/src[\\/]styles\.css/] },
   },
 })
