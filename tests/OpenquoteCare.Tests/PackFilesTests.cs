@@ -59,20 +59,16 @@ public sealed class PackFilesTests
     }
 
     [Fact]
-    public void The_neutral_tracks_hold_no_school_field()
+    public void The_neutral_track_holds_no_school_field()
     {
-        foreach (var track in new[] { "care-en", "care-kr" })
-        {
-            var fields = VaultOn(track).FieldCatalog();
-            Assert.Null(fields.Find("session", "topic"));
-            Assert.Null(fields.Find("subject", "school"));
-            Assert.False(fields.Find("session", "concern")!.Hidden);
-        }
+        var fields = VaultOn("care-en").FieldCatalog();
+        Assert.Null(fields.Find("session", "topic"));
+        Assert.Null(fields.Find("subject", "school"));
+        Assert.False(fields.Find("session", "concern")!.Hidden);
     }
 
     [Theory]
     [InlineData("care-en", "en")]
-    [InlineData("care-kr", "ko")]
     [InlineData("school-kr", "ko")]
     public void Every_core_field_scheme_item_and_form_has_a_label_in_the_tracks_locale(string track, string locale)
     {
