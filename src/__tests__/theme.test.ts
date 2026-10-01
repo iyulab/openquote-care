@@ -47,4 +47,13 @@ describe('the app theme', () => {
     expect(get(print![2], '--dc-color-text')).toBe('#000000')
     expect(get(print![2], '--dc-color-bg')).toBe('#ffffff')
   })
+
+  it('prints no grounds and no shadows, including those a screen sets on its own parts', () => {
+    const print = css.match(/@media print\s*\{\s*[^{}]*\{([^{}]*)\}/)![1]
+    // The menu and the selected entry lie on grounds of their own.
+    expect(get(print, '--oq-sidebar')).toBe('#ffffff')
+    expect(print).toMatch(/--dc-selection-bg\s*:\s*transparent/)
+    // A card that raises itself (the welcome and setup cards) reads the base elevations, not the card role.
+    for (const level of [1, 2, 3]) expect(print).toMatch(new RegExp(`--dc-elevation-${level}\\s*:\\s*none`))
+  })
 })

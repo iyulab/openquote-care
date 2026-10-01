@@ -177,6 +177,12 @@ body {
     --dc-color-success-subtle: transparent;
     --dc-color-warning-subtle: transparent;
     --dc-color-danger-subtle: transparent;
+    --oq-sidebar: #ffffff;
+    --dc-selection-bg: transparent;
+    /* The base elevations too: a card that raises itself (welcome, setup) reads these, not the card role. */
+    --dc-elevation-1: none;
+    --dc-elevation-2: none;
+    --dc-elevation-3: none;
     --dc-card-elevation: none;
     --dc-card-border: 1px solid #999999;
     --dc-metric-accent-1: transparent;
