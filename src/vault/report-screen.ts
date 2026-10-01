@@ -152,7 +152,7 @@ export class OcReport extends VaultScreen {
       const n = records.length === 0 ? null : headCount(result, records)
       return n === null ? nothing : html`<span class="people" data-role="people">${strings.headCount(n)}</span>`
     }
-    const metric = (group: 'pending' | 'unmapped' | 'blank' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' = '') => {
+    const metric = (group: 'pending' | 'unmapped' | 'blank' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' | '2' = '') => {
       const n = g.records.length === 0 ? null : headCount(result, g.records)
       return html`<dc-metric data-group=${group} label=${label} value=${String(g.count)} unit=${strings.countUnit} accent=${accent}>
         ${n === null ? nothing : html`<span data-role="people">${strings.headCount(n)}</span>`}
@@ -168,8 +168,8 @@ export class OcReport extends VaultScreen {
     return html`
       <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
       <div class="metrics">
-        ${metric('total', strings.grandTotal, table.total, () => void this.showEvidence(strings.grandTotal, table.total), '1')}
-        ${peopleTotal === null ? nothing : html`<dc-metric accent="2" label=${strings.metricPeople} value=${String(peopleTotal)} unit=${strings.peopleUnit}></dc-metric>`}
+        ${peopleTotal === null ? nothing : html`<dc-metric accent="1" label=${strings.metricPeople} value=${String(peopleTotal)} unit=${strings.peopleUnit}></dc-metric>`}
+        ${metric('total', strings.grandTotal, table.total, () => void this.showEvidence(strings.grandTotal, table.total), '2')}
         ${metric('pending', strings.pending, table.pending, () => void this.showPending(result))}
         ${metric('unmapped', strings.unmapped, table.unmapped, () => void this.showEvidence(strings.unmapped, table.unmapped))}
         ${table.blank.count === 0 ? nothing : metric('blank', blankLabel(store, formOf(store, result)), table.blank, () => void this.showEvidence(blankLabel(store, formOf(store, result)), table.blank))}
