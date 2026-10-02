@@ -193,6 +193,10 @@ export const en: Strings = {
     files: { page: 'records.html', subjects: 'clients.csv', sessions: 'sessions.csv', readMe: 'read-me.txt' },
     title: 'Openquote Care records copy',
     made: (vault: string, at: string, device: string) => `Vault "${vault}" · ${at} · made on ${device}`,
+    counts: (subjects: number, groups: number, sessions: number) => `Clients ${subjects} · Groups ${groups} · Sessions ${sessions}`,
+    sessionDays: (days: string) => `Sessions on ${days}`,
+    entry: (sessions: number, days: string) =>
+      sessions === 0 ? 'no sessions' : `${sessions} session${sessions === 1 ? '' : 's'}${days ? ` · ${days}` : ''}`,
     unprotected: 'This copy has no passphrase. Be careful where you keep it.',
     narrativeLeftOut: 'Session content is left out.',
     subjects: 'Clients',

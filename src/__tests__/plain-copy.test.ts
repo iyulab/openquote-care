@@ -63,6 +63,7 @@ function source(withNarrative: boolean): PlainCopySource {
       return typeof v === 'string' ? v : ''
     },
     withNarrative,
+    names: new Intl.Collator('en'),
   }
 }
 
@@ -99,8 +100,8 @@ describe('plain copy', () => {
 
   it('lists subjects by name and each one’s sessions oldest first, group sessions apart', () => {
     const page = file(plainCopy(source(false), en.plainCopy), 'records.html')
-    expect(page.indexOf('>Ann &lt;b&gt;</h2>')).toBeLessThan(page.indexOf('>Zed</h2>'))
-    const ann = page.slice(page.indexOf('>Ann &lt;b&gt;</h2>'), page.indexOf('>Zed</h2>'))
+    expect(page.indexOf('>1. Ann &lt;b&gt;</h2>')).toBeLessThan(page.indexOf('>2. Zed</h2>'))
+    const ann = page.slice(page.indexOf('>1. Ann &lt;b&gt;</h2>'), page.indexOf('>2. Zed</h2>'))
     expect(ann.indexOf('2026-04-02')).toBeLessThan(ann.indexOf('2026-04-20'))
     expect(page).toContain('Members: Ann <b>, Zed'.replace('<b>', '&lt;b&gt;'))
   })
@@ -129,6 +130,22 @@ describe('plain copy', () => {
     const withIt = file(plainCopy({ ...source(true), history, deviceName }, en.plainCopy), 'records.html')
     expect(withIt).toContain('NOTE: private words')
     expect(file(plainCopy(source(false), en.plainCopy), 'records.html')).not.toContain('<h3>Changes</h3>')
+  })
+
+  it('opens with what the copy holds and a numbered list that finds each subject on paper', () => {
+    const page = file(plainCopy(source(false), en.plainCopy), 'records.html')
+    expect(page).toContain('<p>Clients 2 · Groups 1 · Sessions 3</p>')
+    expect(page).toContain('<p>Sessions on 2026-04-02 ~ 2026-04-20</p>')
+    expect(page).toContain('<ol><li><a href="#s-s1">Ann &lt;b&gt;</a> — 3 sessions · 2026-04-02 ~ 2026-04-20</li><li><a href="#s-s2">Zed</a> — 1 session · 2026-04-10</li></ol>')
+    expect(page.indexOf('Clients 2')).toBeLessThan(page.indexOf('<h2>Clients</h2>'))
+  })
+
+  it('puts names in the vault’s order, the same as the app', () => {
+    const korean = [entity('subject', 'k2', { name: '나영' }), entity('subject', 'k1', { name: '가람' }), entity('subject', 'k3', { name: 'Bo' })]
+    const order = (names: Intl.Collator) =>
+      file(plainCopy({ ...source(false), subjects: korean, sessions: [], groups: [], names }, en.plainCopy), 'clients.csv').split('\r\n').slice(1, 4).map((r) => r.split(',')[0])
+    expect(order(new Intl.Collator('ko'))).toEqual(['가람', '나영', 'Bo'])
+    expect(order(new Intl.Collator('en'))).toEqual(['Bo', '가람', '나영'])
   })
 
   it('the note reads with Windows line ends', () => {

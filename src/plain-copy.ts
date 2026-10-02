@@ -25,6 +25,8 @@ export interface PlainCopySource {
   history?: ReadonlyMap<string, ChangeEntry[]>
   /** How a device reads to a person. */
   deviceName?(device: string): string
+  /** How names are put in order: the vault's, as everywhere in the app. */
+  names: Intl.Collator
 }
 
 /** The words of the copy, in the app's language. */
@@ -32,6 +34,12 @@ export interface PlainCopyWords {
   files: { page: string; subjects: string; sessions: string; readMe: string }
   title: string
   made: (vault: string, at: string, device: string) => string
+  /** What the copy holds, on its first page. */
+  counts: (subjects: number, groups: number, sessions: number) => string
+  /** The days its sessions were on, from the first to the last. */
+  sessionDays: (days: string) => string
+  /** A subject's line in the list at the front: how many sessions, on which days. */
+  entry: (sessions: number, days: string) => string
   unprotected: string
   narrativeLeftOut: string
   subjects: string
@@ -108,8 +116,15 @@ function membersOf(group: Entity): string[] {
   return Array.isArray(members) ? members.filter((m): m is string => typeof m === 'string') : []
 }
 
-function byName(entities: Entity[]): Entity[] {
-  return [...entities].sort((a, b) => text(a, 'name').localeCompare(text(b, 'name')) || a.id.localeCompare(b.id))
+function byName(entities: Entity[], names: Intl.Collator): Entity[] {
+  return [...entities].sort((a, b) => names.compare(text(a, 'name'), text(b, 'name')) || a.id.localeCompare(b.id))
+}
+
+/** The first and last date the sessions were on, as one stretch; empty when none has a date. */
+function days(sessions: Entity[]): string {
+  const dates = sessions.map((s) => text(s, 'date')).filter(Boolean).sort()
+  if (dates.length === 0) return ''
+  return dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ~ ${dates.at(-1)}`
 }
 
 function escape(s: string): string {
@@ -126,7 +141,7 @@ h1{font-size:1.5rem}h2{font-size:1.2rem;margin-top:2.5rem;border-bottom:1px soli
 table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:.3rem .5rem;border-bottom:1px solid #ddd;vertical-align:top}
 th{color:#555}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1rem}dt{color:#555}dd{margin:0}
 .note{white-space:pre-wrap}.warn{border:1px solid #b00020;padding:.5rem 1rem;color:#b00020}
-@media print{h2{break-before:page}}`
+@media print{h2{break-before:page}a{color:inherit;text-decoration:none}tr{break-inside:avoid}}`
 
 function sessionTable(source: PlainCopySource, words: PlainCopyWords, columns: FieldView[], sessions: Entity[], people: boolean): string {
   if (sessions.length === 0) return `<p>${escape(words.noSessions)}</p>`
@@ -164,22 +179,32 @@ function changesTable(source: PlainCopySource, words: PlainCopyWords, entries: {
 }
 
 function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: FieldView[], sessionFields: FieldView[]): string {
-  const subjects = byName(source.subjects)
+  const subjects = byName(source.subjects, source.names)
   const anchor = (e: Entity) => `s-${e.id}`
+  const sessionsOf = (s: Entity) => source.sessions.filter((x) => x.people.includes(s.id))
+  const span = days(source.sessions)
+  // The first page says what the copy holds; on paper the numbered list after it finds each subject's pages.
   const parts: string[] = [
     `<h1>${escape(words.title)}</h1>`,
     `<p>${escape(words.made(source.vault, stamp(source.at), source.device))}</p>`,
+    `<p>${escape(words.counts(source.subjects.length, source.groups.length, source.sessions.length))}</p>`,
+    span ? `<p>${escape(words.sessionDays(span))}</p>` : '',
     `<p class="warn">${escape(words.unprotected)}</p>`,
     source.withNarrative ? '' : `<p>${escape(words.narrativeLeftOut)}</p>`,
     `<h2>${escape(words.subjects)}</h2>`,
-    `<ul>${subjects.map((s) => `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a></li>`).join('')}</ul>`,
+    `<ol>${subjects
+      .map((s) => {
+        const all = sessionsOf(s)
+        return `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a> — ${escape(words.entry(all.length, days(all)))}</li>`
+      })
+      .join('')}</ol>`,
   ]
-  for (const s of subjects) {
+  for (const [i, s] of subjects.entries()) {
     const fields = subjectFields.map((f) => [f.label, cell(source, f, s.fields[f.name])]).filter(([, v]) => v)
     const own = source.sessions.filter((x) => x.people.includes(s.id) && x.group === null)
     const inGroups = source.sessions.filter((x) => x.people.includes(s.id) && x.group !== null)
     parts.push(
-      `<h2 id="${anchor(s)}">${escape(text(s, 'name'))}</h2>`,
+      `<h2 id="${anchor(s)}">${i + 1}. ${escape(text(s, 'name'))}</h2>`,
       fields.length ? `<dl>${fields.map(([k, v]) => `<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl>` : '',
       sessionTable(source, words, sessionFields, own, false),
       inGroups.length ? `<h3>${escape(words.groups)}</h3>${sessionTable(source, words, sessionFields, inGroups, true)}` : '',
@@ -191,7 +216,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
   }
   if (source.groups.length) {
     parts.push(`<h2>${escape(words.groups)}</h2>`)
-    for (const g of byName(source.groups)) {
+    for (const g of byName(source.groups, source.names)) {
       parts.push(
         `<h3>${escape(text(g, 'name'))}</h3>`,
         `<p>${escape(words.members)}: ${escape(names(source.subjects, membersOf(g)))}</p>`,
@@ -201,7 +226,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
     }
   }
   if (source.practitioners.length) {
-    parts.push(`<h2>${escape(words.practitioners)}</h2>`, `<ul>${byName(source.practitioners).map((p) => `<li>${escape(text(p, 'name'))}</li>`).join('')}</ul>`)
+    parts.push(`<h2>${escape(words.practitioners)}</h2>`, `<ul>${byName(source.practitioners, source.names).map((p) => `<li>${escape(text(p, 'name'))}</li>`).join('')}</ul>`)
   }
   return `<!doctype html>\n<html><head><meta charset="utf-8"><title>${escape(words.title)}</title><style>${STYLE}</style></head><body>\n${parts.filter(Boolean).join('\n')}\n</body></html>\n`
 }
@@ -216,7 +241,7 @@ function csv(rows: string[][]): string {
 }
 
 function subjectsCsv(source: PlainCopySource, words: PlainCopyWords, fields: FieldView[]): string {
-  return csv([[words.name, ...fields.map((f) => f.label)], ...byName(source.subjects).map((s) => [text(s, 'name'), ...fields.map((f) => cell(source, f, s.fields[f.name]))])])
+  return csv([[words.name, ...fields.map((f) => f.label)], ...byName(source.subjects, source.names).map((s) => [text(s, 'name'), ...fields.map((f) => cell(source, f, s.fields[f.name]))])])
 }
 
 function sessionsCsv(source: PlainCopySource, words: PlainCopyWords, fields: FieldView[]): string {

@@ -100,6 +100,7 @@ export class OcExport extends VaultScreen {
           withNarrative: this.withNarrative,
           history,
           deviceName: (device) => (summary ? deviceLabel(summary, device) : device),
+          names: store.names,
         },
         words,
       )
