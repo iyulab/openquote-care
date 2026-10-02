@@ -28,6 +28,7 @@ jobs:
           cache: npm
 
       - run: npm ci
+      - run: npm run test:scripts
       - run: npm run check:core
       - run: npm run check:tokens
       - run: npm run typecheck

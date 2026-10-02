@@ -37,6 +37,7 @@ if (machine.problems.length) {
 
 const steps = [
   ['versions agree', 'node scripts/check-versions.mjs'],
+  ['repository scripts', 'npm run test:scripts'],
   ['core names no field or region', 'npm run check:core'],
   ['design tokens read are defined', 'npm run check:tokens'],
   ['typecheck', 'npm run typecheck'],

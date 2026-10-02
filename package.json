@@ -24,7 +24,8 @@
     "test:sandbox": "node e2e/sandbox.mjs",
     "verify": "node scripts/verify.mjs",
     "check:tokens": "desktop-compact-check-tokens --defined src/styles.css src",
-    "check:core": "node --test scripts/check-core-neutral.test.mjs && node scripts/check-core-neutral.mjs",
+    "check:core": "node scripts/check-core-neutral.mjs",
+    "test:scripts": "node --test \"scripts/*.test.mjs\"",
     "tauri": "tauri"
   },
   "dependencies": {

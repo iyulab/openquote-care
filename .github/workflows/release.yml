@@ -97,6 +97,8 @@ jobs:
       - name: Check signatures and diagnostics
         id: installer
         shell: pwsh
+        env:
+          OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
         run: |
           $installer = Get-Item "target/release/bundle/nsis/*_${{ steps.versions.outputs.app }}_x64-setup.exe"
           $target = Join-Path $env:RUNNER_TEMP 'installed'
@@ -113,6 +115,10 @@ jobs:
           # missing secret would leave every installation silent, with nothing to say so.
           $app = [IO.File]::ReadAllBytes((Join-Path $target 'openquote-care.exe'))
           if ([Text.Encoding]::ASCII.GetString($app).IndexOf('IngestionEndpoint=') -lt 0) { throw 'the app does not embed the error diagnostics connection' }
+          # Embedded is not enough: a malformed or wrong value is embedded just as silently. One check
+          # report (version `<app>-check`, no content) must be taken by the collector the app sends to.
+          node scripts/check-diagnostics-connection.mjs ${{ steps.versions.outputs.app }}
+          if ($LASTEXITCODE -ne 0) { throw 'the collector does not take reports over the embedded connection' }
           # The updater signature: over the final, Authenticode-signed bytes, and with the key the app carries.
           node scripts/verify-update-signature.mjs $installer.FullName "$($installer.FullName).sig"
           if ($LASTEXITCODE -ne 0) { throw 'the updater signature does not verify' }
