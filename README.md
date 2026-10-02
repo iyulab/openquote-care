@@ -18,6 +18,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Subjects, groups (with their members) and sessions, including group sessions counted once per session and once per person; what was said in a session kept as written content, which never enters a count or a list
 - Monthly reports from report forms, each run kept in the vault with its evidence; comparison with an earlier run
 - Record lists laid out in an export form and copied as a table for a spreadsheet or another system
+- Suggested classifications while a session is entered, learned on this computer from the vault's own settled sessions: each with the similar sessions behind it (by date and who they are about), never filled in until a person takes one, and the session keeps that its value came from a suggestion
 - Correcting a saved session or what a subject's record holds: only the fields changed are written, as an edit of their own, and a corrected session says so
 - Adding and updating subjects from rows pasted out of a spreadsheet
 - Applying a data pack: classification schemes, crosswalks between their versions, report and export forms, field definitions and labels per language
