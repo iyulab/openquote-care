@@ -129,6 +129,11 @@ fn pending(report: String, version: u32, records: Value, app: State<App>) -> Com
 }
 
 #[tauri::command]
+fn suggestions(entity_type: String, date: String, fields: Value, app: State<App>) -> CommandResult<Value> {
+    text(app.suggestions(&entity_type, &date, fields))
+}
+
+#[tauri::command]
 fn runs(app: State<App>) -> CommandResult<Value> {
     text(app.runs())
 }
@@ -328,6 +333,7 @@ pub fn run() {
             tracks,
             apply_pack,
             pending,
+            suggestions,
             runs,
             refresh,
             set_backup,

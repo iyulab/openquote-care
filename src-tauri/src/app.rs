@@ -537,6 +537,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.pending(report, version, records)?))
     }
 
+    /// Codes suggested for the record being entered.
+    pub fn suggestions(&self, entity_type: &str, date: &str, fields: Value) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.suggestions(entity_type, date, fields)?))
+    }
+
     /// The run records the vault keeps.
     pub fn runs(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.runs()?))
@@ -1307,6 +1312,37 @@ cut off").unwrap();
         assert_eq!(app.apply_pack(other.path()).unwrap_err().code(), "pack-conflict");
         let empty = tempfile::tempdir().unwrap();
         assert_eq!(app.apply_pack(empty.path()).unwrap_err().code(), "not-a-pack");
+    }
+
+    #[test]
+    fn suggests_a_topic_from_the_settled_session_most_like_the_one_being_entered() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap();
+        let mut session = |topic: &str, note: &str| {
+            let path = app
+                .record(
+                    "/changes/in-subject",
+                    json!({ "subjectId": subject_id, "type": "session",
+                            "fields": { "date": "2026-03-10", "topic": { "scheme": "topic", "version": 1, "code": topic }, "note": note } }),
+                )
+                .unwrap();
+            path.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned()
+        };
+        let low = session("depression", "sleeps badly and has had no energy for weeks");
+        session("family", "argued with parents at home about the phone");
+        let before = fs::read_dir(dir.path()).unwrap().count();
+
+        let answer = app.suggestions("session", "2026-03-20", json!({ "note": "no energy, sleeping badly" })).unwrap();
+
+        assert_eq!(answer["remembered"], 2);
+        let topic = answer["fields"].as_array().unwrap().iter().find(|f| f["field"] == "topic").expect("a topic suggestion");
+        let depression = topic["codes"].as_array().unwrap().iter().find(|c| c["code"] == "depression").expect("the closer record's topic");
+        assert_eq!(depression["similar"][0], json!(low));
+        assert_eq!(fs::read_dir(dir.path()).unwrap().count(), before, "a suggestion adds nothing to the vault");
     }
 
     #[test]

@@ -11,6 +11,11 @@
 
   <ItemGroup>
     <PackageReference Include="Openquote" />
+    <PackageReference Include="Openquote.Gil" />
+    <!-- TODO(upstream: Gil SQLite split) Gil's package brings SQLite for its on-disk stores; the sidecar keeps
+         everything in memory and never opens a database, so the native library is left out of the build
+         and the published executable. Remove this reference once Gil's in-memory form path ships without it. -->
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" ExcludeAssets="all" />
     <PackageReference Include="TauriKit.Sidecar.Loopback" />
   </ItemGroup>
 

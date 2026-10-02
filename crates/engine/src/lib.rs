@@ -164,6 +164,14 @@ impl Engine {
         self.call("POST", "/reports/pending", Some(json!({ "report": report, "version": version, "records": records })))
     }
 
+    /// Codes suggested for the coded fields a record of `entity_type` being entered for `date`
+    /// (`YYYY-MM-DD`) has no value for yet, learned from the vault's settled records, given the
+    /// values it holds so far: per field, the scheme version and the codes in order, each with the
+    /// settled records that hold it. Nothing is kept.
+    pub fn suggestions(&self, entity_type: &str, date: &str, fields: Value) -> Result<Value, EngineError> {
+        self.call("POST", "/suggestions", Some(json!({ "type": entity_type, "date": date, "fields": fields })))
+    }
+
     /// The run records the vault keeps, oldest first.
     pub fn runs(&self) -> Result<Value, EngineError> {
         self.call("GET", "/runs", None)

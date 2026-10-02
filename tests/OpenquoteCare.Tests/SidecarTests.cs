@@ -369,6 +369,56 @@ public sealed class SidecarTests : IAsyncLifetime
     private static Openquote.Vault.VaultFile FileOf(JsonNode wire) =>
         new(wire["path"]!.GetValue<string>(), Convert.FromBase64String(wire["content"]!.GetValue<string>()));
 
+    private static object Draft(string date) => new
+    {
+        type = "session",
+        date,
+        fields = new { date, method = new { scheme = "method", version = 1, code = "interview" } },
+    };
+
+    [Fact]
+    public async Task Suggests_codes_the_scheme_allows_with_the_settled_records_that_hold_them()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
+        var allowed = (await Get("/schemes")).AsArray()
+            .Single(s => s!["scheme"]!.GetValue<string>() == "topic" && s["version"]!.GetValue<int>() == 1)!["items"]!.AsArray()
+            .Where(i => i!["suggest"]!.GetValue<bool>()).Select(i => i!["code"]!.GetValue<string>()).ToHashSet();
+        var sessions = (await Get("/entities/session")).AsArray().Select(s => s!["id"]!.GetValue<string>()).ToHashSet();
+
+        var answer = await Post("/suggestions", Draft("2026-03-20"));
+
+        Assert.True(answer["remembered"]!.GetValue<int>() > 0);
+        var topic = Assert.Single(answer["fields"]!.AsArray(), f => f!["field"]!.GetValue<string>() == "topic")!;
+        Assert.Equal(("topic", 1), (topic["scheme"]!.GetValue<string>(), topic["version"]!.GetValue<int>()));
+        var codes = topic["codes"]!.AsArray();
+        Assert.NotEmpty(codes);
+        Assert.All(codes, c => Assert.Contains(c!["code"]!.GetValue<string>(), allowed));
+        Assert.All(codes.SelectMany(c => c!["similar"]!.AsArray()), id => Assert.Contains(id!.GetValue<string>(), sessions));
+        Assert.Contains(codes, c => c!["similar"]!.AsArray().Count > 0);
+    }
+
+    [Fact]
+    public async Task Learns_again_once_the_vault_holds_more_records()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
+        var before = (await Post("/suggestions", Draft("2026-05-20")))["remembered"]!.GetValue<int>();
+
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(2), .. FieldPacks]));
+        var after = (await Post("/suggestions", Draft("2026-05-20")))["remembered"]!.GetValue<int>();
+
+        Assert.True(after > before, $"{after} settled records after loading more, {before} before");
+    }
+
+    [Fact]
+    public async Task Suggests_nothing_for_a_type_without_coded_fields_to_suggest_for()
+    {
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
+
+        var answer = await Post("/suggestions", new { type = "subject", date = "2026-03-20", fields = new { name = "someone" } });
+
+        Assert.Empty(answer["fields"]!.AsArray());
+    }
+
     [Fact]
     public async Task Names_the_subject_each_record_belongs_to()
     {

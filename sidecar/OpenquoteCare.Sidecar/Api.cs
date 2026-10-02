@@ -366,6 +366,11 @@ internal static class Api
             return Results.Ok(new RunResult(JsonNode.Parse(file.Content.Span), WireFile.From(file)));
         });
 
+        // Candidates for the coded fields of a record being entered — a person takes or leaves them;
+        // nothing is filled in or kept.
+        app.MapPost("/suggestions", (SuggestRequest request, Suggestions suggestions, CancellationToken cancellationToken) =>
+            suggestions.SuggestAsync(request, cancellationToken));
+
         // Lays one month's records out as an export form's rows. Nothing is kept: the rows go to
         // the person, who takes them to the outside form.
         app.MapPost("/exports/run", (ExportRequest request, VaultSession session) =>
@@ -484,6 +489,8 @@ internal static class Api
 [JsonSerializable(typeof(RunRequest))]
 [JsonSerializable(typeof(ExportRequest))]
 [JsonSerializable(typeof(InForceRequest))]
+[JsonSerializable(typeof(SuggestRequest))]
+[JsonSerializable(typeof(SuggestionsView))]
 [JsonSerializable(typeof(InForceView))]
 [JsonSerializable(typeof(FieldView[]))]
 [JsonSerializable(typeof(ExportTableView))]
