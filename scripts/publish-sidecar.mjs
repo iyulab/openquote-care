@@ -3,7 +3,7 @@
 // Native AOT links with the Visual C++ tools, and the .NET linker step finds them through
 // vswhere.exe, which the Visual Studio installer keeps in a folder that is not on PATH by default.
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { delimiter, join } from 'node:path'
 
 const env = { ...process.env }
@@ -20,4 +20,12 @@ const result = spawnSync(
   { stdio: 'inherit', env, shell: false },
 )
 if (result.error) console.error(`dotnet could not be started: ${result.error.message}`)
-process.exit(result.status ?? 1)
+if (result.status !== 0) process.exit(result.status ?? 1)
+
+// The installer carries the executable alone, so a native library published beside it would be
+// missing from every install. Fail here rather than in the field.
+const beside = readdirSync('sidecar/publish').filter((name) => name.toLowerCase().endsWith('.dll'))
+if (beside.length > 0) {
+  console.error(`the sidecar publishes native libraries the installer does not carry: ${beside.join(', ')}`)
+  process.exit(1)
+}
