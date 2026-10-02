@@ -268,6 +268,8 @@ export const en: Strings = {
   raiseFormatConfirm: 'Raise the format and apply',
   packAdded: (items: string[]) => `Added: ${items.join(', ')}`,
   packNothingNew: 'This material has no classifications or forms the vault does not already hold.',
+  packFormsNotShown: (forms: string[]) =>
+    `${forms.join(', ')}: this version of the app cannot lay ${forms.length === 1 ? 'this form' : 'these forms'} out as a table yet, so ${forms.length === 1 ? 'it is' : 'they are'} not in the report list. Records are counted as before.`,
   packFormsBehind: (forms: string[]) =>
     `No form follows the new classification version yet: ${forms.join(', ')}. Records after the revision stay empty or awaiting in these forms — apply material with new versions of the forms.`,
   packSchemeUnlinked: (versions: string[]) =>

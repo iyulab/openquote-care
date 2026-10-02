@@ -41,6 +41,20 @@ export interface ReportEntry extends FormEntry {
   rowsAndColumn: boolean
 }
 
+/**
+ * The report forms whose newest version this screen cannot lay out — more than a classified row and
+ * a column, a filter, or another period than a month — so it does not offer them: named rather than
+ * left out without a word.
+ */
+export function notLaidOut(forms: ReportEntry[]): ReportEntry[] {
+  const newest = new Map<string, ReportEntry>()
+  for (const f of forms) {
+    const seen = newest.get(f.name)
+    if (!seen || seen.version < f.version) newest.set(f.name, f)
+  }
+  return [...newest.values()].filter((f) => !f.rowsAndColumn)
+}
+
 /** The field a rows-and-column form's rows are classified by. */
 export function rowFieldOf(form: ReportEntry): string {
   return form.dimensions[0]?.field ?? ''

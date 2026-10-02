@@ -271,6 +271,8 @@ export const ko = {
   raiseFormatConfirm: '새 형식으로 올리고 적용',
   packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}`,
   packNothingNew: '이 자료에는 기록 폴더에 없는 새 분류·양식이 없습니다.',
+  packFormsNotShown: (forms: string[]) =>
+    `${forms.join(', ')} 양식은 이 판의 앱이 아직 표로 펴지 못해 보고 목록에 넣지 않았습니다. 기록은 그대로 셉니다.`,
   packFormsBehind: (forms: string[]) =>
     `새 분류 판에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 판 양식이 든 자료를 적용하세요.`,
   packSchemeUnlinked: (versions: string[]) =>

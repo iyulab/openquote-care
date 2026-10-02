@@ -1,7 +1,7 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit'
 import { nameCollator } from '../collation.js'
 import { describeError, isCommandError } from '../errors.js'
-import { leftBehind } from '../forms.js'
+import { leftBehind, notLaidOut } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
@@ -318,6 +318,8 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
   if (issues.length > 0) notice += ' ' + strings.packIssues(issues.length)
   const behind = leftBehind([...(summary?.reports ?? []), ...(summary?.exports ?? [])])
   if (behind.length > 0) notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
+  const notShown = notLaidOut(summary?.reports ?? [])
+  if (notShown.length > 0) notice += ' ' + strings.packFormsNotShown(notShown.map((f) => strings.reportFormOption(f.label, f.version)))
   const unlinked = summary?.unlinked ?? []
   if (unlinked.length > 0) notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(u.scheme, u.version)))
   return notice
