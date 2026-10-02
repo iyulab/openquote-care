@@ -47,7 +47,7 @@ A vault is an ordinary folder. Its layout and file formats are specified by the 
 
 Because writers never touch the same file, a vault can live in a network share or a folder kept in step by a sync client, and several computers can write to it.
 
-While a vault is open, the shell watches its folder (`Vault::watch` in `crates/vault`, built on `tauri-kit-watch`). Files this app wrote are ignored; when an encrypted record file appears, changes or disappears by any other hand, the shell emits a `vault-changed` event. The screens then read the vault again, waiting if the person is in the middle of an action. Some network folders cannot be watched; the vault still opens, and the screens also re-read it when the window regains focus and when the person presses refresh.
+While a vault is open, the shell watches its folder (`Vault::watch` in `crates/vault`, built on `tauri-kit-watch`). Files this app wrote are ignored; when an encrypted record file appears, changes or disappears by any other hand — one by one, or in a folder a sync client moves in or takes away whole — the shell emits a `vault-changed` event. The screens then read the vault again, waiting if the person is in the middle of an action. Some network folders cannot be watched; the vault still opens, and the screens also re-read it when the window regains focus and when the person presses refresh.
 
 Only files ending in `.age` are read as records, so a sync client's temporary files are ignored.
 

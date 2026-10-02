@@ -337,7 +337,7 @@ impl Vault {
     /// called when the platform lost track of changes. Watching stops when the returned watcher is
     /// dropped.
     pub fn watch(&self, mut on_change: impl FnMut() + Send + 'static) -> io::Result<Watcher> {
-        Watch::new(self.root.path()).ignore(|path| !is_record_file(path)).own_writes(&self.own).start(move |_| on_change())
+        Watch::new(self.root.path()).ignore_files(|path| !is_record_file(path)).own_writes(&self.own).start(move |_| on_change())
     }
 
     /// Decrypts one record file, or returns `None` if the vault has no file at `relative`.

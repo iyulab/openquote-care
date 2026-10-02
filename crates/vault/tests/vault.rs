@@ -403,3 +403,27 @@ fn a_watch_hears_what_another_device_wrote_and_not_its_own_writes() {
     there.write_new("subjects/s1/0002.pc02.json", RECORD).unwrap();
     rx.recv_timeout(Duration::from_secs(10)).expect("the other device's write is reported");
 }
+
+#[test]
+fn a_watch_hears_a_folder_of_records_moved_out_and_back_whole() {
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    let dir = tempfile::tempdir().unwrap();
+    let (here, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    let there = Vault::unlock(dir.path(), pass("correct horse")).unwrap();
+    let (tx, rx) = mpsc::channel();
+    let _watcher = here.watch(move || tx.send(()).unwrap()).unwrap();
+    there.write_new("subjects/s9/0001.pc02.json", RECORD).unwrap();
+    rx.recv_timeout(Duration::from_secs(10)).expect("the other device's write is reported");
+    while rx.recv_timeout(Duration::from_millis(500)).is_ok() {}
+
+    // A sync client takes the subject's folder away whole, then puts it back: both are changes.
+    let away = tempfile::tempdir_in(dir.path().parent().unwrap()).unwrap();
+    let parked = away.path().join("s9");
+    fs::rename(dir.path().join("subjects/s9"), &parked).unwrap();
+    rx.recv_timeout(Duration::from_secs(10)).expect("a folder of records taken away is reported");
+    while rx.recv_timeout(Duration::from_millis(500)).is_ok() {}
+    fs::rename(&parked, dir.path().join("subjects/s9")).unwrap();
+    rx.recv_timeout(Duration::from_secs(10)).expect("a folder of records moved in is reported");
+}
