@@ -16,7 +16,7 @@ clients and one group:
 - a group session with two attendees (April): one record, two people
 - a client seen twice in a month (March), a session at 23:30 on the last day of a month and one at
   00:10 on the first day of the next
-- a concern the core keeps out of suggestions (`safety`, May)
+- a concern suggested only set apart, to be confirmed (`safety`, May)
 
 ## Layout
 

@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using Openquote.Classification;
 using Openquote.Fields;
+using Openquote.Suggestions;
 using Openquote.Vault;
 
 namespace OpenquoteCare.Tests;
@@ -45,6 +47,7 @@ public sealed class PackFilesTests
         Assert.Empty(content.CheckPacks());
         Assert.Empty(content.FieldCatalog().Issues);
         Assert.Empty(content.LabelCatalog().Conflicts);
+        Assert.Empty(content.SuggestionCatalog().Conflicts);
     }
 
     [Fact]
@@ -65,6 +68,20 @@ public sealed class PackFilesTests
         Assert.Null(fields.Find("session", "topic"));
         Assert.Null(fields.Find("subject", "school"));
         Assert.False(fields.Find("session", "concern")!.Hidden);
+    }
+
+    [Fact]
+    public void The_neutral_track_suggests_every_concern_sets_safety_apart_and_never_suggests_a_mode()
+    {
+        var content = VaultOn("care-en");
+        var suggestions = content.SuggestionCatalog();
+        Suggestion For(string scheme, SchemeItem item) => suggestions.For(scheme, 1, item);
+        var concern = content.Schemes.Single(s => s.Name == "care.concern" && s.Version == 1);
+        var mode = content.Schemes.Single(s => s.Name == "care.mode" && s.Version == 1);
+
+        Assert.Equal(Suggestion.Confirm, For("care.concern", concern.Items.Single(i => i.Code == "safety")));
+        Assert.All(concern.Items.Where(i => i.Code != "safety"), i => Assert.Equal(Suggestion.Offer, For("care.concern", i)));
+        Assert.All(mode.Items, i => Assert.Equal(Suggestion.Off, For("care.mode", i)));
     }
 
     [Theory]

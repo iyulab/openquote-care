@@ -35,6 +35,7 @@ const NEW_PASSPHRASE = '새 기록 암호 2026'
 // What a settled session says: a suggestion learns from it, and it never leaves the vault.
 const FAMILY_NOTE = '합성 상담 내용: 휴대전화 문제로 부모님과 다툼'
 const CRISIS_NOTE = '합성 상담 내용: 사라지고 싶다고 말해 안전 계획을 세움'
+const SAFETY_NOTE = 'Synthetic notes: said they want to disappear, made a safety plan'
 
 const q = (s) => JSON.stringify(s)
 
@@ -1185,6 +1186,23 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=unmapped]'); return (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() })()`), '0', 'not a gap in a crosswalk')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1 person)', 'one session in the rows')
 
+    // The core suggests a concern from the most similar settled session, and sets safety apart, to be confirmed.
+    await app.click('button', 'Clients')
+    await app.click('li button .label', 'Client One')
+    await app.setDate('Date', '2026-04-16')
+    await app.choose('Concern', 'safety')
+    await app.write('Notes', SAFETY_NOTE)
+    await app.click('dc-button', 'Record session')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 3`, 'the safety session listed')
+    await app.setDate('Date', '2026-04-23')
+    await app.write('Notes', 'Synthetic notes about exam stress keeping them awake')
+    await app.cdp.waitFor(`!!__e2e.one('[data-suggestions="concern"] dc-button[data-suggestion="anxiety"]:not([data-confirm])')`, 'the anxiety concern suggested')
+    await app.write('Notes', 'Synthetic notes: said again they want to disappear')
+    await app.cdp.waitFor(`!!__e2e.one('[data-suggestions="concern"] dc-button[data-suggestion="safety"][data-confirm]')`, 'the safety concern suggested, set apart')
+    assert.ok((await app.cdp.evaluate(`__e2e.one('dc-button[data-suggestion="safety"]').textContent`)).includes('confirm first'), 'marked to be confirmed')
+    assert.ok(!(await app.cdp.evaluate(`!!__e2e.one('[data-suggestions="mode"]')`)), 'a mode is never suggested')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="Concern"]').value`), '', 'nothing is filled in until a person takes it')
+
     // Every screen, every text node and every name a screen reader or tooltip gives, shadow roots included.
     const words = () => app.cdp.evaluate(`__e2e.all('*').flatMap((el) => [
       ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),
@@ -1241,7 +1259,7 @@ const scenarios = {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
     const needles = [PASSPHRASE, NEW_PASSPHRASE, work.key, work.key.toLowerCase(), typedKey,
-      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE, CRISIS_NOTE]
+      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE, CRISIS_NOTE, SAFETY_NOTE]
     const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
     assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
     const inAppData = await filesHolding(appData, needles)

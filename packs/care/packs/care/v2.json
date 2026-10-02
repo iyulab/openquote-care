@@ -1,0 +1,9 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 2,
+  "label": "Care",
+  "provides": [
+    "suggestions/care/v2.json"
+  ]
+}

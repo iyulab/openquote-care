@@ -138,7 +138,7 @@ JsonObject Report(string name, string month)
     Expect(name, "total", h["total"]!.GetValue<int>(), people.Count);
     Expect(name, "people", h["people"]!.GetValue<int>(), people.Values.SelectMany(p => p).Distinct().Count());
 
-    return new JsonObject
+    var run = new JsonObject
     {
         ["format"] = "openquote.run/0",
         ["report"] = new JsonObject { ["report"] = "care.monthly-concern", ["version"] = 1 },
@@ -157,6 +157,9 @@ JsonObject Report(string name, string month)
         ["people"] = new JsonObject(people.OrderBy(kv => kv.Key, StringComparer.Ordinal)
             .Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)Ids(kv.Value)))),
     };
+    // A session with no concern is unmapped and, since its row field is empty, also listed as blank.
+    if (unmapped.Count > 0) run.Insert(run.IndexOf("total"), "blank", Set(unmapped));
+    return run;
 }
 
 // The session list form of the `care` pack: date, clients, people, concern, mode, practitioner — by

@@ -1,0 +1,20 @@
+{
+  "format": "openquote.suggestions/0",
+  "pack": "care",
+  "version": 2,
+  "schemes": {
+    "care.concern": {
+      "1": {
+        "mood": "offer",
+        "anxiety": "offer",
+        "relationships": "offer",
+        "family": "offer",
+        "study-work": "offer",
+        "substance": "offer",
+        "loss": "offer",
+        "safety": "confirm",
+        "other": "offer"
+      }
+    }
+  }
+}

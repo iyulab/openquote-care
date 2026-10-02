@@ -41,7 +41,7 @@ public partial class NeutralGoldenVaultTests
     [Theory]
     [InlineData("r1", 3)] // March: one practitioner's client seen twice, a session at 23:30 on the last day
     [InlineData("r2", 4)] // April: a session without a concern, one without a mode, a group session
-    [InlineData("r3", 5)] // May: a concern the core keeps out of suggestions
+    [InlineData("r3", 5)] // May: a concern suggested only set apart, to be confirmed
     public void Reproduces_the_neutral_run(string name, int month)
     {
         var got = RunRecord(Run(Content(), month));
@@ -54,7 +54,7 @@ public partial class NeutralGoldenVaultTests
     {
         var content = Content();
 
-        Assert.Equal(["care", "en"], content.Packs.Select(p => p.Id).Order(StringComparer.Ordinal));
+        Assert.Equal(["care", "en"], content.Packs.Select(p => p.Id).Distinct().Order(StringComparer.Ordinal));
         Assert.Empty(content.CheckPacks());
         Assert.Equal(["en"], content.Labels.Select(l => l.Locale).Distinct());
         Assert.DoesNotContain(content.Schemes, s => s.Name.Contains("school", StringComparison.Ordinal));
