@@ -1,0 +1,26 @@
+{
+  "format": "openquote.report/1",
+  "report": "year-grade-gender",
+  "version": 1,
+  "label": "학년도 학년·성별 상담",
+  "counts": "session",
+  "period": {
+    "unit": "year",
+    "field": "date",
+    "startMonth": 3
+  },
+  "dimensions": [
+    {
+      "field": "grade",
+      "of": "subject"
+    },
+    {
+      "field": "gender",
+      "of": "subject"
+    }
+  ],
+  "measures": [
+    "records",
+    "people"
+  ]
+}

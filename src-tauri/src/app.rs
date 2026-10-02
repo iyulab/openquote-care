@@ -1413,7 +1413,7 @@ cut off").unwrap();
         let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.close_vault();
-        // As a vault made before the school pack's second and third versions holds it.
+        // As a vault made before the school pack's second, third and fourth versions holds it.
         let added = [
             "packs/care.school.kr/v2.json.age",
             "suggestions/care.school.kr/v2.json.age",
@@ -1421,6 +1421,11 @@ cut off").unwrap();
             "fields/care.school.kr/session/v2.json.age",
             "labels/care.school.kr/v2.ko.json.age",
             "exports/session-list/v2.json.age",
+            "packs/care.school.kr/v4.json.age",
+            "fields/care.school.kr/session/v3.json.age",
+            "reports/year-grade-class/v1.json.age",
+            "reports/year-grade-gender/v1.json.age",
+            "reports/year-client-type/v1.json.age",
         ];
         for file in added {
             fs::remove_file(dir.path().join(file)).unwrap();
@@ -1429,7 +1434,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 3));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 4));
         assert_eq!(summary["packIssues"], json!([]));
         for file in added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
@@ -1586,7 +1591,7 @@ cut off").unwrap();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
         // The core's forms stand on the fields the school track hides: they are not offered.
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
-        assert_eq!(offered, ["monthly-topic"]);
+        assert_eq!(offered, ["monthly-topic", "year-client-type", "year-grade-class", "year-grade-gender"]);
     }
 
     /// A vault as a version before packs named themselves left it: the golden vault's files through

@@ -1,0 +1,27 @@
+{
+  "format": "openquote.report/1",
+  "report": "year-client-type",
+  "version": 1,
+  "label": "학년도 상담 상대별 상담",
+  "counts": "session",
+  "period": {
+    "unit": "year",
+    "field": "date",
+    "startMonth": 3
+  },
+  "dimensions": [
+    {
+      "field": "client_type",
+      "scheme": "client-type",
+      "version": "in-force"
+    },
+    {
+      "field": "grade",
+      "of": "subject"
+    }
+  ],
+  "measures": [
+    "records",
+    "people"
+  ]
+}

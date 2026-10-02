@@ -86,6 +86,17 @@ public sealed class PackFilesTests
     }
 
     [Fact]
+    public void A_school_session_starts_with_the_student_and_the_vault_keeps_its_format()
+    {
+        var content = VaultOn("school-kr");
+
+        Assert.Equal("student", content.FieldCatalog().Find("session", "client_type")!.DefaultValue);
+        Assert.Equal(0, content.RequiredVersion); // taken on by a vault of either format without raising it
+        Assert.Equal(["year-client-type", "year-grade-class", "year-grade-gender"],
+            content.Reports.Where(r => r.Name.StartsWith("year-", StringComparison.Ordinal)).Select(r => r.Name).Order());
+    }
+
+    [Fact]
     public void The_neutral_track_holds_no_school_field()
     {
         var fields = VaultOn("care-en").FieldCatalog();
