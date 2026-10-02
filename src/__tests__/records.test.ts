@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, conflictsOf, definitionOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, entityOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -96,5 +96,13 @@ describe('namesOf', () => {
     const group: Entity = { type: 'session', id: '2', subject: null, group: 'g', people: ['s1', 's2', 'gone'], fields: {}, conflicts: {} }
     expect(namesOf(one, names)).toBe('가')
     expect(namesOf(group, names)).toBe('가, 나')
+  })
+})
+
+describe('entityOf', () => {
+  it('names the entity a new change file starts, in a folder of its own or in a flat list', () => {
+    expect(entityOf('subjects/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c03/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c03.pc01.json')).toBe('0199a1b0-1a02-7c44-8e21-3d9f0a1b2c03')
+    expect(entityOf('groups/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04.pc01.json')).toBe('0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04')
+    expect(entityOf('practitioners/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c05.pc01.json')).toBe('0199a1b0-1a02-7c44-8e21-3d9f0a1b2c05')
   })
 })

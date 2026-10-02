@@ -1,6 +1,6 @@
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { newestFirst, text, type Entity } from '../records.js'
+import { entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
@@ -33,7 +33,7 @@ export class OcGroups extends VaultScreen {
       const path = await shell.record('/changes/group', { fields: { name, members: [] } })
       this.groupName = ''
       await this.store.load()
-      this.selectGroup(path.split('/')[1])
+      this.selectGroup(entityOf(path))
     })
   }
 

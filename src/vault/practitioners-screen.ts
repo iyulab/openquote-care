@@ -1,6 +1,6 @@
 import { html } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { newestFirst, text, type Entity } from '../records.js'
+import { entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { countBy, listDetail, nameField } from './parts.js'
@@ -26,7 +26,7 @@ export class OcPractitioners extends VaultScreen {
       const path = await shell.record('/changes/practitioner', { fields: { name } })
       this.practitionerName = ''
       await this.store.load()
-      this.pick(path.split('/')[1])
+      this.pick(entityOf(path))
     })
   }
 

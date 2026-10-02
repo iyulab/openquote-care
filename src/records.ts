@@ -168,6 +168,15 @@ export type Definition =
   | { kind: 'labels'; name: string; version: number; locale: string }
   | { kind: 'fields'; name: string; version: number; type: string }
 
+/**
+ * The entity a new change file is the first change of, by its vault path: the folder of a subject or
+ * group (`subjects/<id>/<change>.json`), or the file's id in a flat list (`practitioners/<id>.<device>.json`).
+ */
+export function entityOf(path: string): string {
+  const [, name = ''] = path.split('/')
+  return name.split('.')[0]
+}
+
 /** Reads a definition file's vault path (`schemes/topic/v2.json`, `schemes/topic/v1-v2.json`, `reports/x/v2.json`, `exports/…`, `packs/…`, `labels/…`, `fields/…`). */
 export function definitionOf(path: string): Definition | undefined {
   const scheme = /^schemes\/([^/]+)\/v(\d+)\.json$/.exec(path)

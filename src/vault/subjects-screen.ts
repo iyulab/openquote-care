@@ -1,7 +1,7 @@
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { headingIndex, labelOfField } from '../fields.js'
-import { conflictsOf, newestFirst, text, type Entity } from '../records.js'
+import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
@@ -38,7 +38,7 @@ export class OcSubjects extends VaultScreen {
       const path = await shell.record('/changes/subject', { fields: { name } })
       this.subjectName = ''
       await this.store.load()
-      this.pick(path.split('/')[1])
+      this.pick(entityOf(path))
     })
   }
 
