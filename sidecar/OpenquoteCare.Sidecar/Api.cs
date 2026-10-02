@@ -150,7 +150,9 @@ public sealed record ReportView(
 /// A field of an entity type as the vault's packs declare it, with its label and the other names it goes by
 /// resolved in the vault's locales. <c>Kind</c> is <c>text</c>, <c>date</c>, <c>number</c>, <c>coded</c>,
 /// <c>reference</c> or <c>references</c>; <c>Tier</c> is <c>structured</c> or <c>narrative</c>. <c>Many</c> is true
-/// for a coded field that takes several values, one of them primary.
+/// for a coded field that takes several values, one of them primary. <c>DefaultValue</c> is the fixed value a
+/// field starts from — a text, a number as written, or a code — and <c>DefaultFromSubject</c> the subject's field
+/// a record takes its value from instead.
 /// </summary>
 public sealed record FieldView(
     string Name,
@@ -161,6 +163,7 @@ public sealed record FieldView(
     bool Hidden,
     string Tier,
     string? DefaultFromSubject,
+    string? DefaultValue,
     string Label,
     IReadOnlyList<string> Aliases,
     bool Many);
@@ -297,6 +300,7 @@ internal static class Api
                     f.Hidden,
                     f.Tier.ToString().ToLowerInvariant(),
                     f.DefaultFromSubject,
+                    f.DefaultValue,
                     snapshot.Labels.FieldLabel(type, f.Name, snapshot.Locales) ?? f.Label ?? f.Name,
                     snapshot.Labels.FieldAliases(type, f.Name, snapshot.Locales),
                     f.Many))

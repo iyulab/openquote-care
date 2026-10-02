@@ -292,6 +292,20 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Gives_the_fixed_value_a_field_starts_from()
+    {
+        var fixedValues = new Openquote.Vault.VaultFile("fields/y/session/v1.json", System.Text.Encoding.UTF8.GetBytes(
+            """{"format":"openquote.fields/1","pack":"y","type":"session","version":1,"fields":[{"name":"counterpart","kind":"coded","scheme":"client-type","default":{"value":"parent"}},{"name":"period_minutes","kind":"number","default":{"value":45}}]}"""));
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), fixedValues]));
+
+        var fields = (await Get("/fields/session")).AsArray().ToDictionary(f => f!["name"]!.GetValue<string>(), f => f!);
+
+        Assert.Equal("parent", fields["counterpart"]["defaultValue"]!.GetValue<string>());
+        Assert.Equal("45", fields["period_minutes"]["defaultValue"]!.GetValue<string>());
+        Assert.All(fields.Where(f => f.Key is not ("counterpart" or "period_minutes")), f => Assert.Null(f.Value["defaultValue"]));
+    }
+
+    [Fact]
     public async Task Says_what_vault_format_files_would_need_before_the_host_writes_them()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(1)));

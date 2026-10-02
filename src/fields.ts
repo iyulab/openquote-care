@@ -48,6 +48,15 @@ export function firstMissingRequired(defs: readonly FieldView[], values: Readonl
   return inputFields(defs).find((f) => f.required && !(values[f.name] ?? '').trim())
 }
 
+/**
+ * The fixed values the fields a person fills in start from, as the vault's packs give them. A code
+ * the version in force that day does not hold is offered all the same, and left out when the record
+ * is written, as any such code is.
+ */
+export function fixedDefaults(defs: readonly FieldView[]): Record<string, string> {
+  return Object.fromEntries(inputFields(defs).flatMap((f) => (f.defaultValue ? [[f.name, f.defaultValue]] : [])))
+}
+
 /** The values a record takes from its subject when it is written, as they stand then; empty ones are skipped. */
 export function copiedFromSubject(defs: readonly FieldView[], subject: Entity): Record<string, string> {
   const values: Record<string, string> = {}

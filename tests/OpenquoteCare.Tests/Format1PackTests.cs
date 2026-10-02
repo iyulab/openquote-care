@@ -39,6 +39,8 @@ public sealed class Format1PackTests
         Assert.Equal(0, content.DeclaredVersion);
         Assert.Equal(1, content.RequiredVersion); // the field taking several values
         Assert.True(content.FieldCatalog().Find("session", "concerns")!.Many);
+        Assert.Equal("parent", content.FieldCatalog().Find("session", "counterpart")!.DefaultValue);
+        Assert.Equal("45", content.FieldCatalog().Find("session", "period_minutes")!.DefaultValue);
         Assert.Equal(3, content.Reports.Count(r => r.Name.StartsWith("test.format1.", StringComparison.Ordinal)));
     }
 

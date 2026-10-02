@@ -10,6 +10,23 @@
       "scheme": "topic",
       "many": true,
       "label": "Topics covered"
+    },
+    {
+      "name": "counterpart",
+      "kind": "coded",
+      "scheme": "client-type",
+      "default": {
+        "value": "parent"
+      },
+      "label": "Who the session was with"
+    },
+    {
+      "name": "period_minutes",
+      "kind": "number",
+      "default": {
+        "value": 45
+      },
+      "label": "Length of a period (minutes)"
     }
   ]
 }

@@ -3,6 +3,7 @@ import {
   attendeesAt,
   copiedFromSubject,
   firstMissingRequired,
+  fixedDefaults,
   headingIndex,
   inputFields,
   labelOfField,
@@ -68,6 +69,17 @@ describe('fields', () => {
     const subject = { fields: { grade: '3', class: '' } } as unknown as Entity
     const defs = [...session, field('class', 'text', { defaultFromSubject: 'class' })]
     expect(copiedFromSubject(defs, subject)).toEqual({ grade: '3' })
+  })
+
+  it('starts the fields a person fills in from the fixed values the vault gives them', () => {
+    const defs = [
+      field('with', 'coded', { defaultValue: 'client' }),
+      field('minutes', 'number', { defaultValue: '50' }),
+      field('room', 'text', { defaultValue: 'A', hidden: true }),
+      field('mode', 'coded', { defaultValue: null }),
+      field('grade', 'text', { defaultFromSubject: 'grade' }),
+    ]
+    expect(fixedDefaults(defs)).toEqual({ with: 'client', minutes: '50' })
   })
 
   it('a heading matches a field by name, label or alias, ignoring spacing and case', () => {

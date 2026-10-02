@@ -1215,6 +1215,10 @@ const scenarios = {
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
     await app.setDate('날짜', '2026-03-24')
+    // Fields the pack gives a fixed value start from it.
+    const startsFrom = () => app.cdp.evaluate(`[__e2e.one('select[aria-label="만난 사람"]')?.value, __e2e.one('input[aria-label="교시 길이(분)"]')?.value]`)
+    await app.cdp.waitFor(`__e2e.one('select[aria-label="만난 사람"]')?.value === 'parent'`, 'the field starting from its fixed value')
+    assert.deepEqual(await startsFrom(), ['parent', '45'])
     await app.choose('주제', 'family')
     await app.choose('함께 다룬 주제', 'family')
     await app.choose('함께 해당하는 항목 더하기', 'learning')
@@ -1224,6 +1228,8 @@ const scenarios = {
     await app.noAlert()
     const rows = await app.sessionRows()
     assert.ok(rows.some((r) => r.includes('가정 (함께: 학습)')), `the session shows its primary value and the other: ${JSON.stringify(rows)}`)
+    assert.ok(rows.some((r) => r.includes('가정 (함께: 학습)') && r.includes('보호자')), `the fixed value was recorded: ${JSON.stringify(rows)}`)
+    assert.deepEqual(await startsFrom(), ['parent', '45'], 'the next session starts from the fixed values again')
 
     // A month of girls only: the condition is said under the title, and visits stand beside the records.
     await app.click('button', '통계')

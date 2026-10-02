@@ -82,6 +82,27 @@ describe('VaultStore', () => {
     expect(store.draft).toEqual({ date: '2026-04-02', practitioner: 'p1' })
   })
 
+  it('starts the form from the fixed values the vault gives fields, and again after it clears', async () => {
+    const field = (name: string, kind: FieldView['kind'], more: Partial<FieldView> = {}): FieldView => ({
+      name, kind, scheme: kind === 'coded' ? name : null, refType: null, required: false, hidden: false, tier: 'structured', defaultFromSubject: null, label: name, aliases: [], ...more,
+    })
+    vi.mocked(shell.fields).mockImplementation(async (type) =>
+      type === 'session' ? [field('date', 'date', { required: true }), field('with', 'coded', { defaultValue: 'client' }), field('minutes', 'number', { defaultValue: '50' })] : [],
+    )
+    const store = new VaultStore()
+
+    await store.load()
+    expect(store.draft).toEqual({ date: today(), with: 'client', minutes: '50' })
+
+    // A person's choice stands while the form is open, a vault read included.
+    store.editDraft({ with: 'parent', minutes: '' })
+    await store.load()
+    expect(store.draft).toMatchObject({ with: 'parent', minutes: '' })
+
+    store.clearDraft()
+    expect(store.draft).toEqual({ date: today(), with: 'client', minutes: '50' })
+  })
+
   it('knows a value came from a suggestion until a person changes it or the form clears', () => {
     const store = new VaultStore()
 

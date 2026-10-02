@@ -50,6 +50,8 @@ export interface FieldView {
   tier: 'structured' | 'narrative'
   /** The subject's field whose value the record takes when it is written. */
   defaultFromSubject: string | null
+  /** The fixed value the field starts from — a text, a number as written, or a code — when the vault gives one. */
+  defaultValue?: string | null
   label: string
   /** Other names the field goes by, matched when data is taken in. */
   aliases: string[]

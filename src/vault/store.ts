@@ -5,7 +5,7 @@ import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
-import type { FieldView } from '../fields.js'
+import { fixedDefaults, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { shell, type BackupStatus, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
@@ -142,11 +142,17 @@ export class VaultStore extends EventTarget {
     return type === 'practitioner' ? this.practitioners : type === 'subject' ? this.subjects : type === 'group' ? this.groups : []
   }
 
-  /** What the form holds after a session is written: the date and who was there stay; the rest is cleared. */
+  /**
+   * What the form holds after a session is written: the date and who was there stay, the fields the
+   * vault gives a fixed value start from it again, and the rest is cleared.
+   */
   clearDraft() {
-    this.draft = Object.fromEntries(
-      this.sessionFields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, this.draft[f.name] ?? '']),
-    )
+    this.draft = {
+      ...fixedDefaults(this.sessionFields),
+      ...Object.fromEntries(
+        this.sessionFields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, this.draft[f.name] ?? '']),
+      ),
+    }
     this.suggested = new Set()
     this.changed()
   }
@@ -336,7 +342,7 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
  * can point at when there is only one (a vault kept by a single practitioner).
  */
 function startingValues(store: VaultStore, fields: FieldView[]): SessionDraft {
-  const values: SessionDraft = {}
+  const values: SessionDraft = fixedDefaults(fields)
   for (const f of fields) {
     if (!f.required || f.hidden) continue
     if (f.kind === 'date') values[f.name] = today()

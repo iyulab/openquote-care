@@ -5,7 +5,9 @@
   "locale": "ko",
   "fields": {
     "session": {
-      "concerns": "함께 다룬 주제"
+      "concerns": "함께 다룬 주제",
+      "counterpart": "만난 사람",
+      "period_minutes": "교시 길이(분)"
     }
   }
 }
