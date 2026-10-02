@@ -472,6 +472,27 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Keeps_which_values_were_taken_from_a_suggestion()
+    {
+        await Post("/vault/load", Files(GoldenVault.School.Through(0)));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { subjectFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+
+        var sessionFile = await Post("/changes/in-subject", new
+        {
+            subjectId,
+            type = "session",
+            fields = new { date = "2026-04-01", topic = new { scheme = "topic", version = 1, code = "family" } },
+            source = new { topic = "suggestion" },
+        });
+        await Post("/vault/add", new { files = new[] { sessionFile } });
+
+        var change = (await Get("/entities/session/history")).AsArray().Single()!["changes"]!.AsArray().Single()!;
+        Assert.True(JsonNode.DeepEquals(new JsonObject { ["topic"] = "suggestion" }, change["source"]));
+    }
+
+    [Fact]
     public async Task Lists_the_changes_each_entity_was_built_from_oldest_first()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(0)));

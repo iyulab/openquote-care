@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { Entity, EntityHistory, PendingChoice, Scheme } from './records.js'
+import type { Entity, EntityHistory, PendingChoice, Scheme, Suggestions } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry, ReportEntry } from './forms.js'
@@ -159,6 +159,12 @@ export const shell = {
   compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
   /** Which of a form run's pending records still wait for a person, with the codes each may take. */
   pending: (report: string, version: number, records: string[]) => invoke<PendingChoice[]>('pending', { report, version, records }),
+  /**
+   * Codes suggested for the coded fields a record being entered has no value for, given the values
+   * it holds (as they are recorded) and the date it is for; nothing is kept.
+   */
+  suggestions: (entityType: string, date: string, fields: Record<string, unknown>) =>
+    invoke<Suggestions>('suggestions', { entityType, date, fields }),
   /** Runs a monthly report; the engine keeps its run record in the vault. */
   runReport: (report: string, version: number, year: number, month: number) =>
     invoke<RunRecord>('run_report', { report, version, year, month }),

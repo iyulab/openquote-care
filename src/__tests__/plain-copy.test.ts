@@ -116,8 +116,8 @@ describe('plain copy', () => {
 
   it('lists the edits made after a record was first written, with when and on which device, content only when it goes in', () => {
     const history = new Map([
-      ['s1', [{ id: 'c1', device: 'pc01', at: '2026-04-01T09:00:00Z', op: 'create' as const, fields: { name: 'Ann' } }, { id: 'c2', device: 'pc02', at: '2026-04-03T09:00:00Z', op: 'update' as const, fields: { name: 'Ann <b>' } }]],
-      ['x2', [{ id: 'c3', device: 'pc01', at: '2026-04-21T09:00:00Z', op: 'update' as const, fields: { note: 'private words' } }, { id: 'c4', device: 'pc01', at: '2026-04-22T09:00:00Z', op: 'reclassify' as const, fields: { topic: { scheme: 'topic', version: 2, code: 'peer' } } }]],
+      ['s1', [{ id: 'c1', device: 'pc01', at: '2026-04-01T09:00:00Z', op: 'create' as const, fields: { name: 'Ann' }, source: {} }, { id: 'c2', device: 'pc02', at: '2026-04-03T09:00:00Z', op: 'update' as const, fields: { name: 'Ann <b>' }, source: {} }]],
+      ['x2', [{ id: 'c3', device: 'pc01', at: '2026-04-21T09:00:00Z', op: 'update' as const, fields: { note: 'private words' }, source: {} }, { id: 'c4', device: 'pc01', at: '2026-04-22T09:00:00Z', op: 'reclassify' as const, fields: { topic: { scheme: 'topic', version: 2, code: 'peer' } }, source: {} }]],
     ])
     const deviceName = (d: string) => ({ pc01: 'Room PC', pc02: 'Laptop' })[d] ?? d
     const without = file(plainCopy({ ...source(false), history, deviceName }, en.plainCopy), 'records.html')

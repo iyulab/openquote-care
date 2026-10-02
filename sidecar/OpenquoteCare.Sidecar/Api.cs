@@ -29,9 +29,11 @@ public sealed record UndecryptableFile(string Path, string Plain, string Detail)
 public sealed record CreateSubjectRequest(Dictionary<string, JsonNode?> Fields);
 
 
-public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dictionary<string, JsonNode?> Fields);
+/// <param name="Source">Per field, where its value came from (<c>manual</c> or <c>suggestion</c>); a field without an entry is <c>manual</c>.</param>
+public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dictionary<string, JsonNode?> Fields, Dictionary<string, string>? Source = null);
 
-public sealed record CreateInGroupRequest(string GroupId, string Type, Dictionary<string, JsonNode?> Fields);
+/// <param name="Source">As for <see cref="CreateInSubjectRequest"/>.</param>
+public sealed record CreateInGroupRequest(string GroupId, string Type, Dictionary<string, JsonNode?> Fields, Dictionary<string, string>? Source = null);
 
 public sealed record DeviceNameRequest(string Name);
 
@@ -157,8 +159,8 @@ public sealed record HeadView(string ChangeId, string Device, JsonElement Value)
 /// <summary>The changes an entity was built from, oldest first.</summary>
 public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Changes);
 
-/// <summary>One change file: who wrote it, when, what it did, and the fields it set.</summary>
-public sealed record ChangeView(string Id, string Device, DateTimeOffset At, string Op, IReadOnlyDictionary<string, JsonElement> Fields);
+/// <summary>One change file: who wrote it, when, what it did, the fields it set, and where a value it set came from when not from a person typing or picking it.</summary>
+public sealed record ChangeView(string Id, string Device, DateTimeOffset At, string Op, IReadOnlyDictionary<string, JsonElement> Fields, IReadOnlyDictionary<string, string> Source);
 
 public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<SchemeItem> Items);
 
@@ -226,7 +228,7 @@ internal static class Api
                     [.. e.Changes
                         .OrderBy(c => c.At)
                         .ThenBy(c => c.Id, StringComparer.Ordinal)
-                        .Select(c => new ChangeView(c.Id, c.Device, c.At, c.Op.ToString().ToLowerInvariant(), c.Fields))]))
+                        .Select(c => new ChangeView(c.Id, c.Device, c.At, c.Op.ToString().ToLowerInvariant(), c.Fields, c.Source))]))
                 .ToArray());
 
         app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
@@ -300,13 +302,13 @@ internal static class Api
             WireFile.From(writer.CreatePractitioner(request.Fields)));
 
         app.MapPost("/changes/in-subject", (CreateInSubjectRequest request) =>
-            WireFile.From(writer.CreateInSubject(request.SubjectId, request.Type, request.Fields)));
+            WireFile.From(writer.CreateInSubject(request.SubjectId, request.Type, request.Fields, request.Source)));
 
         app.MapPost("/changes/group", (CreateSubjectRequest request) =>
             WireFile.From(writer.CreateGroup(request.Fields)));
 
         app.MapPost("/changes/in-group", (CreateInGroupRequest request) =>
-            WireFile.From(writer.CreateInGroup(request.GroupId, request.Type, request.Fields)));
+            WireFile.From(writer.CreateInGroup(request.GroupId, request.Type, request.Fields, request.Source)));
 
         // Names this device: renames the device entity it made, or makes one.
         app.MapPost("/changes/device-name", (DeviceNameRequest request, VaultSession session) =>

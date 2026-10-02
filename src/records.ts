@@ -7,6 +7,27 @@ export interface Classified {
   code: string
 }
 
+/** Codes suggested for one coded field of a record being entered, in the order they are offered. */
+export interface FieldSuggestions {
+  field: string
+  scheme: string
+  version: number
+  codes: SuggestedCode[]
+}
+
+/** A suggested code and the settled records that hold it (ids, nearest first): why it is suggested. */
+export interface SuggestedCode {
+  code: string
+  score: number
+  similar: string[]
+}
+
+/** What the engine suggests for a record being entered, and how many settled records it learned from. */
+export interface Suggestions {
+  remembered: number
+  fields: FieldSuggestions[]
+}
+
 /** A merged entity as the engine lists it. */
 export interface Entity {
   type: string
@@ -40,6 +61,8 @@ export interface ChangeEntry {
   at: string
   op: 'create' | 'update' | 'reclassify' | 'destroy'
   fields: Record<string, unknown>
+  /** Per field it set, `suggestion` when a person took the value from a suggestion; a field not named was typed or picked. */
+  source: Record<string, string>
 }
 
 /** One device's value for a field that was changed concurrently. */

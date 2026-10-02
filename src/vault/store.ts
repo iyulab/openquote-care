@@ -51,6 +51,8 @@ export class VaultStore extends EventTarget {
   year = lastMonth().year
   month = lastMonth().month
   draft: SessionDraft = {}
+  /** The draft's fields whose value a person took from a suggestion, and has not changed since. */
+  suggested: ReadonlySet<string> = new Set()
   /** The folder the vault is in: this computer keeps a backup setting per vault. */
   folder = ''
   /** The backup this computer keeps of the vault, as the shell last reported it. */
@@ -76,8 +78,15 @@ export class VaultStore extends EventTarget {
     this.changed()
   }
 
-  editDraft(patch: SessionDraft) {
+  /** Fills in the draft; `from` says whether a person typed or picked the values, or took a suggestion. */
+  editDraft(patch: SessionDraft, from: 'person' | 'suggestion' = 'person') {
     this.draft = { ...this.draft, ...patch }
+    const suggested = new Set(this.suggested)
+    for (const name of Object.keys(patch)) {
+      if (from === 'suggestion') suggested.add(name)
+      else suggested.delete(name)
+    }
+    this.suggested = suggested
     this.changed()
   }
 
@@ -132,6 +141,7 @@ export class VaultStore extends EventTarget {
     this.draft = Object.fromEntries(
       this.sessionFields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, this.draft[f.name] ?? '']),
     )
+    this.suggested = new Set()
     this.changed()
   }
 

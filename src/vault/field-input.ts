@@ -8,12 +8,18 @@ export interface Choice {
   label: string
 }
 
+/** What a form may add to a dropdown's field: a line under the label, and something after the dropdown. */
+export interface FieldExtras {
+  hint?: string
+  after?: unknown
+}
+
 /**
  * The input for one field a vault's packs declare, by what the field holds: a line (or, for written
  * content, a box) for text, a date or a number; a dropdown of `choices` for a classification or a
  * reference, with "none" first unless the field is required.
  */
-export function fieldInput(f: FieldView, value: string, set: (v: string) => void, busy: boolean, choices: Choice[] = []) {
+export function fieldInput(f: FieldView, value: string, set: (v: string) => void, busy: boolean, choices: Choice[] = [], extras: FieldExtras = {}) {
   switch (f.kind) {
     case 'date':
     case 'number':
@@ -41,7 +47,7 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
       </dc-field>`
     case 'coded':
     case 'reference':
-      return html`<dc-field label=${f.label} ?required=${f.required}>
+      return html`<dc-field label=${f.label} hint=${extras.hint ?? ''} ?required=${f.required}>
         <dc-select
           aria-label=${f.label}
           data-field=${f.name}
@@ -51,6 +57,7 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
           ?disabled=${busy}
           @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
         ></dc-select>
+        ${extras.after ?? nothing}
       </dc-field>`
     default:
       return nothing

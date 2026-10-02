@@ -32,6 +32,8 @@ const sidecar = resolve(
 const PORT = 9224
 const PASSPHRASE = '상담 기록 폴더 2026'
 const NEW_PASSPHRASE = '새 기록 암호 2026'
+// What a settled session says: a suggestion learns from it, and it never leaves the vault.
+const FAMILY_NOTE = '합성 상담 내용: 휴대전화 문제로 부모님과 다툼'
 
 const q = (s) => JSON.stringify(s)
 
@@ -792,6 +794,44 @@ const scenarios = {
     }
   },
 
+  async 'suggests a topic from the most similar settled session, and records that it was taken from the suggestion'(app) {
+    await app.click('button', '대상자')
+    await app.click('li button .label', '가상 학생 3')
+    const settle = async (day, topic, said) => {
+      await app.setDate('날짜', day)
+      await app.choose('주제', topic)
+      await app.write('상담 내용', said)
+      await app.click('dc-button', '회기 기록')
+      await app.cdp.waitFor(`__e2e.all('tr[data-session]').some((tr) => tr.textContent.includes(${q(day)}))`, `the session of ${day} listed`)
+    }
+    await settle('2026-05-12', 'family', FAMILY_NOTE)
+    await settle('2026-05-14', 'academic', '합성 상담 내용: 성적이 떨어져 진로를 걱정함')
+
+    await app.setDate('날짜', '2026-05-21')
+    await app.write('상담 내용', '합성 상담 내용: 휴대전화 때문에 부모님과 또 다툼')
+    await app.cdp.waitFor(`__e2e.all('[data-suggestions="topic"] dc-button[data-suggestion="family"]').length === 1`, 'the family topic suggested')
+    assert.ok(
+      !(await app.cdp.evaluate(`__e2e.all('[data-suggestions="topic"] dc-button').some((b) => ['suicide', 'self-harm', 'psychosis', 'crisis'].includes(b.dataset.suggestion))`)),
+      'a topic the scheme keeps out of suggestions is never offered',
+    )
+    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="주제"]').value`), '', 'nothing is filled in until a person takes it')
+
+    await app.click('dc-button[data-role=why-suggested]')
+    await app.cdp.waitFor(`(__e2e.one('[data-why="topic"]')?.textContent ?? '').includes('2026-05-12 가상 학생 3')`, 'the similar session, by its date and who it is about')
+    assert.ok(!(await app.cdp.evaluate(`__e2e.one('[data-why="topic"]').textContent.includes('다툼')`)), 'what a similar session says is never shown')
+
+    await app.click('dc-button[data-suggestion="family"]')
+    await app.cdp.waitFor(`__e2e.one('select[aria-label="주제"]')?.value === 'family'`, 'the topic taken from the suggestion')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').some((tr) => tr.textContent.includes('2026-05-21'))`, 'the session of 2026-05-21 listed')
+    await app.noAlert()
+
+    const changes = await app.cdp.evaluate(`window.__TAURI_INTERNALS__.invoke('history', { entityType: 'session' }).then((all) => all.flatMap((e) => e.changes))`)
+    const taken = changes.find((c) => c.fields.date === '2026-05-21')
+    assert.deepEqual(taken.source, { topic: 'suggestion' }, 'the session keeps that its topic came from a suggestion')
+    assert.deepEqual(changes.find((c) => c.fields.date === '2026-05-12').source, {}, 'a topic a person picked is not marked')
+  },
+
   async 'leaves a copy of every record that reads without the app, apart from the vault, content only when asked'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'
     await app.click('button', '기록 목록')
@@ -1144,7 +1184,7 @@ const scenarios = {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
     const needles = [PASSPHRASE, NEW_PASSPHRASE, work.key, work.key.toLowerCase(), typedKey,
-      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC']
+      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE]
     const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
     assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
     const inAppData = await filesHolding(appData, needles)

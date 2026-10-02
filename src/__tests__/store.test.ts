@@ -80,6 +80,21 @@ describe('VaultStore', () => {
     expect(store.draft).toEqual({ date: '2026-04-02', practitioner: 'p1' })
   })
 
+  it('knows a value came from a suggestion until a person changes it or the form clears', () => {
+    const store = new VaultStore()
+
+    store.editDraft({ topic: 'family' }, 'suggestion')
+    store.editDraft({ note: 'words' })
+    expect([...store.suggested]).toEqual(['topic'])
+
+    store.editDraft({ topic: 'learning' })
+    expect(store.suggested.size).toBe(0)
+
+    store.editDraft({ topic: 'family' }, 'suggestion')
+    store.clearDraft()
+    expect(store.suggested.size).toBe(0)
+  })
+
   it('drops a read overtaken by a newer one', async () => {
     const answers = [deferred<Entity[]>(), deferred<Entity[]>()]
     const reads = [...answers]

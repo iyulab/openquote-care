@@ -1,13 +1,14 @@
-import { html, nothing, type PropertyValues } from 'lit'
+import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { copiedFromSubject, firstMissingRequired, inputFields, type FieldView } from '../fields.js'
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
-import { choices, latest, text, type Entity } from '../records.js'
+import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { fieldInput, type Choice } from './field-input.js'
+import { fieldInput, type Choice, type FieldExtras } from './field-input.js'
 import { StoreElement } from './screen.js'
+import { vaultStyles } from './styles.js'
 import type { Holder } from './session-parts.js'
 
 /**
@@ -19,9 +20,36 @@ import type { Holder } from './session-parts.js'
  * session holds now, it writes only the fields a person changed, as a new change file — the session
  * as first written stays in the vault. `oc-session-edited` says it was written, `oc-edit-cancelled`
  * that the person left it.
+ *
+ * While a new session is filled in, an empty classification offers the codes the vault's settled
+ * sessions suggest for what is filled in so far, each with how many similar records hold it and,
+ * on request, which ones (their date and who they are about — never what they say). Nothing is filled
+ * in until a person takes one; the session then records that the value came from a suggestion, until
+ * a person changes it.
  */
 @customElement('oc-session-form')
 export class OcSessionForm extends StoreElement {
+  static styles = [
+    vaultStyles,
+    css`
+      :host {
+        display: contents;
+      }
+      .suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--dc-space-1, 4px);
+        margin-top: var(--dc-space-1, 4px);
+      }
+      .why {
+        margin: var(--dc-space-1, 4px) 0 0;
+        padding-left: var(--dc-space-4, 16px);
+        font-size: var(--dc-font-size-sm, 12px);
+      }
+    `,
+  ]
+
   @property({ attribute: false }) holder!: Holder
   /** Who took part in a group session. */
   @property({ attribute: false }) attendees: string[] = []
@@ -36,6 +64,15 @@ export class OcSessionForm extends StoreElement {
   private readonly versionReads = new Latest()
   private versionsFor = ''
 
+  /** Codes suggested for the new session's empty classifications; none while correcting a session. */
+  @state() private suggestions: FieldSuggestions[] = []
+  /** The field whose suggestions' similar records are shown. */
+  @state() private whyOpen = ''
+  private readonly suggestionReads = new Latest()
+  private suggestionsFor = ''
+  private suggestionsFrom?: Entity[]
+  private suggestionTimer?: ReturnType<typeof setTimeout>
+
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
     if (changed.has('edit') && this.edit) this.corrected = asDraft(inputFields(this.store.sessionFields), this.edit)
@@ -44,6 +81,20 @@ export class OcSessionForm extends StoreElement {
       this.versionsFor = key
       void this.readVersions()
     }
+    // Asked again once typing pauses, and when the vault's sessions change (one is recorded, say).
+    const asked = this.edit ? '' : `${JSON.stringify(this.store.draft)}|${JSON.stringify(this.versions)}`
+    if (asked !== this.suggestionsFor || this.store.sessions !== this.suggestionsFrom) {
+      this.suggestionsFor = asked
+      this.suggestionsFrom = this.store.sessions
+      clearTimeout(this.suggestionTimer)
+      if (asked) this.suggestionTimer = setTimeout(() => void this.readSuggestions(), 300)
+      else this.suggestions = []
+    }
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback()
+    clearTimeout(this.suggestionTimer)
   }
 
   /** What is filled in: the session being corrected, or the new-session draft. */
@@ -90,31 +141,21 @@ export class OcSessionForm extends StoreElement {
   }
 
   /**
-   * The fields the form's inputs hold, as they are recorded; undefined (and the person told) when a
-   * required one is missing. An input left empty is not among them.
+   * The values the form's inputs hold, as they are recorded: a classification as its code in the
+   * version in force that day. An input left empty is not among them, nor is a code that version
+   * does not hold (the date moved after it was picked) — that field is named in `dropped`.
    */
-  private async filledIn(): Promise<Record<string, unknown> | undefined> {
-    const store = this.store
+  private recorded(versions: Record<string, number | null>): { fields: Record<string, unknown>; dropped: FieldView[] } {
     const draft = this.draft
-    const defs = store.sessionFields
-    const missing = firstMissingRequired(defs, draft)
-    if (missing) {
-      store.missing(missing.label)
-      return undefined
-    }
-    const versions = await this.readVersions()
     const fields: Record<string, unknown> = {}
-    for (const f of inputFields(defs)) {
+    const dropped: FieldView[] = []
+    for (const f of inputFields(this.store.sessionFields)) {
       const value = (draft[f.name] ?? '').trim()
       if (!value) continue
       if (f.kind === 'coded') {
         const scheme = this.schemeFor(f, versions)
-        // A code the version in force that day does not hold (the date moved after it was picked) is not recorded.
         if (!scheme?.items.some((i) => i.code === value)) {
-          if (f.required) {
-            store.missing(f.label)
-            return undefined
-          }
+          dropped.push(f)
           continue
         }
         fields[f.name] = { scheme: scheme.scheme, version: scheme.version, code: value }
@@ -124,7 +165,105 @@ export class OcSessionForm extends StoreElement {
         fields[f.name] = f.tier === 'narrative' ? (draft[f.name] ?? '') : value
       }
     }
+    return { fields, dropped }
+  }
+
+  /**
+   * The fields the form's inputs hold, as they are recorded; undefined (and the person told) when a
+   * required one is missing.
+   */
+  private async filledIn(): Promise<Record<string, unknown> | undefined> {
+    const store = this.store
+    const missing = firstMissingRequired(store.sessionFields, this.draft)
+    if (missing) {
+      store.missing(missing.label)
+      return undefined
+    }
+    const { fields, dropped } = this.recorded(await this.readVersions())
+    const required = dropped.find((f) => f.required)
+    if (required) {
+      store.missing(required.label)
+      return undefined
+    }
     return fields
+  }
+
+  private async readSuggestions() {
+    const current = this.suggestionReads.begin()
+    const date = this.dateOf()
+    let found: FieldSuggestions[] = []
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      try {
+        found = (await shell.suggestions('session', date, this.recorded(this.versions).fields)).fields
+      } catch {
+        // Suggestions are a help, never in the way: none are offered when they cannot be read.
+      }
+    }
+    if (current()) this.suggestions = found
+  }
+
+  private take(f: FieldView, code: string) {
+    this.whyOpen = ''
+    this.store.editDraft({ [f.name]: code }, 'suggestion')
+  }
+
+  /** A suggestion's similar record as a person knows it: its date and who it is about. */
+  private similarRecord(id: string): string {
+    const store = this.store
+    const session = store.sessions.find((s) => s.id === id)
+    if (!session) return ''
+    const group = session.group ? store.groups.find((g) => g.id === session.group) : undefined
+    const subject = session.subject ? store.subjects.find((s) => s.id === session.subject) : undefined
+    const who = group ? text(group, 'name') : subject ? text(subject, 'name') : ''
+    return [text(session, 'date'), who].filter(Boolean).join(' ')
+  }
+
+  /** What a classification of a new session offers besides its dropdown: the codes suggested for it, and why. */
+  private suggestionExtras(f: FieldView): FieldExtras {
+    const store = this.store
+    const hint = store.suggested.has(f.name) ? strings.takenFromSuggestion : undefined
+    const offered = this.draft[f.name] ? undefined : this.suggestions.find((s) => s.field === f.name)
+    const scheme: Scheme | undefined = offered && store.schemes.find((s) => s.scheme === offered.scheme && s.version === offered.version)
+    if (!offered || !scheme) return { hint }
+    const label = (code: string) => scheme.items.find((i) => i.code === code)?.label ?? code
+    const withRecords = offered.codes.filter((c) => c.similar.length > 0)
+    const open = this.whyOpen === f.name
+    return {
+      hint,
+      after: html`<div class="suggestions" role="group" aria-label=${strings.suggested} data-suggestions=${f.name}>
+          <span class="muted">${strings.suggested}</span>
+          ${offered.codes.map(
+            (c) =>
+              html`<dc-button size="sm" variant="outline" data-suggestion=${c.code} ?disabled=${store.busy} @click=${() => this.take(f, c.code)}
+                >${label(c.code)}${c.similar.length > 0 ? ` · ${strings.similarRecords(c.similar.length)}` : ''}</dc-button
+              >`,
+          )}
+          ${withRecords.length > 0
+            ? html`<dc-button
+                size="sm"
+                variant="ghost"
+                data-role="why-suggested"
+                aria-expanded=${open ? 'true' : 'false'}
+                @click=${() => (this.whyOpen = open ? '' : f.name)}
+                >${open ? strings.hideWhySuggested : strings.showWhySuggested}</dc-button
+              >`
+            : nothing}
+        </div>
+        ${open
+          ? html`<ul class="why" aria-label=${strings.suggestedBecause} data-why=${f.name}>
+              ${withRecords.map(
+                (c) =>
+                  html`<li>
+                    <strong>${label(c.code)}</strong>
+                    ${c.similar
+                      .map((id) => this.similarRecord(id))
+                      .filter(Boolean)
+                      .join(', ')}
+                  </li>`,
+              )}
+            </ul>`
+          : nothing}`,
+    }
   }
 
   /** Writes what a person changed in the session being corrected: changed fields only, an emptied one cleared. */
@@ -153,14 +292,16 @@ export class OcSessionForm extends StoreElement {
     if (!filled) return
     const subject = holder.kind === 'subject' ? store.subjects.find((s) => s.id === holder.id) : undefined
     const fields: Record<string, unknown> = { ...(subject ? copiedFromSubject(defs, subject) : {}), ...filled }
+    // Only a value still as it was taken, and still recorded, is from a suggestion.
+    const source = Object.fromEntries([...store.suggested].filter((name) => name in filled).map((name) => [name, 'suggestion']))
     if (holder.kind === 'group') {
       if (this.attendees.length === 0) return store.problem('no-attendees')
       fields.attendees = this.attendees
     }
     await store.run(async () => {
       await (holder.kind === 'subject'
-        ? shell.record('/changes/in-subject', { subjectId: holder.id, type: 'session', fields })
-        : shell.record('/changes/in-group', { groupId: holder.id, type: 'session', fields }))
+        ? shell.record('/changes/in-subject', { subjectId: holder.id, type: 'session', fields, source })
+        : shell.record('/changes/in-group', { groupId: holder.id, type: 'session', fields, source }))
       store.clearDraft()
       this.dispatchEvent(new Event('oc-session-recorded'))
       await store.load()
@@ -177,7 +318,8 @@ export class OcSessionForm extends StoreElement {
       if (f.kind === 'reference') return store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
       return []
     }
-    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, choicesOf())
+    const extras = !this.edit && f.kind === 'coded' ? this.suggestionExtras(f) : {}
+    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, choicesOf(), extras)
   }
 
   render() {
