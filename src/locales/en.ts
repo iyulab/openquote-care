@@ -244,7 +244,7 @@ export const en: Strings = {
   runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · v${version} · all ${total}`,
   comparisonTitle: (earlierVersion: number, laterVersion: number) => `How this run (v${laterVersion}) differs from the earlier run (v${earlierVersion})`,
   comparisonCounts: (late: number, removed: number, revised: number, settled: number, moved: number, unchanged: number) =>
-    `Entered late ${late} · Dropped ${removed} · Classification revised ${revised} · Edit on two devices settled ${settled} · Record edited ${moved} · Unchanged ${unchanged}`,
+    `Entered late ${late} · Dropped ${removed} · Classification revised ${revised}${settled > 0 ? ` · Edit on two devices settled ${settled}` : ''} · Record edited ${moved} · Unchanged ${unchanged}`,
   changeKind: { late: 'Entered late', removed: 'Dropped', revised: 'Classification revised', settled: 'Edit on two devices settled', moved: 'Record edited' },
   changeKindHeader: 'Change',
   noDifference: 'Every record sits in the same place in both runs.',

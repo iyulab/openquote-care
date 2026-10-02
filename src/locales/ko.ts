@@ -247,7 +247,7 @@ export const ko = {
   runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · ${version}판 · 전체 ${total}`,
   comparisonTitle: (earlierVersion: number, laterVersion: number) => `이전 산출(${earlierVersion}판)과 지금 산출(${laterVersion}판)의 차이`,
   comparisonCounts: (late: number, removed: number, revised: number, settled: number, moved: number, unchanged: number) =>
-    `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 동시 수정 정리 ${settled} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
+    `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised}${settled > 0 ? ` · 동시 수정 정리 ${settled}` : ''} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
   changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', settled: '동시 수정 정리', moved: '기록 수정' },
   changeKindHeader: '구분',
   noDifference: '두 산출의 기록이 모두 같은 자리에 있습니다.',
