@@ -15,13 +15,40 @@ export interface FormEntry {
   offered: boolean
 }
 
-/** A report form: which records it counts, and the fields that place them in a month, a row and a column. */
+/** One way a report form places what it counts: a classified field in a scheme version, or a field's own value. */
+export interface Dimension {
+  field: string
+  /** Set for a classified dimension. */
+  scheme: string | null
+  /** The scheme version counted in; null for the version in force. */
+  version: number | null
+  /** True when it reads the field of the subjects a record is about. */
+  ofSubject: boolean
+  /** True when a field holding several values is counted by every one of them. */
+  all: boolean
+}
+
+/** A report form: which records it counts, the field that places them in a period, and its dimensions. */
 export interface ReportEntry extends FormEntry {
   counts: string
   periodField: string
-  rowField: string
-  /** The reference field that splits the columns; null for a form with one column. */
-  columnField: string | null
+  /** The period the form is run over: day, month, year or range. */
+  unit: 'day' | 'month' | 'year' | 'range'
+  dimensions: Dimension[]
+  /** The numbers the form shows. */
+  measures: ('records' | 'people' | 'visits')[]
+  /** True when the form is a classified row and at most one column of the record, by month, unfiltered — the table the report screen lays out. */
+  rowsAndColumn: boolean
+}
+
+/** The field a rows-and-column form's rows are classified by. */
+export function rowFieldOf(form: ReportEntry): string {
+  return form.dimensions[0]?.field ?? ''
+}
+
+/** The field that splits a rows-and-column form's columns; null for a form with one column. */
+export function columnFieldOf(form: ReportEntry): string | null {
+  return form.dimensions[1]?.field ?? null
 }
 
 /**

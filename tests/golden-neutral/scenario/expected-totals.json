@@ -1,5 +1,5 @@
 {
-  "_comment": "Hand-computed. The generator groups sessions.csv and fails if its result disagrees with this file. people = distinct subjects behind the total (a group session counts its attendees). A session with no concern has no row: the engine counts it unmapped.",
+  "_comment": "Hand-computed. The generator groups sessions.csv and fails if its result disagrees with this file. people = distinct subjects behind the total (a group session counts its attendees). A session with no concern has no value to count: the engine lists it as blank, apart from unmapped and from every row.",
   "r1": {
     "month": "2026-03",
     "cells": { "anxiety": { "P1": 2 }, "mood": { "P1": 1 }, "family": { "P2": 1 }, "relationships": { "P2": 1 } },
@@ -8,7 +8,7 @@
   "r2": {
     "month": "2026-04",
     "cells": { "anxiety": { "P1": 1 }, "mood": { "P1": 1 }, "relationships": { "P2": 1 }, "loss": { "P2": 1 }, "study-work": { "P1": 1 } },
-    "unmapped": 1, "total": 6, "people": 6
+    "unmapped": 0, "blank": 1, "total": 6, "people": 6
   },
   "r3": {
     "month": "2026-05",

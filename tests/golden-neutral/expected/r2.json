@@ -1,5 +1,5 @@
 {
-  "format": "openquote.run/0",
+  "format": "openquote.run/1",
   "report": {
     "report": "care.monthly-concern",
     "version": 1
@@ -15,40 +15,50 @@
   },
   "cells": [
     {
-      "row": "anxiety",
-      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "key": [
+        "anxiety",
+        "019ca8a0-3e80-76c3-803d-4630ce8fb902"
+      ],
       "count": 1,
       "records": [
         "019d4660-27c0-7801-b76d-58086dfaafe2"
       ]
     },
     {
-      "row": "loss",
-      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "key": [
+        "loss",
+        "019ca8a4-d260-773b-b9b1-62b3002090b0"
+      ],
       "count": 1,
       "records": [
         "019db0c5-1800-728f-b142-0a704bb4b6a8"
       ]
     },
     {
-      "row": "mood",
-      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "key": [
+        "mood",
+        "019ca8a0-3e80-76c3-803d-4630ce8fb902"
+      ],
       "count": 1,
       "records": [
         "019d68ac-1000-72db-86b5-63b85f789e7f"
       ]
     },
     {
-      "row": "relationships",
-      "column": "019ca8a4-d260-773b-b9b1-62b3002090b0",
+      "key": [
+        "relationships",
+        "019ca8a4-d260-773b-b9b1-62b3002090b0"
+      ],
       "count": 1,
       "records": [
         "019d8cb8-9400-7739-b860-893821ba24cf"
       ]
     },
     {
-      "row": "study-work",
-      "column": "019ca8a0-3e80-76c3-803d-4630ce8fb902",
+      "key": [
+        "study-work",
+        "019ca8a0-3e80-76c3-803d-4630ce8fb902"
+      ],
       "count": 1,
       "records": [
         "019dd4d1-9c00-7d99-a66d-7458a3ec61ba"
@@ -60,16 +70,18 @@
     "records": []
   },
   "unmapped": {
-    "count": 1,
-    "records": [
-      "019d72f8-c800-7f3d-beb0-c2d0def9f466"
-    ]
+    "count": 0,
+    "records": []
   },
   "blank": {
     "count": 1,
     "records": [
       "019d72f8-c800-7f3d-beb0-c2d0def9f466"
     ]
+  },
+  "conflicted": {
+    "count": 0,
+    "records": []
   },
   "total": {
     "count": 6,

@@ -125,8 +125,8 @@ fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
 }
 
 #[tauri::command]
-fn pending(report: String, version: u32, records: Value, app: State<App>) -> CommandResult<Value> {
-    text(app.pending(&report, version, records))
+fn pending(report: String, version: u32, records: Value, to: Option<String>, app: State<App>) -> CommandResult<Value> {
+    text(app.pending(&report, version, records, to.as_deref()))
 }
 
 #[tauri::command]

@@ -286,8 +286,12 @@ public sealed class SidecarTests : IAsyncLifetime
         var report = summary["reports"]!.AsArray().First(r => r!["name"]!.GetValue<string>() == "monthly-topic")!;
         Assert.Equal("session", report["counts"]!.GetValue<string>());
         Assert.Equal("date", report["periodField"]!.GetValue<string>());
-        Assert.Equal("topic", report["rowField"]!.GetValue<string>());
-        Assert.Equal("practitioner", report["columnField"]!.GetValue<string>());
+        Assert.Equal("month", report["unit"]!.GetValue<string>());
+        Assert.Equal(["topic", "practitioner"], report["dimensions"]!.AsArray().Select(d => d!["field"]!.GetValue<string>()));
+        Assert.Equal("topic", report["dimensions"]![0]!["scheme"]!.GetValue<string>());
+        Assert.Null(report["dimensions"]![1]!["scheme"]);
+        Assert.True(report["rowsAndColumn"]!.GetValue<bool>());
+        Assert.Equal(["records", "people"], report["measures"]!.AsArray().Select(m => m!.GetValue<string>()));
     }
 
     [Fact]

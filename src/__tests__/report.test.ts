@@ -66,6 +66,24 @@ describe('layOut', () => {
     expect(t.placed + t.pending.count + t.unmapped.count + t.blank.count).toBe(t.total.count)
     expect(placesOf(withBlank).get('g')).toEqual({ kind: 'blank' })
   })
+  it('reads a format 1 run: cells by key, blank and conflicted records apart from unmapped and every row', () => {
+    const v1: RunRecord = {
+      ...run,
+      format: 'openquote.run/1',
+      cells: run.cells.map((c) => ({ key: [c.row ?? '', c.column ?? null], count: c.count, records: c.records })),
+      blank: { count: 1, records: ['g'] },
+      conflicted: { count: 1, records: ['h'] },
+      total: { count: 8, records: [...run.total.records, 'g', 'h'] },
+    }
+    const t = layOut(v1, [topic], referenceAxis([person('p2', '나'), person('p1', '가')], '(없음)'))
+    expect(t.rows.map((r) => r.total)).toEqual(table.rows.map((r) => r.total))
+    expect(t.columns).toEqual(table.columns)
+    expect(t.unmapped).toEqual(run.unmapped)
+    expect(t.conflicted.records).toEqual(['h'])
+    expect(t.placed + t.pending.count + t.unmapped.count + t.blank.count + t.conflicted.count).toBe(t.total.count)
+    expect(placesOf(v1).get('h')).toEqual({ kind: 'conflicted' })
+    expect(placesOf(v1).get('c')).toEqual({ kind: 'cell', row: 'relation-peer', column: 'p1' })
+  })
 })
 
 describe('headCount', () => {

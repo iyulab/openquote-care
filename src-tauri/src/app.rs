@@ -565,8 +565,8 @@ impl App {
     }
 
     /// The pending records of a report form's run, with the codes each may take.
-    pub fn pending(&self, report: &str, version: u32, records: Value) -> Result<Value, AppError> {
-        self.with_open(|open| Ok(open.engine.pending(report, version, records)?))
+    pub fn pending(&self, report: &str, version: u32, records: Value, to: Option<&str>) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.pending(report, version, records, to)?))
     }
 
     /// Codes suggested for the record being entered.
@@ -1334,7 +1334,7 @@ cut off").unwrap();
             )
             .unwrap();
         let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
-        let split = app.pending("monthly-topic", 2, json!([id])).unwrap();
+        let split = app.pending("monthly-topic", 2, json!([id]), Some("2026-04-30")).unwrap();
         assert_eq!(split[0]["candidates"], json!(["relation-peer", "relation-teacher"]));
         assert!(app.apply_pack(&pack()).unwrap().is_empty(), "the pack the vault started from is already in it");
 

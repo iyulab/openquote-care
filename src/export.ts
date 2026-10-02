@@ -13,6 +13,8 @@ export interface ExportTable {
   pending: string[]
   /** Records whose classified cell was left empty: no code in the form's version. */
   unmapped: string[]
+  /** Records with a cell left empty: its field holds values two devices set without seeing each other. */
+  conflicted: string[]
   /** Columns left empty in every row because they would carry written content (the record's narrative fields). */
   withheld: string[]
 }

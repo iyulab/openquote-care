@@ -177,7 +177,8 @@ export const shell = {
   runs: () => invoke<KeptRun[]>('runs'),
   compareRuns: (earlier: string, later: string) => invoke<Comparison>('compare_runs', { earlier, later }),
   /** Which of a form run's pending records still wait for a person, with the codes each may take. */
-  pending: (report: string, version: number, records: string[]) => invoke<PendingChoice[]>('pending', { report, version, records }),
+  /** `to` is the last day of the run's period: a form counting in the version in force waits in that day's version. */
+  pending: (report: string, version: number, records: string[], to: string) => invoke<PendingChoice[]>('pending', { report, version, records, to }),
   /**
    * Codes suggested for the coded fields a record being entered has no value for, given the values
    * it holds (as they are recorded) and the date it is for; nothing is kept.

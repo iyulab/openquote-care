@@ -1,6 +1,6 @@
 import { html } from 'lit'
 import { labelOfField, type FieldView } from '../fields.js'
-import type { ReportEntry } from '../forms.js'
+import { columnFieldOf, rowFieldOf, type ReportEntry } from '../forms.js'
 import { labelOf, namesOf, newestFirst, text, type Entity } from '../records.js'
 import { placesOf, referenceAxis, rowSchemeOf, type ColumnAxis, type Comparison, type Group, type Place, type RunRecord } from '../report.js'
 import { strings } from '../strings.js'
@@ -29,18 +29,19 @@ export function formOf(store: VaultStore, run: RunRecord): ReportEntry | undefin
  * field refers to — a vault without field definitions — is looked up among every named entity.
  */
 export function columnAxis(store: VaultStore, form: ReportEntry | undefined): ColumnAxis {
-  if (!form?.columnField) return referenceAxis([], strings.reportCount)
+  const columnField = form ? columnFieldOf(form) : null
+  if (!form || !columnField) return referenceAxis([], strings.reportCount)
   const defs = store.fieldsOf(form.counts)
-  const field = defs.find((f) => f.name === form.columnField)
+  const field = defs.find((f) => f.name === columnField)
   const referred = field?.kind === 'reference' ? store.entitiesOf(field.refType) : []
-  const axis = referenceAxis(referred, strings.noValue(labelOfField(defs, form.columnField)), store.names)
+  const axis = referenceAxis(referred, strings.noValue(labelOfField(defs, columnField)), store.names)
   const named = new Map([...store.practitioners, ...store.subjects, ...store.groups].map((e) => [e.id, text(e, 'name')]))
   return { ...axis, label: (id) => named.get(id) ?? axis.label(id) }
 }
 
 /** The row of a form's records with no value in its row field, in words: "(Concern none)". */
 export function blankLabel(store: VaultStore, form: ReportEntry | undefined): string {
-  return strings.noValue(form ? labelOfField(store.fieldsOf(form.counts), form.rowField) : strings.reportRow)
+  return strings.noValue(form ? labelOfField(store.fieldsOf(form.counts), rowFieldOf(form)) : strings.reportRow)
 }
 
 /** The field a form places records in a month by, and how to read it on a record. */
@@ -57,6 +58,7 @@ function placeText(store: VaultStore, run: RunRecord, place: Place | undefined):
   if (place.kind === 'pending') return strings.pending
   if (place.kind === 'unmapped') return strings.unmapped
   if (place.kind === 'blank') return blankLabel(store, formOf(store, run))
+  if (place.kind === 'conflicted') return strings.conflict
   const { scheme, version } = rowSchemeOf(run)
   const row = labelOf(store.schemes, { scheme, version, code: place.row })
   const axis = columnAxis(store, formOf(store, run))
@@ -74,15 +76,16 @@ export function comparisonView(store: VaultStore, c: Comparison) {
     ...c.late.map((id) => ({ id, kind: 'late' as const })),
     ...c.removed.map((id) => ({ id, kind: 'removed' as const })),
     ...c.revised.map((id) => ({ id, kind: 'revised' as const })),
+    ...c.settled.map((id) => ({ id, kind: 'settled' as const })),
     ...c.moved.map((id) => ({ id, kind: 'moved' as const })),
   ]
-  const kinds = ['late', 'removed', 'revised', 'moved'] as const
+  const kinds = ['late', 'removed', 'revised', 'settled', 'moved'] as const
   const period = periodOf(store, formOf(store, c.later))
   const date = (id: string) => (byId.get(id) ? period.of(byId.get(id)!) : '')
   changed.sort((a, b) => date(b.id).localeCompare(date(a.id)) || a.id.localeCompare(b.id))
   return html`<section data-role="comparison">
     <dc-section-heading marker size="lg" heading=${strings.comparisonTitle(c.earlier.report.version, c.later.report.version)}></dc-section-heading>
-    <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.revised.length, c.moved.length, c.unchanged.length)}</p>
+    <p data-role="comparison-counts">${strings.comparisonCounts(c.late.length, c.removed.length, c.revised.length, c.settled.length, c.moved.length, c.unchanged.length)}</p>
     ${changed.length === 0
       ? html`<p class="muted">${strings.noDifference}</p>`
       : html`<dl class="legend" data-role="comparison-legend">
@@ -177,7 +180,7 @@ export function evidenceList(store: VaultStore, run: RunRecord, title: string, g
   const form = formOf(store, run)
   const period = periodOf(store, form)
   const defs = store.fieldsOf(form?.counts ?? 'session')
-  const rowField = form?.rowField ?? ''
+  const rowField = form ? rowFieldOf(form) : ''
   const row = defs.find((f) => f.name === rowField)
   const rows = newestFirst(group.records.map((id) => byId.get(id)).filter((s): s is Entity => !!s))
   return html`<section data-role="evidence">

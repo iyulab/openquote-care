@@ -110,13 +110,13 @@ JsonObject Report(string name, string month)
     var from = Day(month + "-01");
     var to = from.AddMonths(1).AddDays(-1);
     var cells = new SortedDictionary<(string Row, string Column), List<string>>();
-    var unmapped = new List<string>();
+    var blank = new List<string>();
     var people = new Dictionary<string, string[]>();
     foreach (var s in InMonth(month))
     {
         var id = IdOf(s["key"]);
         people[id] = PeopleOf(s);
-        if (s["concern"] == "") { unmapped.Add(id); continue; }
+        if (s["concern"] == "") { blank.Add(id); continue; }
         var key = (s["concern"], IdOf(s["practitioner"]));
         if (!cells.TryGetValue(key, out var list)) cells[key] = list = [];
         list.Add(id);
@@ -134,31 +134,45 @@ JsonObject Report(string name, string month)
         got.TryGetValue(k, out var g);
         if (w != g) problems.Add($"{name}: cell {k.Item1}/{KeyOf(k.Item2)} hand={w} scenario={g}");
     }
-    Expect(name, "unmapped", h["unmapped"]!.GetValue<int>(), unmapped.Count);
+    Expect(name, "unmapped", h["unmapped"]!.GetValue<int>(), 0);
+    Expect(name, "blank", h["blank"]?.GetValue<int>() ?? 0, blank.Count);
     Expect(name, "total", h["total"]!.GetValue<int>(), people.Count);
     Expect(name, "people", h["people"]!.GetValue<int>(), people.Values.SelectMany(p => p).Distinct().Count());
 
+    // A session with no concern has no value to count: it is blank, listed apart from every cell and
+    // from unmapped, which only a format 1 run record does — a run with none stays format 0.
+    var v1 = blank.Count > 0;
     var run = new JsonObject
     {
-        ["format"] = "openquote.run/0",
+        ["format"] = v1 ? "openquote.run/1" : "openquote.run/0",
         ["report"] = new JsonObject { ["report"] = "care.monthly-concern", ["version"] = 1 },
         ["schemes"] = new JsonObject { ["care.concern"] = new JsonObject { ["version"] = 1 } },
         ["period"] = new JsonObject { ["from"] = from.ToString("yyyy-MM-dd", inv), ["to"] = to.ToString("yyyy-MM-dd", inv) },
-        ["cells"] = new JsonArray([.. cells.Select(kv => (JsonNode)new JsonObject
-        {
-            ["row"] = kv.Key.Row,
-            ["column"] = kv.Key.Column,
-            ["count"] = kv.Value.Count,
-            ["records"] = Ids(kv.Value),
-        })]),
+        ["cells"] = new JsonArray([.. cells.Select(kv => (JsonNode)(v1
+            ? new JsonObject
+            {
+                ["key"] = new JsonArray(kv.Key.Row, kv.Key.Column),
+                ["count"] = kv.Value.Count,
+                ["records"] = Ids(kv.Value),
+            }
+            : new JsonObject
+            {
+                ["row"] = kv.Key.Row,
+                ["column"] = kv.Key.Column,
+                ["count"] = kv.Value.Count,
+                ["records"] = Ids(kv.Value),
+            }))]),
         ["pending"] = Set([]),
-        ["unmapped"] = Set(unmapped),
+        ["unmapped"] = Set([]),
         ["total"] = Set([.. people.Keys]),
         ["people"] = new JsonObject(people.OrderBy(kv => kv.Key, StringComparer.Ordinal)
             .Select(kv => KeyValuePair.Create(kv.Key, (JsonNode?)Ids(kv.Value)))),
     };
-    // A session with no concern is unmapped and, since its row field is empty, also listed as blank.
-    if (unmapped.Count > 0) run.Insert(run.IndexOf("total"), "blank", Set(unmapped));
+    if (v1)
+    {
+        run.Insert(run.IndexOf("total"), "blank", Set(blank));
+        run.Insert(run.IndexOf("total"), "conflicted", Set([]));
+    }
     return run;
 }
 

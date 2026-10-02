@@ -82,7 +82,7 @@ public partial class NeutralGoldenVaultTests
         var run = Run(Content(), 4);
         var none = Vault.IdOf("S08");
 
-        Assert.Equal([none], run.Unmapped);
+        Assert.Empty(run.Unmapped); // no value to count is not a gap in the crosswalks
         Assert.Equal([none], run.Blank);
         Assert.DoesNotContain(none, run.Cells.SelectMany(c => c.Records));
         Assert.Contains(none, run.Total);

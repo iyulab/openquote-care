@@ -66,7 +66,7 @@ export class OcReport extends VaultScreen {
     const byId = new Map(this.store.sessions.map((s) => [s.id, s]))
     await this.store.run(async () => {
       // The engine says which records still wait and for which codes — the screen never carries values itself.
-      const waiting = await shell.pending(result.report.report, result.report.version, result.pending.records)
+      const waiting = await shell.pending(result.report.report, result.report.version, result.pending.records, result.period.to)
       this.evidence = undefined
       this.comparison = undefined
       this.pendingChoices = waiting
@@ -152,7 +152,7 @@ export class OcReport extends VaultScreen {
       const n = records.length === 0 ? null : headCount(result, records)
       return n === null ? nothing : html`<span class="people" data-role="people">${strings.headCount(n)}</span>`
     }
-    const metric = (group: 'pending' | 'unmapped' | 'blank' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' | '2' = '') => {
+    const metric = (group: 'pending' | 'unmapped' | 'blank' | 'conflicted' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' | '2' = '') => {
       const n = g.records.length === 0 ? null : headCount(result, g.records)
       return html`<dc-metric data-group=${group} label=${label} value=${String(g.count)} unit=${strings.countUnit} accent=${accent}>
         ${n === null ? nothing : html`<span data-role="people">${strings.headCount(n)}</span>`}
@@ -173,11 +173,13 @@ export class OcReport extends VaultScreen {
         ${metric('pending', strings.pending, table.pending, () => void this.showPending(result))}
         ${metric('unmapped', strings.unmapped, table.unmapped, () => void this.showEvidence(strings.unmapped, table.unmapped))}
         ${table.blank.count === 0 ? nothing : metric('blank', blankLabel(store, formOf(store, result)), table.blank, () => void this.showEvidence(blankLabel(store, formOf(store, result)), table.blank))}
+        ${table.conflicted.count === 0 ? nothing : metric('conflicted', strings.conflict, table.conflicted, () => void this.showEvidence(strings.conflict, table.conflicted))}
       </div>
       <dl class="legend">
         ${table.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
         ${table.unmapped.count > 0 ? html`<div><dt>${strings.unmapped}</dt><dd>${strings.unmappedHint}</dd></div>` : nothing}
         ${table.blank.count > 0 ? html`<div><dt>${blankLabel(store, formOf(store, result))}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
+        ${table.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
       </dl>
       <section>
         <dc-section-heading marker size="lg" heading=${title}></dc-section-heading>

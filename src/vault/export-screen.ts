@@ -197,10 +197,10 @@ export class OcExport extends VaultScreen {
   }
 
   private tableView(table: ExportTable) {
-    const gaps = table.pending.length + table.unmapped.length
+    const gaps = table.pending.length + table.unmapped.length + table.conflicted.length
     return html`
       <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
-      ${gaps > 0 ? html`<dc-callout variant="warning" data-role="export-gaps"><p>${strings.exportGaps(table.pending.length, table.unmapped.length)}</p></dc-callout>` : nothing}
+      ${gaps > 0 ? html`<dc-callout variant="warning" data-role="export-gaps"><p>${strings.exportGaps(table.pending.length, table.unmapped.length, table.conflicted.length)}</p></dc-callout>` : nothing}
       ${table.withheld.length > 0 ? html`<p class="muted" data-role="export-withheld">${strings.exportWithheld(table.withheld)}</p>` : nothing}
       ${table.rows.length === 0
         ? html`<p class="muted">${strings.exportEmpty}</p>`

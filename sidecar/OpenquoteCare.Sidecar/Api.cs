@@ -43,7 +43,9 @@ public sealed record UpdateRequest(string Type, string Id, Dictionary<string, Js
 public sealed record ReclassifyRequest(string Type, string Id, string Field, CodedValue Value);
 
 /// <summary>The pending records of a run of a report form, by id.</summary>
-public sealed record PendingRequest(string Report, int Version, IReadOnlyList<string> Records);
+/// <param name="To">The last day of the period the run covered (<c>YYYY-MM-DD</c>): a form counting in the
+/// version in force waits in the version in force that day. Today when left out.</param>
+public sealed record PendingRequest(string Report, int Version, IReadOnlyList<string> Records, string? To = null);
 
 public sealed record CompareRequest(string Earlier, string Later);
 
@@ -106,18 +108,31 @@ public sealed record ExportTableView(
     IReadOnlyList<ExportRowView> Rows,
     IReadOnlyList<string> Pending,
     IReadOnlyList<string> Unmapped,
+    IReadOnlyList<string> Conflicted,
     IReadOnlyList<string> Withheld);
 
+/// <summary>
+/// One way a report form places what it counts. <c>Scheme</c> and <c>Version</c> are set for a
+/// classified dimension; <c>Version</c> is null when it counts in the version in force.
+/// </summary>
+public sealed record DimensionView(string Field, string? Scheme, int? Version, bool OfSubject, bool All);
+
 /// <param name="Label">What people call the form, in the vault's locale.</param>
-/// <param name="Offered">False when its rows or columns read a field the vault's packs hide: the form is not offered.</param>
+/// <param name="Unit">The period the form is run over: <c>day</c>, <c>month</c>, <c>year</c> or <c>range</c>.</param>
+/// <param name="Dimensions">The dimensions a cell's key is made of, in key order.</param>
+/// <param name="Measures">The numbers the form shows: <c>records</c>, <c>people</c>, <c>visits</c>.</param>
+/// <param name="RowsAndColumn">True when the form is a classified row and at most one column of the record, by month, unfiltered — the table this screen lays out.</param>
+/// <param name="Offered">False when a dimension or filter reads a field the vault's packs hide, or the screen cannot lay the form out: the form is not offered.</param>
 public sealed record ReportView(
     string Name,
     int Version,
     string Label,
     string Counts,
     string PeriodField,
-    string RowField,
-    string? ColumnField,
+    string Unit,
+    IReadOnlyList<DimensionView> Dimensions,
+    IReadOnlyList<string> Measures,
+    bool RowsAndColumn,
     IReadOnlyList<SchemeLagView> Behind,
     bool Offered);
 
@@ -179,6 +194,7 @@ public sealed record ComparisonView(
     IReadOnlyList<string> Late,
     IReadOnlyList<string> Removed,
     IReadOnlyList<string> Revised,
+    IReadOnlyList<string> Settled,
     IReadOnlyList<string> Moved,
     IReadOnlyList<string> Unchanged);
 
@@ -292,7 +308,7 @@ internal static class Api
                 return Results.UnprocessableEntity(new ErrorView(e.Message));
             }
             return Results.Ok(new ComparisonView(
-                RunView(earlier), RunView(later), diff.Late, diff.Removed, diff.Revised, diff.Moved, diff.Unchanged));
+                RunView(earlier), RunView(later), diff.Late, diff.Removed, diff.Revised, diff.Settled, diff.Moved, diff.Unchanged));
         });
 
         app.MapPost("/changes/subject", (CreateSubjectRequest request) =>
@@ -340,20 +356,27 @@ internal static class Api
         });
 
         // Where each pending record of a form's run waits, by the engine's own rule — the screen
-        // never carries values itself. A record no longer pending (chosen since) is left out.
+        // never carries values itself. A record waits in the first classified dimension of the
+        // record that is pending for it; one no longer pending (chosen since) is left out.
         app.MapPost("/reports/pending", (PendingRequest request, VaultSession session) =>
         {
             var snapshot = session.Current;
             var report = snapshot.Content.Reports.SingleOrDefault(r => r.Name == request.Report && r.Version == request.Version);
             if (report is null) return Results.NotFound();
             var catalog = snapshot.Content.Catalog();
+            var to = request.To is { } day ? DateOnly.ParseExact(day, "yyyy-MM-dd", CultureInfo.InvariantCulture) : DateOnly.FromDateTime(DateTime.Today);
+            if (report.For(to, catalog) is not { } form) return Results.Ok(Array.Empty<PendingView>());
+            var classified = form.Dimensions.Where(d => d.Classified && !d.OfSubject).ToArray();
             return Results.Ok(request.Records
                 .Select(id => snapshot.Entities.GetValueOrDefault(new EntityRef(report.Counts, id)))
                 .OfType<Entity>()
-                .Select(e => (Entity: e, Resolution: e.Classify(report.RowField, report.RowScheme, report.RowVersion, catalog)))
-                .Where(x => x.Resolution.Kind == ResolutionKind.Pending)
-                .Select(x => new PendingView(x.Entity.Reference.Id, report.RowField, report.RowScheme, report.RowVersion,
-                    x.Entity.LatestValue(report.RowField, v => CodedValue.From(v) is { } c && c.Scheme == report.RowScheme && c.Version <= report.RowVersion),
+                .Select(e => classified
+                    .Select(d => (Entity: e, Dimension: d, Resolution: e.Classify(d.Field, d.Scheme!, d.Version!.Value, catalog)))
+                    .FirstOrDefault(x => x.Resolution.Kind == ResolutionKind.Pending))
+                .Where(x => x.Entity is not null)
+                .Select(x => new PendingView(x.Entity.Reference.Id, x.Dimension.Field, x.Dimension.Scheme!, x.Dimension.Version!.Value,
+                    x.Entity.LatestValue(x.Dimension.Field, v => CodedValues.From(v) is { } c
+                        && c.Values.Any(value => catalog.Reaches(value, x.Dimension.Scheme!, x.Dimension.Version!.Value))),
                     x.Resolution.Candidates))
                 .ToArray());
         });
@@ -392,6 +415,7 @@ internal static class Api
                 [.. table.Rows.Select(r => new ExportRowView(r.Record, r.Cells))],
                 table.Pending,
                 table.Unmapped,
+                table.Conflicted,
                 table.Withheld));
         });
     }
@@ -411,9 +435,13 @@ internal static class Api
             s.Entities.Count,
             s.Entities.Values.Count(e => e.Conflicts.Count > 0),
             [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version,
-                s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.PeriodField, r.RowField, r.ColumnField,
-                Behind([(r.RowScheme, r.RowVersion)], latest),
-                !Hidden(s.Fields, r.Counts, r.RowField) && !Hidden(s.Fields, r.Counts, r.ColumnField)))],
+                s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit),
+                [.. r.Dimensions.Select(d => new DimensionView(d.Field, d.Scheme, d.Version, d.OfSubject, d.All))],
+                [.. r.Measures.Select(m => m.ToString().ToLowerInvariant())],
+                r.RowsAndColumn,
+                Behind(r.Schemes.Where(x => r.VersionOf(x) is not null).Select(x => (x, r.VersionOf(x)!.Value)), latest),
+                r.RowsAndColumn
+                    && !r.Dimensions.Concat(r.Filters.Select(f => f.On)).Any(d => Hidden(s.Fields, d.OfSubject ? "subject" : r.Counts, d.Field))))],
             [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version,
                 s.Labels.ExportLabel(e.Name, e.Version, s.Locales) ?? e.Label, e.Rows, e.PeriodField,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest),
@@ -431,6 +459,14 @@ internal static class Api
     }
 
     // A form standing on a field the packs hide is not offered: hiding a field hides what is built on it.
+    private static string UnitOf(PeriodUnit unit) => unit switch
+    {
+        PeriodUnit.Day => "day",
+        PeriodUnit.Year => "year",
+        PeriodUnit.Range => "range",
+        _ => "month",
+    };
+
     private static bool Hidden(FieldCatalog fields, string type, string? field) =>
         field is not null && fields.Find(type, field) is { Hidden: true };
 

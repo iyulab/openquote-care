@@ -159,9 +159,10 @@ impl Engine {
 
     /// The records among `records` that wait for a person in a run of the report form: for each,
     /// the field and value the form carries and the codes to choose from. Records no longer
-    /// pending are left out.
-    pub fn pending(&self, report: &str, version: u32, records: Value) -> Result<Value, EngineError> {
-        self.call("POST", "/reports/pending", Some(json!({ "report": report, "version": version, "records": records })))
+    /// pending are left out. `to` is the last day of the run's period (`YYYY-MM-DD`): a form
+    /// counting in the version in force waits in the version in force that day.
+    pub fn pending(&self, report: &str, version: u32, records: Value, to: Option<&str>) -> Result<Value, EngineError> {
+        self.call("POST", "/reports/pending", Some(json!({ "report": report, "version": version, "records": records, "to": to })))
     }
 
     /// Codes suggested for the coded fields a record of `entity_type` being entered for `date`

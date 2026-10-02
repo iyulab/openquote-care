@@ -13,6 +13,7 @@ const table: ExportTable = {
   ],
   pending: [],
   unmapped: [],
+  conflicted: [],
   withheld: [],
 }
 

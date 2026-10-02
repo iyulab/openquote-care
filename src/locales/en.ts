@@ -210,8 +210,8 @@ export const en: Strings = {
   },
   exportWithheld: (columns: string[]) =>
     `The ${columns.join(', ')} ${columns.length === 1 ? 'column is' : 'columns are'} left empty because ${columns.length === 1 ? 'it holds' : 'they hold'} session content. Content does not leave the app.`,
-  exportGaps: (pending: number, unmapped: number) =>
-    `Some rows have an empty category — ${pending} awaiting reclassification, ${unmapped} not in this form's classification version. Settle those awaiting in the monthly report; if the classification was revised, use the new version of the list form.`,
+  exportGaps: (pending: number, unmapped: number, conflicted: number) =>
+    `Some rows have empty cells — ${pending} awaiting reclassification, ${unmapped} not in this form's classification version, ${conflicted} edited on two devices. Settle those awaiting in the monthly report, and choose the right value on a record edited on two devices; if the classification was revised, use the new version of the list form.`,
   noExports: 'This vault has no list forms. Applying a data pack adds them.',
   countUnit: 'records',
   metricPeople: 'People',
@@ -226,6 +226,7 @@ export const en: Strings = {
   unmapped: 'Not mapped',
   unmappedHint: 'Records in an old category that the crosswalk does not carry forward. Check the classification material.',
   blankHint: 'Recorded with this left empty. Counted in the total, in no row.',
+  conflictedHint: 'Changed on two devices without seeing each other. Choose the right value on the record and it is counted in a row. Counted in the total.',
   grandTotal: 'All',
   evidence: (what: string, n: number) => `${what} — ${plural(n, 'record')} behind it`,
   evidenceSubject: 'Client',
@@ -242,15 +243,16 @@ export const en: Strings = {
   noEarlierRun: 'There is no earlier run of this form and period.',
   runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · v${version} · all ${total}`,
   comparisonTitle: (earlierVersion: number, laterVersion: number) => `How this run (v${laterVersion}) differs from the earlier run (v${earlierVersion})`,
-  comparisonCounts: (late: number, removed: number, revised: number, moved: number, unchanged: number) =>
-    `Entered late ${late} · Dropped ${removed} · Classification revised ${revised} · Record edited ${moved} · Unchanged ${unchanged}`,
-  changeKind: { late: 'Entered late', removed: 'Dropped', revised: 'Classification revised', moved: 'Record edited' },
+  comparisonCounts: (late: number, removed: number, revised: number, settled: number, moved: number, unchanged: number) =>
+    `Entered late ${late} · Dropped ${removed} · Classification revised ${revised} · Edit on two devices settled ${settled} · Record edited ${moved} · Unchanged ${unchanged}`,
+  changeKind: { late: 'Entered late', removed: 'Dropped', revised: 'Classification revised', settled: 'Edit on two devices settled', moved: 'Record edited' },
   changeKindHeader: 'Change',
   noDifference: 'Every record sits in the same place in both runs.',
   changeKindHint: {
     late: 'Recorded after the earlier run.',
     removed: 'Deleted after the earlier run, or no longer in the period.',
     revised: 'The record is unchanged; the crosswalk of a classification revision moved it.',
+    settled: 'A field changed on two devices without seeing each other was settled by a person, so the record found its place.',
     moved: 'A person edited the category or practitioner of the record, so it moved.',
   },
   before: 'Earlier',

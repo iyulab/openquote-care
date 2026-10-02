@@ -3,18 +3,36 @@
 import { nameCollator } from './collation.js'
 import { choices, text, type Entity, type Scheme } from './records.js'
 
+/**
+ * One cell of a run record: a format 0 record names its `row` and `column`; a format 1 record its
+ * `key`, one place per dimension of the form — for a rows-and-column form, the row and the column.
+ */
+export interface RunCell {
+  row?: string
+  column?: string | null
+  key?: (string | null)[]
+  count: number
+  records: string[]
+}
+
 /** The run record the engine keeps in the vault for every report it produces. */
 export interface RunRecord {
   id: string
   at: string
+  format?: string
   report: { report: string; version: number }
   schemes: Record<string, { version: number; crosswalks: string[] }>
   period: { from: string; to: string }
-  cells: { row: string; column: string | null; count: number; records: string[] }[]
+  cells: RunCell[]
   pending: Group
   unmapped: Group
-  /** The unmapped records with no value in the row field (each is also in `unmapped`). Absent from runs that had none. */
+  /**
+   * Records with no value in the row field. A format 0 record lists them inside `unmapped` too
+   * (absent when it had none); a format 1 record lists them apart from it, always.
+   */
   blank?: Group
+  /** Records a field the form places by holds values for that two devices set without seeing each other. Format 1 only. */
+  conflicted?: Group
   total: Group
   /** For every record in the total, the subjects it is about. Absent from runs kept before people were counted. */
   people?: Record<string, string[]>
@@ -78,10 +96,18 @@ export interface Table {
   unmapped: Group
   /** Records with no value in the row field. */
   blank: Group
+  /** Records a field the form places by holds values for that two devices set without seeing each other: in no row until a person picks one. */
+  conflicted: Group
   total: Group
 }
 
 const EMPTY: Group = { count: 0, records: [] }
+
+/** A cell's row and column, whichever format the run record is in. */
+export function rowAndColumn(cell: RunCell): { row: string; column: string | null } {
+  if (cell.key) return { row: cell.key[0] ?? '', column: cell.key[1] ?? null }
+  return { row: cell.row ?? '', column: cell.column ?? null }
+}
 
 /**
  * Lays out a run: every row the report's scheme version offers, in the scheme's order (a row
@@ -92,18 +118,19 @@ export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Tab
   const scheme = schemes.find((s) => s.scheme === rowScheme && s.version === version)
   const rowChoices = scheme ? choices(scheme).filter((c) => !c.disabled) : []
   const known = new Set(rowChoices.map((c) => c.value))
-  const extraRows = [...new Set(run.cells.map((c) => c.row).filter((r) => !known.has(r)))]
+  const cells = run.cells.map((c) => ({ ...rowAndColumn(c), count: c.count, records: c.records }))
+  const extraRows = [...new Set(cells.map((c) => c.row).filter((r) => !known.has(r)))]
   const rowList = [...rowChoices.map((c) => ({ code: c.value, label: c.label })), ...extraRows.map((r) => ({ code: r, label: r }))]
 
   const columns: Column[] = [...axis.known]
-  for (const cell of run.cells) {
+  for (const cell of cells) {
     if (!columns.some((c) => c.id === cell.column)) {
       columns.push({ id: cell.column, label: cell.column === null ? axis.none : axis.label(cell.column) })
     }
   }
 
   const cellAt = (row: string, column: string | null): Group => {
-    const cell = run.cells.find((c) => c.row === row && c.column === column)
+    const cell = cells.find((c) => c.row === row && c.column === column)
     return cell ? { count: cell.count, records: cell.records } : EMPTY
   }
   const rows = rowList.map(({ code, label }) => {
@@ -111,7 +138,7 @@ export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Tab
     return { code, label, cells, total: cells.reduce((n, c) => n + c.count, 0), records: cells.flatMap((c) => c.records) }
   })
   const columnTotals = columns.map((_, i) => rows.reduce((n, r) => n + r.cells[i].count, 0))
-  // A run lists its blank records inside unmapped too; the table keeps the two groups apart.
+  // A format 0 run lists its blank records inside unmapped too; the table keeps the two groups apart.
   const blank = run.blank ?? EMPTY
   const isBlank = new Set(blank.records)
   const unmapped = run.unmapped.records.filter((id) => !isBlank.has(id))
@@ -125,6 +152,7 @@ export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Tab
     pending: run.pending,
     unmapped: { count: unmapped.length, records: unmapped },
     blank,
+    conflicted: run.conflicted ?? EMPTY,
     total: run.total,
   }
 }
@@ -155,20 +183,28 @@ export interface Comparison {
   late: string[]
   removed: string[]
   revised: string[]
+  /** Conflicted in the earlier run and placed in the later one: a person picked a value. */
+  settled: string[]
   moved: string[]
   unchanged: string[]
 }
 
 /** Where a run put one record. */
-export type Place = { kind: 'cell'; row: string; column: string | null } | { kind: 'pending' } | { kind: 'unmapped' } | { kind: 'blank' }
+export type Place =
+  | { kind: 'cell'; row: string; column: string | null }
+  | { kind: 'pending' }
+  | { kind: 'unmapped' }
+  | { kind: 'blank' }
+  | { kind: 'conflicted' }
 
 /** Every record of a run, with where the run put it. */
 export function placesOf(run: RunRecord): Map<string, Place> {
   const places = new Map<string, Place>()
-  for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', row: cell.row, column: cell.column })
+  for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', ...rowAndColumn(cell) })
   for (const id of run.pending.records) places.set(id, { kind: 'pending' })
   for (const id of run.unmapped.records) places.set(id, { kind: 'unmapped' })
   for (const id of run.blank?.records ?? []) places.set(id, { kind: 'blank' })
+  for (const id of run.conflicted?.records ?? []) places.set(id, { kind: 'conflicted' })
   return places
 }
 

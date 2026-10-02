@@ -214,8 +214,8 @@ export const ko = {
       ].join('\n'),
   },
   exportWithheld: (columns: string[]) => `${columns.join(', ')} 열은 상담 내용을 담는 칸이라 비워 두었습니다. 내용은 앱 밖으로 옮기지 않습니다.`,
-  exportGaps: (pending: number, unmapped: number) =>
-    `분류 칸을 비운 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 판에 없음 ${unmapped}건. 대기는 월 보고에서 고르고, 분류가 개정되었다면 새 판의 목록 양식을 쓰세요.`,
+  exportGaps: (pending: number, unmapped: number, conflicted: number) =>
+    `비운 칸이 있는 행이 있습니다 — 재분류 대기 ${pending}건, 이 양식의 분류 판에 없음 ${unmapped}건, 동시 수정 ${conflicted}건. 대기는 월 보고에서 고르고, 동시 수정은 그 기록에서 맞는 값을 고르세요. 분류가 개정되었다면 새 판의 목록 양식을 쓰세요.`,
   noExports: '이 기록 폴더에는 목록 양식이 없습니다. 분류 자료를 적용하면 생깁니다.',
   countUnit: '건',
   metricPeople: '인원',
@@ -230,6 +230,7 @@ export const ko = {
   unmapped: '연계 없음',
   unmappedHint: '분류 대응표에 없는 옛 분류의 기록입니다. 분류 자료를 확인하세요.',
   blankHint: '이 칸을 비워 두고 기록했습니다. 전체에는 들고, 어느 줄에도 들지 않습니다.',
+  conflictedHint: '두 기기에서 서로 모르게 고친 기록입니다. 그 기록에서 맞는 값을 고르면 줄에 들어갑니다. 전체에는 듭니다.',
   grandTotal: '전체',
   evidence: (what: string, n: number) => `${what} — 근거 기록 ${n}건`,
   evidenceSubject: '대상자',
@@ -245,15 +246,16 @@ export const ko = {
   noEarlierRun: '같은 양식·기간의 이전 산출 기록이 없습니다.',
   runOption: (at: string, version: number, total: number) => `${at.slice(0, 16).replace('T', ' ')} · ${version}판 · 전체 ${total}`,
   comparisonTitle: (earlierVersion: number, laterVersion: number) => `이전 산출(${earlierVersion}판)과 지금 산출(${laterVersion}판)의 차이`,
-  comparisonCounts: (late: number, removed: number, revised: number, moved: number, unchanged: number) =>
-    `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
-  changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', moved: '기록 수정' },
+  comparisonCounts: (late: number, removed: number, revised: number, settled: number, moved: number, unchanged: number) =>
+    `늦게 입력 ${late} · 빠짐 ${removed} · 분류 개정 ${revised} · 동시 수정 정리 ${settled} · 기록 수정 ${moved} · 그대로 ${unchanged}`,
+  changeKind: { late: '늦게 입력', removed: '빠짐', revised: '분류 개정', settled: '동시 수정 정리', moved: '기록 수정' },
   changeKindHeader: '구분',
   noDifference: '두 산출의 기록이 모두 같은 자리에 있습니다.',
   changeKindHint: {
     late: '이전 산출 뒤에 입력된 기록입니다.',
     removed: '이전 산출 뒤에 지워졌거나 기간에서 벗어난 기록입니다.',
     revised: '기록은 그대로이고, 분류 개정의 대응표가 새 자리로 옮겼습니다.',
+    settled: '두 기기에서 서로 모르게 고친 칸을 사람이 정리해 자리를 찾았습니다.',
     moved: '기록의 분류나 담당자를 사람이 고쳐 자리가 바뀌었습니다.',
   },
   before: '이전',
