@@ -55,7 +55,7 @@ public sealed record CompareRequest(string Earlier, string Later);
 /// <param name="To">The last day of the period (<c>YYYY-MM-DD</c>), when the run covers exactly the days given.</param>
 public sealed record RunRequest(string Report, int Version, string From, string? To = null);
 
-/// <summary>An export form laid out over the days from <paramref name="From"/> to <paramref name="To"/> (<c>YYYY-MM-DD</c>): a month, a school year, any stretch.</summary>
+/// <summary>An export form laid out over the days from <paramref name="From"/> to <paramref name="To"/> (<c>YYYY-MM-DD</c>): a month, a year from any month, any stretch.</summary>
 public sealed record ExportRequest(string Export, int Version, string From, string To);
 
 /// <summary>A scheme and the date a value is entered for.</summary>
@@ -127,7 +127,7 @@ public sealed record FilterView(string Field, string? Scheme, int? Version, bool
 
 /// <param name="Label">What people call the form, in the vault's locale.</param>
 /// <param name="Unit">The period the form is run over: <c>day</c>, <c>month</c>, <c>year</c> or <c>range</c>.</param>
-/// <param name="StartMonth">The month a year starts in (1–12): 3 for a school year from March. 1 for every other unit.</param>
+/// <param name="StartMonth">The month a year starts in (1–12), such as 3 for a year from March. 1 for every other unit.</param>
 /// <param name="Dimensions">The dimensions a cell's key is made of, in key order.</param>
 /// <param name="Measures">The numbers the form shows: <c>records</c>, <c>people</c>, <c>visits</c>.</param>
 /// <param name="Filters">The conditions every record the form counts meets.</param>

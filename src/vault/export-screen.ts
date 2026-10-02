@@ -14,7 +14,7 @@ import { VaultScreen } from './screen.js'
 /** The list entry for the copy of every record that reads without the app, beside the forms. */
 const PLAIN_COPY = 'plain-copy'
 
-/** A period's records laid out as an export form's rows — a month, or any days such as a school year — to copy into another system; or every record, to read without the app. */
+/** A period's records laid out as an export form's rows — a month, or any days such as a year from March — to copy into another system; or every record, to read without the app. */
 @customElement('oc-export')
 export class OcExport extends VaultScreen {
   @state() private exportTable?: ExportTable
