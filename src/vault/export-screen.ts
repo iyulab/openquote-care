@@ -7,14 +7,14 @@ import { storeCopy, storedCopy, type LastCopy } from '../last-copy.js'
 import { plainCopy } from '../plain-copy.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, deviceLabel, formBehind, listDetail, noticeLine, periodFields } from './parts.js'
+import { applyPackButton, deviceLabel, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
 /** The list entry for the copy of every record that reads without the app, beside the forms. */
 const PLAIN_COPY = 'plain-copy'
 
-/** A month's records laid out as an export form's rows, to copy into another system; or every record, to read without the app. */
+/** A period's records laid out as an export form's rows — a month, or any days such as a school year — to copy into another system; or every record, to read without the app. */
 @customElement('oc-export')
 export class OcExport extends VaultScreen {
   @state() private exportTable?: ExportTable
@@ -27,6 +27,8 @@ export class OcExport extends VaultScreen {
   /** The last copy this computer made of the vault, and how many changes the records have now. */
   @state() private lastCopy: LastCopy | null = null
   @state() private changesNow?: number
+  /** The rows cover any days a person picks rather than a month. */
+  @state() private byRange = false
 
   /** Every change the records a copy holds were built from: subjects, sessions, groups and practitioners. */
   private async changes() {
@@ -47,9 +49,18 @@ export class OcExport extends VaultScreen {
     const store = this.store
     const [name, version] = store.exportKey.split('@')
     if (!name) return
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const month = `${store.year}-${pad(store.month)}`
+    const [from, to] = this.byRange
+      ? [store.rangeFrom, store.rangeTo]
+      : [`${month}-01`, `${month}-${pad(new Date(store.year, store.month, 0).getDate())}`]
+    if (!from || !to || to < from) {
+      store.set({ error: { text: strings.rangeMissing } })
+      return
+    }
     store.set({ notice: '' })
     await store.run(async () => {
-      this.exportTable = await shell.runExport(name, Number(version), store.year, store.month)
+      this.exportTable = await shell.runExport(name, Number(version), from, to)
     })
   }
 
@@ -184,7 +195,15 @@ export class OcExport extends VaultScreen {
     const table = this.exportTable
     return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${title} description=${strings.exportLead}>
         <div slot="actions" class="row">
-          ${periodFields(store)}
+          <dc-segmented-control
+            size="sm"
+            aria-label=${strings.periodKind}
+            .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
+            .value=${this.byRange ? 'range' : 'month'}
+            ?disabled=${busy}
+            @change=${(e: Event) => (this.byRange = (e.target as HTMLInputElement).value === 'range')}
+          ></dc-segmented-control>
+          ${this.byRange ? rangeFields(store) : periodFields(store)}
           <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
           ${table && table.rows.length > 0
             ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`

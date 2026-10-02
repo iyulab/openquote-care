@@ -55,7 +55,8 @@ public sealed record CompareRequest(string Earlier, string Later);
 /// <param name="To">The last day of the period (<c>YYYY-MM-DD</c>), when the run covers exactly the days given.</param>
 public sealed record RunRequest(string Report, int Version, string From, string? To = null);
 
-public sealed record ExportRequest(string Export, int Version, int Year, int Month);
+/// <summary>An export form laid out over the days from <paramref name="From"/> to <paramref name="To"/> (<c>YYYY-MM-DD</c>): a month, a school year, any stretch.</summary>
+public sealed record ExportRequest(string Export, int Version, string From, string To);
 
 /// <summary>A scheme and the date a value is entered for.</summary>
 public sealed record InForceRequest(string Scheme, DateOnly Date);
@@ -436,8 +437,10 @@ internal static class Api
             var snapshot = session.Current;
             var export = snapshot.Content.Exports.SingleOrDefault(e => e.Name == request.Export && e.Version == request.Version);
             if (export is null) return Results.NotFound();
-            var from = new DateOnly(request.Year, request.Month, 1);
-            var table = ExportRunner.Run(export, from, from.AddMonths(1).AddDays(-1), snapshot.Entities.Values, snapshot.Content.Catalog(),
+            if (!DateOnly.TryParseExact(request.From, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var from)
+                || !DateOnly.TryParseExact(request.To, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var to) || to < from)
+                return Results.BadRequest();
+            var table = ExportRunner.Run(export, from, to, snapshot.Entities.Values, snapshot.Content.Catalog(),
                 snapshot.Content.FieldCatalog());
             return Results.Ok(new ExportTableView(
                 export.Name,

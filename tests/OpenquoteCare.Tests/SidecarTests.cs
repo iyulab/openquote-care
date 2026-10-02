@@ -245,7 +245,7 @@ public sealed class SidecarTests : IAsyncLifetime
         var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
 
         Assert.Equal("Sessions by topic", summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "monthly-topic")!["label"]!.GetValue<string>());
-        var table = await Post("/exports/run", new { export = "plain", version = 1, year = 2026, month = 3 });
+        var table = await Post("/exports/run", new { export = "plain", version = 1, from = "2026-03-01", to = "2026-03-31" });
         Assert.Equal(["Day", "Practitioner"], table["columns"]!.AsArray().Select(c => c!.GetValue<string>()));
     }
 
@@ -552,7 +552,7 @@ public sealed class SidecarTests : IAsyncLifetime
         var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1).Append(exportFile)));
         Assert.Equal("list", summary["exports"]!.AsArray().Single()!["name"]!.GetValue<string>());
 
-        var table = await Post("/exports/run", new { export = "list", version = 1, year = 2026, month = 4 });
+        var table = await Post("/exports/run", new { export = "list", version = 1, from = "2026-04-01", to = "2026-04-30" });
 
         Assert.Equal(["date", "people", "topic"], table["columns"]!.AsArray().Select(c => c!.GetValue<string>()));
         var rows = table["rows"]!.AsArray();

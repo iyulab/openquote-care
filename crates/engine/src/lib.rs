@@ -193,9 +193,9 @@ impl Engine {
         PlainFile::from_wire(&self.call("POST", path, Some(request))?)
     }
 
-    /// Lays one month's records out as an export form's rows. Nothing is kept in the vault.
-    pub fn run_export(&self, export: &str, version: u32, year: i32, month: u32) -> Result<Value, EngineError> {
-        self.call("POST", "/exports/run", Some(json!({ "export": export, "version": version, "year": year, "month": month })))
+    /// Lays the records from `from` to `to` (`YYYY-MM-DD`) out as an export form's rows. Nothing is kept in the vault.
+    pub fn run_export(&self, export: &str, version: u32, from: &str, to: &str) -> Result<Value, EngineError> {
+        self.call("POST", "/exports/run", Some(json!({ "export": export, "version": version, "from": from, "to": to })))
     }
 
     /// Runs a report form from `from` (`YYYY-MM-DD`) to `to`, or — without `to` — over the period of

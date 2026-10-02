@@ -254,8 +254,8 @@ fn schemes(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
-fn run_export(export: String, version: u32, year: i32, month: u32, app: State<App>) -> CommandResult<Value> {
-    text(app.run_export(&export, version, year, month))
+fn run_export(export: String, version: u32, from: String, to: String, app: State<App>) -> CommandResult<Value> {
+    text(app.run_export(&export, version, &from, &to))
 }
 
 #[tauri::command]

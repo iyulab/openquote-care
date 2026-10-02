@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { comparable, headCount, layOut, measureOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, formBehind, listDetail, noticeLine, periodFields } from './parts.js'
+import { applyPackButton, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -311,8 +311,7 @@ function chosenPeriodFields(store: VaultStore) {
     case 'day':
       return date(strings.periodDay, store.day, (day) => store.set({ day }))
     case 'range':
-      return html`${date(strings.rangeFrom, store.rangeFrom, (rangeFrom) => store.set({ rangeFrom }))}
-      ${date(strings.rangeTo, store.rangeTo, (rangeTo) => store.set({ rangeTo }))}`
+      return rangeFields(store)
     case 'year': {
       const label = form.startMonth === 1 ? strings.year : strings.schoolYear
       return html`<dc-field label=${label}>

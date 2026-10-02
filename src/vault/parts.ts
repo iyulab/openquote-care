@@ -98,6 +98,15 @@ export function periodFields(store: VaultStore) {
     </dc-field>`
 }
 
+/** The first and last day of a period a person picks. */
+export function rangeFields(store: VaultStore) {
+  const date = (label: string, value: string, set: (v: string) => void) => html`<dc-field label=${label}>
+    <dc-input type="date" aria-label=${label} .value=${value} ?disabled=${store.busy} @input=${(e: Event) => set((e.target as HTMLInputElement).value)}></dc-input>
+  </dc-field>`
+  return html`${date(strings.rangeFrom, store.rangeFrom, (rangeFrom) => store.set({ rangeFrom }))}
+    ${date(strings.rangeTo, store.rangeTo, (rangeTo) => store.set({ rangeTo }))}`
+}
+
 /** The store's message, when there is one. */
 export function noticeLine(store: VaultStore) {
   return store.notice ? html`<p role="status" class="muted">${store.notice}</p>` : nothing

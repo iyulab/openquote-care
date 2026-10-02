@@ -198,7 +198,7 @@ export const shell = {
    */
   runReport: (report: string, version: number, from: string, to?: string) =>
     invoke<RunRecord>('run_report', { report, version, from, to: to ?? null }),
-  /** Lays a month's records out as an export form's rows; nothing is kept in the vault. */
-  runExport: (exportName: string, version: number, year: number, month: number) =>
-    invoke<ExportTable>('run_export', { export: exportName, version, year, month }),
+  /** Lays the records from `from` to `to` (`YYYY-MM-DD`) out as an export form's rows; nothing is kept in the vault. */
+  runExport: (exportName: string, version: number, from: string, to: string) =>
+    invoke<ExportTable>('run_export', { export: exportName, version, from, to }),
 }

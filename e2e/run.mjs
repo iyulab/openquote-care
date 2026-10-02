@@ -699,6 +699,17 @@ const scenarios = {
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /1판 기준/, 'the form says which scheme version it lags')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
+
+    // Any days a person picks — a school year, a week — instead of a month.
+    await app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === '기간').click(); return true })()`)
+    await app.setDate('시작일', '2026-04-09')
+    await app.setDate('마지막 날', '2026-04-16')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`(__e2e.one('[data-role=export-period]')?.textContent ?? '').includes('2026-04-09')`, 'the days picked listed')
+    await app.noAlert()
+    assert.deepEqual(await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.children[0].textContent.trim())`), ['2026-04-09', '2026-04-16'])
+    await app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === '한 달').click(); return true })()`)
+    await app.cdp.waitFor(`!!__e2e.one('select[aria-label="월"]')`, 'back to a month')
   },
   async 'records what was said in a session, and keeps it out of the list form'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'

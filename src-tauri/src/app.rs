@@ -654,9 +654,9 @@ impl App {
         })
     }
 
-    /// Lays one month's records out as an export form's rows.
-    pub fn run_export(&self, export: &str, version: u32, year: i32, month: u32) -> Result<Value, AppError> {
-        self.with_open(|open| Ok(open.engine.run_export(export, version, year, month)?))
+    /// Lays the records of a period out as an export form's rows.
+    pub fn run_export(&self, export: &str, version: u32, from: &str, to: &str) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.run_export(export, version, from, to)?))
     }
 
     fn with_open<T>(&self, f: impl FnOnce(&mut OpenVault) -> Result<T, AppError>) -> Result<T, AppError> {
@@ -788,7 +788,7 @@ mod tests {
         )
         .unwrap();
         assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["name"] == "monthly-topic"));
-        let list = app.run_export("session-list", 1, 2026, 4).unwrap();
+        let list = app.run_export("session-list", 1, "2026-04-01", "2026-04-30").unwrap();
         assert_eq!(list["rows"].as_array().unwrap().len(), 1, "the pack's export form lists the session");
         assert_eq!(list["rows"][0]["cells"][2], "synthetic");
         let schemes = app.schemes().unwrap();
