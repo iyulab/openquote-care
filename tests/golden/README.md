@@ -76,6 +76,9 @@ revision (`revised`); `expected/diff-r2-r3.json` holds the records a person recl
 dotnet run generate.cs
 ```
 
+`node scripts/check-golden.mjs` (part of `npm run verify`) regenerates every golden vault in place and fails
+when a file differs from what its generator writes, so expected files are never edited by hand.
+
 Requires the .NET 10 SDK. Output is deterministic: ids are UUIDv7 values built from each change's
 timestamp and its scenario key, so running it again on an unchanged scenario rewrites identical
 files.

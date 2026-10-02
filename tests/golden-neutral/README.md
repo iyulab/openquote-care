@@ -37,6 +37,9 @@ expected/            report runs (r1–r3: March, April, May), the April session
 dotnet run generate.cs
 ```
 
+`node scripts/check-golden.mjs` (part of `npm run verify`) regenerates every golden vault in place and fails
+when a file differs from what its generator writes, so expected files are never edited by hand.
+
 Requires the .NET 10 SDK. Output is deterministic. The pack files are copied from `packs/care` and
 `packs/en`, so regenerate after changing either pack. The expected runs and rows are laid out from
 `sessions.csv` and checked against the hand-computed counts in `expected-totals.json` before
