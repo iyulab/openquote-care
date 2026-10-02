@@ -144,10 +144,11 @@ export class OcReport extends VaultScreen {
     const store = this.store
     const busy = store.busy
     return html`<dp-page-header eyebrow=${strings.report} heading=${title}>
-        <div slot="actions" class="row">
+        <div slot="actions" class="row no-print">
           ${chosenPeriodFields(store)}
           ${applyPackButton(store)}
           <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
+          ${this.result ? html`<dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>` : nothing}
         </div>
       </dp-page-header>
       ${formBehind(store.summary?.reports ?? [], store.reportKey)}
@@ -263,14 +264,14 @@ export class OcReport extends VaultScreen {
           ? pendingList(store, result, this.pendingChoices, this.reclassified, (c, code) => void this.reclassify(c, code))
           : this.evidence
             ? evidenceList(store, result, this.evidence.title, this.evidence.group)
-            : html`<p class="muted">${strings.pickCell}</p>`}
+            : html`<p class="muted no-print">${strings.pickCell}</p>`}
     `
   }
 
   private compareControls(result: RunRecord) {
     const offered = comparable(this.keptRuns, result)
-    if (offered.length === 0) return html`<p class="muted">${strings.noEarlierRun}</p>`
-    return html`<div class="row">
+    if (offered.length === 0) return html`<p class="muted no-print">${strings.noEarlierRun}</p>`
+    return html`<div class="row no-print">
       <dc-field label=${strings.compareWith}>
         <dc-select
           aria-label=${strings.compareWith}

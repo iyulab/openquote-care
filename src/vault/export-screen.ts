@@ -194,7 +194,7 @@ export class OcExport extends VaultScreen {
     const busy = store.busy
     const table = this.exportTable
     return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${title} description=${strings.exportLead}>
-        <div slot="actions" class="row">
+        <div slot="actions" class="row no-print">
           <dc-segmented-control
             size="sm"
             aria-label=${strings.periodKind}
@@ -206,7 +206,8 @@ export class OcExport extends VaultScreen {
           ${this.byRange ? rangeFields(store) : periodFields(store)}
           <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
           ${table && table.rows.length > 0
-            ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>`
+            ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>
+                <dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>`
             : nothing}
         </div>
       </dp-page-header>

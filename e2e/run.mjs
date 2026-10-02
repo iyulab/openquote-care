@@ -1251,6 +1251,16 @@ const scenarios = {
     await app.cdp.waitFor(`!__e2e.one('[data-section="1"]').hidden`, 'the family tab shown')
     assert.deepEqual(await visible('2'), ['2', '1 (1명 · 연인원 1)', '1 (1명 · 연인원 1)'])
 
+    // On paper: every section, each under its name, and none of the controls.
+    await app.cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
+    try {
+      assert.equal(await app.cdp.evaluate(`__e2e.all('[data-section]').filter((s) => getComputedStyle(s).display !== 'none').length`), 3, 'all sections on paper')
+      assert.deepEqual(await app.cdp.evaluate(`__e2e.all('.section-label').map((p) => getComputedStyle(p).display !== 'none' && p.textContent.trim())`), ['전체', '가정', '위기'])
+      assert.equal(await app.cdp.evaluate(`getComputedStyle(__e2e.one('[data-role=print]').closest('.no-print')).display`), 'none', 'no controls on paper')
+    } finally {
+      await app.cdp.send('Emulation.setEmulatedMedia', { media: '' })
+    }
+
     // A range a person picks, by every topic covered: the session covering two is in both rows, once in the total.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.range-concerns@1"]')
     await app.setDate('시작일', '2026-03-31')

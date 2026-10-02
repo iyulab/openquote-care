@@ -206,13 +206,22 @@ export const vaultStyles = [
       margin: var(--dc-space-3, 12px) 0 var(--dc-space-1, 4px);
       font-weight: var(--dc-font-weight-semibold, 600);
     }
+    /* On paper: the document alone — no way back to the list, no controls — and wide tables wrap instead of scrolling. */
     @media print {
       .print-only,
       .section[hidden] {
         display: block;
       }
-      .no-print {
+      .no-print,
+      .back {
         display: none;
+      }
+      .scroll {
+        overflow: visible;
+      }
+      table.export td,
+      table.export th {
+        white-space: normal;
       }
     }
     dl.legend {
