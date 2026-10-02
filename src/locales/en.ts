@@ -125,16 +125,16 @@ export const en: Strings = {
   navSubjects: 'Clients',
   navGroups: 'Groups',
   navPractitioners: 'Practitioners',
-  navReport: 'Monthly report',
+  navReport: 'Statistics',
   navExport: 'Record lists',
   navDevices: 'Devices',
   navGroupRecords: 'Records',
   navGroupReports: 'Reports',
   navGroupSettings: 'Settings',
 
-  report: 'Monthly report',
+  report: 'Statistics',
   reportForms: 'Report forms',
-  pickReportForm: 'Choose a form to see its monthly report here.',
+  pickReportForm: 'Choose a form to see its statistics here.',
   reportForm: 'Form',
   reportFormOption: (label: string, version: number) => `${label} (v${version})`,
   year: 'Year',
@@ -226,7 +226,7 @@ export const en: Strings = {
   exportWithheld: (columns: string[]) =>
     `The ${columns.join(', ')} ${columns.length === 1 ? 'column is' : 'columns are'} left empty because ${columns.length === 1 ? 'it holds' : 'they hold'} session content. Content does not leave the app.`,
   exportGaps: (pending: number, unmapped: number, conflicted: number) =>
-    `Some rows have empty cells — ${pending} awaiting reclassification, ${unmapped} not in this form's classification version, ${conflicted} edited on two devices. Settle those awaiting in the monthly report, and choose the right value on a record edited on two devices; if the classification was revised, use the new version of the list form.`,
+    `Some rows have empty cells — ${pending} awaiting reclassification, ${unmapped} not in this form's classification version, ${conflicted} edited on two devices. Settle those awaiting in Statistics, and choose the right value on a record edited on two devices; if the classification was revised, use the new version of the list form.`,
   noExports: 'This vault has no list forms. Applying a data pack adds them.',
   countUnit: 'records',
   metricPeople: 'People',
@@ -281,6 +281,7 @@ export const en: Strings = {
   raiseFormatAsk:
     'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it.',
   raiseFormatConfirm: 'Raise the format and apply',
+  raiseFormatDevices: (devices: string[]) => `Devices that use this vault: ${devices.join(', ')}`,
   packAdded: (items: string[]) => `Added: ${items.join(', ')}`,
   packNothingNew: 'This material has no classifications or forms the vault does not already hold.',
   packFormsBehind: (forms: string[]) =>
@@ -426,7 +427,7 @@ export const en: Strings = {
   attendees: 'Participants',
 
   practitioners: 'Practitioners',
-  noPractitioners: 'No practitioners yet. Add one with “New practitioner”. The columns of the monthly report are split by practitioner.',
+  noPractitioners: 'No practitioners yet. Add one with “New practitioner”. The columns of the statistics are split by practitioner.',
   newPractitioner: '+ New practitioner',
   pickPractitioner: 'Choose a practitioner to see the sessions they kept here.',
   practitionerName: 'Practitioner name',

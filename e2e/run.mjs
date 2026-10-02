@@ -276,7 +276,7 @@ const scenarios = {
   },
 
   async 'produces the monthly report and shows what each count is made of'(app, work) {
-    await app.click('button', '월 보고')
+    await app.click('button', '통계')
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
@@ -586,7 +586,7 @@ const scenarios = {
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
 
-    await app.click('button', '월 보고')
+    await app.click('button', '통계')
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
@@ -1087,7 +1087,7 @@ const scenarios = {
     await app.click('dc-button', 'Record session')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the session without a concern listed')
     await app.noAlert()
-    await app.click('button', 'Monthly report')
+    await app.click('button', 'Statistics')
     await app.type('Year', '2026')
     await app.choose('Month', '4')
     await app.click('dc-button', 'Run')
@@ -1119,7 +1119,7 @@ const scenarios = {
       ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),
       ...['aria-label', 'title', 'placeholder', 'label'].map((a) => el.getAttribute(a) ?? ''),
     ]).join(' ')`)
-    for (const screen of ['Clients', 'Groups', 'Monthly report', 'Record lists', 'Practitioners', 'Devices']) {
+    for (const screen of ['Clients', 'Groups', 'Statistics', 'Record lists', 'Practitioners', 'Devices']) {
       await app.click('button', screen)
       assert.doesNotMatch(await words(), /[\uac00-\ud7a3]/, `no Korean on ${screen}`)
     }
@@ -1172,10 +1172,12 @@ const scenarios = {
     const declared = async () => JSON.parse(await readFile(join(vault, 'vault.json'), 'utf8')).format
     assert.equal(await declared(), 'openquote.vault/0')
     const pack = join(root, 'tests', 'format1')
-    await app.click('button', '월 보고') // where a pack is applied
+    await app.click('button', '통계') // where a pack is applied
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
     await app.cdp.waitFor(`!!__e2e.one('[data-role=raise-format-confirm]')`, 'the question before raising the format')
     assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=raise-format-devices]').textContent.trim()`), '이 기록 폴더를 쓰는 기기: 이 기기',
+      'the devices that must run a version reading the newer format, this one among them')
 
     await app.click('[data-role=raise-format-confirm]')
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('Format 1 report forms (test)'))`, 'the pack applied')
@@ -1206,7 +1208,7 @@ const scenarios = {
     assert.ok(rows.some((r) => r.includes('가정 (함께: 학습)')), `the session shows its primary value and the other: ${JSON.stringify(rows)}`)
 
     // A month of girls only: the condition is said under the title, and visits stand beside the records.
-    await app.click('button', '월 보고')
+    await app.click('button', '통계')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.month-girls@1"]')
     await app.cdp.waitFor(`!!__e2e.one('select[aria-label="월"]')`, 'the month picker')
     await app.click('dc-button', '산출')
@@ -1230,6 +1232,23 @@ const scenarios = {
     await app.cdp.evaluate(`(() => { ${tab}.find((t) => t.textContent.trim() === '가정').click(); return true })()`)
     await app.cdp.waitFor(`!__e2e.one('[data-section="1"]').hidden`, 'the family tab shown')
     assert.deepEqual(await visible('2'), ['2', '1 (1명 · 연인원 1)', '1 (1명 · 연인원 1)'])
+
+    // A range a person picks, by every topic covered: the session covering two is in both rows, once in the total.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.range-concerns@1"]')
+    await app.setDate('시작일', '2026-03-31')
+    await app.setDate('마지막 날', '2026-03-01')
+    await app.click('dc-button', '산출')
+    await app.alert('기간의 시작일과 마지막 날을 고르세요. 마지막 날은 시작일보다 앞일 수 없습니다.')
+    await app.setDate('시작일', '2026-03-01')
+    await app.setDate('마지막 날', '2026-03-31')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`(__e2e.one('[data-role=period]')?.textContent ?? '').includes('2026-03-01 ~ 2026-03-31')`, 'the range laid out')
+    await app.noAlert()
+    const row = (code) => app.cdp.evaluate(`[...__e2e.one('tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual((await row('family')).slice(1), ['1 (1명)', '1 (1명)'])
+    assert.deepEqual((await row('learning')).slice(1), ['1 (1명)', '1 (1명)'])
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1명)', 'one session, counted once in the total')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('dc-metric[data-group=blank]').value`), '1', 'the crisis session covers no topic yet')
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

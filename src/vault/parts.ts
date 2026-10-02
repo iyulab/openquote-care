@@ -126,11 +126,16 @@ export function applyPackButton(store: VaultStore) {
     if (typeof folder === 'string') await store.applyPack(folder)
   }
   const folder = store.raiseFormatFor
+  // This device and every other the vault names, this one first: each must run a version that reads the newer format.
+  const summary = store.summary
+  const others = Object.keys(summary?.devices ?? {}).filter((d) => d !== summary?.device)
+  const devices = summary ? [summary.device, ...others].map((d) => deviceLabel(summary, d)) : []
   return html`<dc-button variant="secondary" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>
     ${folder === undefined
       ? nothing
       : html`<dc-callout variant="warning" data-role="raise-format">
           <p>${strings.raiseFormatAsk}</p>
+          ${devices.length === 0 ? nothing : html`<p data-role="raise-format-devices">${strings.raiseFormatDevices(devices)}</p>`}
           <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="raise-format-confirm" @click=${() => void store.applyPack(folder, true)}>${strings.raiseFormatConfirm}</dc-button>
           <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ raiseFormatFor: undefined })}>${strings.cancel}</dc-button>
         </dc-callout>`}`
