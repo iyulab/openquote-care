@@ -90,7 +90,7 @@ jobs:
 
       # Tauri signs the app it puts in the installer and then restores the unsigned build output,
       # so the signatures are checked on an installed copy.
-      - name: Check signatures
+      - name: Check signatures and diagnostics
         id: installer
         shell: pwsh
         run: |
@@ -105,6 +105,10 @@ jobs:
             if ($signature.Status -ne 'Valid') { throw "$file is not validly signed: $($signature.Status)" }
             Write-Host "$file — $($signature.SignerCertificate.Subject)"
           }
+          # Error diagnostics are on only when the build embedded the collector's connection string; a
+          # missing secret would leave every installation silent, with nothing to say so.
+          $app = [IO.File]::ReadAllBytes((Join-Path $target 'openquote-care.exe'))
+          if ([Text.Encoding]::ASCII.GetString($app).IndexOf('IngestionEndpoint=') -lt 0) { throw 'the app does not embed the error diagnostics connection' }
           # Moved aside: the offline installer below is written under the same name.
           $out = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'installers')
           $kept = Move-Item $installer.FullName (Join-Path $out $installer.Name) -PassThru
