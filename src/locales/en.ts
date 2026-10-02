@@ -260,6 +260,9 @@ export const en: Strings = {
   nowhere: '—',
   applyPack: 'Apply classification revision',
   applyPackTitle: 'Choose the data pack folder to apply',
+  raiseFormatAsk:
+    'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it.',
+  raiseFormatConfirm: 'Raise the format and apply',
   packAdded: (items: string[]) => `Added: ${items.join(', ')}`,
   packNothingNew: 'This material has no classifications or forms the vault does not already hold.',
   packFormsBehind: (forms: string[]) =>
@@ -423,6 +426,8 @@ export const en: Strings = {
     'kit-not-confirmed': 'Confirm the recovery kit first.',
     'kit-mismatch': 'That does not match the end of the recovery key. Check it again.',
     'not-a-pack': 'This folder holds no classification or report form material.',
+    'needs-new-format': 'This data pack can be applied only once the vault is raised to a newer format.',
+    'declaration-changed': 'Another computer has just changed the format of the vault. Try applying again.',
     'pack-conflict': 'The vault already holds a different classification or form under the same name, so nothing was applied. Check the version of the material.',
     'already-exists': 'This folder already holds a vault. Use Open a vault.',
     'not-a-vault': 'This folder is not a vault.',

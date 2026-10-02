@@ -14,6 +14,7 @@ vi.mock('../shell.js', () => ({
     history: vi.fn(),
     setBackup: vi.fn(),
     onVaultChanged: vi.fn(),
+    applyPack: vi.fn(),
   },
 }))
 
@@ -180,5 +181,23 @@ describe('VaultStore', () => {
     await vi.waitFor(() => expect(shell.refresh).toHaveBeenCalledTimes(2))
     await vi.waitFor(() => expect(store.subjects).toEqual([]))
     store.disconnect()
+  })
+
+  it('asks before applying a pack that raises the vault to a newer format, and applies it once told to', async () => {
+    const store = new VaultStore()
+    await store.load()
+    vi.mocked(shell.applyPack).mockRejectedValueOnce({ code: 'needs-new-format', message: 'the pack needs vault format 1' })
+
+    await store.applyPack('D:/packs/v1')
+
+    expect(store.raiseFormatFor).toBe('D:/packs/v1')
+    expect(store.error).toBeUndefined()
+    expect(shell.applyPack).toHaveBeenLastCalledWith('D:/packs/v1', false)
+
+    vi.mocked(shell.applyPack).mockResolvedValueOnce(['fields/y/session/v1.json'])
+    await store.applyPack('D:/packs/v1', true)
+
+    expect(shell.applyPack).toHaveBeenLastCalledWith('D:/packs/v1', true)
+    expect(store.raiseFormatFor).toBeUndefined()
   })
 })

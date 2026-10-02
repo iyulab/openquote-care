@@ -279,6 +279,20 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Says_what_vault_format_files_would_need_before_the_host_writes_them()
+    {
+        await Post("/vault/load", Files(GoldenVault.School.Through(1)));
+        var many = new Openquote.Vault.VaultFile("fields/y/session/v1.json", System.Text.Encoding.UTF8.GetBytes(
+            """{"format":"openquote.fields/1","pack":"y","type":"session","version":1,"fields":[{"name":"concerns","kind":"coded","scheme":"topic","many":true}]}"""));
+
+        var required = await Post("/vault/required", Files([many]));
+        var nothing = await Post("/vault/required", Files([]));
+
+        Assert.Equal((0, 1), (required["now"]!.GetValue<int>(), required["with"]!.GetValue<int>()));
+        Assert.Equal(0, nothing["with"]!.GetValue<int>());
+    }
+
+    [Fact]
     public async Task Names_the_fields_a_report_form_counts_by()
     {
         var summary = await Post("/vault/load", Files(GoldenVault.School.Through(1)));

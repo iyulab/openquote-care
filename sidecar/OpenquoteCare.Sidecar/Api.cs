@@ -202,6 +202,9 @@ public sealed record RunResult(JsonNode? Record, WireFile File);
 
 public sealed record ErrorView(string Error);
 
+/// <summary>The earliest vault format the vault needs, as it is and with the files asked about.</summary>
+public sealed record RequiredView(int Now, int With);
+
 /// <summary>The HTTP surface the shell calls. The sidecar never touches the disk: files come in as
 /// plaintext from the host, and every change it makes is handed back as a file for the host to
 /// encrypt, create, and then add.</summary>
@@ -210,6 +213,11 @@ internal static class Api
     public static void Map(WebApplication app, string device, TimeProvider clock)
     {
         var writer = new VaultWriter(device, clock);
+
+        // What vault format writing these files would call for: a host raises the declaration first,
+        // only once a person has chosen to, so earlier apps refuse the folder rather than miscount it.
+        app.MapPost("/vault/required", (FilesRequest request, VaultSession session) =>
+            new RequiredView(session.Current.Content.RequiredVersion, session.RequiredWith(request.Files.Select(f => f.ToVaultFile()))));
 
         app.MapPost("/vault/load", (FilesRequest request, VaultSession session) =>
             Summary(device, session.Load(request.Files.Select(f => f.ToVaultFile()), request.Undecryptable ?? [])));
@@ -542,4 +550,5 @@ internal static class Api
 [JsonSerializable(typeof(RunResult))]
 [JsonSerializable(typeof(WireFile))]
 [JsonSerializable(typeof(ErrorView))]
+[JsonSerializable(typeof(RequiredView))]
 internal sealed partial class SidecarJson : JsonSerializerContext;

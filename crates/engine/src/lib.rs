@@ -121,6 +121,11 @@ impl Engine {
         self.call("POST", "/vault/load", Some(body))
     }
 
+    /// The earliest vault format the vault needs as it is (`now`) and holding `files` as well (`with`).
+    pub fn required(&self, files: &[PlainFile]) -> Result<Value, EngineError> {
+        self.call("POST", "/vault/required", Some(Self::files(files)))
+    }
+
     /// Hands the engine files that were just created in the vault.
     pub fn add(&self, files: &[PlainFile]) -> Result<Value, EngineError> {
         self.call("POST", "/vault/add", Some(Self::files(files)))
@@ -234,6 +239,13 @@ impl OpenVault {
     /// The engine's current summary, with the files the vault could not decrypt.
     pub fn current_summary(&self) -> Result<Value, EngineError> {
         self.engine.summary()
+    }
+
+    /// The vault format writing `files` would call for, when it is above the one the folder
+    /// declares; None when they fit the declared format.
+    pub fn format_needed(&self, files: &[PlainFile]) -> Result<Option<u32>, EngineError> {
+        let with = self.engine.required(files)?["with"].as_u64().unwrap_or(0) as u32;
+        Ok((with > self.vault.format()).then_some(with))
     }
 
     /// Creates `file` in the vault (encrypted, never replacing anything) and, once it is on disk,

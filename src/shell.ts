@@ -163,7 +163,11 @@ export const shell = {
   /** Calls `f` when another device (or a sync client) changed the open vault's files. */
   onVaultChanged: (f: () => void): Promise<UnlistenFn> => listen('vault-changed', () => f()),
   /** Adds a data pack's new schemes, crosswalks and report forms; returns the paths added. */
-  applyPack: (folder: string) => invoke<string[]>('apply_pack', { folder }),
+  /**
+   * Applies the data pack in `folder`. One that needs the vault in a newer format fails with
+   * `needs-new-format` unless `raiseFormat` says a person chose to raise it.
+   */
+  applyPack: (folder: string, raiseFormat = false) => invoke<string[]>('apply_pack', { folder, raiseFormat }),
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
   setBackup: (folder: string | null) => invoke<BackupStatus>('set_backup', { folder }),
   backupStatus: () => invoke<BackupStatus>('backup_status'),

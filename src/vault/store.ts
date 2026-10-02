@@ -1,6 +1,6 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit'
 import { nameCollator } from '../collation.js'
-import { describeError } from '../errors.js'
+import { describeError, isCommandError } from '../errors.js'
 import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
@@ -22,7 +22,7 @@ export type ErrorText = { text: string; detail?: string }
 export type SessionDraft = Record<string, string>
 
 /** What the screens may set directly; everything else changes through the store's actions. */
-type Settable = Pick<VaultStore, 'notice' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month'>
+type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month'>
 
 /**
  * An open vault as the screens see it: what was read from it, the action in progress and its
@@ -43,6 +43,8 @@ export class VaultStore extends EventTarget {
   busy = false
   error?: ErrorText
   notice = ''
+  /** A data pack folder that needs the vault raised to a newer format: applied only once a person chooses to. */
+  raiseFormatFor: string | undefined
   /** The report form chosen: loading picks the newest when none is, and a pack offers its new version. */
   reportKey = ''
   /** The export form chosen: loading picks the first when none is. */
@@ -266,10 +268,20 @@ export class VaultStore extends EventTarget {
     this.changed()
   }
 
-  async applyPack(folder: string) {
-    this.set({ notice: '' })
+  async applyPack(folder: string, raiseFormat = false) {
+    this.set({ notice: '', raiseFormatFor: undefined })
     await this.run(async () => {
-      const added = await shell.applyPack(folder)
+      let added: string[]
+      try {
+        added = await shell.applyPack(folder, raiseFormat)
+      } catch (e) {
+        // Raising the vault's format shuts out earlier versions of the app: a person says so first.
+        if (isCommandError(e) && e.code === 'needs-new-format') {
+          this.raiseFormatFor = folder
+          return
+        }
+        throw e
+      }
       await this.load()
       this.notice = packNotice(added, this.summary)
       // A new form version is what the person came for: offer it.

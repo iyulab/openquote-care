@@ -27,6 +27,10 @@ pub enum AppError {
     NotAPack,
     /// The pack has a file the vault already holds with other content; nothing was applied.
     PackConflict(Vec<String>),
+    /// The pack holds what only the vault format named would count right: applying it raises the
+    /// folder's format, after which earlier versions of the app no longer open it. Nothing was
+    /// applied; a person chooses to raise it.
+    NeedsNewFormat(u32),
     /// The packs bundled with the app cannot be read, or lack what a track needs.
     Bundle(BundleError),
     /// The folder chosen for the backup cannot hold it.
@@ -45,6 +49,7 @@ impl fmt::Display for AppError {
             Self::RecoveryKitMismatch => f.write_str("that does not match the end of the recovery key"),
             Self::NotAPack => f.write_str("the folder holds no scheme or report form"),
             Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
+            Self::NeedsNewFormat(v) => write!(f, "the pack needs vault format {v}"),
             Self::Bundle(e) => write!(f, "{e}"),
             Self::Backup(e) => write!(f, "{e}"),
             Self::PlainCopy(e) => write!(f, "{e}"),
@@ -66,6 +71,7 @@ impl AppError {
             Self::RecoveryKitMismatch => "kit-mismatch",
             Self::NotAPack => "not-a-pack",
             Self::PackConflict(_) => "pack-conflict",
+            Self::NeedsNewFormat(_) => "needs-new-format",
             Self::Bundle(_) => "bundle",
             Self::Backup(e) => backup_code(e),
             Self::PlainCopy(PlainCopyError::Overlaps) => "plain-copy-overlaps",
@@ -83,6 +89,7 @@ impl AppError {
                 VaultError::InvalidRecoveryKey | VaultError::RecoveryKeyMismatch => "recovery-key",
                 VaultError::InvalidPath(_) => "invalid-path",
                 VaultError::KeyFileChanged => "key-file-changed",
+                VaultError::DeclarationChanged => "declaration-changed",
                 VaultError::Io(_) => "io",
             },
             Self::Engine(EngineError::Start(_)) => "engine-start",
@@ -379,6 +386,10 @@ impl App {
             }
         }
         new.sort_by_key(|f| f.path.starts_with("packs/"));
+        // Raising the folder's format is a person's choice: a track needing it is not taken on.
+        if open.format_needed(&new)?.is_some() {
+            return Ok(None);
+        }
         if !new.is_empty() {
             open.keep_all(new)?;
         }
@@ -407,6 +418,10 @@ impl App {
             }
         }
         new.sort_by_key(|f| f.path.starts_with("packs/"));
+        // Raising the folder's format is a person's choice: a bundled version needing it waits for one.
+        if open.format_needed(&new)?.is_some() {
+            return Ok(Vec::new());
+        }
         if !new.is_empty() {
             open.keep_all(new)?;
         }
@@ -535,9 +550,11 @@ impl App {
 
     /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
-    /// other content stops the whole pack, since definitions are never rewritten. Returns the
-    /// paths added.
-    pub fn apply_pack(&self, pack: &Path) -> Result<Vec<String>, AppError> {
+    /// other content stops the whole pack, since definitions are never rewritten. A pack that needs
+    /// a newer vault format than the folder declares is applied only with `raise_format` — a
+    /// person's choice, since earlier versions of the app stop opening the folder — and the
+    /// declaration is raised before any file is added. Returns the paths added.
+    pub fn apply_pack(&self, pack: &Path, raise_format: bool) -> Result<Vec<String>, AppError> {
         let definitions = pack_files(pack)?;
         if definitions.is_empty() {
             return Err(AppError::NotAPack);
@@ -554,6 +571,12 @@ impl App {
             }
             if !conflicts.is_empty() {
                 return Err(AppError::PackConflict(conflicts));
+            }
+            if let Some(format) = open.format_needed(&new)? {
+                if !raise_format {
+                    return Err(AppError::NeedsNewFormat(format));
+                }
+                open.vault.raise_format(format)?;
             }
             let added: Vec<String> = new.iter().map(|f| f.path.clone()).collect();
             if !new.is_empty() {
@@ -1230,7 +1253,7 @@ cut off").unwrap();
         let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
         first.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "date": "2026-04-03" } })).unwrap();
         first.record("/changes/group", json!({ "fields": { "name": "peers", "members": [subject_id] } })).unwrap();
-        first.apply_pack(&golden_step(2)).unwrap();
+        first.apply_pack(&golden_step(2), false).unwrap();
         first.run_report("monthly-topic", 2, 2026, 4).unwrap();
         let state = |app: &App| {
             json!({
@@ -1299,7 +1322,7 @@ cut off").unwrap();
             app.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "date": "2026-04-03" } })).unwrap();
         });
         step("applying a revised classification", &|| {
-            app.apply_pack(&golden_step(2)).unwrap();
+            app.apply_pack(&golden_step(2), false).unwrap();
         });
         step("reclassifying a split category", &|| {
             app.record("/changes/reclassify", json!({ "type": "session", "id": id, "field": "topic", "value": topic(2, "relation-peer") })).unwrap();
@@ -1320,11 +1343,11 @@ cut off").unwrap();
         let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
 
-        let mut added = app.apply_pack(&golden_step(2)).unwrap();
+        let mut added = app.apply_pack(&golden_step(2), false).unwrap();
         added.sort();
         assert_eq!(added, ["reports/monthly-topic/v2.json", "schemes/topic/v1-v2.json", "schemes/topic/v2.json"]);
         assert!(app.summary().unwrap()["reports"].as_array().unwrap().iter().any(|r| r["version"] == 2));
-        assert!(app.apply_pack(&golden_step(2)).unwrap().is_empty(), "applying it again adds nothing");
+        assert!(app.apply_pack(&golden_step(2), false).unwrap().is_empty(), "applying it again adds nothing");
         let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         let session = app
             .record(
@@ -1336,14 +1359,14 @@ cut off").unwrap();
         let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
         let split = app.pending("monthly-topic", 2, json!([id]), Some("2026-04-30")).unwrap();
         assert_eq!(split[0]["candidates"], json!(["relation-peer", "relation-teacher"]));
-        assert!(app.apply_pack(&pack()).unwrap().is_empty(), "the pack the vault started from is already in it");
+        assert!(app.apply_pack(&pack(), false).unwrap().is_empty(), "the pack the vault started from is already in it");
 
         let other = tempfile::tempdir().unwrap();
         fs::create_dir_all(other.path().join("schemes/topic")).unwrap();
         fs::write(other.path().join("schemes/topic/v2.json"), b"{}").unwrap();
-        assert_eq!(app.apply_pack(other.path()).unwrap_err().code(), "pack-conflict");
+        assert_eq!(app.apply_pack(other.path(), false).unwrap_err().code(), "pack-conflict");
         let empty = tempfile::tempdir().unwrap();
-        assert_eq!(app.apply_pack(empty.path()).unwrap_err().code(), "not-a-pack");
+        assert_eq!(app.apply_pack(empty.path(), false).unwrap_err().code(), "not-a-pack");
     }
 
     #[test]
@@ -1463,10 +1486,43 @@ cut off").unwrap();
         put("fields/x/session/v1.json", r#"{"format":"openquote.fields/0","pack":"x","type":"session","version":1,"fields":[{"name":"date","kind":"date"}]}"#);
         put("tracks.json", r#"{"not":"a definition"}"#);
 
-        let mut added = app.apply_pack(extra.path()).unwrap();
+        let mut added = app.apply_pack(extra.path(), false).unwrap();
         added.sort();
         assert_eq!(added, ["fields/x/session/v1.json", "labels/x/v1.en.json", "packs/x/v1.json"]);
         assert!(app.summary().unwrap()["unreadable"].as_array().unwrap().is_empty(), "every file it added reads");
+    }
+
+    #[test]
+    fn a_pack_needing_a_newer_vault_format_is_applied_only_once_a_person_chooses_to_raise_it() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let declaration = fs::read_to_string(dir.path().join("vault.json")).unwrap();
+        assert!(declaration.contains("openquote.vault/0"));
+        let pack = tempfile::tempdir().unwrap();
+        fs::create_dir_all(pack.path().join("fields/y/session")).unwrap();
+        // A coded field taking several values: an app reading only format 0 would count those records unmapped.
+        fs::write(
+            pack.path().join("fields/y/session/v1.json"),
+            r#"{"format":"openquote.fields/1","pack":"y","type":"session","version":1,"fields":[{"name":"concerns","kind":"coded","scheme":"topic","many":true}]}"#,
+        )
+        .unwrap();
+        let before = files_under(dir.path());
+
+        let refused = app.apply_pack(pack.path(), false).unwrap_err();
+
+        assert_eq!(refused.code(), "needs-new-format");
+        assert_eq!(files_under(dir.path()), before, "nothing is written until a person chooses");
+
+        let added = app.apply_pack(pack.path(), true).unwrap();
+
+        assert_eq!(added, ["fields/y/session/v1.json"]);
+        assert!(fs::read_to_string(dir.path().join("vault.json")).unwrap().contains("openquote.vault/1"));
+        let Some(reopened) = super::tests::app() else { return };
+        reopened.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        assert!(reopened.summary().unwrap()["unreadable"].as_array().unwrap().is_empty(), "the raised vault opens and reads");
+        assert!(reopened.apply_pack(pack.path(), false).unwrap().is_empty(), "applying it again needs no choice");
     }
 
     /// Every file under `root`, with its bytes, by path relative to it.

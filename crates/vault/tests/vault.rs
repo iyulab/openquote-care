@@ -318,11 +318,58 @@ fn a_vault_that_lost_its_declaration_is_named_and_the_declaration_put_back() {
 fn a_vault_in_a_newer_format_is_refused_as_newer_not_as_foreign() {
     let newer = tempfile::tempdir().unwrap();
     fs::write(newer.path().join(VAULT_FILE), "{
-  \"format\": \"openquote.vault/1\",
+  \"format\": \"openquote.vault/2\",
   \"encryption\": \"age\"
 }
 ").unwrap();
     assert!(matches!(Vault::unlock(newer.path(), pass("p")), Err(VaultError::NewerFormat)));
+}
+
+const FORMAT_1: &str = "{\n  \"format\": \"openquote.vault/1\",\n  \"encryption\": \"age\"\n}\n";
+
+#[test]
+fn a_new_vault_declares_format_0_and_raising_it_replaces_only_the_declaration() {
+    let dir = tempfile::tempdir().unwrap();
+    let (vault, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    vault.write_new("subjects/a/1.json", b"{}").unwrap();
+    let before = all_bytes_under(dir.path());
+    assert_eq!(vault.format(), 0);
+
+    vault.raise_format(1).unwrap();
+
+    assert_eq!(vault.format(), 1);
+    assert_eq!(fs::read_to_string(dir.path().join(VAULT_FILE)).unwrap(), FORMAT_1);
+    let after = all_bytes_under(dir.path());
+    let changed: Vec<_> = after.iter().filter(|f| !before.contains(f)).map(|(p, _)| p.as_str()).collect();
+    assert_eq!(changed.len(), 1, "nothing but the declaration changes");
+    assert!(changed[0].ends_with(VAULT_FILE));
+    assert_eq!(after.len(), before.len());
+    let reopened = Vault::unlock(dir.path(), pass("correct horse")).unwrap();
+    assert_eq!(reopened.format(), 1, "a format 1 vault opens");
+    reopened.raise_format(1).unwrap(); // already there: nothing to do
+    assert!(matches!(reopened.raise_format(2), Err(VaultError::NewerFormat)), "never past what this build reads");
+}
+
+#[test]
+fn raising_a_declaration_another_device_changed_meanwhile_keeps_theirs() {
+    let dir = tempfile::tempdir().unwrap();
+    let (here, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+
+    // Another device raised it first: that stands, and raising here has nothing left to do.
+    fs::write(dir.path().join(VAULT_FILE), FORMAT_1).unwrap();
+    here.raise_format(1).unwrap();
+    assert_eq!(fs::read_to_string(dir.path().join(VAULT_FILE)).unwrap(), FORMAT_1);
+    assert_eq!(here.format(), 1);
+
+    // Another device rewrote it in format 0 (spacing aside): not replaced from under it.
+    let dir = tempfile::tempdir().unwrap();
+    let (here, _kit) = Vault::create(dir.path(), pass("correct horse")).unwrap();
+    let theirs = "{\"format\":\"openquote.vault/0\",\"encryption\":\"age\"}";
+    fs::write(dir.path().join(VAULT_FILE), theirs).unwrap();
+    assert!(matches!(here.raise_format(1), Err(VaultError::DeclarationChanged)));
+    assert_eq!(fs::read_to_string(dir.path().join(VAULT_FILE)).unwrap(), theirs);
+    here.raise_format(1).unwrap(); // once read again, it can be raised
+    assert_eq!(fs::read_to_string(dir.path().join(VAULT_FILE)).unwrap(), FORMAT_1);
 }
 
 /// Opens a record file with an independent age implementation, when one is available:

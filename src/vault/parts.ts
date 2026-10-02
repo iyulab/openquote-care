@@ -125,7 +125,15 @@ export function applyPackButton(store: VaultStore) {
     const folder = await open({ directory: true, title: strings.applyPackTitle })
     if (typeof folder === 'string') await store.applyPack(folder)
   }
-  return html`<dc-button variant="secondary" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>`
+  const folder = store.raiseFormatFor
+  return html`<dc-button variant="secondary" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>
+    ${folder === undefined
+      ? nothing
+      : html`<dc-callout variant="warning" data-role="raise-format">
+          <p>${strings.raiseFormatAsk}</p>
+          <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="raise-format-confirm" @click=${() => void store.applyPack(folder, true)}>${strings.raiseFormatConfirm}</dc-button>
+          <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ raiseFormatFor: undefined })}>${strings.cancel}</dc-button>
+        </dc-callout>`}`
 }
 
 /** How a device reads to a person: its name, and which one is this computer. */

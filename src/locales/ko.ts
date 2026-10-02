@@ -263,6 +263,9 @@ export const ko = {
   nowhere: '—',
   applyPack: '분류 개정 적용',
   applyPackTitle: '적용할 분류 자료 폴더 선택',
+  raiseFormatAsk:
+    '이 분류 자료는 기록 폴더를 새 형식으로 올려야 바르게 셉니다. 올리면 이 판보다 오래된 앱에서는 이 기록 폴더가 열리지 않습니다 — 같은 기록 폴더를 쓰는 다른 컴퓨터도 앱을 먼저 새 판으로 올려 주세요.',
+  raiseFormatConfirm: '새 형식으로 올리고 적용',
   packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}`,
   packNothingNew: '이 자료에는 기록 폴더에 없는 새 분류·양식이 없습니다.',
   packFormsBehind: (forms: string[]) =>
@@ -422,6 +425,8 @@ export const ko = {
     'kit-not-confirmed': '복구 키트를 먼저 확인하세요.',
     'kit-mismatch': '복구 키의 마지막 글자와 다릅니다. 다시 확인하세요.',
     'not-a-pack': '이 폴더에는 분류나 보고 양식 자료가 없습니다.',
+    'needs-new-format': '이 분류 자료는 기록 폴더를 새 형식으로 올려야 적용할 수 있습니다.',
+    'declaration-changed': '다른 컴퓨터가 방금 기록 폴더의 형식을 바꿨습니다. 다시 적용해 보세요.',
     'pack-conflict': '기록 폴더에 같은 이름의 다른 분류·양식이 이미 있어 아무것도 적용하지 않았습니다. 자료의 판을 확인하세요.',
     'already-exists': '이 폴더는 이미 기록 폴더입니다. 기록 폴더 열기를 쓰세요.',
     'not-a-vault': '이 폴더는 기록 폴더가 아닙니다.',

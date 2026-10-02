@@ -50,7 +50,10 @@ pub const DAMAGED_EXTENSION: &str = ".damaged";
 /// say it is a copy ([`Vault::is_backup_copy`]).
 pub const BACKUP_MARKER: &str = "openquote-care-backup.json";
 
-const VAULT_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
+/// The declaration of an encrypted vault in format `version`: the same text in every such vault.
+fn declaration(version: u32) -> String {
+    format!("{{\n  \"format\": \"openquote.vault/{version}\",\n  \"encryption\": \"age\"\n}}\n")
+}
 
 /// scrypt cost (log2 N) for wrapping the vault key: the age default. Fixed rather than calibrated
 /// on the creating machine, so a vault made on a fast computer still opens in reasonable time on
@@ -72,6 +75,9 @@ pub enum VaultError {
     /// The folder holds a vault in a newer format than this version reads. Opening it anyway
     /// could miscount what this version does not know about, so it is refused.
     NewerFormat,
+    /// Another device changed the declaration while this one meant to raise it, to a format still
+    /// short of what was asked: nothing was replaced.
+    DeclarationChanged,
     /// The vault is declared unencrypted; it has no key to unlock.
     NotEncrypted,
     /// The passphrase does not unwrap the vault key.
@@ -99,6 +105,7 @@ impl fmt::Display for VaultError {
             Self::NotAVault => f.write_str("the folder holds no vault this version can open"),
             Self::DeclarationMissing => f.write_str("the folder holds a vault key file but no vault declaration"),
             Self::NewerFormat => f.write_str("the vault is in a newer format than this version reads"),
+            Self::DeclarationChanged => f.write_str("the vault declaration changed while it was being raised"),
             Self::NotEncrypted => f.write_str("the vault is not encrypted"),
             Self::WrongPassphrase => f.write_str("the passphrase does not open this vault"),
             Self::DamagedKeyFile => f.write_str("the vault key file is damaged"),
@@ -150,7 +157,7 @@ impl NewVault {
     pub fn write(self) -> Result<Vault, VaultError> {
         // The declaration goes last: a folder with a declaration always has its key.
         write_new(&self.root.join(KEY_FILE), self.key_file.as_bytes())?;
-        write_new(&self.root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes())?;
+        write_new(&self.root.join(VAULT_FILE), declaration(0).as_bytes())?;
         Vault::with_identity(&self.root, self.identity, Some(self.key_file.into_bytes()))
     }
 }
@@ -186,6 +193,9 @@ pub struct Vault {
     /// The key file as this vault last read or wrote it (`None`: there was none) — the only
     /// content a new passphrase may replace.
     key_file: Mutex<Option<Vec<u8>>>,
+    /// The vault format the declaration names, and the declaration as last read or written — the
+    /// only content [`Vault::raise_format`] may replace.
+    declared: Mutex<(u32, Vec<u8>)>,
 }
 
 impl Vault {
@@ -218,8 +228,8 @@ impl Vault {
         if !root.join(KEY_FILE).is_file() {
             return Err(VaultError::NotAVault);
         }
-        match write_new(&root.join(VAULT_FILE), VAULT_DECLARATION.as_bytes()) {
-            Err(VaultError::AlreadyExists) => check_declaration(root),
+        match write_new(&root.join(VAULT_FILE), declaration(0).as_bytes()) {
+            Err(VaultError::AlreadyExists) => check_declaration(root).map(|_| ()),
             other => other,
         }
     }
@@ -383,7 +393,45 @@ impl Vault {
 
     fn with_identity(root: &Path, identity: x25519::Identity, key_file: Option<Vec<u8>>) -> Result<Vault, VaultError> {
         let recipient = identity.to_public();
-        Ok(Vault { root: Root::open(root)?, identity, recipient, own: OwnWrites::new(), key_file: Mutex::new(key_file) })
+        let declared = Mutex::new(read_declaration(root)?);
+        Ok(Vault { root: Root::open(root)?, identity, recipient, own: OwnWrites::new(), key_file: Mutex::new(key_file), declared })
+    }
+
+    /// The vault format the folder's declaration names (`openquote.vault/N`).
+    pub fn format(&self) -> u32 {
+        self.declared.lock().unwrap_or_else(|e| e.into_inner()).0
+    }
+
+    /// Raises the folder's declaration to vault format `to`, so apps that read only an earlier
+    /// format refuse the folder instead of counting what it now holds differently. Raising is
+    /// done only once a person has chosen it. A declaration already at `to` or later is left as it
+    /// is. The declaration is the one file besides the key file a vault replaces — a second
+    /// declaration beside it would leave earlier apps reading the old one — atomically, and only
+    /// while it still holds what this vault last read or wrote; when another device raised it
+    /// meanwhile far enough, that stands.
+    pub fn raise_format(&self, to: u32) -> Result<(), VaultError> {
+        if to > FORMAT_VERSION {
+            return Err(VaultError::NewerFormat);
+        }
+        let mut declared = self.declared.lock().unwrap_or_else(|e| e.into_inner());
+        if declared.0 >= to {
+            return Ok(());
+        }
+        let raised = declaration(to).into_bytes();
+        let path = self.root.path().join(VAULT_FILE);
+        match tauri_kit_fs::replace_if(&path, tauri_kit_fs::Expect::Holds(&declared.1), &raised) {
+            Ok(()) => {
+                *declared = (to, raised);
+                Ok(())
+            }
+            Err(e) if tauri_kit_fs::is_changed(&e) => {
+                let now = read_declaration(self.root.path())?;
+                let enough = now.0 >= to;
+                *declared = now;
+                if enough { Ok(()) } else { Err(VaultError::DeclarationChanged) }
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Where the record file at `relative` (a vault path with `/` separators) lives. Besides what
@@ -416,26 +464,34 @@ fn wrap_key(identity: &x25519::Identity, passphrase: SecretString) -> Result<Str
     age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes()).map_err(|e| VaultError::Io(io::Error::other(e)))
 }
 
-fn check_declaration(root: &Path) -> Result<(), VaultError> {
+/// The format the declaration in `root` names, and its bytes, once [`check_declaration`] accepts it.
+fn read_declaration(root: &Path) -> Result<(u32, Vec<u8>), VaultError> {
+    let version = check_declaration(root)?;
+    Ok((version, fs::read(root.join(VAULT_FILE))?))
+}
+
+/// The format the declaration in `root` names, when this build reads it.
+fn check_declaration(root: &Path) -> Result<u32, VaultError> {
     let text = fs::read_to_string(root.join(VAULT_FILE)).map_err(|e| match e.kind() {
         io::ErrorKind::NotFound if root.join(KEY_FILE).is_file() => VaultError::DeclarationMissing,
         io::ErrorKind::NotFound => VaultError::NotAVault,
         _ => VaultError::Io(e),
     })?;
     let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
-    match declared_version(&compact) {
-        Some(FORMAT_VERSION) => {}
-        Some(v) if v > FORMAT_VERSION => return Err(VaultError::NewerFormat),
-        _ => return Err(VaultError::NotAVault),
-    }
+    let version = match declared_version(&compact) {
+        Some(v) if v <= FORMAT_VERSION => v,
+        Some(_) => return Err(VaultError::NewerFormat),
+        None => return Err(VaultError::NotAVault),
+    };
     if !compact.contains("\"encryption\":\"age\"") {
         return Err(VaultError::NotEncrypted);
     }
-    Ok(())
+    Ok(version)
 }
 
-/// The vault format version this build reads and writes.
-const FORMAT_VERSION: u32 = 0;
+/// The newest vault format this build reads and writes. A new vault starts at format 0 and is raised
+/// only when it comes to hold what an earlier app would count differently (see [`Vault::raise_format`]).
+const FORMAT_VERSION: u32 = 1;
 
 /// The `N` of `"format":"openquote.vault/N"` in a declaration with whitespace removed.
 fn declared_version(compact: &str) -> Option<u32> {

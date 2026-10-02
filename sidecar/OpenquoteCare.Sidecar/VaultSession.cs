@@ -55,6 +55,20 @@ internal sealed class VaultSession
         }
     }
 
+    /// <summary>
+    /// The earliest vault format the vault would need holding <paramref name="files"/> as well — what a
+    /// host checks before writing them (see <see cref="VaultContent.RequiredVersion"/>).
+    /// </summary>
+    public int RequiredWith(IEnumerable<VaultFile> files)
+    {
+        lock (_gate)
+        {
+            var all = new Dictionary<string, VaultFile>(_files, StringComparer.Ordinal);
+            foreach (var f in files) all[f.Path] = f;
+            return VaultReader.Read(all.Values).RequiredVersion;
+        }
+    }
+
     public Snapshot Current
     {
         get

@@ -120,8 +120,8 @@ fn history(entity_type: String, app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
-fn apply_pack(folder: String, app: State<App>) -> CommandResult<Vec<String>> {
-    text(app.apply_pack(&PathBuf::from(folder)))
+fn apply_pack(folder: String, raise_format: Option<bool>, app: State<App>) -> CommandResult<Vec<String>> {
+    text(app.apply_pack(&PathBuf::from(folder), raise_format.unwrap_or(false)))
 }
 
 #[tauri::command]
