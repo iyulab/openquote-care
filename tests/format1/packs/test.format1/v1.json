@@ -1,0 +1,13 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "test.format1",
+  "version": 1,
+  "label": "Format 1 report forms (test)",
+  "provides": [
+    "reports/test.format1.year-grade-class/v1.json",
+    "reports/test.format1.month-girls/v1.json",
+    "reports/test.format1.range-concerns/v1.json",
+    "fields/test.format1/session/v1.json",
+    "labels/test.format1/v1.ko.json"
+  ]
+}

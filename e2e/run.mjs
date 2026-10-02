@@ -1166,6 +1166,42 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'raises the vault to the newer format only once a person chooses, then takes a field holding several values'(app, work) {
+    // The test pack of format 1 report forms and a coded field taking several values, applied to the school vault above.
+    const vault = join(dirname(work.vault), 'school-vault')
+    const declared = async () => JSON.parse(await readFile(join(vault, 'vault.json'), 'utf8')).format
+    assert.equal(await declared(), 'openquote.vault/0')
+    const pack = join(root, 'tests', 'format1')
+    await app.click('button', '월 보고') // where a pack is applied
+    await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=raise-format-confirm]')`, 'the question before raising the format')
+    assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
+
+    await app.click('[data-role=raise-format-confirm]')
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('아직 표로 펴지 못해'))`, 'the pack applied')
+    await app.noAlert()
+    assert.equal(await declared(), 'openquote.vault/1')
+    const notice = await app.cdp.evaluate(`__e2e.all('[role=status]').map((el) => el.textContent).join(' ')`)
+    for (const form of ['학년도 학년·반·주제별 상담 (1판)', '월별 여학생 주제·상담자별 상담 (1판)', '기간별 함께 다룬 주제 (1판)']) {
+      assert.ok(notice.includes(form), `${form} is named as a form this version cannot lay out yet`)
+    }
+    assert.equal(await app.cdp.evaluate(`__e2e.all('nav[aria-label="보고 양식"] button').some((b) => (b.dataset.entry ?? '').startsWith('test.format1.'))`), false,
+      'and it is not offered as a report')
+
+    await app.click('button', '대상자')
+    await app.click('li button .label', '가상 학생 9')
+    await app.setDate('날짜', '2026-03-24')
+    await app.choose('주제', 'family')
+    await app.choose('함께 다룬 주제', 'family')
+    await app.choose('함께 해당하는 항목 더하기', 'learning')
+    await app.cdp.waitFor(`!!__e2e.one('[data-others=concerns] dc-button[data-other=learning]')`, 'the other value listed')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the session listed')
+    await app.noAlert()
+    const rows = await app.sessionRows()
+    assert.ok(rows.some((r) => r.includes('가정 (함께: 학습)')), `the session shows its primary value and the other: ${JSON.stringify(rows)}`)
+  },
+
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()

@@ -1,0 +1,15 @@
+{
+  "format": "openquote.fields/1",
+  "pack": "test.format1",
+  "type": "session",
+  "version": 1,
+  "fields": [
+    {
+      "name": "concerns",
+      "kind": "coded",
+      "scheme": "topic",
+      "many": true,
+      "label": "Topics covered"
+    }
+  ]
+}

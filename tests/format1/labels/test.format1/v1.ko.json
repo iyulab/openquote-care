@@ -1,0 +1,11 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "test.format1",
+  "version": 1,
+  "locale": "ko",
+  "fields": {
+    "session": {
+      "concerns": "함께 다룬 주제"
+    }
+  }
+}

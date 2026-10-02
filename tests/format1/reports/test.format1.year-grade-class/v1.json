@@ -1,0 +1,14 @@
+{
+  "format": "openquote.report/1",
+  "report": "test.format1.year-grade-class",
+  "version": 1,
+  "label": "학년도 학년·반·주제별 상담",
+  "counts": "session",
+  "period": { "unit": "year", "field": "date", "startMonth": 3 },
+  "dimensions": [
+    { "field": "grade", "of": "subject" },
+    { "field": "class", "of": "subject" },
+    { "field": "topic", "scheme": "topic", "version": 1 }
+  ],
+  "measures": ["records", "people", "visits"]
+}

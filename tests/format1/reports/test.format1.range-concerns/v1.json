@@ -1,0 +1,13 @@
+{
+  "format": "openquote.report/1",
+  "report": "test.format1.range-concerns",
+  "version": 1,
+  "label": "기간별 함께 다룬 주제",
+  "counts": "session",
+  "period": { "unit": "range", "field": "date" },
+  "dimensions": [
+    { "field": "concerns", "scheme": "topic", "version": 1, "values": "all" },
+    { "field": "practitioner" }
+  ],
+  "measures": ["records", "people"]
+}

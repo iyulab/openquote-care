@@ -1,0 +1,16 @@
+{
+  "format": "openquote.report/1",
+  "report": "test.format1.month-girls",
+  "version": 1,
+  "label": "월별 여학생 주제·상담자별 상담",
+  "counts": "session",
+  "period": { "unit": "month", "field": "date" },
+  "dimensions": [
+    { "field": "topic", "scheme": "topic", "version": 1 },
+    { "field": "practitioner" }
+  ],
+  "filters": [
+    { "field": "gender", "of": "subject", "in": ["F"] }
+  ],
+  "measures": ["records", "visits"]
+}
