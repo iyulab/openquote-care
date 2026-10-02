@@ -1,7 +1,7 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit'
 import { nameCollator } from '../collation.js'
 import { describeError, isCommandError } from '../errors.js'
-import { leftBehind, notLaidOut, type ReportEntry } from '../forms.js'
+import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
@@ -22,7 +22,7 @@ export type ErrorText = { text: string; detail?: string }
 export type SessionDraft = Record<string, string>
 
 /** What the screens may set directly; everything else changes through the store's actions. */
-type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month'>
+type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
 
 /**
  * An open vault as the screens see it: what was read from it, the action in progress and its
@@ -47,13 +47,15 @@ export class VaultStore extends EventTarget {
   raiseFormatFor: string | undefined
   /** The report form chosen: loading picks the newest when none is, and a pack offers its new version. */
   reportKey = ''
-  /** The report forms the vault holds that this screen cannot lay out, so does not offer: named when a pack brings them. */
-  notLaidOut: ReportEntry[] = []
   /** The export form chosen: loading picks the first when none is. */
   exportKey = ''
-  /** The month the report and export screens work on. */
+  /** The month the report and export screens work on; its year is also the year a yearly form counts. */
   year = lastMonth().year
   month = lastMonth().month
+  /** The day a daily form counts, and the first and last day a form over a range counts (`YYYY-MM-DD`; empty until picked). */
+  day = today()
+  rangeFrom = ''
+  rangeTo = ''
   draft: SessionDraft = {}
   /** The draft's fields whose value a person took from a suggestion, and has not changed since. */
   suggested: ReadonlySet<string> = new Set()
@@ -177,7 +179,6 @@ export class VaultStore extends EventTarget {
     this.backup = backup
     this.corrected = new Set(sessionHistory.filter((h) => h.changes.some((c) => c.op === 'update')).map((h) => h.id))
     // A form standing on a hidden field is never shown; the sidecar decides which those are.
-    this.notLaidOut = notLaidOut(summary.reports)
     const { reports, exports } = (this.summary = {
       ...summary,
       reports: summary.reports.filter((f) => f.offered),
@@ -286,7 +287,7 @@ export class VaultStore extends EventTarget {
         throw e
       }
       await this.load()
-      this.notice = packNotice(added, this.summary, this.notLaidOut)
+      this.notice = packNotice(added, this.summary)
       // A new form version is what the person came for: offer it, if this screen shows it.
       const offered = new Set((this.summary?.reports ?? []).map((r) => `${r.name}@${r.version}`))
       const report = added
@@ -299,7 +300,7 @@ export class VaultStore extends EventTarget {
 }
 
 /** What a pack brought, in words, and what the vault still lacks after it. */
-function packNotice(added: string[], summary: VaultSummary | undefined, notShown: ReportEntry[]): string {
+function packNotice(added: string[], summary: VaultSummary | undefined): string {
   if (added.length === 0) return strings.packNothingNew
   let notice: string
   // A pack that brings its manifest is named once; a folder of loose definitions, file by file.
@@ -325,7 +326,6 @@ function packNotice(added: string[], summary: VaultSummary | undefined, notShown
   if (issues.length > 0) notice += ' ' + strings.packIssues(issues.length)
   const behind = leftBehind([...(summary?.reports ?? []), ...(summary?.exports ?? [])])
   if (behind.length > 0) notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
-  if (notShown.length > 0) notice += ' ' + strings.packFormsNotShown(notShown.map((f) => strings.reportFormOption(f.label, f.version)))
   const unlinked = summary?.unlinked ?? []
   if (unlinked.length > 0) notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(u.scheme, u.version)))
   return notice

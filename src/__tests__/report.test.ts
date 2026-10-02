@@ -118,11 +118,10 @@ describe('layOut — three dimensions', () => {
   }
   const layout = layOut(year, [valueAxis('(학년 없음)'), valueAxis('(반 없음)'), topicAxis], '전체')
 
-  it('puts all places of the third dimension together first, then each place of it in order', () => {
+  it('puts all places of the third dimension together first, then each place records fell into, in order', () => {
     expect(layout.sections.map((s) => [s.id, s.label])).toEqual([
       [undefined, '전체'],
       ['family', '가정'],
-      ['relation-peer', '관계 › 또래'],
       ['learning', '학습'],
     ])
   })
@@ -132,12 +131,11 @@ describe('layOut — three dimensions', () => {
     expect(all.columns.map((c) => c.label)).toEqual(['1', '3', '(반 없음)'])
   })
   it('counts each section from its own records, and all of them together from every record once', () => {
-    const [all, family, peer, learning] = layout.sections.map((s) => s.table)
+    const [all, family, learning] = layout.sections.map((s) => s.table)
     expect(all.placed).toBe(5)
     expect(all.rows[0].cells.map((c) => c.count)).toEqual([2, 1, 0])
     expect(family.placed).toBe(3)
     expect(family.rows.map((r) => r.label)).toEqual(['2', '10'])
-    expect(peer.placed).toBe(0)
     expect(learning.rows.map((r) => r.total)).toEqual([1, 1])
   })
   it('measures records, the people behind them and the visits they add up to', () => {

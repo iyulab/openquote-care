@@ -58,6 +58,21 @@ function axisOf(store: VaultStore, form: ReportEntry, run: RunRecord, d: Dimensi
   return { ...axis, label: (id) => named.get(id) ?? axis.label(id) }
 }
 
+/** What each dimension of a form is called, in key order: its field's label. */
+export function dimensionTitles(store: VaultStore, form: ReportEntry | undefined): string[] {
+  return (form?.dimensions ?? []).map((d) => labelOfField(store.fieldsOf(d.ofSubject ? 'subject' : form!.counts), d.field))
+}
+
+/** A form's conditions in words: each field, and the values it lets through (a classified one in the version the run counted in). */
+export function filterParts(store: VaultStore, form: ReportEntry | undefined, run: RunRecord): string[] {
+  return (form?.filters ?? []).map((f) => {
+    const name = labelOfField(store.fieldsOf(f.ofSubject ? 'subject' : form!.counts), f.field)
+    const scheme = f.scheme
+    const values = scheme ? f.in.map((code) => labelOf(store.schemes, { scheme, version: run.schemes[scheme]?.version ?? f.version ?? 0, code })) : f.in
+    return `${name}: ${values.join(', ')}`
+  })
+}
+
 /** The row of a form's records with no value in its row field, in words: "(Concern none)". */
 export function blankLabel(store: VaultStore, form: ReportEntry | undefined): string {
   return strings.noValue(form ? labelOfField(store.fieldsOf(form.counts), rowFieldOf(form)) : strings.reportRow)

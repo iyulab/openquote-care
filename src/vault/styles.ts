@@ -197,6 +197,24 @@ export const vaultStyles = [
     button.conflict:hover {
       background: var(--dc-color-danger-subtle, #fee2e2);
     }
+    /* A report split by a third dimension: one section on screen, every one of them on paper, each under its label. */
+    .print-only,
+    .section[hidden] {
+      display: none;
+    }
+    .section-label {
+      margin: var(--dc-space-3, 12px) 0 var(--dc-space-1, 4px);
+      font-weight: var(--dc-font-weight-semibold, 600);
+    }
+    @media print {
+      .print-only,
+      .section[hidden] {
+        display: block;
+      }
+      .no-print {
+        display: none;
+      }
+    }
     dl.legend {
       display: grid;
       gap: 2px;

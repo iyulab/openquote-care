@@ -51,7 +51,7 @@ describe('VaultStore', () => {
   it('never shows a form the vault does not offer, nor picks it first', async () => {
     const form = (name: string, offered: boolean) => ({
       name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
-      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], rowsAndColumn: true,
+      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], filters: [],
     })
     vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [form('hidden', false)] })
     const store = new VaultStore()
@@ -201,22 +201,22 @@ describe('VaultStore', () => {
     expect(store.raiseFormatFor).toBeUndefined()
   })
 
-  it('names the forms a pack brought that this screen cannot lay out, and does not pick one', async () => {
-    const form = (name: string, rowsAndColumn: boolean) => ({
-      name, version: 1, label: name, behind: [], offered: rowsAndColumn, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
-      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], rowsAndColumn,
+  it('offers a form a pack brought, unless the vault does not offer it', async () => {
+    const form = (name: string, offered: boolean) => ({
+      name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
+      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], filters: [],
     })
-    vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('monthly', true), form('by-grade', false)] })
-    vi.mocked(shell.applyPack).mockResolvedValueOnce(['reports/by-grade/v1.json'])
+    vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('monthly', true), form('by-level', true), form('hidden', false)] })
     const store = new VaultStore()
     await store.load()
     store.set({ reportKey: 'monthly@1' })
 
-    await store.applyPack('D:/packs/v1')
-
-    // The sidecar does not offer a form the screen cannot lay out: the notice reads the forms before that filter.
-    expect(store.summary?.reports.map((r) => r.name)).toEqual(['monthly'])
-    expect(store.notice).toContain('by-grade (v1): this version of the app cannot lay this form out')
+    vi.mocked(shell.applyPack).mockResolvedValueOnce(['reports/hidden/v1.json'])
+    await store.applyPack('D:/packs/a')
     expect(store.reportKey).toBe('monthly@1')
+
+    vi.mocked(shell.applyPack).mockResolvedValueOnce(['reports/hidden/v1.json', 'reports/by-level/v1.json'])
+    await store.applyPack('D:/packs/b')
+    expect(store.reportKey).toBe('by-level@1')
   })
 })

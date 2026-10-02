@@ -140,6 +140,21 @@ export const en: Strings = {
   year: 'Year',
   month: 'Month',
   monthOption: (m: number) => new Date(2000, m - 1, 1).toLocaleString('en', { month: 'long' }),
+  schoolYear: 'School year',
+  periodDay: 'Date',
+  rangeFrom: 'From',
+  rangeTo: 'To',
+  rangeMissing: 'Pick the first and the last day of the period; the last day cannot come before the first.',
+  allSections: 'All',
+  reportFilters: (parts: string[]) => `Only: ${parts.join(' · ')}`,
+  reportCorner: (row: string, column: string) => `${row} / ${column}`,
+  metricVisits: 'Visits',
+  measureNote: (parts: string[]) => ` (${parts.join(' · ')})`,
+  measurePart: {
+    records: (n: number) => plural(n, 'record'),
+    people: (n: number) => plural(n, 'person', 'people'),
+    visits: (n: number) => plural(n, 'visit'),
+  },
   runReport: 'Run',
   noReports: 'This vault has no report forms.',
   reportPeriod: (from: string, to: string) => `Period ${from} – ${to} · The run is kept in the vault.`,
@@ -268,8 +283,6 @@ export const en: Strings = {
   raiseFormatConfirm: 'Raise the format and apply',
   packAdded: (items: string[]) => `Added: ${items.join(', ')}`,
   packNothingNew: 'This material has no classifications or forms the vault does not already hold.',
-  packFormsNotShown: (forms: string[]) =>
-    `${forms.join(', ')}: this version of the app cannot lay ${forms.length === 1 ? 'this form' : 'these forms'} out as a table yet, so ${forms.length === 1 ? 'it is' : 'they are'} not in the report list. Records are counted as before.`,
   packFormsBehind: (forms: string[]) =>
     `No form follows the new classification version yet: ${forms.join(', ')}. Records after the revision stay empty or awaiting in these forms — apply material with new versions of the forms.`,
   packSchemeUnlinked: (versions: string[]) =>

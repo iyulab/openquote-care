@@ -121,13 +121,16 @@ public sealed record ExportTableView(
 /// </summary>
 public sealed record DimensionView(string Field, string? Scheme, int? Version, bool OfSubject, bool All);
 
+/// <summary>A condition of a report form: the field it reads, as a dimension does, and the codes or string values it lets through.</summary>
+public sealed record FilterView(string Field, string? Scheme, int? Version, bool OfSubject, IReadOnlyList<string> In);
+
 /// <param name="Label">What people call the form, in the vault's locale.</param>
 /// <param name="Unit">The period the form is run over: <c>day</c>, <c>month</c>, <c>year</c> or <c>range</c>.</param>
 /// <param name="StartMonth">The month a year starts in (1–12): 3 for a school year from March. 1 for every other unit.</param>
 /// <param name="Dimensions">The dimensions a cell's key is made of, in key order.</param>
 /// <param name="Measures">The numbers the form shows: <c>records</c>, <c>people</c>, <c>visits</c>.</param>
-/// <param name="RowsAndColumn">True when the form is a classified row and at most one column of the record, by month, unfiltered — the table this screen lays out.</param>
-/// <param name="Offered">False when a dimension or filter reads a field the vault's packs hide, or the screen cannot lay the form out: the form is not offered.</param>
+/// <param name="Filters">The conditions every record the form counts meets.</param>
+/// <param name="Offered">False when a dimension or filter reads a field the vault's packs hide: the form is not offered.</param>
 public sealed record ReportView(
     string Name,
     int Version,
@@ -138,7 +141,7 @@ public sealed record ReportView(
     int StartMonth,
     IReadOnlyList<DimensionView> Dimensions,
     IReadOnlyList<string> Measures,
-    bool RowsAndColumn,
+    IReadOnlyList<FilterView> Filters,
     IReadOnlyList<SchemeLagView> Behind,
     bool Offered);
 
@@ -468,10 +471,9 @@ internal static class Api
                 s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit), r.Period.StartMonth,
                 [.. r.Dimensions.Select(d => new DimensionView(d.Field, d.Scheme, d.Version, d.OfSubject, d.All))],
                 [.. r.Measures.Select(m => m.ToString().ToLowerInvariant())],
-                r.RowsAndColumn,
+                [.. r.Filters.Select(f => new FilterView(f.On.Field, f.On.Scheme, f.On.Version, f.On.OfSubject, f.In))],
                 Behind(r.Schemes.Where(x => r.VersionOf(x) is not null).Select(x => (x, r.VersionOf(x)!.Value)), latest),
-                r.RowsAndColumn
-                    && !r.Dimensions.Concat(r.Filters.Select(f => f.On)).Any(d => Hidden(s.Fields, d.OfSubject ? "subject" : r.Counts, d.Field))))],
+                !r.Dimensions.Concat(r.Filters.Select(f => f.On)).Any(d => Hidden(s.Fields, d.OfSubject ? "subject" : r.Counts, d.Field))))],
             [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version,
                 s.Labels.ExportLabel(e.Name, e.Version, s.Locales) ?? e.Label, e.Rows, e.PeriodField,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest),

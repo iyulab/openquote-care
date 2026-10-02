@@ -317,7 +317,7 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal(["topic", "practitioner"], report["dimensions"]!.AsArray().Select(d => d!["field"]!.GetValue<string>()));
         Assert.Equal("topic", report["dimensions"]![0]!["scheme"]!.GetValue<string>());
         Assert.Null(report["dimensions"]![1]!["scheme"]);
-        Assert.True(report["rowsAndColumn"]!.GetValue<bool>());
+        Assert.Empty(report["filters"]!.AsArray());
         Assert.Equal(["records", "people"], report["measures"]!.AsArray().Select(m => m!.GetValue<string>()));
     }
 
@@ -671,6 +671,10 @@ public sealed class SidecarTests : IAsyncLifetime
         var summary = await Get("/summary");
         var year = summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "test.format1.year-grade-class")!;
         Assert.Equal(("year", 3), (year["unit"]!.GetValue<string>(), year["startMonth"]!.GetValue<int>()));
+        Assert.True(year["offered"]!.GetValue<bool>());
+        var girls = summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "test.format1.month-girls")!;
+        var filter = girls["filters"]!.AsArray().Single()!;
+        Assert.Equal(("gender", true, "F"), (filter["field"]!.GetValue<string>(), filter["ofSubject"]!.GetValue<bool>(), filter["in"]!.AsArray().Single()!.GetValue<string>()));
 
         // A day in it: the school year from March that holds it.
         var schoolYear = (await Post("/reports/run", new { report = "test.format1.year-grade-class", version = 1, from = "2026-04-15" }))["record"]!;

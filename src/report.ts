@@ -177,14 +177,16 @@ function tableOf(cells: Placed[], rowAxis: Axis, columnAxis: Axis): Table {
 /**
  * Lays a run out along `axes`, one per dimension of its form in key order — for a form of one
  * dimension, a second axis whose one column holds every record. With a third axis the cells are split
- * into sections: all of its places together (labelled `all`) first, then each place.
+ * into sections: all of its places together (labelled `all`) first, then each place records fell into.
  */
 export function layOut(run: RunRecord, axes: Axis[], all = ''): Layout {
   const [rowAxis, columnAxis, sectionAxis] = axes
   const cells: Placed[] = run.cells.map((c) => ({ key: keyOf(c), records: c.records }))
   const sections: Section[] = [{ label: all, table: tableOf(cells, rowAxis, columnAxis) }]
   if (sectionAxis) {
-    for (const place of placesOn(sectionAxis, cells.map((c) => placeOf(c, 2)))) {
+    // A section is a place records fell into: unlike a row, an empty one shows nothing worth a tab.
+    const used = cells.map((c) => placeOf(c, 2))
+    for (const place of placesOn(sectionAxis, used).filter((p) => used.includes(p.id))) {
       sections.push({ id: place.id, label: place.label, table: tableOf(cells.filter((c) => placeOf(c, 2) === place.id), rowAxis, columnAxis) })
     }
   }

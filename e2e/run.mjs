@@ -1166,7 +1166,7 @@ const scenarios = {
     await app.noAlert()
   },
 
-  async 'raises the vault to the newer format only once a person chooses, then takes a field holding several values'(app, work) {
+  async 'raises the vault to the newer format only once a person chooses, then lays a school year out by grade, class and topic'(app, work) {
     // The test pack of format 1 report forms and a coded field taking several values, applied to the school vault above.
     const vault = join(dirname(work.vault), 'school-vault')
     const declared = async () => JSON.parse(await readFile(join(vault, 'vault.json'), 'utf8')).format
@@ -1178,18 +1178,22 @@ const scenarios = {
     assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
 
     await app.click('[data-role=raise-format-confirm]')
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('아직 표로 펴지 못해'))`, 'the pack applied')
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('Format 1 report forms (test)'))`, 'the pack applied')
     await app.noAlert()
     assert.equal(await declared(), 'openquote.vault/1')
-    const notice = await app.cdp.evaluate(`__e2e.all('[role=status]').map((el) => el.textContent).join(' ')`)
-    for (const form of ['학년도 학년·반·주제별 상담 (1판)', '월별 여학생 주제·상담자별 상담 (1판)', '기간별 함께 다룬 주제 (1판)']) {
-      assert.ok(notice.includes(form), `${form} is named as a form this version cannot lay out yet`)
+    const entries = await app.cdp.evaluate(`__e2e.all('nav[aria-label="보고 양식"] button').map((b) => b.dataset.entry)`)
+    for (const form of ['test.format1.year-grade-class@1', 'test.format1.month-girls@1', 'test.format1.range-concerns@1']) {
+      assert.ok(entries.includes(form), `${form} is offered as a report: ${JSON.stringify(entries)}`)
     }
-    assert.equal(await app.cdp.evaluate(`__e2e.all('nav[aria-label="보고 양식"] button').some((b) => (b.dataset.entry ?? '').startsWith('test.format1.'))`), false,
-      'and it is not offered as a report')
 
+    // The student gets a grade and a class; a second session takes a primary topic covered and another.
     await app.click('button', '대상자')
     await app.click('li button .label', '가상 학생 9')
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.type('학년', '2')
+    await app.type('반', '3')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
     await app.setDate('날짜', '2026-03-24')
     await app.choose('주제', 'family')
     await app.choose('함께 다룬 주제', 'family')
@@ -1200,6 +1204,32 @@ const scenarios = {
     await app.noAlert()
     const rows = await app.sessionRows()
     assert.ok(rows.some((r) => r.includes('가정 (함께: 학습)')), `the session shows its primary value and the other: ${JSON.stringify(rows)}`)
+
+    // A month of girls only: the condition is said under the title, and visits stand beside the records.
+    await app.click('button', '월 보고')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.month-girls@1"]')
+    await app.cdp.waitFor(`!!__e2e.one('select[aria-label="월"]')`, 'the month picker')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=filters]')`, 'the month laid out')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=filters]').textContent.trim()`), '조건: 성별: F')
+
+    // The school year from March: grade down, class across, a tab for each topic sessions fell into.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.year-grade-class@1"]')
+    await app.type('학년도', '2026')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="2"]')`, 'the school year laid out')
+    await app.noAlert()
+    assert.ok((await app.cdp.evaluate(`__e2e.one('[data-role=period]').textContent`)).includes('2026-03-01 ~ 2027-02-28'), 'the school year from March')
+    const visible = (code) => app.cdp.evaluate(`[...__e2e.one('[data-section]:not([hidden]) tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-section="0"] thead th').textContent.trim()`), '학년 ＼ 반')
+    assert.deepEqual(await visible('2'), ['2', '2 (1명 · 연인원 2)', '2 (1명 · 연인원 2)'], 'both sessions, grade 2 class 3, about one student')
+    const tab = `[...__e2e.one('dc-tab-bar').shadowRoot.querySelectorAll('[role=tab]')]`
+    const tabs = await app.cdp.evaluate(`${tab}.map((t) => t.textContent.trim())`)
+    assert.deepEqual(tabs, ['전체', '가정', '위기'], 'all together first, then each topic sessions fell into')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('[data-section]').filter((s) => !s.hidden).length`), 1, 'one section on screen at a time')
+    await app.cdp.evaluate(`(() => { ${tab}.find((t) => t.textContent.trim() === '가정').click(); return true })()`)
+    await app.cdp.waitFor(`!__e2e.one('[data-section="1"]').hidden`, 'the family tab shown')
+    assert.deepEqual(await visible('2'), ['2', '1 (1명 · 연인원 1)', '1 (1명 · 연인원 1)'])
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

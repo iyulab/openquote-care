@@ -37,24 +37,19 @@ export interface ReportEntry extends FormEntry {
   /** The month a year starts in (1–12): 3 for a school year from March; 1 for every other unit. */
   startMonth: number
   dimensions: Dimension[]
-  /** The numbers the form shows. */
+  /** The numbers the form shows, the first one foremost. */
   measures: ('records' | 'people' | 'visits')[]
-  /** True when the form is a classified row and at most one column of the record, by month, unfiltered — the table the report screen lays out. */
-  rowsAndColumn: boolean
+  /** The conditions every record the form counts meets. */
+  filters: Filter[]
 }
 
-/**
- * The report forms whose newest version this screen cannot lay out — more than a classified row and
- * a column, a filter, or another period than a month — so it does not offer them: named rather than
- * left out without a word.
- */
-export function notLaidOut(forms: ReportEntry[]): ReportEntry[] {
-  const newest = new Map<string, ReportEntry>()
-  for (const f of forms) {
-    const seen = newest.get(f.name)
-    if (!seen || seen.version < f.version) newest.set(f.name, f)
-  }
-  return [...newest.values()].filter((f) => !f.rowsAndColumn)
+/** A condition of a report form: a field read as a dimension reads it, and the codes or string values it lets through. */
+export interface Filter {
+  field: string
+  scheme: string | null
+  version: number | null
+  ofSubject: boolean
+  in: string[]
 }
 
 /** The field a rows-and-column form's rows are classified by. */
