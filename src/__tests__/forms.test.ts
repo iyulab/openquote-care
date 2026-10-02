@@ -20,7 +20,7 @@ describe('leftBehind', () => {
 
 describe('notLaidOut', () => {
   const report = (name: string, version: number, rowsAndColumn: boolean): ReportEntry => ({
-    name, version, label: name, behind: [], offered: rowsAndColumn, counts: 'session', periodField: 'date', unit: 'month',
+    name, version, label: name, behind: [], offered: rowsAndColumn, counts: 'session', periodField: 'date', unit: 'month', startMonth: 1,
     dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records'], rowsAndColumn,
   })
 

@@ -643,10 +643,10 @@ impl App {
         self.with_open(|open| Ok(open.engine.in_force(scheme, date)?))
     }
 
-    /// Runs a monthly report and keeps its run record in the vault.
-    pub fn run_report(&self, report: &str, version: u32, year: i32, month: u32) -> Result<Value, AppError> {
+    /// Runs a report form over a period (see [`Engine::run_report`]) and keeps its run record in the vault.
+    pub fn run_report(&self, report: &str, version: u32, from: &str, to: Option<&str>) -> Result<Value, AppError> {
         self.with_open(|open| {
-            let (record, file) = open.engine.run_report(report, version, year, month)?;
+            let (record, file) = open.engine.run_report(report, version, from, to)?;
             let path = file.path.clone();
             open.keep(file)?;
             self.back_up(&open.vault, Some(&[path]));
@@ -797,14 +797,14 @@ mod tests {
         assert_eq!(app.in_force("no-such-scheme", "2026-04-02").unwrap(), None);
         assert!(app.fields("session").unwrap().is_array());
         assert_eq!(app.entities("session").unwrap()[0]["subject"], subject_id);
-        let first = app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        let first = app.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         assert_eq!(first["total"]["count"], 1);
         app.close_vault();
         assert!(matches!(app.entities("session"), Err(AppError::NoVault)));
 
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert_eq!(summary["unreadable"], json!([]));
-        let again = app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        let again = app.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         assert_eq!(again["cells"], first["cells"]);
         let runs = app.runs().unwrap();
         assert_eq!(runs.as_array().unwrap().len(), 2, "both runs are kept and read back");
@@ -827,7 +827,7 @@ mod tests {
         assert!(status["copied"].as_u64().unwrap() > 2, "the declaration, the key file and the track's packs: {status}");
         app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         assert_eq!(app.backup_status()["copied"], 1, "the new record");
-        app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        app.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         assert_eq!(app.backup_status()["copied"], 1, "the run record");
         let mut in_backup = vault_files(backup.path());
         assert!(in_backup.remove(openquote_care_vault::BACKUP_MARKER).is_some(), "the backup carries its mark");
@@ -1055,9 +1055,9 @@ cut off").unwrap();
         assert_eq!(one.entities("session").unwrap().as_array().unwrap().len(), 1, "not seen until read again");
         one.refresh().unwrap();
         assert_eq!(one.entities("session").unwrap().as_array().unwrap().len(), 2);
-        let from_one = one.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        let from_one = one.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         two.refresh().unwrap();
-        let from_two = two.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        let from_two = two.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         assert_eq!(from_one["total"]["count"], 2);
         assert_eq!(from_one["cells"], from_two["cells"], "both devices count the same");
     }
@@ -1153,7 +1153,7 @@ cut off").unwrap();
         for app in [&one, &two] {
             app.refresh().unwrap();
             assert_eq!(app.entities("session").unwrap().as_array().unwrap().len(), 2 * EACH);
-            assert_eq!(app.run_report("monthly-topic", 1, 2026, 4).unwrap()["total"]["count"], 2 * EACH);
+            assert_eq!(app.run_report("monthly-topic", 1, "2026-04-01", None).unwrap()["total"]["count"], 2 * EACH);
         }
     }
 
@@ -1234,7 +1234,7 @@ cut off").unwrap();
         let opening = started.elapsed();
         assert_eq!(reader.entities("session").unwrap().as_array().unwrap().len(), records);
         let started = std::time::Instant::now();
-        reader.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        reader.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
         let report = started.elapsed();
         eprintln!("measure: {records} sessions · writing {writing:.2?} ({:.1?}/record) · opening with first cache build {opening:.2?} · one monthly report {report:.2?}", writing / records as u32);
     }
@@ -1260,7 +1260,7 @@ cut off").unwrap();
         first.record("/changes/update", json!({ "type": "session", "id": id, "fields": { "date": "2026-04-03" } })).unwrap();
         first.record("/changes/group", json!({ "fields": { "name": "peers", "members": [subject_id] } })).unwrap();
         first.apply_pack(&golden_step(2), false).unwrap();
-        first.run_report("monthly-topic", 2, 2026, 4).unwrap();
+        first.run_report("monthly-topic", 2, "2026-04-01", None).unwrap();
         let state = |app: &App| {
             json!({
                 "subjects": app.entities("subject").unwrap(),
@@ -1312,7 +1312,7 @@ cut off").unwrap();
             )
             .unwrap();
         let id = session.split('/').nth(2).unwrap().split('.').next().unwrap().to_owned();
-        app.run_report("monthly-topic", 1, 2026, 4).unwrap();
+        app.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
 
         let mut kept = vault_files(dir.path());
         let mut step = |what: &str, act: &dyn Fn()| {
@@ -1334,7 +1334,7 @@ cut off").unwrap();
             app.record("/changes/reclassify", json!({ "type": "session", "id": id, "field": "topic", "value": topic(2, "relation-peer") })).unwrap();
         });
         step("running the revised report", &|| {
-            app.run_report("monthly-topic", 2, 2026, 4).unwrap();
+            app.run_report("monthly-topic", 2, "2026-04-01", None).unwrap();
         });
         step("changing the passphrase and naming the device", &|| {
             app.change_passphrase("pass again".to_owned()).unwrap();
@@ -1618,7 +1618,7 @@ cut off").unwrap();
         for (path, bytes) in &held {
             assert_eq!(now.get(path), Some(bytes), "{} is unchanged", path.display());
         }
-        let run = app.run_report("monthly-topic", 2, 2026, 4).unwrap();
+        let run = app.run_report("monthly-topic", 2, "2026-04-01", None).unwrap();
         let expected: Value =
             serde_json::from_slice(&fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join("../tests/golden/expected/r3.json")).unwrap()).unwrap();
         for key in ["cells", "pending", "unmapped", "total"] {

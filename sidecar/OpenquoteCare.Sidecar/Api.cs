@@ -49,7 +49,11 @@ public sealed record PendingRequest(string Report, int Version, IReadOnlyList<st
 
 public sealed record CompareRequest(string Earlier, string Later);
 
-public sealed record RunRequest(string Report, int Version, int Year, int Month);
+/// <summary>A run of a report form over a period.</summary>
+/// <param name="From">The first day of the period (<c>YYYY-MM-DD</c>) — or, without <paramref name="To"/>, a day in it: the run then
+/// covers the period of the form's unit that holds that day (its day, month or year). A form run over a range a person picks needs both.</param>
+/// <param name="To">The last day of the period (<c>YYYY-MM-DD</c>), when the run covers exactly the days given.</param>
+public sealed record RunRequest(string Report, int Version, string From, string? To = null);
 
 public sealed record ExportRequest(string Export, int Version, int Year, int Month);
 
@@ -119,6 +123,7 @@ public sealed record DimensionView(string Field, string? Scheme, int? Version, b
 
 /// <param name="Label">What people call the form, in the vault's locale.</param>
 /// <param name="Unit">The period the form is run over: <c>day</c>, <c>month</c>, <c>year</c> or <c>range</c>.</param>
+/// <param name="StartMonth">The month a year starts in (1–12): 3 for a school year from March. 1 for every other unit.</param>
 /// <param name="Dimensions">The dimensions a cell's key is made of, in key order.</param>
 /// <param name="Measures">The numbers the form shows: <c>records</c>, <c>people</c>, <c>visits</c>.</param>
 /// <param name="RowsAndColumn">True when the form is a classified row and at most one column of the record, by month, unfiltered — the table this screen lays out.</param>
@@ -130,6 +135,7 @@ public sealed record ReportView(
     string Counts,
     string PeriodField,
     string Unit,
+    int StartMonth,
     IReadOnlyList<DimensionView> Dimensions,
     IReadOnlyList<string> Measures,
     bool RowsAndColumn,
@@ -397,7 +403,20 @@ internal static class Api
             var snapshot = session.Current;
             var report = snapshot.Content.Reports.SingleOrDefault(r => r.Name == request.Report && r.Version == request.Version);
             if (report is null) return Results.NotFound();
-            var run = ReportRunner.RunMonth(report, request.Year, request.Month, snapshot.Entities.Values, snapshot.Content.Catalog());
+            if (!DateOnly.TryParseExact(request.From, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var from))
+                return Results.BadRequest();
+            ReportRun run;
+            if (request.To is null)
+            {
+                if (report.Period.Unit == PeriodUnit.Range) return Results.BadRequest(); // its days are the ones a person picks
+                run = ReportRunner.RunContaining(report, from, snapshot.Entities.Values, snapshot.Content.Catalog());
+            }
+            else
+            {
+                if (!DateOnly.TryParseExact(request.To, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var to) || to < from)
+                    return Results.BadRequest();
+                run = ReportRunner.Run(report, from, to, snapshot.Entities.Values, snapshot.Content.Catalog());
+            }
             var file = writer.RunRecord(run);
             return Results.Ok(new RunResult(JsonNode.Parse(file.Content.Span), WireFile.From(file)));
         });
@@ -446,7 +465,7 @@ internal static class Api
             s.Entities.Count,
             s.Entities.Values.Count(e => e.Conflicts.Count > 0),
             [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version,
-                s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit),
+                s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit), r.Period.StartMonth,
                 [.. r.Dimensions.Select(d => new DimensionView(d.Field, d.Scheme, d.Version, d.OfSubject, d.All))],
                 [.. r.Measures.Select(m => m.ToString().ToLowerInvariant())],
                 r.RowsAndColumn,

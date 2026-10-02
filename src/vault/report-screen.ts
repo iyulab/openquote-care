@@ -27,7 +27,7 @@ export class OcReport extends VaultScreen {
     const [name, version] = store.reportKey.split('@')
     if (!name) return
     await store.run(async () => {
-      this.result = await shell.runReport(name, Number(version), store.year, store.month)
+      this.result = await shell.runReport(name, Number(version), `${store.year}-${String(store.month).padStart(2, '0')}-01`)
       this.evidence = undefined
       this.pendingChoices = undefined
       this.reclassified = new Set()

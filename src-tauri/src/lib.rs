@@ -259,8 +259,8 @@ fn run_export(export: String, version: u32, year: i32, month: u32, app: State<Ap
 }
 
 #[tauri::command]
-fn run_report(report: String, version: u32, year: i32, month: u32, app: State<App>) -> CommandResult<Value> {
-    text(app.run_report(&report, version, year, month))
+fn run_report(report: String, version: u32, from: String, to: Option<String>, app: State<App>) -> CommandResult<Value> {
+    text(app.run_report(&report, version, &from, to.as_deref()))
 }
 
 /// The data packs bundled with the app, or the source tree's in development. A bundle that cannot

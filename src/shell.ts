@@ -191,9 +191,13 @@ export const shell = {
    */
   suggestions: (entityType: string, date: string, fields: Record<string, unknown>) =>
     invoke<Suggestions>('suggestions', { entityType, date, fields }),
-  /** Runs a monthly report; the engine keeps its run record in the vault. */
-  runReport: (report: string, version: number, year: number, month: number) =>
-    invoke<RunRecord>('run_report', { report, version, year, month }),
+  /**
+   * Runs a report form from `from` to `to` (`YYYY-MM-DD`), or — without `to` — over the period of the
+   * form's unit that holds `from` (its day, month or year; a range form needs both). The engine keeps
+   * its run record in the vault.
+   */
+  runReport: (report: string, version: number, from: string, to?: string) =>
+    invoke<RunRecord>('run_report', { report, version, from, to: to ?? null }),
   /** Lays a month's records out as an export form's rows; nothing is kept in the vault. */
   runExport: (exportName: string, version: number, year: number, month: number) =>
     invoke<ExportTable>('run_export', { export: exportName, version, year, month }),

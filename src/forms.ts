@@ -34,6 +34,8 @@ export interface ReportEntry extends FormEntry {
   periodField: string
   /** The period the form is run over: day, month, year or range. */
   unit: 'day' | 'month' | 'year' | 'range'
+  /** The month a year starts in (1–12): 3 for a school year from March; 1 for every other unit. */
+  startMonth: number
   dimensions: Dimension[]
   /** The numbers the form shows. */
   measures: ('records' | 'people' | 'visits')[]

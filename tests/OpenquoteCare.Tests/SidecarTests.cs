@@ -82,7 +82,7 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal(1, summary["conflicts"]!.GetValue<int>());
         Assert.Empty(summary["unreadable"]!.AsArray());
 
-        var result = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var result = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
 
         var record = result["record"]!.AsObject();
         Assert.Equal("pc09", record["device"]!.GetValue<string>());
@@ -325,7 +325,7 @@ public sealed class SidecarTests : IAsyncLifetime
     public async Task Lists_the_pending_records_of_a_run_with_the_codes_each_may_take()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(2)));
-        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         var records = run["record"]!["pending"]!["records"]!.AsArray().Select(r => r!.GetValue<string>()).ToArray();
 
         var pending = (await Post("/reports/pending", new { report = "monthly-topic", version = 2, records })).AsArray();
@@ -345,7 +345,7 @@ public sealed class SidecarTests : IAsyncLifetime
     public async Task Refuses_a_code_the_record_is_not_waiting_for()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(2)));
-        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var run = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         var id = run["record"]!["pending"]!["records"]![0]!.GetValue<string>();
 
         var refused = await Post("/changes/reclassify", new
@@ -364,9 +364,9 @@ public sealed class SidecarTests : IAsyncLifetime
     {
         // The report as it stood after step 2, then after step 3 — the golden r2 and r3.
         await Post("/vault/load", Files(GoldenVault.School.Through(2)));
-        var r2 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var r2 = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         await Post("/vault/load", Files(GoldenVault.School.Through(3).Append(FileOf(r2["file"]!))));
-        var r3 = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var r3 = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         await Post("/vault/add", new { files = new[] { r3["file"] } });
 
         var runs = (await Get("/runs")).AsArray();
@@ -385,8 +385,8 @@ public sealed class SidecarTests : IAsyncLifetime
     public async Task Refuses_to_compare_runs_over_different_periods()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(2)));
-        var april = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
-        var march = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 3 });
+        var april = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
+        var march = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-03-01" });
         await Post("/vault/add", new { files = new[] { april["file"], march["file"] } });
         var runs = (await Get("/runs")).AsArray();
         string IdOf(string from) => runs.Single(r => r!["period"]!["from"]!.GetValue<string>() == from)!["id"]!.GetValue<string>();
@@ -635,7 +635,7 @@ public sealed class SidecarTests : IAsyncLifetime
         await Post("/vault/add", new { files = new[] { sessionFile } });
         var sessionId = sessionFile["path"]!.GetValue<string>().Split('/')[2].Split('.')[0];
 
-        var pending = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var pending = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         Assert.Equal(7, pending["record"]!["pending"]!["count"]!.GetValue<int>()); // six from the scenario, plus this one
 
         var reclassify = await Post("/changes/reclassify", new
@@ -647,7 +647,7 @@ public sealed class SidecarTests : IAsyncLifetime
         });
         await Post("/vault/add", new { files = new[] { reclassify } });
 
-        var after = await Post("/reports/run", new { report = "monthly-topic", version = 2, year = 2026, month = 4 });
+        var after = await Post("/reports/run", new { report = "monthly-topic", version = 2, from = "2026-04-01" });
         Assert.Equal(6, after["record"]!["pending"]!["count"]!.GetValue<int>());
         var stillPending = (await Post("/reports/pending", new { report = "monthly-topic", version = 2, records = new[] { sessionId } })).AsArray();
         Assert.Empty(stillPending); // chosen, so no longer waiting
@@ -660,6 +660,29 @@ public sealed class SidecarTests : IAsyncLifetime
         await Post("/vault/load", Files(GoldenVault.School.Through(1)));
 
         await Post("/changes/update", new { type = "session", id = "nope", fields = new { note = "x" } }, HttpStatusCode.NotFound);
-        await Post("/reports/run", new { report = "monthly-topic", version = 9, year = 2026, month = 4 }, HttpStatusCode.NotFound);
+        await Post("/reports/run", new { report = "monthly-topic", version = 9, from = "2026-04-01" }, HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Runs_a_form_over_the_period_of_its_unit_holding_a_day_or_over_the_days_given()
+    {
+        var pack = Path.GetFullPath(Path.Combine(GoldenVault.School.Root, "..", "format1"));
+        await Post("/vault/load", Files(GoldenVault.School.Through(1).Concat(Openquote.Vault.VaultFiles.FromDirectory(pack))));
+        var summary = await Get("/summary");
+        var year = summary["reports"]!.AsArray().Single(r => r!["name"]!.GetValue<string>() == "test.format1.year-grade-class")!;
+        Assert.Equal(("year", 3), (year["unit"]!.GetValue<string>(), year["startMonth"]!.GetValue<int>()));
+
+        // A day in it: the school year from March that holds it.
+        var schoolYear = (await Post("/reports/run", new { report = "test.format1.year-grade-class", version = 1, from = "2026-04-15" }))["record"]!;
+        Assert.Equal(("2026-03-01", "2027-02-28"), (schoolYear["period"]!["from"]!.GetValue<string>(), schoolYear["period"]!["to"]!.GetValue<string>()));
+        Assert.Equal(35, schoolYear["total"]!["count"]!.GetValue<int>());
+
+        // A range runs over exactly the days given, and only so.
+        var range = (await Post("/reports/run", new { report = "test.format1.range-concerns", version = 1, from = "2026-03-01", to = "2026-03-31" }))["record"]!;
+        Assert.Equal(("2026-03-01", "2026-03-31"), (range["period"]!["from"]!.GetValue<string>(), range["period"]!["to"]!.GetValue<string>()));
+        Assert.Equal(10, range["total"]!["count"]!.GetValue<int>());
+        await Post("/reports/run", new { report = "test.format1.range-concerns", version = 1, from = "2026-03-01" }, HttpStatusCode.BadRequest);
+        await Post("/reports/run", new { report = "test.format1.range-concerns", version = 1, from = "2026-03-31", to = "2026-03-01" }, HttpStatusCode.BadRequest);
+        await Post("/reports/run", new { report = "monthly-topic", version = 1, from = "April" }, HttpStatusCode.BadRequest);
     }
 }

@@ -74,7 +74,7 @@ fn record_report_close_reopen_same_numbers() {
     }
 
     // Run April and keep the run record.
-    let (april, run_file) = open.engine.run_report("monthly-topic", 1, 2026, 4).unwrap();
+    let (april, run_file) = open.engine.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
     assert_eq!(cell_counts(&april), vec![("depression".to_owned(), 2)]);
     assert_eq!(april["total"]["count"], 2);
     let run_path = run_file.path.clone();
@@ -114,7 +114,7 @@ fn record_report_close_reopen_same_numbers() {
     assert_eq!(reopened.current_summary().unwrap()["unreadable"], summary["unreadable"]);
     fs::remove_file(&cut).unwrap();
     reopened.reload().unwrap();
-    let (again, _) = reopened.engine.run_report("monthly-topic", 1, 2026, 4).unwrap();
+    let (again, _) = reopened.engine.run_report("monthly-topic", 1, "2026-04-01", None).unwrap();
     assert_eq!(without_stamp(again), without_stamp(april.clone()));
     let kept = reopened.vault.read_all().unwrap().files.into_iter().find(|(p, _)| *p == run_path).unwrap();
     let kept: Value = serde_json::from_slice(&kept.1).unwrap();

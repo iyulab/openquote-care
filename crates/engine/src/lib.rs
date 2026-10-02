@@ -198,9 +198,11 @@ impl Engine {
         self.call("POST", "/exports/run", Some(json!({ "export": export, "version": version, "year": year, "month": month })))
     }
 
-    /// Runs a monthly report. Returns the run record and the file that records it.
-    pub fn run_report(&self, report: &str, version: u32, year: i32, month: u32) -> Result<(Value, PlainFile), EngineError> {
-        let result = self.call("POST", "/reports/run", Some(json!({ "report": report, "version": version, "year": year, "month": month })))?;
+    /// Runs a report form from `from` (`YYYY-MM-DD`) to `to`, or — without `to` — over the period of
+    /// the form's unit that holds `from` (its day, month or year). Returns the run record and the
+    /// file that records it.
+    pub fn run_report(&self, report: &str, version: u32, from: &str, to: Option<&str>) -> Result<(Value, PlainFile), EngineError> {
+        let result = self.call("POST", "/reports/run", Some(json!({ "report": report, "version": version, "from": from, "to": to })))?;
         let file = PlainFile::from_wire(&result["file"])?;
         Ok((result["record"].clone(), file))
     }
