@@ -34,6 +34,7 @@ const PASSPHRASE = '상담 기록 폴더 2026'
 const NEW_PASSPHRASE = '새 기록 암호 2026'
 // What a settled session says: a suggestion learns from it, and it never leaves the vault.
 const FAMILY_NOTE = '합성 상담 내용: 휴대전화 문제로 부모님과 다툼'
+const CRISIS_NOTE = '합성 상담 내용: 사라지고 싶다고 말해 안전 계획을 세움'
 
 const q = (s) => JSON.stringify(s)
 
@@ -1195,11 +1196,52 @@ const scenarios = {
     }
   },
 
+  async 'sets a crisis-related topic apart among the suggestions, to be confirmed, and fills in nothing'(app, work) {
+    // A new vault on the school track, where the topic offered for input is the pack's own version.
+    await app.restart()
+    const vault = join(dirname(work.vault), 'school-vault')
+    await mkdir(vault)
+    await app.click('dc-button', '새 기록 폴더 만들기')
+    await app.pickFolder(vault)
+    await app.type('암호', PASSPHRASE)
+    await app.type('암호 다시 입력', PASSPHRASE)
+    await app.choose('분야와 지역', 'school-kr')
+    await app.click('dc-button', '만들기')
+    await app.heading('복구 키트')
+    const key = (await app.cdp.evaluate(`__e2e.one('[data-role=key]').textContent`)).replaceAll(/\s+/g, '')
+    await app.type('보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', key.slice(-6))
+    await app.click('dc-button', '확인')
+    await app.vaultOpen()
+    await app.click('button', '담당자')
+    await app.click('dc-button', '＋ 새 담당자')
+    await app.type('담당자 이름', '상담자 나')
+    await app.click('dc-button', '담당자 추가')
+    await app.click('button', '대상자')
+    await app.click('dc-button', '＋ 새 대상자')
+    await app.type('대상자 이름', '가상 학생 9')
+    await app.click('dc-button', '대상자 추가')
+    await app.click('li button .label', '가상 학생 9')
+    await app.setDate('날짜', '2026-03-10')
+    await app.choose('주제', 'crisis')
+    await app.write('상담 내용', CRISIS_NOTE)
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the crisis session listed')
+
+    await app.setDate('날짜', '2026-03-17')
+    await app.write('상담 내용', '합성 상담 내용: 사라지고 싶다는 말을 다시 함')
+    await app.cdp.waitFor(`!!__e2e.one('[data-suggestions="topic"] dc-button[data-suggestion="crisis"][data-confirm]')`, 'the crisis topic suggested, set apart')
+    assert.ok((await app.cdp.evaluate(`__e2e.one('dc-button[data-suggestion="crisis"]').textContent`)).includes('꼭 확인'), 'marked to be confirmed')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="주제"]').value`), '', 'nothing is filled in until a person takes it')
+    await app.click('dc-button[data-suggestion="crisis"]')
+    await app.cdp.waitFor(`__e2e.one('select[aria-label="주제"]')?.value === 'crisis'`, 'the topic taken')
+    await app.noAlert()
+  },
+
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
     const needles = [PASSPHRASE, NEW_PASSPHRASE, work.key, work.key.toLowerCase(), typedKey,
-      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE]
+      '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE, CRISIS_NOTE]
     const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
     assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
     const inAppData = await filesHolding(appData, needles)
