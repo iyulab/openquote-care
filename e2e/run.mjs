@@ -14,6 +14,7 @@
 // picker's result goes (the app element's `folder`). Everything after that is clicks and typing.
 
 import { spawn } from 'node:child_process'
+import { createServer } from 'node:http'
 import { copyFile, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -186,6 +187,41 @@ const scenarios = {
     await app.restart()
     await app.heading('Openquote Care')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
+  },
+
+  async 'says when a new version is out, and stops looking for one when told'(app) {
+    // A version description of the kind the release puts next to its installers, served here: the
+    // app only reads it until a person chooses to update, which this scenario never does.
+    const asked = []
+    const server = createServer((req, res) => {
+      asked.push(req.url)
+      res.setHeader('content-type', 'application/json')
+      res.end(JSON.stringify({ version: '9.9.9', pub_date: '2026-10-02T00:00:00Z', platforms: { 'windows-x86_64': { signature: 'unused', url: 'http://127.0.0.1:1/setup.exe' } } }))
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const env = { OPENQUOTE_UPDATE_ENDPOINT: `http://127.0.0.1:${server.address().port}/latest.json` }
+    try {
+      await app.restart(env)
+      await app.cdp.waitFor(`(__e2e.one('dc-toast[data-role=update]')?.message ?? '').includes('9.9.9')`, 'the notice of the new version')
+      assert.ok(asked.length > 0 && asked.every((url) => url === '/latest.json'), 'one fixed address, nothing added to it')
+      assert.equal(await app.cdp.evaluate(`__e2e.one('dc-toast[data-role=update]').actionLabel`), '지금 업데이트')
+      await app.click('dc-button[aria-label="나중에"]')
+      await app.cdp.waitFor(`!__e2e.one('dc-toast[data-role=update]')`, 'the notice set aside for now')
+
+      // Turned off, it stays off on the next launch: the address is not asked, and the first screen says so.
+      await app.click('dc-button', '새 판 확인 끄기')
+      await app.cdp.waitFor(`(__e2e.one('[data-role="update-check"]')?.textContent ?? '').includes('꺼 두었습니다')`, 'the notice that the check is off')
+      asked.length = 0
+      await app.restart(env)
+      await app.heading('Openquote Care')
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+      assert.deepEqual(asked, [], 'nothing asked while turned off')
+      assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-toast[data-role=update]')`), false)
+      await app.click('dc-button', '새 판 확인 켜기')
+      await app.cdp.waitFor(`(__e2e.one('dc-toast[data-role=update]')?.message ?? '').includes('9.9.9')`, 'the new version found again once turned on')
+    } finally {
+      server.close()
+    }
   },
 
   async 'speaks English when the system language has no table of its own'(app) {

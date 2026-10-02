@@ -4,7 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { describeError, isCommandError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
-import { shell, type DiagnosticsStatus, type TrackView } from './shell.js'
+import { shell, type DiagnosticsStatus, type TrackView, type UpdateStatus } from './shell.js'
 import { inAppLanguage, strings } from './strings.js'
 import { dialogueMark, quoteMark } from './brand-mark.js'
 import { errorCallout } from './vault/parts.js'
@@ -28,6 +28,14 @@ export class OcApp extends LitElement {
     :host {
       display: block;
       height: 100%;
+    }
+    /* Over every screen, the vault's too. */
+    .update {
+      position: fixed;
+      right: var(--dc-space-4, 16px);
+      bottom: var(--dc-space-4, 16px);
+      z-index: 20;
+      max-width: min(30rem, calc(100vw - 2 * var(--dc-space-4, 16px)));
     }
     h1,
     h2 {
@@ -203,6 +211,11 @@ export class OcApp extends LitElement {
   @state() private error?: { text: string; detail?: string }
   /** Whether this installation reports the app's own errors; the first screen says so. */
   @state() private diagnostics: DiagnosticsStatus = { configured: false, sending: false }
+  /** Whether this installation looks for new versions, and the newer one found. */
+  @state() private versions: UpdateStatus = { configured: false, checking: false, available: null }
+  /** The new version's notice: shown, set aside for this run, downloading, or failed to download. */
+  @state() private updateNotice: 'shown' | 'later' | 'downloading' | 'failed' = 'shown'
+  private unlistenUpdate?: Promise<() => void>
   /** The reports written so far, as the reports screen shows them. */
   @state() private reports = ''
   private idle?: IdleWatch
@@ -214,12 +227,15 @@ export class OcApp extends LitElement {
       (status) => (this.diagnostics = status),
       () => {},
     )
+    void this.loadUpdate()
+    this.unlistenUpdate = shell.onUpdateAvailable(() => void this.loadUpdate())
     for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.addEventListener(type, this.touch, { passive: true })
   }
 
   disconnectedCallback() {
     for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.removeEventListener(type, this.touch)
     this.idle?.stop()
+    void this.unlistenUpdate?.then((unlisten) => unlisten())
     super.disconnectedCallback()
   }
 
@@ -285,6 +301,44 @@ export class OcApp extends LitElement {
     await this.run(async () => {
       this.reports = await shell.diagnosticsReports()
     })
+  }
+
+  private async loadUpdate() {
+    this.versions = await shell.updateStatus().catch(() => this.versions)
+  }
+
+  private async setUpdateChecking(on: boolean) {
+    await this.run(async () => {
+      await shell.setUpdateChecking(on)
+      await this.loadUpdate()
+    })
+  }
+
+  /** Installs the new version: the app closes the vault, ends and starts again — this returns only when it could not. */
+  private async applyUpdate() {
+    this.updateNotice = 'downloading'
+    try {
+      await shell.applyUpdate()
+    } catch {
+      this.updateNotice = 'failed'
+    }
+  }
+
+  /** The new version's notice, over whatever screen is showing. */
+  private updateToast() {
+    const version = this.versions.available
+    if (!version || this.updateNotice === 'later') return nothing
+    const downloading = this.updateNotice === 'downloading'
+    return html`<dc-toast
+      class="update"
+      data-role="update"
+      variant=${this.updateNotice === 'failed' ? 'warning' : 'info'}
+      .message=${downloading ? strings.updateDownloading : this.updateNotice === 'failed' ? strings.updateFailed : strings.updateAvailable(version)}
+      .actionLabel=${downloading ? '' : strings.updateApply}
+      .dismissLabel=${strings.updateLater}
+      @action=${() => void this.applyUpdate()}
+      @dismiss=${() => (this.updateNotice = 'later')}
+    ></dc-toast>`
   }
 
   private async setReporting(on: boolean) {
@@ -366,6 +420,10 @@ export class OcApp extends LitElement {
   }
 
   render() {
+    return html`${this.screenView()}${this.updateToast()}`
+  }
+
+  private screenView() {
     const s = this.screen
     if (s.name === 'vault') {
       return html`<oc-vault
@@ -423,6 +481,16 @@ export class OcApp extends LitElement {
               <p class="muted detail">${this.diagnostics.sending ? strings.diagnosticsNotice : strings.diagnosticsOffNotice}</p>
               <div class="row">
                 <dc-button variant="ghost" size="sm" @click=${() => this.go({ name: 'reports' })}>${strings.diagnosticsView}</dc-button>
+              </div>
+            </div>`
+          : nothing}
+        ${this.versions.configured
+          ? html`<div class="stack-tight" data-role="update-check">
+              <p class="muted detail">${this.versions.checking ? strings.updateCheckNotice : strings.updateCheckOffNotice}</p>
+              <div class="row">
+                <dc-button variant="ghost" size="sm" ?disabled=${this.busy} @click=${() => void this.setUpdateChecking(!this.versions.checking)}
+                  >${this.versions.checking ? strings.updateCheckTurnOff : strings.updateCheckTurnOn}</dc-button
+                >
               </div>
             </div>`
           : nothing}

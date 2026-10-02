@@ -2,8 +2,9 @@
 //
 //   npm run verify                        screens, sidecar, shell and vault tests, clippy
 //   npm run verify -- --e2e               and the real app window over CDP
-//   npm run verify -- --installed         and the installer: bundle, install, run, uninstall, and
-//                                         the update over the latest published version
+//   npm run verify -- --installed         and the installer: bundle, install, run, uninstall, the
+//                                         update over the latest published version, and the app
+//                                         updating itself (a test build and key made for the run)
 //
 // The sidecar is built first: the shell's tests that need it fail without one. Before anything,
 // the machine is checked for what the build needs (see `checkMachine` below).
@@ -42,13 +43,13 @@ const steps = [
   ['screens', 'npm test'],
   ['sidecar build', 'npm run build:sidecar'],
   ['golden vaults as their generators write them', 'node scripts/check-golden.mjs'],
-  ['sidecar and golden-vault tests','dotnet test --solution OpenquoteCare.slnx'],
+  ['sidecar and golden-vault tests', 'dotnet test --solution OpenquoteCare.slnx'],
   ['screens build (the shell embeds dist/)', 'npm run build'],
   ['shell and vault tests', 'cargo test --release --workspace'],
   ['clippy', 'cargo clippy --workspace --all-targets -- -D warnings'],
 ]
 if (args.has('--e2e')) steps.push(['window build', 'npm run build:e2e'], ['window scenarios', 'npm run test:e2e'])
-if (args.has('--installed')) steps.push(['installer', 'npm run bundle'], ['installed app', 'npm run test:installed'], ['update over the published version', 'npm run test:upgrade'])
+if (args.has('--installed')) steps.push(['installer', 'npm run bundle'], ['installed app', 'npm run test:installed'], ['update over the published version', 'npm run test:upgrade'], ['the installed app updates itself', 'npm run test:update'])
 
 for (const [name, command] of steps) {
   console.log(`\n▶ ${name}: ${command}`)

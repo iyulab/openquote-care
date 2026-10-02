@@ -5,6 +5,7 @@ mod bundle;
 mod diagnostics;
 pub mod locale;
 pub mod runtime;
+mod updates;
 mod window;
 
 use std::path::{Path, PathBuf};
@@ -209,6 +210,30 @@ fn report_window_error(kind: String, stack: String) {
 }
 
 #[tauri::command]
+fn update_status(updates: State<updates::Updates>) -> updates::Status {
+    updates.status()
+}
+
+#[tauri::command]
+fn set_update_checking(on: bool, updates: State<updates::Updates>, handle: tauri::AppHandle) -> CommandResult<()> {
+    text(updates.set_checking(on).map_err(AppError::from))?;
+    if on {
+        updates::check_now(handle);
+    }
+    Ok(())
+}
+
+/// Installs the newer version found: the vault is closed first, and the app ends and starts
+/// again as the new version. Returns only when that could not happen.
+#[tauri::command]
+async fn apply_update(handle: tauri::AppHandle) -> CommandResult<()> {
+    let closing = handle.clone();
+    updates::apply(&handle, move || closing.state::<App>().close_vault())
+        .await
+        .map_err(|message| CommandError { code: "update", message })
+}
+
+#[tauri::command]
 fn vault_summary(app: State<App>) -> CommandResult<Value> {
     text(app.summary())
 }
@@ -286,6 +311,8 @@ const VAULT_CHANGED: &str = "vault-changed";
 pub fn run() {
     let context = tauri::generate_context!();
     diagnostics::install(&context.config().identifier);
+    // Only the release build carries the updater's key; without it the plugin is not registered.
+    let can_update = updates::configured(context.config());
     // Tauri would stop with an English message of its own; say it in the person's language first.
     if let Some(message) = runtime::check() {
         runtime::alert(&message);
@@ -297,11 +324,17 @@ pub fn run() {
     // Registered first, so a second start ends before anything else runs.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|handle, _args, _cwd| bring_forward(handle)));
+    #[cfg(desktop)]
+    let builder = if can_update { builder.plugin(tauri_plugin_updater::Builder::new().build()) } else { builder };
     builder
         .plugin(tauri_plugin_dialog::init())
-        .setup(|tauri_app| {
+        .setup(move |tauri_app| {
             window::build_main(tauri_app)?;
             let config = tauri_app.path().app_local_data_dir()?;
+            tauri_app.manage(updates::Updates::new(can_update, &config));
+            if can_update {
+                updates::watch(tauri_app.handle().clone());
+            }
             let device = device_id(&config)?;
             let handle = tauri_app.handle().clone();
             let app = App::new(sidecar_path(tauri_app.handle()), device)
@@ -325,6 +358,9 @@ pub fn run() {
             fields,
             in_force,
             vault_summary,
+            update_status,
+            set_update_checking,
+            apply_update,
             diagnostics_status,
             set_diagnostics_sending,
             diagnostics_reports,

@@ -30,6 +30,7 @@ tauri-kit-diagnostics = { workspace = true, features = ["appinsights"] }
 tauri-kit-webview.workspace = true
 # The app's local data folder before Tauri starts, resolved as Tauri resolves it.
 dirs = "7"
+tokio = { version = "1", features = ["time"] }
 
 [dev-dependencies]
 openquote-care-test-support = { path = "../crates/test-support" }
@@ -41,3 +42,4 @@ windows-sys = { version = "0.61", features = ["Win32_Globalization"] }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"

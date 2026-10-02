@@ -6,6 +6,15 @@ import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry, ReportEntry } from './forms.js'
 
 /** Error reporting on this installation: whether it has somewhere to send reports, and whether it does. */
+export interface UpdateStatus {
+  /** This installation can update itself (a released installer). */
+  configured: boolean
+  /** It looks for new versions: configured and not turned off. */
+  checking: boolean
+  /** The newer version found, if any. */
+  available: string | null
+}
+
 export interface DiagnosticsStatus {
   configured: boolean
   /** Configured and not turned off. */
@@ -128,6 +137,14 @@ export const shell = {
   setDiagnosticsSending: (on: boolean) => invoke<void>('set_diagnostics_sending', { on }),
   /** The reports written so far, one JSON object per line — exactly what is sent; empty when none. */
   diagnosticsReports: () => invoke<string>('diagnostics_reports'),
+  /** Whether this installation looks for new versions, and the newer one it found. */
+  updateStatus: () => invoke<UpdateStatus>('update_status'),
+  /** Turns looking for new versions on or off, remembered for the next launches. */
+  setUpdateChecking: (on: boolean) => invoke<void>('set_update_checking', { on }),
+  /** Downloads and installs the newer version found: the vault is closed and the app starts again. Returns only on failure. */
+  applyUpdate: () => invoke<void>('apply_update'),
+  /** Calls `f` with the version when a newer one is found. */
+  onUpdateAvailable: (f: (version: string) => void): Promise<UnlistenFn> => listen<string>('update-available', (e) => f(e.payload)),
   /** Hands an error the window did not handle to the shell, which keeps only its type and the app's own frames. */
   reportWindowError: (kind: string, stack: string) => invoke<void>('report_window_error', { kind, stack }),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */

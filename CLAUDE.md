@@ -20,7 +20,7 @@ A desktop app (Tauri 2 shell in Rust, a .NET engine sidecar, a Lit UI) built on 
 ```sh
 npm run verify                  # every check below, in order, stopping at the first failure
 npm run verify -- --e2e         # and the real window over CDP
-npm run verify -- --installed   # and the installer: bundle, install, run, uninstall, update over the published version
+npm run verify -- --installed   # and the installer: bundle, install, run, uninstall, update over the published version, self-update
 ```
 
 The checks it runs:

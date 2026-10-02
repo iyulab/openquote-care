@@ -12,5 +12,16 @@
         "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --remote-debugging-port=9224"
       }
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE5NTZFNjUzQkNDOThFN0EKUldSNmpzbThVK1pXR1pENEEyWlBOd2dZSW4vMFgzMG9UYVdVTC9HMGE3clBlMzMrRFVwSnZNaE0K",
+      "endpoints": [
+        "http://127.0.0.1:9/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

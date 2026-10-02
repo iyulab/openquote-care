@@ -1,6 +1,6 @@
 # Privacy
 
-Openquote Care keeps counseling records on the devices and folders you choose. This page lists everything the app sends anywhere else.
+Openquote Care keeps counseling records on the devices and folders you choose. This page lists everything the app sends or asks anywhere else.
 
 ## Records
 
@@ -30,6 +30,16 @@ A report is built only from what is listed here, never by removing what looks pr
 **Seeing and stopping it.** When sending is on, the first screen says so and offers *See what is sent*, which shows the file's lines exactly as written, and there *Stop sending*, which turns reporting off for this installation: until it is turned on again, nothing is written or sent. Lines already written stay in the file, and go out if reporting is turned on again.
 
 **Where.** When sending is on, what the file gained since the last send goes, in the background when the app opens and after each new report, to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and is kept there for 30 days. A report that cannot go out — offline, on a network that blocks it, or while the service is busy — stays in the file and goes the next time; the app works the same either way.
+
+## New versions
+
+Released installers look for a newer version of the app, so that fixes reach the people using it. Builds made from source never look.
+
+**What goes out.** When the app opens, and every twelve hours while it stays open, it asks one fixed address for the description of the newest released version: `https://github.com/iyulab/openquote-care/releases/latest/download/latest.json`, a file on GitHub, where the app is published. The request carries nothing the app adds — no version number, no identifier, nothing about your records or this computer; GitHub sees what any download shows it, such as the network address it comes from.
+
+**What happens then.** When the description names a newer version, the app says so and offers to update. Nothing is downloaded until you choose to. Then the new installer is downloaded from the same place, checked against the publisher's key the app carries (an installer that does not verify is not run), the open vault is closed, and the installer replaces the app and starts it again. Your vaults and settings are not touched.
+
+**Stopping it.** The first screen says that the app looks for new versions and offers *Stop looking for new versions*; turned off, it asks nothing until turned on again. New versions can always be downloaded from the website instead. No network, or one that blocks the address, is not an error: the app works the same.
 
 ## Usage information
 

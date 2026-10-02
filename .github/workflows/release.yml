@@ -86,7 +86,11 @@ jobs:
           AZURE_TIMESTAMP_URL: http://timestamp.globalsign.com/tsa/r6advanced1
           # Error diagnostics are embedded only in this build (see docs/architecture.md).
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
-        run: npx tauri build --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json
+          # The updater's key: only this build carries the public half and looks for new versions,
+          # and its installer gets an updater signature, made after the Authenticode signing.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri build --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json --config src-tauri/tauri.updater.conf.json
 
       # Tauri signs the app it puts in the installer and then restores the unsigned build output,
       # so the signatures are checked on an installed copy.
@@ -109,9 +113,13 @@ jobs:
           # missing secret would leave every installation silent, with nothing to say so.
           $app = [IO.File]::ReadAllBytes((Join-Path $target 'openquote-care.exe'))
           if ([Text.Encoding]::ASCII.GetString($app).IndexOf('IngestionEndpoint=') -lt 0) { throw 'the app does not embed the error diagnostics connection' }
-          # Moved aside: the offline installer below is written under the same name.
+          # The updater signature: over the final, Authenticode-signed bytes, and with the key the app carries.
+          node scripts/verify-update-signature.mjs $installer.FullName "$($installer.FullName).sig"
+          if ($LASTEXITCODE -ne 0) { throw 'the updater signature does not verify' }
+          # Moved aside: the offline installer below is written under the same names.
           $out = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'installers')
           $kept = Move-Item $installer.FullName (Join-Path $out $installer.Name) -PassThru
+          Move-Item "$($installer.FullName).sig" (Join-Path $out "$($installer.Name).sig")
           "path=$($kept.FullName)" >> $env:GITHUB_OUTPUT
 
       # The same signed app, with the WebView2 installer inside (about 200 MB more), for computers
@@ -122,9 +130,11 @@ jobs:
           AZURE_KV_URL: https://kv-codesign-iyulab.vault.azure.net/
           AZURE_KV_CERT: globalsign-ev-codesign
           AZURE_TIMESTAMP_URL: http://timestamp.globalsign.com/tsa/r6advanced1
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: pwsh
         run: |
-          npx tauri bundle --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json --config src-tauri/tauri.offline.conf.json
+          npx tauri bundle --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json --config src-tauri/tauri.updater.conf.json --config src-tauri/tauri.offline.conf.json
           if ($LASTEXITCODE -ne 0) { throw "tauri bundle exited with $LASTEXITCODE" }
           $installer = Get-Item "target/release/bundle/nsis/*_${{ steps.versions.outputs.app }}_x64-setup.exe"
           $signature = Get-AuthenticodeSignature $installer.FullName
@@ -139,6 +149,29 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          $tag = "v${{ steps.versions.outputs.app }}"
-          gh release create $tag "${{ steps.installer.outputs.path }}" "${{ steps.offline.outputs.path }}" --draft --target $env:GITHUB_SHA `
+          $version = "${{ steps.versions.outputs.app }}"
+          $tag = "v$version"
+          $installer = Get-Item "${{ steps.installer.outputs.path }}"
+          $offline = Get-Item "${{ steps.offline.outputs.path }}"
+          # GitHub names a release asset with its spaces turned into dots.
+          $asset = $installer.Name -replace ' ', '.'
+          # Names without the version, so the newest is always at the same address (the website links
+          # these through releases/latest/download/).
+          $latest = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'latest')
+          $stable = Copy-Item $installer.FullName (Join-Path $latest 'Openquote.Care_x64-setup.exe') -PassThru
+          $stableOffline = Copy-Item $offline.FullName (Join-Path $latest 'Openquote.Care_x64-offline-setup.exe') -PassThru
+          # What an installed app reads to find a newer version: this version, the standard installer and its updater signature.
+          $description = [ordered]@{
+            version = $version
+            pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            platforms = [ordered]@{
+              'windows-x86_64' = [ordered]@{
+                signature = (Get-Content "$($installer.FullName).sig" -Raw).Trim()
+                url = "https://github.com/${{ github.repository }}/releases/download/$tag/$asset"
+              }
+            }
+          }
+          $json = Join-Path $latest 'latest.json'
+          $description | ConvertTo-Json -Depth 5 | Set-Content -Path $json -Encoding utf8NoBOM
+          gh release create $tag $installer.FullName $offline.FullName $stable.FullName $stableOffline.FullName $json --draft --target $env:GITHUB_SHA `
             --title "Openquote Care $tag" --notes "Engine ${{ steps.versions.outputs.engine }}."

@@ -31,6 +31,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Opening the vault with the recovery kit when the passphrase is forgotten, and changing the passphrase — the old one then stops opening the vault on every device
 - Files the app cannot read (a sync client's conflict copy, a file cut off mid-sync) listed by the record they hold and why, never silently skipped
 - Two Windows installers per release, both for the current user without administrator rights: the regular one, and an offline one that also carries the WebView2 runtime installer for a computer that has neither the runtime nor an internet connection
+- Updating itself: a released installer looks for a newer version when it opens and every twelve hours, says when there is one and, when you choose to, downloads it, checks it against the publisher's key, closes the vault and starts again as the new version. The check can be turned off on the first screen ([what it asks](docs/privacy.md#new-versions))
 
 How it is built: [docs/architecture.md](docs/architecture.md). What it will and will not become, and how changes are decided: [docs/CONSTITUTION.md](docs/CONSTITUTION.md). The record format belongs to the [Openquote engine](https://github.com/iyulab/openquote).
 
