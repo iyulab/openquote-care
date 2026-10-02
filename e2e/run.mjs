@@ -1382,5 +1382,15 @@ if (!existsSync(sidecar)) throw new Error(`no sidecar at ${sidecar} — run \`np
 process.exitCode = await runScenarios(scenarios, {
   start,
   // A wait that timed out says what it waited for; what the window showed instead says why.
-  shown: (app) => app.cdp.evaluate(`__e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`),
+  // What the window showed when a scenario failed: alerts, then the headings and status lines on screen — enough
+  // to tell a wait that never came true from a screen that went somewhere else.
+  shown: (app) =>
+    app.cdp.evaluate(`(() => {
+      const seen = (sel) => __e2e.all(sel).filter((el) => el.getClientRects().length > 0)
+      const text = (sel) => seen(sel).map((el) => el.textContent.trim().replace(/\\s+/g, ' ')).filter(Boolean)
+      const alerts = text('[role=alert]')
+      const headings = seen('dp-page-header').map((el) => el.getAttribute('heading')).filter(Boolean)
+      const rest = [...headings, ...text('[role=status]')].map((t) => t.slice(0, 160))
+      return [...alerts, ...(rest.length ? ['(on screen) ' + rest.join(' / ')] : [])].join(' / ')
+    })()`),
 })
