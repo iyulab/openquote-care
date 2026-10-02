@@ -1322,7 +1322,7 @@ cut off").unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
         let subject_id = subject.split('/').nth(1).unwrap();
-        let mut session = |topic: &str, note: &str| {
+        let session = |topic: &str, note: &str| {
             let path = app
                 .record(
                     "/changes/in-subject",
