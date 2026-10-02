@@ -22,12 +22,12 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Correcting a saved session or what a subject's record holds: only the fields changed are written, as an edit of their own, and a corrected session says so
 - Adding and updating subjects from rows pasted out of a spreadsheet
 - Applying a data pack: classification schemes, crosswalks between their versions, report and export forms, field definitions and labels per language. A pack that needs a newer vault format is applied only once a person chooses to raise it, told which devices use the vault
-- A coded field may take several values: a primary one and others that apply
+- A coded field may take several values: a primary one and others that apply; a field may start from a value its pack gives, such as who a session is usually with
 - The app in Korean or English, following the system's display language
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time
 - An automatic backup: a second copy of the vault, still encrypted, kept up to date in a folder of your choosing on this computer — another drive or a USB stick. When a record file goes missing from the vault, the backup notices and offers to bring it back
-- A whole-record copy that reads without the app, written on request into a folder apart from the vault: one page per vault for a browser (each subject's fields, sessions and later edits), two tables for a spreadsheet and a note on what the copy is. It has no passphrase, so the app says so; session content goes in only when asked for. The screen says when this computer last made one, and whether records changed after it
+- A copy that reads without the app, written on request into a folder apart from the vault: one page per vault for a browser (what it holds on its first page, a numbered list of subjects, then each subject's fields, sessions and later edits — ready to print, a subject to a page), two tables for a spreadsheet and a note on what the copy is. It holds every record, or a period's sessions and the subjects they are about — a year of records to print and keep. It has no passphrase, so the app says so; session content goes in only when asked for. The screen says when this computer last made a copy of every record, and whether records changed after it
 - Every screen laid out the same way: the menu, a list to pick from (subjects, groups, practitioners, forms, settings), and the document of the one picked. The menu folds to its icons; in a narrow window the list and the document take turns
 - Opening the vault with the recovery kit when the passphrase is forgotten, and changing the passphrase — the old one then stops opening the vault on every device
 - Files the app cannot read (a sync client's conflict copy, a file cut off mid-sync) listed by the record they hold and why, never silently skipped
