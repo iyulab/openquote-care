@@ -1,0 +1,15 @@
+{
+  "format": "openquote.suggestions/0",
+  "pack": "care.school.kr",
+  "version": 2,
+  "schemes": {
+    "topic": {
+      "1": {
+        "suicide": "confirm",
+        "self-harm": "confirm",
+        "psychosis": "confirm",
+        "crisis": "confirm"
+      }
+    }
+  }
+}

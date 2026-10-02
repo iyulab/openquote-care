@@ -15,11 +15,11 @@ public sealed class PackFilesTests
     public static TheoryData<string> Tracks() =>
         [.. Json(Path.Combine(Packs, "tracks.json"))["tracks"]!.AsArray().Select(t => t!["id"]!.GetValue<string>())];
 
-    // The folders of a track's packs and every pack they build on, as tracks.json and the manifests say.
+    // The folders of a track's packs and every pack they build on, as tracks.json and each pack's newest manifest say.
     private static IEnumerable<string> PacksOf(string track)
     {
         var manifests = Directory.GetDirectories(Packs)
-            .Select(dir => (Dir: dir, Manifest: Directory.GetFiles(Path.Combine(dir, "packs"), "*.json", SearchOption.AllDirectories).Select(Json).Single()))
+            .Select(dir => (Dir: dir, Manifest: Directory.GetFiles(Path.Combine(dir, "packs"), "*.json", SearchOption.AllDirectories).Select(Json).MaxBy(m => m["version"]!.GetValue<int>())!))
             .ToDictionary(p => p.Manifest["pack"]!.GetValue<string>(), p => p);
         var seen = new List<string>();
         void Visit(string id)

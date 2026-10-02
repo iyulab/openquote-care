@@ -623,6 +623,21 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
+    await app.restart()
+    // As a vault made before the school pack's second version holds it.
+    const added = [join(work.vault, 'packs', 'care.school.kr', 'v2.json.age'), join(work.vault, 'suggestions', 'care.school.kr', 'v2.json.age')]
+    for (const file of added) await rm(file)
+    await app.click('dc-button', '기록 폴더 열기')
+    await app.pickFolder(work.vault)
+    await app.type('암호', PASSPHRASE)
+    await app.click('dc-button', '열기')
+    await app.vaultOpen()
+    await app.cdp.waitFor(`__e2e.all('p[role=status]').some((p) => p.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
+    for (const file of added) assert.ok(existsSync(file), `${file} is back`)
+    await app.noAlert()
+  },
+
   async 'locks on request, forgetting the key until the passphrase is typed again'(app, work) {
     await app.click('dc-button', '지금 잠그기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=locked]')`, 'the locked screen')

@@ -340,9 +340,13 @@ impl App {
         // another device adding the same file first) never keeps the vault from opening. What was not
         // added is tried again the next time, since the manifests go last.
         let adopted = self.adopt(&mut open).unwrap_or_default();
+        let updated = if adopted.is_none() { self.update_packs(&mut open).unwrap_or_default() } else { Vec::new() };
         let mut summary = open.summary.clone();
         if let Some(track) = adopted {
             summary["adopted"] = serde_json::json!({ "track": track.id, "label": track.label });
+        }
+        if !updated.is_empty() {
+            summary["updatedPacks"] = serde_json::json!(updated);
         }
         // A backup opened as the vault it copies (the original lost, say): the window says so for
         // as long as it is open, since what is written here does not reach the original.
@@ -379,6 +383,34 @@ impl App {
             open.keep_all(new)?;
         }
         Ok(Some(track))
+    }
+
+    /// A vault holding an earlier version of a bundled pack takes the bundled version on, as a vault
+    /// is taken onto its track: the files of that pack and of the packs it builds on that the vault
+    /// lacks are added, manifests last, and no file it holds is changed. When it holds one of those
+    /// files with other content, nothing is added — a person applying the pack sees why. Returns the
+    /// ids of the packs brought up to date.
+    fn update_packs(&self, open: &mut OpenVault) -> Result<Vec<String>, AppError> {
+        let packs = open.summary["packs"].as_array().cloned().unwrap_or_default();
+        let ids = self.bundle.newer(packs.iter().filter_map(|p| Some((p["id"].as_str()?, p["version"].as_u64()?))));
+        if ids.is_empty() {
+            return Ok(ids);
+        }
+        let mut new = Vec::new();
+        for dir in self.bundle.closure(&ids)? {
+            for file in pack_files(&dir)? {
+                match open.vault.read(&file.path)? {
+                    None => new.push(file),
+                    Some(held) if held == file.content => {}
+                    Some(_) => return Ok(Vec::new()),
+                }
+            }
+        }
+        new.sort_by_key(|f| f.path.starts_with("packs/"));
+        if !new.is_empty() {
+            open.keep_all(new)?;
+        }
+        Ok(ids)
     }
 
     /// Sets a new passphrase for the open vault. The old one stops opening it on every device
@@ -627,9 +659,9 @@ pub fn device_id(config_dir: &Path) -> io::Result<String> {
 }
 
 /// The vault folders a data pack adds to: classification schemes and crosswalks, report and export
-/// forms, and the pack's manifest, labels and field definitions. Anything else in a pack folder
-/// stays out of the vault.
-const DEFINITION_FOLDERS: [&str; 6] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/"];
+/// forms, and the pack's manifest, labels, field definitions and what it says about suggesting
+/// items. Anything else in a pack folder stays out of the vault.
+const DEFINITION_FOLDERS: [&str; 7] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/", "suggestions/"];
 
 /// The definition files of a data pack, with their paths inside the pack as vault paths.
 pub(crate) fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
@@ -1343,6 +1375,75 @@ cut off").unwrap();
         let depression = topic["codes"].as_array().unwrap().iter().find(|c| c["code"] == "depression").expect("the closer record's topic");
         assert_eq!(depression["similar"][0], json!(low));
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), before, "a suggestion adds nothing to the vault");
+    }
+
+    #[test]
+    fn a_vault_holding_an_earlier_version_of_its_pack_takes_the_bundled_one_on_when_opened() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.close_vault();
+        // As a vault made before the school pack's second version holds it.
+        let added = ["packs/care.school.kr/v2.json.age", "suggestions/care.school.kr/v2.json.age"];
+        for file in added {
+            fs::remove_file(dir.path().join(file)).unwrap();
+        }
+
+        let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        assert_eq!(summary["updatedPacks"], json!(["care.school.kr"]));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 2));
+        assert_eq!(summary["packIssues"], json!([]));
+        for file in added {
+            assert!(dir.path().join(file).is_file(), "{file} is back");
+        }
+        app.close_vault();
+        assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("updatedPacks").is_none(), "nothing to take on the next time");
+    }
+
+    #[test]
+    fn a_vault_holding_a_file_of_the_new_pack_version_in_another_form_is_left_as_it_is() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.close_vault();
+        fs::remove_file(dir.path().join("packs/care.school.kr/v2.json.age")).unwrap();
+        fs::remove_file(dir.path().join("suggestions/care.school.kr/v2.json.age")).unwrap();
+        let vault = Vault::unlock(dir.path(), SecretString::from("pass".to_owned())).unwrap();
+        vault.write_new("suggestions/care.school.kr/v2.json", br#"{ "format": "openquote.suggestions/0", "pack": "care.school.kr", "version": 2 }"#).unwrap();
+        drop(vault);
+
+        let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        assert!(summary.get("updatedPacks").is_none());
+        assert!(!dir.path().join("packs/care.school.kr/v2.json.age").exists(), "no manifest names a pack version the vault does not hold as bundled");
+    }
+
+    #[test]
+    fn suggests_a_crisis_topic_set_apart_to_be_confirmed() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        let subject = app.record("/changes/subject", json!({ "fields": { "name": "synthetic" } })).unwrap();
+        let subject_id = subject.split('/').nth(1).unwrap();
+        for (topic, note) in [("crisis", "said they wanted to disappear; a safety plan was made"), ("family", "argued with parents at home")] {
+            app.record(
+                "/changes/in-subject",
+                json!({ "subjectId": subject_id, "type": "session",
+                        "fields": { "date": "2026-03-10", "topic": { "scheme": "topic", "version": 1, "code": topic }, "note": note } }),
+            )
+            .unwrap();
+        }
+
+        let answer = app.suggestions("session", "2026-03-20", json!({ "note": "wanted to disappear, safety plan" })).unwrap();
+
+        let topic = answer["fields"].as_array().unwrap().iter().find(|f| f["field"] == "topic").expect("a topic suggestion");
+        let codes = topic["codes"].as_array().unwrap();
+        assert_eq!(codes.iter().find(|c| c["code"] == "crisis").expect("the crisis topic, which the school pack lets be suggested")["confirm"], true);
+        assert!(codes.iter().filter(|c| c["code"] != "crisis").all(|c| c["confirm"] == false));
     }
 
     #[test]

@@ -15,11 +15,15 @@ export interface FieldSuggestions {
   codes: SuggestedCode[]
 }
 
-/** A suggested code and the settled records that hold it (ids, nearest first): why it is suggested. */
+/**
+ * A suggested code and the settled records that hold it (ids, nearest first): why it is suggested. A code
+ * to `confirm` is one the vault's packs set apart: a person has to look at it with particular care.
+ */
 export interface SuggestedCode {
   code: string
   score: number
   similar: string[]
+  confirm: boolean
 }
 
 /** What the engine suggests for a record being entered, and how many settled records it learned from. */

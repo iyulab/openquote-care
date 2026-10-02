@@ -32,10 +32,11 @@ struct Tracks {
     tracks: Vec<Track>,
 }
 
-/// A bundled pack: its folder, and the packs it builds on.
+/// A bundled pack: its folder, its newest version, and the packs it builds on.
 #[derive(Debug, Clone)]
 struct Pack {
     dir: PathBuf,
+    version: u64,
     depends: Vec<String>,
 }
 
@@ -97,8 +98,9 @@ impl Bundle {
                 let json: serde_json::Value = serde_json::from_slice(&fs::read(&newest)?)
                     .map_err(|e| BundleError::Invalid(format!("{}: {e}", newest.display())))?;
                 let id = json["pack"].as_str().ok_or_else(|| BundleError::Invalid(newest.display().to_string()))?.to_owned();
+                let version = json["version"].as_u64().ok_or_else(|| BundleError::Invalid(newest.display().to_string()))?;
                 let depends = json["depends"].as_object().map(|d| d.keys().cloned().collect()).unwrap_or_default();
-                packs.insert(id, Pack { dir: dir.clone(), depends });
+                packs.insert(id, Pack { dir: dir.clone(), version, depends });
             }
         }
         Ok(Bundle { packs, tracks: tracks.tracks })
@@ -138,6 +140,19 @@ impl Bundle {
             visit(self, id, &mut Vec::new(), &mut order)?;
         }
         Ok(order.iter().map(|id| self.packs[id].dir.clone()).collect())
+    }
+
+    /// Of the packs a vault holds — `held`, each id with the version the vault holds — those the
+    /// bundle has a later version of, in id order.
+    pub fn newer<'a>(&self, held: impl IntoIterator<Item = (&'a str, u64)>) -> Vec<String> {
+        let mut ids: Vec<String> = held
+            .into_iter()
+            .filter(|(id, version)| self.packs.get(*id).is_some_and(|p| p.version > *version))
+            .map(|(id, _)| id.to_owned())
+            .collect();
+        ids.sort();
+        ids.dedup();
+        ids
     }
 
     /// The folders a new vault on `track` is filled from, in order.
@@ -229,6 +244,16 @@ mod tests {
 
     fn names(dirs: &[PathBuf]) -> Vec<String> {
         dirs.iter().map(|d| d.file_name().unwrap().to_string_lossy().into_owned()).collect()
+    }
+
+    #[test]
+    fn names_the_packs_a_vault_holds_an_earlier_version_of() {
+        let (dir, _) = bundle();
+        put(dir.path(), "region/packs/region/v2.json", &manifest("region", &["base"]).replace(r#""version":1"#, r#""version":2"#));
+        let bundle = Bundle::read(dir.path()).unwrap();
+
+        assert_eq!(bundle.newer([("region", 1), ("base", 1), ("elsewhere", 1)]), ["region"]);
+        assert!(bundle.newer([("region", 2), ("base", 3)]).is_empty(), "a vault at or past the bundled version takes nothing on");
     }
 
     #[test]

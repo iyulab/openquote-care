@@ -234,8 +234,16 @@ export class OcSessionForm extends StoreElement {
           <span class="muted">${strings.suggested}</span>
           ${offered.codes.map(
             (c) =>
-              html`<dc-button size="sm" variant="outline" data-suggestion=${c.code} ?disabled=${store.busy} @click=${() => this.take(f, c.code)}
-                >${label(c.code)}${c.similar.length > 0 ? ` · ${strings.similarRecords(c.similar.length)}` : ''}</dc-button
+              html`<dc-button
+                size="sm"
+                variant=${c.confirm ? 'secondary' : 'outline'}
+                data-suggestion=${c.code}
+                ?data-confirm=${c.confirm}
+                ?disabled=${store.busy}
+                @click=${() => this.take(f, c.code)}
+                >${c.confirm ? html`<strong>${strings.confirmFirst}</strong> · ` : nothing}${label(c.code)}${c.similar.length > 0
+                  ? ` · ${strings.similarRecords(c.similar.length)}`
+                  : ''}</dc-button
               >`,
           )}
           ${withRecords.length > 0

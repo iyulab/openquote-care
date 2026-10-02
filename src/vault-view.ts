@@ -52,6 +52,8 @@ export class OcVault extends LitElement {
   @property({ type: Boolean }) backupCopy = false
   /** The packs the vault took on as it opened, by label: said once, on the first screen. */
   @property({ attribute: false }) adopted: string[] = []
+  /** Opening brought the vault's packs up to the newer version this app carries. */
+  @property({ attribute: false }) packsUpdated = false
 
   @state() private view: View = 'subjects'
   /** The sidebar as a drawer, while the window is narrow: closed until asked for. */
@@ -76,6 +78,7 @@ export class OcVault extends LitElement {
     this.store.connect()
     void this.store.resumeBackup()
     if (this.adopted.length > 0) this.store.notice = strings.adopted(this.adopted)
+    else if (this.packsUpdated) this.store.notice = strings.packsUpdated
     window.addEventListener('focus', this.onFocus)
     this.wideQuery.addEventListener('change', this.onWidth)
     this.onWidth()
