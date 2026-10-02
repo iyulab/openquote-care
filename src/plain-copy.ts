@@ -27,6 +27,11 @@ export interface PlainCopySource {
   deviceName?(device: string): string
   /** How names are put in order: the vault's, as everywhere in the app. */
   names: Intl.Collator
+  /**
+   * The days the copy covers (`YYYY-MM-DD`, both included): only the sessions on them, and the
+   * clients and groups those sessions are about. Every record when absent.
+   */
+  period?: { from: string; to: string }
 }
 
 /** The words of the copy, in the app's language. */
@@ -40,6 +45,8 @@ export interface PlainCopyWords {
   sessionDays: (days: string) => string
   /** A subject's line in the list at the front: how many sessions, on which days. */
   entry: (sessions: number, days: string) => string
+  /** The days a copy over a period covers, and what it then holds. */
+  period: (from: string, to: string) => string
   unprotected: string
   narrativeLeftOut: string
   subjects: string
@@ -57,7 +64,7 @@ export interface PlainCopyWords {
   historyFields: string
   sessionOn: (date: string) => string
   reclassified: string
-  readMe: (files: PlainCopyWords['files'], withNarrative: boolean, made: string) => string
+  readMe: (files: PlainCopyWords['files'], withNarrative: boolean, made: string, period?: string) => string
 }
 
 export interface PlainFile {
@@ -68,15 +75,38 @@ export interface PlainFile {
 const BOM = '﻿'
 
 /** The files of the copy, in the order a person would open them. */
-export function plainCopy(source: PlainCopySource, words: PlainCopyWords): PlainFile[] {
+export function plainCopy(whole: PlainCopySource, words: PlainCopyWords): PlainFile[] {
+  const source = within(whole)
+  const period = source.period ? words.period(source.period.from, source.period.to) : undefined
   const sessionFields = sessionColumns(source.sessionFields, source.withNarrative)
   const subjectFields = source.subjectFields.filter((f) => !f.hidden && f.name !== 'name')
   return [
     { name: words.files.page, content: page(source, words, subjectFields, sessionFields) },
     { name: words.files.subjects, content: subjectsCsv(source, words, subjectFields) },
     { name: words.files.sessions, content: sessionsCsv(source, words, sessionFields) },
-    { name: words.files.readMe, content: words.readMe(words.files, source.withNarrative, words.made(source.vault, stamp(source.at), source.device)).replaceAll('\n', '\r\n') },
+    {
+      name: words.files.readMe,
+      content: words.readMe(words.files, source.withNarrative, words.made(source.vault, stamp(source.at), source.device), period).replaceAll('\n', '\r\n'),
+    },
   ]
+}
+
+/** The records a copy over a period holds: its sessions, and the clients and groups they are about. */
+function within(source: PlainCopySource): PlainCopySource {
+  if (!source.period) return source
+  const { from, to } = source.period
+  const sessions = source.sessions.filter((s) => {
+    const day = text(s, 'date')
+    return day >= from && day <= to
+  })
+  const people = new Set(sessions.flatMap((s) => s.people))
+  const groups = new Set(sessions.map((s) => s.group))
+  return {
+    ...source,
+    sessions,
+    subjects: source.subjects.filter((s) => people.has(s.id)),
+    groups: source.groups.filter((g) => groups.has(g.id)),
+  }
 }
 
 /**
@@ -188,6 +218,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
     `<h1>${escape(words.title)}</h1>`,
     `<p>${escape(words.made(source.vault, stamp(source.at), source.device))}</p>`,
     `<p>${escape(words.counts(source.subjects.length, source.groups.length, source.sessions.length))}</p>`,
+    source.period ? `<p data-period>${escape(words.period(source.period.from, source.period.to))}</p>` : '',
     span ? `<p>${escape(words.sessionDays(span))}</p>` : '',
     `<p class="warn">${escape(words.unprotected)}</p>`,
     source.withNarrative ? '' : `<p>${escape(words.narrativeLeftOut)}</p>`,

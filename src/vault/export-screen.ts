@@ -29,6 +29,8 @@ export class OcExport extends VaultScreen {
   @state() private changesNow?: number
   /** The rows cover any days a person picks rather than a month. */
   @state() private byRange = false
+  /** The copy that reads without the app covers the days the range picks rather than every record. */
+  @state() private copyByRange = false
 
   /** Every change the records a copy holds were built from: subjects, sessions, groups and practitioners. */
   private async changes() {
@@ -80,6 +82,11 @@ export class OcExport extends VaultScreen {
   async makePlainCopy(folder: string) {
     const store = this.store
     const summary = store.summary
+    const period = this.copyByRange ? { from: store.rangeFrom, to: store.rangeTo } : undefined
+    if (period && (!period.from || !period.to || period.to < period.from)) {
+      store.set({ error: { text: strings.rangeMissing } })
+      return
+    }
     store.set({ notice: '' })
     await store.run(async () => {
       const at = new Date()
@@ -101,16 +108,23 @@ export class OcExport extends VaultScreen {
           history,
           deviceName: (device) => (summary ? deviceLabel(summary, device) : device),
           names: store.names,
+          period,
         },
         words,
       )
       const pad = (n: number) => String(n).padStart(2, '0')
-      const name = words.folder(`${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}${pad(at.getMinutes())}`)
+      const name = words.folder(
+        `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}${pad(at.getMinutes())}`,
+        period ? `${period.from}~${period.to}` : undefined,
+      )
       const made = await shell.writePlainCopy(folder, name, files)
-      const changes = [...history.values()].reduce((n, c) => n + c.length, 0)
-      this.lastCopy = { at: at.getTime(), folder: made, withNarrative: this.withNarrative, changes }
-      this.changesNow = changes
-      storeCopy(store.folder, this.lastCopy)
+      // Only a copy of every record is the one the screen keeps track of: a period's leaves the rest out.
+      if (!period) {
+        const changes = [...history.values()].reduce((n, c) => n + c.length, 0)
+        this.lastCopy = { at: at.getTime(), folder: made, withNarrative: this.withNarrative, changes }
+        this.changesNow = changes
+        storeCopy(store.folder, this.lastCopy)
+      }
       store.notice = strings.plainCopyDone(made)
     })
   }
@@ -156,11 +170,26 @@ export class OcExport extends VaultScreen {
     })
   }
 
-  /** The copy of every record that reads without the app: what it is, that it is unprotected, and where it goes. */
+  /**
+   * The copy that reads without the app — every record, or a period's — what it is, that it is
+   * unprotected, and where it goes.
+   */
   private plainCopyDocument() {
     const busy = this.store.busy
     return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${strings.plainCopyEntry} description=${strings.plainCopyLead}></dp-page-header>
       <dc-callout variant="warning" data-role="plain-copy-warning"><p>${strings.plainCopyWarning}</p></dc-callout>
+      <div class="row">
+        <dc-segmented-control
+          size="sm"
+          aria-label=${strings.plainCopyScope}
+          data-role="plain-copy-scope"
+          .options=${[{ value: 'all', label: strings.plainCopyAll }, { value: 'range', label: strings.periodRange }]}
+          .value=${this.copyByRange ? 'range' : 'all'}
+          ?disabled=${busy}
+          @change=${(e: Event) => (this.copyByRange = (e.target as HTMLInputElement).value === 'range')}
+        ></dc-segmented-control>
+        ${this.copyByRange ? rangeFields(this.store) : nothing}
+      </div>
       <dc-checkbox
         data-role="plain-copy-narrative"
         .checked=${this.withNarrative}

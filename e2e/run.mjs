@@ -781,7 +781,7 @@ const scenarios = {
   async 'leaves a copy of every record that reads without the app, apart from the vault, content only when asked'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'
     await app.click('button', '기록 목록')
-    await app.click('li button .label', '전체 기록 사본 (앱 없이 읽기)')
+    await app.click('li button .label', '기록 사본 (앱 없이 읽기)')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-warning]')`, 'the warning that the copy has no passphrase')
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-last]')?.textContent.trim() === '이 컴퓨터에서 만든 사본이 없습니다.'`, 'no copy made yet')
     // The folder picker is the system's; the screen's own method takes its answer.
@@ -810,6 +810,28 @@ const scenarios = {
     await app.cdp.waitFor(`!!__e2e.one('[data-role=plain-copy-fresh]')`, 'nothing changed since the copy')
     assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes(${q(copy)})`), 'the last copy, by where it went')
 
+    // A period's copy: its sessions and the clients they are about; the copy of every record stays the last one.
+    const scope = (label) =>
+      app.cdp.evaluate(`(() => { [...__e2e.one('[data-role=plain-copy-scope]').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === ${q(label)}).click(); return true })()`)
+    await scope('기간')
+    await app.setDate('시작일', '2026-05-01')
+    await app.setDate('마지막 날', '2026-05-31')
+    const mayFolder = join(dirname(work.vault), 'plain-may')
+    await mkdir(mayFolder)
+    await app.cdp.evaluate(`__e2e.one('oc-export').makePlainCopy(${q(mayFolder)}).then(() => true)`)
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('2026-05-01~2026-05-31'))`, 'the period copy made')
+    await app.noAlert()
+    const [may] = await readdir(mayFolder)
+    assert.match(may, /^Openquote 기록 사본 2026-05-01~2026-05-31 \d{4}-\d\d-\d\d \d{4}$/)
+    const mayPage = await readFile(join(mayFolder, may, '기록.html'), 'utf8')
+    assert.ok(mayPage.includes('기간 2026-05-01 ~ 2026-05-31'), 'the period on the first page')
+    assert.ok(mayPage.includes('>1. 가상 학생 3</h2>'), 'the client with sessions that month, first in the list')
+    const days = [...mayPage.matchAll(/<td>(\d{4}-\d\d-\d\d)<\/td>/g)].map((m) => m[1])
+    assert.ok(days.length > 0 && days.every((d) => d.startsWith('2026-05')), `only that month's sessions: ${JSON.stringify(days)}`)
+    assert.ok(page.split('<h2 id=').length > mayPage.split('<h2 id=').length, 'fewer clients than the copy of every record')
+    assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes(${q(copy)})`), 'the last copy is still the one of every record')
+    await scope('모든 기록')
+
     await app.cdp.evaluate(`(() => { __e2e.one('[data-role=plain-copy-narrative]').click(); return true })()`)
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-narrative]').checked`, 'content asked for')
     const withContent = join(dirname(work.vault), 'plain-with-content')
@@ -829,7 +851,7 @@ const scenarios = {
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
     await app.click('button', '기록 목록')
-    await app.click('li button .label', '전체 기록 사본 (앱 없이 읽기)')
+    await app.click('li button .label', '기록 사본 (앱 없이 읽기)')
     await app.cdp.waitFor(`__e2e.one('[data-role=plain-copy-stale]')?.textContent.startsWith('그 뒤 바뀐 기록이 1건 있어')`, 'the copy is behind by one change')
     assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes('상담 내용 포함')`), 'the last copy held session content')
     await rm(plain, { recursive: true, force: true })

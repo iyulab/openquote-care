@@ -174,9 +174,11 @@ export const en: Strings = {
   exportCopied: (n: number) => `Copied ${plural(n, 'row')} and the heading row. Paste into a spreadsheet.`,
   exportPeriod: (from: string, to: string, n: number) => `Period ${from} – ${to} · ${plural(n, 'row')}`,
   exportEmpty: 'No sessions were recorded in this period.',
-  plainCopyEntry: 'Whole-record copy (reads without the app)',
+  plainCopyEntry: 'Record copy (reads without the app)',
   plainCopyLead:
-    'Leaves every client, session, group and practitioner of this vault in files that read without the app, in a folder you choose: one page to open in a browser, two tables to open in a spreadsheet, and a note. For keeping records readable for years, even when the app can no longer be used.',
+    'Leaves every client, session, group and practitioner of this vault in files that read without the app, in a folder you choose: one page to open in a browser, two tables to open in a spreadsheet, and a note. For keeping records readable for years, even when the app can no longer be used. Given a period, it holds only the sessions in it and the clients they are about — to print a year of records and keep it.',
+  plainCopyScope: 'Records to include',
+  plainCopyAll: 'Every record',
   plainCopyWarning: 'This copy has no passphrase. Do not keep it where anyone can open it (a shared folder, mail, a cloud-synced folder).',
   plainCopyNarrative: 'Include session content',
   plainCopyNarrativeLead: 'Without it, session content is left out; dates, classifications, practitioners and the like go in.',
@@ -189,7 +191,7 @@ export const en: Strings = {
   plainCopyStale: (n: number) => `${plural(n, 'change')} to the records came after it and ${n === 1 ? 'is' : 'are'} not in the copy. Making the copy again brings it up to date.`,
   plainCopyFresh: 'No record changed after it.',
   plainCopy: {
-    folder: (at: string) => `Openquote records copy ${at}`,
+    folder: (at: string, period?: string) => `Openquote records copy ${period ? `${period} ` : ''}${at}`,
     files: { page: 'records.html', subjects: 'clients.csv', sessions: 'sessions.csv', readMe: 'read-me.txt' },
     title: 'Openquote Care records copy',
     made: (vault: string, at: string, device: string) => `Vault "${vault}" · ${at} · made on ${device}`,
@@ -197,6 +199,7 @@ export const en: Strings = {
     sessionDays: (days: string) => `Sessions on ${days}`,
     entry: (sessions: number, days: string) =>
       sessions === 0 ? 'no sessions' : `${sessions} session${sessions === 1 ? '' : 's'}${days ? ` · ${days}` : ''}`,
+    period: (from: string, to: string) => `Period ${from} ~ ${to} — only the sessions in it, and the clients and groups they are about.`,
     unprotected: 'This copy has no passphrase. Be careful where you keep it.',
     narrativeLeftOut: 'Session content is left out.',
     subjects: 'Clients',
@@ -214,10 +217,11 @@ export const en: Strings = {
     historyFields: 'Fields changed',
     sessionOn: (date: string) => `Session of ${date}`,
     reclassified: '(moved to the revised classification)',
-    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string) =>
+    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string, period?: string) =>
       [
         'Openquote Care records copy',
         made,
+        ...(period ? [period] : []),
         '',
         'This folder is a copy of an Openquote Care vault written out so it reads without the app.',
         'It has no passphrase, so be careful where you keep it. The original is still the vault.',

@@ -175,9 +175,11 @@ export const ko = {
   exportCopied: (n: number) => `${n}행과 제목 행을 복사했습니다. 엑셀에 붙여 넣으세요.`,
   exportPeriod: (from: string, to: string, n: number) => `기간 ${from} ~ ${to} · ${n}행`,
   exportEmpty: '이 기간에 기록한 회기가 없습니다.',
-  plainCopyEntry: '전체 기록 사본 (앱 없이 읽기)',
+  plainCopyEntry: '기록 사본 (앱 없이 읽기)',
   plainCopyLead:
-    '이 기록 폴더의 모든 대상자·회기·집단·담당자를 앱 없이 읽을 수 있는 파일로 고른 폴더에 남깁니다. 브라우저로 여는 기록 한 장과 엑셀로 여는 표 두 개, 설명 한 장입니다. 앱을 쓸 수 없게 되어도 기록을 읽을 수 있게 오래 보관할 때 씁니다.',
+    '이 기록 폴더의 모든 대상자·회기·집단·담당자를 앱 없이 읽을 수 있는 파일로 고른 폴더에 남깁니다. 브라우저로 여는 기록 한 장과 엑셀로 여는 표 두 개, 설명 한 장입니다. 앱을 쓸 수 없게 되어도 기록을 읽을 수 있게 오래 보관할 때 씁니다. 기간을 정하면 그 기간의 회기와 그 회기의 대상자만 담습니다 — 한 해 기록을 묶어 인쇄해 둘 때.',
+  plainCopyScope: '담을 기록',
+  plainCopyAll: '모든 기록',
   plainCopyWarning: '이 사본에는 암호가 걸려 있지 않습니다. 누구나 열 수 있는 곳(공유 폴더·메일·클라우드 동기화 폴더)에 두지 마세요.',
   plainCopyNarrative: '상담 내용도 넣기',
   plainCopyNarrativeLead: '넣지 않으면 상담 내용 칸은 빠지고, 날짜·분류·담당자 같은 칸만 들어갑니다.',
@@ -190,13 +192,14 @@ export const ko = {
   plainCopyStale: (n: number) => `그 뒤 바뀐 기록이 ${n}건 있어 사본에는 없습니다. 사본을 다시 만들면 최신이 됩니다.`,
   plainCopyFresh: '그 뒤 바뀐 기록은 없습니다.',
   plainCopy: {
-    folder: (at: string) => `Openquote 기록 사본 ${at}`,
+    folder: (at: string, period?: string) => `Openquote 기록 사본 ${period ? `${period} ` : ''}${at}`,
     files: { page: '기록.html', subjects: '대상자.csv', sessions: '회기.csv', readMe: '읽어보기.txt' },
     title: 'Openquote Care 기록 사본',
     made: (vault: string, at: string, device: string) => `기록 폴더 「${vault}」 · ${at} · ${device}에서 만듦`,
     counts: (subjects: number, groups: number, sessions: number) => `대상자 ${subjects}명 · 집단 ${groups}개 · 회기 ${sessions}건`,
     sessionDays: (days: string) => `회기 날짜 ${days}`,
     entry: (sessions: number, days: string) => (sessions === 0 ? '회기 없음' : `회기 ${sessions}건${days ? ` · ${days}` : ''}`),
+    period: (from: string, to: string) => `기간 ${from} ~ ${to} — 이 기간의 회기와 그 회기의 대상자·집단만 담았습니다.`,
     unprotected: '이 사본에는 암호가 걸려 있지 않습니다. 보관하는 곳을 조심하세요.',
     narrativeLeftOut: '상담 내용 칸은 넣지 않았습니다.',
     subjects: '대상자',
@@ -214,10 +217,11 @@ export const ko = {
     historyFields: '고친 칸',
     sessionOn: (date: string) => `${date} 회기`,
     reclassified: '(분류 개정에 맞춤)',
-    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string) =>
+    readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string, period?: string) =>
       [
         'Openquote Care 기록 사본',
         made,
+        ...(period ? [period] : []),
         '',
         '이 폴더는 Openquote Care 기록 폴더의 내용을 앱 없이 읽을 수 있게 풀어 쓴 사본입니다.',
         '암호가 걸려 있지 않으므로 보관하는 곳을 조심하세요. 원본은 여전히 기록 폴더입니다.',

@@ -148,6 +148,20 @@ describe('plain copy', () => {
     expect(order(new Intl.Collator('en'))).toEqual(['Bo', '가람', '나영'])
   })
 
+  it('over a period holds its sessions and the clients and groups they are about, and says so', () => {
+    const files = plainCopy({ ...source(false), period: { from: '2026-04-15', to: '2026-04-30' } }, en.plainCopy)
+    const page = file(files, 'records.html')
+    expect(page).toContain('Period 2026-04-15 ~ 2026-04-30')
+    expect(page).toContain('<p>Clients 1 · Groups 0 · Sessions 1</p>')
+    expect(page).not.toContain('Zed')
+    expect(page).not.toContain('2026-04-02')
+    expect(file(files, 'sessions.csv').split('\r\n').filter(Boolean)).toHaveLength(2)
+    expect(file(files, 'read-me.txt').split('\r\n')[2]).toBe('Period 2026-04-15 ~ 2026-04-30 — only the sessions in it, and the clients and groups they are about.')
+    // A group session in the period brings in everyone it is about, and the group.
+    const withGroup = file(plainCopy({ ...source(false), period: { from: '2026-04-10', to: '2026-04-10' } }, en.plainCopy), 'records.html')
+    expect(withGroup).toContain('<p>Clients 2 · Groups 1 · Sessions 1</p>')
+  })
+
   it('the note reads with Windows line ends', () => {
     expect(file(plainCopy(source(false), en.plainCopy), 'read-me.txt')).toMatch(/^Openquote Care records copy\r\n/)
   })
