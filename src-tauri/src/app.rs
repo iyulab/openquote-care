@@ -343,6 +343,12 @@ impl App {
 
     fn open_unlocked(&self, vault: Vault) -> Result<Value, AppError> {
         let mut open = OpenVault::open(vault, Engine::start(&self.sidecar, &self.device)?)?;
+        // A folder already holding what only a newer format counts right, under an older declaration
+        // (one lost and put back, say), has its declaration set right: someone chose that format
+        // when it was first needed. A failed write never keeps the vault from opening.
+        if let Ok(Some(format)) = open.format_needed(&[]) {
+            let _ = open.vault.raise_format(format);
+        }
         // Taking packs on adds to a vault that reads without them: a failed write (a read-only share,
         // another device adding the same file first) never keeps the vault from opening. What was not
         // added is tried again the next time, since the manifests go last.
@@ -1523,6 +1529,13 @@ cut off").unwrap();
         reopened.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert!(reopened.summary().unwrap()["unreadable"].as_array().unwrap().is_empty(), "the raised vault opens and reads");
         assert!(reopened.apply_pack(pack.path(), false).unwrap().is_empty(), "applying it again needs no choice");
+
+        // The declaration lost and put back as format 0: opening the folder sets it right again.
+        drop(reopened);
+        fs::write(dir.path().join("vault.json"), &declaration).unwrap();
+        let Some(again) = super::tests::app() else { return };
+        again.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        assert!(fs::read_to_string(dir.path().join("vault.json")).unwrap().contains("openquote.vault/1"), "what it holds needs format 1");
     }
 
     /// Every file under `root`, with its bytes, by path relative to it.

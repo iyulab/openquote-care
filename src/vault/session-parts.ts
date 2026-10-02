@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit'
+import { primaryAndOthers } from '../several.js'
 import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { attendeesAt, labelOfField, listColumns, narrativeFields, type FieldView } from '../fields.js'
 import { conflictsOf, labelOf, namesOf, text, type Entity } from '../records.js'
@@ -42,6 +43,12 @@ export function valueText(store: VaultStore, field: FieldView | undefined, value
   }
   const label = labelOf(store.schemes, value)
   if (label) return label
+  if (Array.isArray(value)) {
+    // Several values: the primary one first, the others after it.
+    const { primary, others } = primaryAndOthers(value)
+    const labels = others.map((o) => labelOf(store.schemes, o))
+    return primary ? strings.severalValues(labelOf(store.schemes, primary), labels) : labels.join(', ')
+  }
   return typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)
 }
 

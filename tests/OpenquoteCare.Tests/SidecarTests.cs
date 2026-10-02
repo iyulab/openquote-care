@@ -279,6 +279,19 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Says_which_coded_fields_take_several_values()
+    {
+        var many = new Openquote.Vault.VaultFile("fields/y/session/v1.json", System.Text.Encoding.UTF8.GetBytes(
+            """{"format":"openquote.fields/1","pack":"y","type":"session","version":1,"fields":[{"name":"concerns","kind":"coded","scheme":"topic","many":true},{"name":"mode","kind":"coded","scheme":"mode"}]}"""));
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), many]));
+
+        var fields = (await Get("/fields/session")).AsArray().ToDictionary(f => f!["name"]!.GetValue<string>(), f => f!);
+
+        Assert.True(fields["concerns"]["many"]!.GetValue<bool>());
+        Assert.False(fields["mode"]["many"]!.GetValue<bool>());
+    }
+
+    [Fact]
     public async Task Says_what_vault_format_files_would_need_before_the_host_writes_them()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(1)));

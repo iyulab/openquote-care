@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { asDraft, changedFields } from '../correction.js'
+import { alsoKey } from '../several.js'
 import type { FieldView } from '../fields.js'
 import type { Entity } from '../records.js'
 
@@ -55,5 +56,18 @@ describe('correcting a saved session', () => {
     const filled = { date: '2026-04-02', topic: { scheme: 'topic', version: 2, code: 'peer' }, minutes: 50, practitioner: 'pr1', note: 'Talked about the class.' }
     expect(changedFields(fields, recorded, filled)).toEqual({ topic: { scheme: 'topic', version: 2, code: 'peer' } })
     expect(changedFields(fields, session({ date: '2026-04-02' }), { date: '2026-04-02', minutes: 30 })).toEqual({ minutes: 30 })
+  })
+  it('starts a field holding several values from its primary code and the others, and writes it again only when they changed', () => {
+    const many = [field('topic', 'coded', { many: true })]
+    const coded = (code: string, primary?: boolean) => ({ scheme: 'topic', version: 1, code, ...(primary ? { primary } : {}) })
+    const held = session({ topic: [coded('a'), coded('b', true), coded('c')] })
+
+    const draft = asDraft(many, held)
+
+    expect(draft.topic).toBe('b')
+    expect(draft[alsoKey('topic')]).toBe('a\nc')
+    expect(changedFields(many, held, { topic: [coded('b', true), coded('a'), coded('c')] })).toEqual({ topic: [coded('b', true), coded('a'), coded('c')] })
+    expect(changedFields(many, held, { topic: [coded('a'), coded('b', true), coded('c')] })).toEqual({})
+    expect(changedFields(many, held, { topic: coded('b') })).toEqual({ topic: coded('b') })
   })
 })

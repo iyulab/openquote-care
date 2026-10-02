@@ -2,32 +2,29 @@
 // person changed is written — as a new change, so the record as first written stays.
 import type { FieldView } from './fields.js'
 import type { Entity } from './records.js'
+import { alsoKey, isCoded, primaryAndOthers } from './several.js'
 
-/** A coded value as it is recorded: a code in a version of a scheme. */
-interface Coded {
-  scheme: string
-  version: number
-  code: string
-}
-
-function isCoded(value: unknown): value is Coded {
-  return typeof value === 'object' && value !== null && typeof (value as Coded).code === 'string' && typeof (value as Coded).scheme === 'string'
-}
-
-/** What a form's inputs show for `entity`: each field's current value as the input holds it (a code for a classification). */
+/**
+ * What a form's inputs show for `entity`: each field's current value as the input holds it (a code
+ * for a classification; for one holding several, the primary code, the others under their own key).
+ */
 export function asDraft(fields: FieldView[], entity: Entity): Record<string, string> {
   const draft: Record<string, string> = {}
   for (const f of fields) {
     const value = entity.fields[f.name]
     if (value === undefined || value === null) draft[f.name] = ''
-    else if (isCoded(value)) draft[f.name] = value.code
-    else draft[f.name] = typeof value === 'string' ? value : String(value)
+    else if (Array.isArray(value) || isCoded(value)) {
+      const { primary, others } = primaryAndOthers(value)
+      draft[f.name] = primary?.code ?? ''
+      if (others.length > 0) draft[alsoKey(f.name)] = others.map((o) => o.code).join('\n')
+    } else draft[f.name] = typeof value === 'string' ? value : String(value)
   }
   return draft
 }
 
 function same(a: unknown, b: unknown): boolean {
-  if (isCoded(a) && isCoded(b)) return a.scheme === b.scheme && a.version === b.version && a.code === b.code
+  if (isCoded(a) && isCoded(b)) return a.scheme === b.scheme && a.version === b.version && a.code === b.code && !!a.primary === !!b.primary
+  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((x, i) => same(x, b[i]))
   return a === b
 }
 

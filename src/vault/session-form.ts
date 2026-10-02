@@ -6,6 +6,7 @@ import { asDraft, changedFields } from '../correction.js'
 import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
+import { alsoKey, othersOf, recordedValues } from '../several.js'
 import { fieldInput, type Choice, type FieldExtras } from './field-input.js'
 import { StoreElement } from './screen.js'
 import { vaultStyles } from './styles.js'
@@ -158,7 +159,9 @@ export class OcSessionForm extends StoreElement {
           dropped.push(f)
           continue
         }
-        fields[f.name] = { scheme: scheme.scheme, version: scheme.version, code: value }
+        // A field taking several: the others that version holds go with the primary value.
+        const others = f.many ? othersOf(draft, f.name).filter((c) => scheme.items.some((i) => i.code === c)) : []
+        fields[f.name] = recordedValues(scheme.scheme, scheme.version, value, others)
       } else if (f.kind === 'number') {
         fields[f.name] = Number(value)
       } else {
@@ -327,7 +330,43 @@ export class OcSessionForm extends StoreElement {
       return []
     }
     const extras = !this.edit && f.kind === 'coded' ? this.suggestionExtras(f) : {}
-    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, choicesOf(), extras)
+    const options = choicesOf()
+    if (f.kind === 'coded' && f.many) extras.after = html`${extras.after ?? nothing}${this.others(f, options)}`
+    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, options, extras)
+  }
+
+  /**
+   * The other values of a field taking several, beside the primary one the dropdown holds: each
+   * with a way to take it out, and a dropdown to add one more — offered once a primary value is chosen.
+   */
+  private others(f: FieldView, options: Choice[]) {
+    const busy = this.store.busy
+    const primary = this.draft[f.name] ?? ''
+    const others = othersOf(this.draft, f.name)
+    const label = (code: string) => options.find((o) => o.value === code)?.label ?? code
+    const setOthers = (codes: string[]) => this.setValue(alsoKey(f.name), codes.join('\n'))
+    const left = options.filter((o) => o.value !== primary && !others.includes(o.value))
+    return html`<div class="others" data-others=${f.name}>
+      ${others.map(
+        (code) => html`<dc-button size="sm" variant="outline" data-other=${code} aria-label=${strings.removeOther(label(code))} ?disabled=${busy}
+          @click=${() => setOthers(others.filter((c) => c !== code))}>${label(code)} ✕</dc-button>`,
+      )}
+      ${primary && left.length > 0
+        ? html`<dc-select
+            size="sm"
+            aria-label=${strings.addOther}
+            placeholder=${strings.addOther}
+            data-add-other=${f.name}
+            .options=${left}
+            .value=${''}
+            ?disabled=${busy}
+            @change=${(e: Event) => {
+              const code = (e.target as HTMLSelectElement).value
+              if (code) setOthers([...others, code])
+            }}
+          ></dc-select>`
+        : nothing}
+    </div>`
   }
 
   render() {

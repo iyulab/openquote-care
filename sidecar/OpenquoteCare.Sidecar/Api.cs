@@ -139,7 +139,8 @@ public sealed record ReportView(
 /// <summary>
 /// A field of an entity type as the vault's packs declare it, with its label and the other names it goes by
 /// resolved in the vault's locales. <c>Kind</c> is <c>text</c>, <c>date</c>, <c>number</c>, <c>coded</c>,
-/// <c>reference</c> or <c>references</c>; <c>Tier</c> is <c>structured</c> or <c>narrative</c>.
+/// <c>reference</c> or <c>references</c>; <c>Tier</c> is <c>structured</c> or <c>narrative</c>. <c>Many</c> is true
+/// for a coded field that takes several values, one of them primary.
 /// </summary>
 public sealed record FieldView(
     string Name,
@@ -151,7 +152,8 @@ public sealed record FieldView(
     string Tier,
     string? DefaultFromSubject,
     string Label,
-    IReadOnlyList<string> Aliases);
+    IReadOnlyList<string> Aliases,
+    bool Many);
 
 /// <summary>The scheme version in force on a date, or null when the vault holds none.</summary>
 public sealed record InForceView(int? Version);
@@ -286,7 +288,8 @@ internal static class Api
                     f.Tier.ToString().ToLowerInvariant(),
                     f.DefaultFromSubject,
                     snapshot.Labels.FieldLabel(type, f.Name, snapshot.Locales) ?? f.Label ?? f.Name,
-                    snapshot.Labels.FieldAliases(type, f.Name, snapshot.Locales)))
+                    snapshot.Labels.FieldAliases(type, f.Name, snapshot.Locales),
+                    f.Many))
                 .ToArray();
         });
 

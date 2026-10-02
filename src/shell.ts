@@ -53,6 +53,8 @@ export interface FieldView {
   label: string
   /** Other names the field goes by, matched when data is taken in. */
   aliases: string[]
+  /** True for a coded field that takes several values, one of them primary. */
+  many?: boolean
 }
 
 /** A track a vault can be made on: the packs it starts from, named in the app's language. */
