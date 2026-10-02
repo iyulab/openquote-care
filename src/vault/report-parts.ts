@@ -1,8 +1,8 @@
 import { html } from 'lit'
 import { labelOfField, type FieldView } from '../fields.js'
-import { columnFieldOf, rowFieldOf, type ReportEntry } from '../forms.js'
+import { rowFieldOf, type Dimension, type ReportEntry } from '../forms.js'
 import { labelOf, namesOf, newestFirst, text, type Entity } from '../records.js'
-import { placesOf, referenceAxis, rowSchemeOf, type ColumnAxis, type Comparison, type Group, type Place, type RunRecord } from '../report.js'
+import { placesOf, referenceAxis, schemeAxis, valueAxis, type Axis, type Comparison, type Group, type Place, type RunRecord } from '../report.js'
 import { strings } from '../strings.js'
 import { valueText } from './session-parts.js'
 import type { VaultStore } from './store.js'
@@ -25,16 +25,35 @@ export function formOf(store: VaultStore, run: RunRecord): ReportEntry | undefin
 }
 
 /**
- * What splits a form's columns: what its column field refers to, by name. A value naming nothing the
- * field refers to — a vault without field definitions — is looked up among every named entity.
+ * How a run reads along each dimension of its form, in key order: a classified dimension by the
+ * scheme version the run counted in, a field that refers to entities by their names, any other field
+ * by its values. A form of one dimension gets a second axis whose one column holds every record.
  */
-export function columnAxis(store: VaultStore, form: ReportEntry | undefined): ColumnAxis {
-  const columnField = form ? columnFieldOf(form) : null
-  if (!form || !columnField) return referenceAxis([], strings.reportCount)
-  const defs = store.fieldsOf(form.counts)
-  const field = defs.find((f) => f.name === columnField)
-  const referred = field?.kind === 'reference' ? store.entitiesOf(field.refType) : []
-  const axis = referenceAxis(referred, strings.noValue(labelOfField(defs, columnField)), store.names)
+export function axesOf(store: VaultStore, form: ReportEntry | undefined, run: RunRecord): Axis[] {
+  const axes = form
+    ? form.dimensions.map((d) => axisOf(store, form, run, d))
+    : // A form the vault no longer offers: its rows by the scheme the run counted in.
+      [schemeAxis(schemeOf(store, run, Object.keys(run.schemes)[0] ?? '', null), strings.noValue(strings.reportRow))]
+  if (axes.length < 2) axes.push(referenceAxis([], strings.reportCount))
+  return axes
+}
+
+function schemeOf(store: VaultStore, run: RunRecord, scheme: string, version: number | null) {
+  const counted = run.schemes[scheme]?.version ?? version
+  return store.schemes.find((s) => s.scheme === scheme && s.version === counted)
+}
+
+/**
+ * One dimension's axis. A value naming nothing a reference field refers to — a vault without field
+ * definitions — is looked up among every named entity.
+ */
+function axisOf(store: VaultStore, form: ReportEntry, run: RunRecord, d: Dimension): Axis {
+  const defs = store.fieldsOf(d.ofSubject ? 'subject' : form.counts)
+  const none = strings.noValue(labelOfField(defs, d.field))
+  if (d.scheme) return schemeAxis(schemeOf(store, run, d.scheme, d.version), none)
+  const field = defs.find((f) => f.name === d.field)
+  if (d.ofSubject || (field && field.kind !== 'reference')) return valueAxis(none, store.names)
+  const axis = referenceAxis(field?.kind === 'reference' ? store.entitiesOf(field.refType) : [], none, store.names)
   const named = new Map([...store.practitioners, ...store.subjects, ...store.groups].map((e) => [e.id, text(e, 'name')]))
   return { ...axis, label: (id) => named.get(id) ?? axis.label(id) }
 }
@@ -52,18 +71,15 @@ function periodOf(store: VaultStore, form: ReportEntry | undefined): { label: st
   return { label: labelOfField(defs, name), of: (e) => valueText(store, field, e.fields[name]) }
 }
 
-/** A place in words: a row (in the version that run counted in) and a column, or a group. */
+/** A place in words: its place on each dimension (a classified one in the version that run counted in), or a group. */
 function placeText(store: VaultStore, run: RunRecord, place: Place | undefined): string {
   if (!place) return strings.nowhere
   if (place.kind === 'pending') return strings.pending
   if (place.kind === 'unmapped') return strings.unmapped
   if (place.kind === 'blank') return blankLabel(store, formOf(store, run))
   if (place.kind === 'conflicted') return strings.conflict
-  const { scheme, version } = rowSchemeOf(run)
-  const row = labelOf(store.schemes, { scheme, version, code: place.row })
-  const axis = columnAxis(store, formOf(store, run))
-  const column = place.column === null ? axis.none : axis.label(place.column)
-  return `${row} · ${column}`
+  const axes = axesOf(store, formOf(store, run), run)
+  return place.key.map((id, i) => (id === null ? (axes[i]?.none ?? strings.nowhere) : (axes[i]?.label(id) ?? id))).join(' · ')
 }
 
 /** What changed between two runs of a form, session by session. */

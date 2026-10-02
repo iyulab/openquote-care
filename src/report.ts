@@ -44,26 +44,28 @@ export interface Group {
 }
 
 export interface Column {
-  /** The value of the report's column field (the id of what it refers to), or null for records with none. */
+  /** A place of a dimension: a code, a string value or the id of what a field refers to — null for records with none. */
   id: string | null
   label: string
 }
 
-/** What splits a report's columns: the values its column field can take, in the order to show them. */
-export interface ColumnAxis {
-  /** Columns shown even when nothing fell into them, in order. */
+/** How one dimension of a form reads: the places it can take, in the order to show them. */
+export interface Axis {
+  /** Places shown even when nothing fell into them, in order. */
   known: Column[]
-  /** A value outside `known` in words: a column the run found that the vault no longer names. */
+  /** A place outside `known` in words: one the run found that the axis does not list. */
   label(id: string): string
-  /** The heading of the column of records with no value. */
+  /** The heading of the records with no single value there. */
   none: string
+  /** The order of places outside `known`, after them; the order the run found them in when absent. */
+  compare?: (a: string, b: string) => number
 }
 
 /**
- * The column axis of a report whose column field refers to `entities` (every entity it may point
- * at, named and in name order); a value that names none of them reads as written.
+ * The axis of a dimension whose field refers to `entities` (every entity it may point at, named and
+ * in name order); a value that names none of them reads as written.
  */
-export function referenceAxis(entities: Entity[], none: string, collator: Intl.Collator = nameCollator()): ColumnAxis {
+export function referenceAxis(entities: Entity[], none: string, collator: Intl.Collator = nameCollator()): Axis {
   const names = new Map(entities.map((e) => [e.id, text(e, 'name')]))
   return {
     known: [...entities].sort((a, b) => collator.compare(text(a, 'name'), text(b, 'name'))).map((e) => ({ id: e.id, label: text(e, 'name') })),
@@ -72,89 +74,149 @@ export function referenceAxis(entities: Entity[], none: string, collator: Intl.C
   }
 }
 
+/**
+ * The axis of a classified dimension in the scheme version the run counted in: every leaf in the
+ * scheme's order (a place nothing fell into still shows, as a form does); a code it does not hold reads as written.
+ */
+export function schemeAxis(scheme: Scheme | undefined, none: string): Axis {
+  const all = scheme ? choices(scheme) : []
+  const labels = new Map(all.map((c) => [c.value, c.label]))
+  return { known: all.filter((c) => !c.disabled).map((c) => ({ id: c.value, label: c.label })), label: (id) => labels.get(id) ?? id, none }
+}
+
+/** The axis of a dimension split by a field's string value: the values the run found, in `collator`'s order with numbers by value. */
+export function valueAxis(none: string, collator: Intl.Collator = nameCollator()): Axis {
+  const numeric = new Intl.Collator(collator.resolvedOptions().locale, { numeric: true })
+  return { known: [], label: (id) => id, none, compare: (a, b) => numeric.compare(a, b) }
+}
+
 export interface Row {
-  code: string
+  code: string | null
   label: string
   /** One per column, in the columns' order. */
   cells: Group[]
-  total: number
-  /** Every record in the row, for its head count. */
+  /** Every record in the row, each once, for its count and head count. */
   records: string[]
+  total: number
 }
 
+/** The rows and columns of a run's cells: its first dimension down, its second across. */
 export interface Table {
   columns: Column[]
   rows: Row[]
-  columnTotals: number[]
-  /** Every record in each column, in the columns' order, for their head counts. */
+  /** Every record in each column, each once, in the columns' order. */
   columnRecords: string[][]
-  /** What the cells add up to: records placed in a row. */
-  placed: number
+  columnTotals: number[]
+  /** Every record placed in a cell, each once. */
   placedRecords: string[]
+  placed: number
+}
+
+/** The table of a form's cells for one place of its third dimension — or, with no `id`, for all of them together. */
+export interface Section {
+  id?: string | null
+  label: string
+  table: Table
+}
+
+/** A run laid out: one table per section, and the records it could not place in any cell. */
+export interface Layout {
+  /** One section for a form of one or two dimensions; with a third, all of its places together first, then each place. */
+  sections: Section[]
   pending: Group
-  /** Records whose value the crosswalks do not carry to the report's version — not the blank ones. */
+  /** Records whose value the crosswalks do not carry to the version counted in — not the blank ones. */
   unmapped: Group
-  /** Records with no value in the row field. */
+  /** Records with no value in a field the form places by. */
   blank: Group
-  /** Records a field the form places by holds values for that two devices set without seeing each other: in no row until a person picks one. */
+  /** Records a field the form places by holds values for that two devices set without seeing each other: in no cell until a person picks one. */
   conflicted: Group
   total: Group
 }
 
 const EMPTY: Group = { count: 0, records: [] }
 
-/** A cell's row and column, whichever format the run record is in. */
-export function rowAndColumn(cell: RunCell): { row: string; column: string | null } {
-  if (cell.key) return { row: cell.key[0] ?? '', column: cell.key[1] ?? null }
-  return { row: cell.row ?? '', column: cell.column ?? null }
+/** A cell's key, one place per dimension of its form, whichever format the run record is in. */
+export function keyOf(cell: RunCell): (string | null)[] {
+  return cell.key ?? [cell.row ?? '', cell.column ?? null]
+}
+
+type Placed = { key: (string | null)[]; records: string[] }
+
+const once = (records: string[]): string[] => [...new Set(records)]
+const groupOf = (records: string[]): Group => ({ count: records.length, records })
+const placeOf = (cell: Placed, dimension: number): string | null => cell.key[dimension] ?? null
+
+/** The places of `axis` the cells use: the ones it always shows, then the others it found, and the place of no value last. */
+function placesOn(axis: Axis, ids: (string | null)[]): Column[] {
+  const known = new Set(axis.known.map((c) => c.id))
+  const found = [...new Set(ids)].filter((id): id is string => id !== null && !known.has(id))
+  if (axis.compare) found.sort(axis.compare)
+  return [
+    ...axis.known,
+    ...found.map((id) => ({ id, label: axis.label(id) })),
+    ...(ids.includes(null) && !known.has(null) ? [{ id: null, label: axis.none }] : []),
+  ]
+}
+
+function tableOf(cells: Placed[], rowAxis: Axis, columnAxis: Axis): Table {
+  const rowList = placesOn(rowAxis, cells.map((c) => placeOf(c, 0)))
+  const columns = placesOn(columnAxis, cells.map((c) => placeOf(c, 1)))
+  // A record counted by every value of a field may sit in several cells: totals count records, never cells.
+  const at = (row: string | null, column: string | null): Group =>
+    groupOf(once(cells.filter((c) => placeOf(c, 0) === row && placeOf(c, 1) === column).flatMap((c) => c.records)))
+  const rows = rowList.map(({ id, label }) => {
+    const cells = columns.map((c) => at(id, c.id))
+    const records = once(cells.flatMap((c) => c.records))
+    return { code: id, label, cells, records, total: records.length }
+  })
+  const columnRecords = columns.map((_, i) => once(rows.flatMap((r) => r.cells[i].records)))
+  const placedRecords = once(rows.flatMap((r) => r.records))
+  return { columns, rows, columnRecords, columnTotals: columnRecords.map((r) => r.length), placedRecords, placed: placedRecords.length }
 }
 
 /**
- * Lays out a run: every row the report's scheme version offers, in the scheme's order (a row
- * nothing fell into still shows, as a form does), by every column of `axis`, with totals.
+ * Lays a run out along `axes`, one per dimension of its form in key order — for a form of one
+ * dimension, a second axis whose one column holds every record. With a third axis the cells are split
+ * into sections: all of its places together (labelled `all`) first, then each place.
  */
-export function layOut(run: RunRecord, schemes: Scheme[], axis: ColumnAxis): Table {
-  const [rowScheme, { version }] = Object.entries(run.schemes)[0] ?? ['', { version: 0 }]
-  const scheme = schemes.find((s) => s.scheme === rowScheme && s.version === version)
-  const rowChoices = scheme ? choices(scheme).filter((c) => !c.disabled) : []
-  const known = new Set(rowChoices.map((c) => c.value))
-  const cells = run.cells.map((c) => ({ ...rowAndColumn(c), count: c.count, records: c.records }))
-  const extraRows = [...new Set(cells.map((c) => c.row).filter((r) => !known.has(r)))]
-  const rowList = [...rowChoices.map((c) => ({ code: c.value, label: c.label })), ...extraRows.map((r) => ({ code: r, label: r }))]
-
-  const columns: Column[] = [...axis.known]
-  for (const cell of cells) {
-    if (!columns.some((c) => c.id === cell.column)) {
-      columns.push({ id: cell.column, label: cell.column === null ? axis.none : axis.label(cell.column) })
+export function layOut(run: RunRecord, axes: Axis[], all = ''): Layout {
+  const [rowAxis, columnAxis, sectionAxis] = axes
+  const cells: Placed[] = run.cells.map((c) => ({ key: keyOf(c), records: c.records }))
+  const sections: Section[] = [{ label: all, table: tableOf(cells, rowAxis, columnAxis) }]
+  if (sectionAxis) {
+    for (const place of placesOn(sectionAxis, cells.map((c) => placeOf(c, 2)))) {
+      sections.push({ id: place.id, label: place.label, table: tableOf(cells.filter((c) => placeOf(c, 2) === place.id), rowAxis, columnAxis) })
     }
   }
-
-  const cellAt = (row: string, column: string | null): Group => {
-    const cell = cells.find((c) => c.row === row && c.column === column)
-    return cell ? { count: cell.count, records: cell.records } : EMPTY
-  }
-  const rows = rowList.map(({ code, label }) => {
-    const cells = columns.map((c) => cellAt(code, c.id))
-    return { code, label, cells, total: cells.reduce((n, c) => n + c.count, 0), records: cells.flatMap((c) => c.records) }
-  })
-  const columnTotals = columns.map((_, i) => rows.reduce((n, r) => n + r.cells[i].count, 0))
-  // A format 0 run lists its blank records inside unmapped too; the table keeps the two groups apart.
+  // A format 0 run lists its blank records inside unmapped too; the layout keeps the two groups apart.
   const blank = run.blank ?? EMPTY
   const isBlank = new Set(blank.records)
-  const unmapped = run.unmapped.records.filter((id) => !isBlank.has(id))
   return {
-    columns,
-    rows,
-    columnTotals,
-    columnRecords: columns.map((_, i) => rows.flatMap((r) => r.cells[i].records)),
-    placed: columnTotals.reduce((n, c) => n + c, 0),
-    placedRecords: rows.flatMap((r) => r.records),
+    sections,
     pending: run.pending,
-    unmapped: { count: unmapped.length, records: unmapped },
+    unmapped: groupOf(run.unmapped.records.filter((id) => !isBlank.has(id))),
     blank,
     conflicted: run.conflicted ?? EMPTY,
     total: run.total,
   }
+}
+
+/** A number a form shows: its records, each once; the people behind them; the visits they add up to. */
+export type Measure = 'records' | 'people' | 'visits'
+
+/** One measure of `records` — null for people and visits when the run did not record people. */
+export function measureOf(run: RunRecord, records: string[], measure: Measure): number | null {
+  if (measure === 'records') return records.length
+  return measure === 'people' ? headCount(run, records) : visitCount(run, records)
+}
+
+/**
+ * The visits behind `records`: for each, the number of people it is about, added up — a group session
+ * of three counts three. Null when the run did not record people.
+ */
+export function visitCount(run: RunRecord, records: string[]): number | null {
+  if (!run.people) return null
+  return records.reduce((n, r) => n + (run.people?.[r]?.length ?? 0), 0)
 }
 
 /**
@@ -191,7 +253,7 @@ export interface Comparison {
 
 /** Where a run put one record. */
 export type Place =
-  | { kind: 'cell'; row: string; column: string | null }
+  | { kind: 'cell'; key: (string | null)[] }
   | { kind: 'pending' }
   | { kind: 'unmapped' }
   | { kind: 'blank' }
@@ -200,18 +262,12 @@ export type Place =
 /** Every record of a run, with where the run put it. */
 export function placesOf(run: RunRecord): Map<string, Place> {
   const places = new Map<string, Place>()
-  for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', ...rowAndColumn(cell) })
+  for (const cell of run.cells) for (const id of cell.records) places.set(id, { kind: 'cell', key: keyOf(cell) })
   for (const id of run.pending.records) places.set(id, { kind: 'pending' })
   for (const id of run.unmapped.records) places.set(id, { kind: 'unmapped' })
   for (const id of run.blank?.records ?? []) places.set(id, { kind: 'blank' })
   for (const id of run.conflicted?.records ?? []) places.set(id, { kind: 'conflicted' })
   return places
-}
-
-/** The row scheme and version a run counted in. */
-export function rowSchemeOf(run: RunRecord): { scheme: string; version: number } {
-  const [scheme, { version }] = Object.entries(run.schemes)[0] ?? ['', { version: 0 }]
-  return { scheme, version }
 }
 
 /** Earlier runs of the same form name over the same period — what a run can be compared with. */

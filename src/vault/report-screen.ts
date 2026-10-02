@@ -4,7 +4,7 @@ import { comparable, headCount, layOut, type Comparison, type Group, type KeptRu
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, listDetail, noticeLine, periodFields } from './parts.js'
-import { blankLabel, columnAxis, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
+import { axesOf, blankLabel, comparisonView, evidenceList, formOf, pendingList, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
 
 /** A month's report: its counts, what each is made of, what still waits, and how it moved since an earlier run. */
@@ -146,7 +146,8 @@ export class OcReport extends VaultScreen {
 
   private reportTable(result: RunRecord, title: string) {
     const store = this.store
-    const table = layOut(result, store.schemes, columnAxis(store, formOf(store, result)))
+    const layout = layOut(result, axesOf(store, formOf(store, result), result))
+    const table = layout.sections[0].table
     // The head count beside a record count, when the run recorded people.
     const people = (records: string[]) => {
       const n = records.length === 0 ? null : headCount(result, records)
@@ -160,7 +161,7 @@ export class OcReport extends VaultScreen {
         ${group === 'pending' && g.count > 0 ? html`<dc-badge slot="label-extra" variant="warning">${g.count}</dc-badge>` : nothing}
       </dc-metric>`
     }
-    const peopleTotal = table.total.records.length === 0 ? null : headCount(result, table.total.records)
+    const peopleTotal = layout.total.records.length === 0 ? null : headCount(result, layout.total.records)
     const count = (title: string, group: Group) =>
       group.count === 0
         ? html`<td class="num">0</td>`
@@ -169,17 +170,17 @@ export class OcReport extends VaultScreen {
       <p class="muted" data-role="period">${strings.reportPeriod(result.period.from, result.period.to)}</p>
       <div class="metrics">
         ${peopleTotal === null ? nothing : html`<dc-metric accent="1" label=${strings.metricPeople} value=${String(peopleTotal)} unit=${strings.peopleUnit}></dc-metric>`}
-        ${metric('total', strings.grandTotal, table.total, () => void this.showEvidence(strings.grandTotal, table.total), '2')}
-        ${metric('pending', strings.pending, table.pending, () => void this.showPending(result))}
-        ${metric('unmapped', strings.unmapped, table.unmapped, () => void this.showEvidence(strings.unmapped, table.unmapped))}
-        ${table.blank.count === 0 ? nothing : metric('blank', blankLabel(store, formOf(store, result)), table.blank, () => void this.showEvidence(blankLabel(store, formOf(store, result)), table.blank))}
-        ${table.conflicted.count === 0 ? nothing : metric('conflicted', strings.conflict, table.conflicted, () => void this.showEvidence(strings.conflict, table.conflicted))}
+        ${metric('total', strings.grandTotal, layout.total, () => void this.showEvidence(strings.grandTotal, layout.total), '2')}
+        ${metric('pending', strings.pending, layout.pending, () => void this.showPending(result))}
+        ${metric('unmapped', strings.unmapped, layout.unmapped, () => void this.showEvidence(strings.unmapped, layout.unmapped))}
+        ${layout.blank.count === 0 ? nothing : metric('blank', blankLabel(store, formOf(store, result)), layout.blank, () => void this.showEvidence(blankLabel(store, formOf(store, result)), layout.blank))}
+        ${layout.conflicted.count === 0 ? nothing : metric('conflicted', strings.conflict, layout.conflicted, () => void this.showEvidence(strings.conflict, layout.conflicted))}
       </div>
       <dl class="legend">
-        ${table.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
-        ${table.unmapped.count > 0 ? html`<div><dt>${strings.unmapped}</dt><dd>${strings.unmappedHint}</dd></div>` : nothing}
-        ${table.blank.count > 0 ? html`<div><dt>${blankLabel(store, formOf(store, result))}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
-        ${table.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
+        ${layout.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
+        ${layout.unmapped.count > 0 ? html`<div><dt>${strings.unmapped}</dt><dd>${strings.unmappedHint}</dd></div>` : nothing}
+        ${layout.blank.count > 0 ? html`<div><dt>${blankLabel(store, formOf(store, result))}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
+        ${layout.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
       </dl>
       <section>
         <dc-section-heading marker size="lg" heading=${title}></dc-section-heading>
@@ -194,7 +195,7 @@ export class OcReport extends VaultScreen {
         </thead>
         <tbody>
           ${table.rows.map(
-            (r) => html`<tr data-row=${r.code}>
+            (r) => html`<tr data-row=${r.code ?? nothing}>
               <th>${r.label}</th>
               ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
               <td class="num">${r.total}${people(r.records)}</td>
