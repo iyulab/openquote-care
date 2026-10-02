@@ -1318,6 +1318,7 @@ const scenarios = {
     await app.cdp.waitFor(`!__e2e.one('[data-section="1"]').hidden`, 'the family tab shown')
     assert.deepEqual(await visible('2'), ['2', '1 (1명 · 연인원 1)', '1 (1명 · 연인원 1)'])
 
+
     // On paper: every section, each under its name, and none of the controls.
     await app.cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
     try {
@@ -1327,6 +1328,17 @@ const scenarios = {
     } finally {
       await app.cdp.send('Emulation.setEmulatedMedia', { media: '' })
     }
+
+    // The school pack's own school year by who sessions were with: every session so far was with the student.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="year-client-type@1"]')
+    await app.type('학년도', '2026')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="student"]')`, 'the school year by who sessions were with')
+    await app.noAlert()
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-section="0"] thead th').textContent.trim()`), '상담 상대 ＼ 학년')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-section="0"] tr[data-row="student"] > :first-child').textContent.trim()`), '학생')
+    const withWhom = (code) => app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
+    assert.notEqual((await withWhom('student'))[1], '0', `sessions with the student counted: ${JSON.stringify(await withWhom('student'))}`)
 
     // A range a person picks, by every topic covered: the session covering two is in both rows, once in the total.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.range-concerns@1"]')
