@@ -1,0 +1,47 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "session",
+  "version": 2,
+  "fields": [
+    {
+      "name": "topic",
+      "kind": "coded",
+      "scheme": "topic",
+      "required": true,
+      "label": "Topic"
+    },
+    {
+      "name": "method",
+      "kind": "coded",
+      "scheme": "method",
+      "label": "Method"
+    },
+    {
+      "name": "client_type",
+      "kind": "coded",
+      "scheme": "client-type",
+      "label": "Session with"
+    },
+    {
+      "name": "title",
+      "kind": "text",
+      "label": "Title"
+    },
+    {
+      "name": "minutes",
+      "kind": "number",
+      "label": "Minutes"
+    }
+  ],
+  "constrain": [
+    {
+      "name": "concern",
+      "hidden": true
+    },
+    {
+      "name": "mode",
+      "hidden": true
+    }
+  ]
+}

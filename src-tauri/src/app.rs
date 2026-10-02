@@ -1413,8 +1413,15 @@ cut off").unwrap();
         let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.close_vault();
-        // As a vault made before the school pack's second version holds it.
-        let added = ["packs/care.school.kr/v2.json.age", "suggestions/care.school.kr/v2.json.age"];
+        // As a vault made before the school pack's second and third versions holds it.
+        let added = [
+            "packs/care.school.kr/v2.json.age",
+            "suggestions/care.school.kr/v2.json.age",
+            "packs/care.school.kr/v3.json.age",
+            "fields/care.school.kr/session/v2.json.age",
+            "labels/care.school.kr/v2.ko.json.age",
+            "exports/session-list/v2.json.age",
+        ];
         for file in added {
             fs::remove_file(dir.path().join(file)).unwrap();
         }
@@ -1422,7 +1429,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 2));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 3));
         assert_eq!(summary["packIssues"], json!([]));
         for file in added {
             assert!(dir.path().join(file).is_file(), "{file} is back");

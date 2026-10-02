@@ -265,8 +265,8 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'two sessions')
     await app.noAlert()
     assert.deepEqual(await app.sessionRows(), [
-      ['2026-04-09', '관계', '', '상담자 가'],
-      ['2026-04-02', '학습', '특별 › 학교폭력', '상담자 가'],
+      ['2026-04-09', '관계', '', '', '상담자 가'],
+      ['2026-04-02', '학습', '특별 › 학교폭력', '', '상담자 가'],
     ])
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal(subjects.length, 1, 'one subject folder')
@@ -538,8 +538,15 @@ const scenarios = {
 
   async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
     await app.restart()
-    // As a vault made before the school pack's second version holds it.
-    const added = [join(work.vault, 'packs', 'care.school.kr', 'v2.json.age'), join(work.vault, 'suggestions', 'care.school.kr', 'v2.json.age')]
+    // As a vault made before the school pack's second and third versions holds it.
+    const added = [
+      ['packs', 'care.school.kr', 'v2.json.age'],
+      ['suggestions', 'care.school.kr', 'v2.json.age'],
+      ['packs', 'care.school.kr', 'v3.json.age'],
+      ['fields', 'care.school.kr', 'session', 'v2.json.age'],
+      ['labels', 'care.school.kr', 'v2.ko.json.age'],
+      ['exports', 'session-list', 'v2.json.age'],
+    ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
     await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
@@ -581,7 +588,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')

@@ -233,7 +233,7 @@ export const en: Strings = {
   peopleUnit: 'people',
   showRecords: 'Show records',
   headCount: (n: number) => ` (${plural(n, 'person', 'people')})`,
-  headCountHint: 'The number in brackets is people — each person once, and each participant of a group session.',
+  headCountHint: 'The number in brackets is people — each person once, and each participant of a group session. People are the clients a record is about, so a session with a parent or a teacher counts its client.',
   noValue: (label: string) => `(No ${label.toLowerCase()})`,
   reportCount: 'Count',
   pending: 'Awaiting reclassification',

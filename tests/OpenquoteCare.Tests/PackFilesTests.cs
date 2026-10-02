@@ -62,6 +62,20 @@ public sealed class PackFilesTests
     }
 
     [Fact]
+    public void A_school_session_says_who_it_was_with_its_title_and_how_long_it_took()
+    {
+        var content = VaultOn("school-kr");
+        var fields = content.FieldCatalog();
+
+        Assert.Equal((FieldKind.Coded, "client-type", false), (fields.Find("session", "client_type")!.Kind, fields.Find("session", "client_type")!.Scheme, fields.Find("session", "client_type")!.Required));
+        Assert.Equal(FieldKind.Text, fields.Find("session", "title")!.Kind);
+        Assert.Equal(FieldKind.Number, fields.Find("session", "minutes")!.Kind);
+        var list = content.Exports.Where(e => e.Name == "session-list").MaxBy(e => e.Version)!;
+        Assert.Equal(2, list.Version);
+        Assert.Equal(["상담 상대", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(4));
+    }
+
+    [Fact]
     public void The_neutral_track_holds_no_school_field()
     {
         var fields = VaultOn("care-en").FieldCatalog();

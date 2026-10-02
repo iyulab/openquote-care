@@ -233,7 +233,7 @@ export const ko = {
   peopleUnit: '명',
   showRecords: '기록 보기',
   headCount: (n: number) => ` (${n}명)`,
-  headCountHint: '건수 옆 괄호는 인원입니다 — 같은 사람은 한 번, 집단 상담은 참여자마다 셉니다.',
+  headCountHint: '건수 옆 괄호는 인원입니다 — 같은 사람은 한 번, 집단 상담은 참여자마다 셉니다. 인원은 기록이 가리키는 대상자라서, 보호자나 교사와 한 상담도 그 대상자로 셉니다.',
   noValue: (label: string) => `(${label} 없음)`,
   reportCount: '건수',
   pending: '재분류 대기',
