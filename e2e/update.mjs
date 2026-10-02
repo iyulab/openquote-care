@@ -28,6 +28,9 @@ const base = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'),
 const PORT = 9225
 const NAME = 'Openquote Care Update Test'
 const exeName = 'openquote-care.exe'
+// Where the test build's installer lands, beside the app's own; removed afterwards, so the other
+// installer checks still find exactly one installer of this version.
+const installer = join(root, 'target', 'release', 'bundle', 'nsis', `${NAME}_${base.version}_x64-setup.exe`)
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** The installed copies of the test app that are running, by process id. */
@@ -72,7 +75,6 @@ try {
     env: { ...process.env, TAURI_SIGNING_PRIVATE_KEY: key, TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '' },
   })
   assert.equal(build.status, 0, 'the test installer builds')
-  const installer = join(root, 'target', 'release', 'bundle', 'nsis', `${NAME}_${base.version}_x64-setup.exe`)
   assert.ok(existsSync(installer), `the test installer: ${installer}`)
   assert.ok(verifies(readFileSync(installer), readFileSync(`${installer}.sig`, 'utf8'), readFileSync(`${key}.pub`, 'utf8')), 'the installer carries an updater signature')
   // The updater installs only what was signed for the version announced: signed again as the newer one.
@@ -131,6 +133,8 @@ try {
   await sleep(1000)
   await uninstall(target, { exe: exeName }).catch(() => {})
   await rm(temp, { recursive: true, force: true }).catch(() => {})
+  await rm(installer, { force: true }).catch(() => {})
+  await rm(`${installer}.sig`, { force: true }).catch(() => {})
   // The test build's own data folder (its device id and web view profile), named by its identifier.
   if (process.env.LOCALAPPDATA) await rm(join(process.env.LOCALAPPDATA, `${base.identifier}.update-test`), { recursive: true, force: true }).catch(() => {})
 }

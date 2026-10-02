@@ -35,7 +35,7 @@ export function verifies(file, signature, pubkey) {
   return verify(null, Buffer.concat([sig.subarray(10), Buffer.from(trusted.slice('trusted comment: '.length), 'utf8')]), publicKey, Buffer.from(global.trim(), 'base64'))
 }
 
-if (import.meta.url === `file:///${process.argv[1].replaceAll('\\', '/').replace(/^\//, '')}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [installer, sigFile, conf = 'src-tauri/tauri.updater.conf.json'] = process.argv.slice(2)
   if (!installer || !sigFile) {
     console.error('usage: node scripts/verify-update-signature.mjs <installer> <installer.sig> [<conf>]')
