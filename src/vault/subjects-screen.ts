@@ -5,6 +5,7 @@ import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../record
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
+import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
@@ -195,7 +196,7 @@ export class OcSubjects extends VaultScreen {
             @oc-entity-edited=${() => (this.correctingSubject = false)}
             @oc-edit-cancelled=${() => (this.correctingSubject = false)}
           ></oc-entity-form>`
-        : nothing}
+        : recordFieldList(store, subject)}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
         ? html`<oc-session-form

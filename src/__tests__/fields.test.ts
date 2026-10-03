@@ -9,6 +9,7 @@ import {
   labelOfField,
   listColumns,
   narrativeFields,
+  recordFields,
   type FieldView,
 } from '../fields.js'
 import type { Entity } from '../records.js'
@@ -99,5 +100,16 @@ describe('fields', () => {
   it('names a field by its label, or by its name when the vault does not declare it', () => {
     expect(labelOfField(session, 'topic')).toBe('TOPIC')
     expect(labelOfField(session, 'case')).toBe('case')
+  })
+
+  it("shows a record's fields besides its name, hidden ones left out, in declaration order", () => {
+    const subject = [
+      field('name', 'text'),
+      field('school', 'text'),
+      field('secret', 'text', { hidden: true }),
+      field('grade', 'coded'),
+      field('note', 'text', { tier: 'narrative' }),
+    ]
+    expect(recordFields(subject).map((f) => f.name)).toEqual(['school', 'grade', 'note'])
   })
 })

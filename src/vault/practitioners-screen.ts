@@ -4,6 +4,7 @@ import { entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import './entity-form.js'
+import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import { sessionTable, toggled } from './session-parts.js'
@@ -104,7 +105,7 @@ export class OcPractitioners extends VaultScreen {
             @oc-entity-edited=${() => (this.correcting = false)}
             @oc-edit-cancelled=${() => (this.correcting = false)}
           ></oc-entity-form>`
-        : nothing}
+        : recordFieldList(store, practitioner)}
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
         ${sessions.length === 0

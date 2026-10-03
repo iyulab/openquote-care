@@ -2,7 +2,7 @@
 // a spreadsheet, and a note on what the copy is. Made here from what the window already holds; the
 // shell only decides where it may be written.
 
-import { listColumns, type FieldView } from './fields.js'
+import { listColumns, recordFields, type FieldView } from './fields.js'
 import { text, type ChangeEntry, type Classified, type Entity } from './records.js'
 
 /** What the copy is made from. */
@@ -79,7 +79,7 @@ export function plainCopy(whole: PlainCopySource, words: PlainCopyWords): PlainF
   const source = within(whole)
   const period = source.period ? words.period(source.period.from, source.period.to) : undefined
   const sessionFields = sessionColumns(source.sessionFields, source.withNarrative)
-  const subjectFields = source.subjectFields.filter((f) => !f.hidden && f.name !== 'name')
+  const subjectFields = recordFields(source.subjectFields)
   return [
     { name: words.files.page, content: page(source, words, subjectFields, sessionFields) },
     { name: words.files.subjects, content: subjectsCsv(source, words, subjectFields) },

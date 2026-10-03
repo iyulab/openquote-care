@@ -224,6 +224,24 @@ export const vaultStyles = [
         white-space: normal;
       }
     }
+    dl.record-fields {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: var(--dc-space-1, 4px) var(--dc-space-4, 16px);
+      margin: 0;
+    }
+    dl.record-fields div {
+      display: contents;
+    }
+    dl.record-fields dt {
+      color: var(--dc-color-text-secondary, #55555c);
+    }
+    dl.record-fields dd {
+      margin: 0;
+    }
+    dl.record-fields dd.narrative {
+      white-space: pre-wrap;
+    }
     dl.legend {
       display: grid;
       gap: 2px;

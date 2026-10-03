@@ -43,6 +43,14 @@ export function narrativeFields(defs: readonly FieldView[]): FieldView[] {
   return defs.filter((f) => shown(f) && f.tier === 'narrative')
 }
 
+/**
+ * What a subject's or a practitioner's record shows besides its name — its title — in declaration
+ * order: every field the packs declare for its type that is not hidden.
+ */
+export function recordFields(defs: readonly FieldView[]): FieldView[] {
+  return defs.filter((f) => shown(f) && f.name !== 'name')
+}
+
 /** The first field a person must fill in that is still empty. */
 export function firstMissingRequired(defs: readonly FieldView[], values: Readonly<Record<string, string>>): FieldView | undefined {
   return inputFields(defs).find((f) => f.required && !(values[f.name] ?? '').trim())
