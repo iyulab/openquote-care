@@ -31,7 +31,12 @@ namespace OpenquoteCare.Sidecar
             var builder = LoopbackHost.CreateSlimBuilder(args, port);
             builder.Services.AddSingleton<VaultSession>();
             builder.Services.AddSingleton<Suggestions>();
-            builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.TypeInfoResolverChain.Insert(0, SidecarJson.Default));
+            builder.Services.ConfigureHttpJsonOptions(o =>
+            {
+                o.SerializerOptions.TypeInfoResolverChain.Insert(0, SidecarJson.Default);
+                // The responses are written with these options, not the context's own: an enum written by name is said here.
+                o.SerializerOptions.Converters.Add(new SuggestionBasisConverter());
+            });
 
             var app = builder.Build();
             app.UseBearerToken(token);

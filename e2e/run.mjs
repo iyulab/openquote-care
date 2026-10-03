@@ -794,6 +794,9 @@ const scenarios = {
     await app.click('dc-button[data-role=why-suggested]')
     await app.cdp.waitFor(`(__e2e.one('[data-why="topic"]')?.textContent ?? '').includes('2026-05-12 가상 학생 3')`, 'the similar session, by its date and who it is about')
     assert.ok(!(await app.cdp.evaluate(`__e2e.one('[data-why="topic"]').textContent.includes('다툼')`)), 'what a similar session says is never shown')
+    assert.ok(await app.cdp.evaluate(`__e2e.all('[data-why="topic"] li').every((li) =>
+      ['similarRecords', 'sameValue', 'frequent'].includes(li.dataset.basis) && li.textContent.trim() !== li.querySelector('strong').textContent.trim())`),
+      'every suggestion says why it is suggested')
 
     await app.click('dc-button[data-suggestion="family"]')
     await app.cdp.waitFor(`__e2e.one('select[aria-label="주제"]')?.value === 'family'`, 'the topic taken from the suggestion')

@@ -1,9 +1,9 @@
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
-import { copiedFromSubject, firstMissingRequired, inputFields, type FieldView } from '../fields.js'
+import { copiedFromSubject, firstMissingRequired, inputFields, labelOfField, type FieldView } from '../fields.js'
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
-import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme } from '../records.js'
+import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme, type SuggestedCode } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { alsoKey, othersOf, recordedValues } from '../several.js'
@@ -237,6 +237,38 @@ export class OcSessionForm extends StoreElement {
   }
 
   /**
+   * The value the session being entered shares with the records a suggestion rests on, as a person reads
+   * it; none for written content, which a suggestion never repeats.
+   */
+  private sharedValue(name: string): string | undefined {
+    const field = this.store.sessionFields.find((f) => f.name === name)
+    const value = this.draft[name]
+    if (!field || !value || field.tier === 'narrative') return undefined
+    if (field.kind !== 'coded' || !field.scheme) return value
+    return latest(this.store.schemes, field.scheme)?.items.find((i) => i.code === value)?.label ?? value
+  }
+
+  /** Why a code is suggested, beside it: how many records it rests on, and what they share with this one. */
+  private reasonOf(c: SuggestedCode): string {
+    if (c.basis === 'frequent') return strings.frequentlyChosen
+    if (c.basis === 'sameValue' && c.field) return strings.sameValueRecords(labelOfField(this.store.sessionFields, c.field), c.similar.length)
+    return c.similar.length > 0 ? strings.similarRecords(c.similar.length) : ''
+  }
+
+  /** Why a code is suggested, in full: the records it rests on, or that it is simply chosen often. */
+  private whyOf(c: SuggestedCode): string {
+    const records = c.similar.map((id) => this.similarRecord(id)).filter(Boolean).join(', ')
+    if (c.basis === 'frequent') return strings.whyFrequent
+    if (c.basis === 'sameValue' && c.field) {
+      const field = labelOfField(this.store.sessionFields, c.field)
+      const value = this.sharedValue(c.field)
+      return `${value ? strings.whySameValue(field, value) : strings.whySameField(field)} ${records}`
+    }
+    return records
+  }
+
+
+  /**
    * What a classification of a new session offers besides its dropdown: the codes suggested for it and —
    * when asked — why, as a row of the form's grid below the field's row (`below`).
    */
@@ -247,7 +279,7 @@ export class OcSessionForm extends StoreElement {
     const scheme: Scheme | undefined = offered && store.schemes.find((s) => s.scheme === offered.scheme && s.version === offered.version)
     if (!offered || !scheme) return { hint }
     const label = (code: string) => scheme.items.find((i) => i.code === code)?.label ?? code
-    const withRecords = offered.codes.filter((c) => c.similar.length > 0)
+    const explained = offered.codes.filter((c) => c.basis !== 'similarRecords' || c.similar.length > 0)
     const open = this.whyOpen === f.name
     return {
       hint,
@@ -263,12 +295,12 @@ export class OcSessionForm extends StoreElement {
                 ?data-confirm=${c.confirm}
                 ?disabled=${store.busy}
                 @click=${() => this.take(f, c.code)}
-                >${c.confirm ? html`<strong>${strings.confirmFirst}</strong> · ` : nothing}${label(c.code)}${c.similar.length > 0
-                  ? ` · ${strings.similarRecords(c.similar.length)}`
+                >${c.confirm ? html`<strong>${strings.confirmFirst}</strong> · ` : nothing}${label(c.code)}${this.reasonOf(c)
+                  ? ` · ${this.reasonOf(c)}`
                   : ''}</dc-button
               >`,
           )}
-          ${withRecords.length > 0
+          ${explained.length > 0
             ? html`<dc-button
                 size="sm"
                 variant="ghost"
@@ -283,14 +315,11 @@ export class OcSessionForm extends StoreElement {
           ? html`<div class="why" data-why=${f.name}>
               <span class="muted">${strings.suggestedBecause}</span>
               <ul aria-label=${`${f.label} · ${strings.suggestedBecause}`}>
-                ${withRecords.map(
+                ${explained.map(
                   (c) =>
-                    html`<li>
+                    html`<li data-basis=${c.basis}>
                       <strong>${label(c.code)}</strong>
-                      ${c.similar
-                        .map((id) => this.similarRecord(id))
-                        .filter(Boolean)
-                        .join(', ')}
+                      ${this.whyOf(c)}
                     </li>`,
                 )}
               </ul>

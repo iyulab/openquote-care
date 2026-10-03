@@ -1403,6 +1403,7 @@ cut off").unwrap();
         let topic = answer["fields"].as_array().unwrap().iter().find(|f| f["field"] == "topic").expect("a topic suggestion");
         let depression = topic["codes"].as_array().unwrap().iter().find(|c| c["code"] == "depression").expect("the closer record's topic");
         assert_eq!(depression["similar"][0], json!(low));
+        assert_eq!(depression["basis"], json!("similarRecords"), "why it is suggested, by name: {depression}");
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), before, "a suggestion adds nothing to the vault");
     }
 

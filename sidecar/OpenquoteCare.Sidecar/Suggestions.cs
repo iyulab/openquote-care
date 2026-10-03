@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Openquote.Gil;
 
 namespace OpenquoteCare.Sidecar;
@@ -47,7 +48,10 @@ internal sealed class Suggestions(VaultSession session) : IDisposable
 public sealed record SuggestRequest(string Type, DateOnly Date, Dictionary<string, JsonElement> Fields);
 
 /// <summary>
-/// Codes suggested for the coded fields the record has no value for yet, each with the settled records
-/// that hold it (entity ids, nearest first), and how many settled records they are learned from.
+/// Codes suggested for the coded fields the record has no value for yet, each with why it is suggested
+/// and the settled records that rest on it (entity ids), and how many settled records they are learned from.
 /// </summary>
 public sealed record SuggestionsView(int Remembered, IReadOnlyList<FieldSuggestions> Fields);
+
+/// <summary>Writes why a code is suggested as a camel-case name (<c>similarRecords</c>, <c>sameValue</c>, <c>frequent</c>).</summary>
+public sealed class SuggestionBasisConverter() : JsonStringEnumConverter<SuggestionBasis>(JsonNamingPolicy.CamelCase);
