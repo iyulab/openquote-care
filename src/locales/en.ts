@@ -362,9 +362,9 @@ export const en: Strings = {
   saveCorrection: 'Save the correction',
   sessionCorrected: 'The session was corrected.',
   nothingChanged: 'No field was changed.',
-  correctSubject: 'Correct the subject',
+  correctSubject: 'Correct client details',
   correctionLead: 'Only the fields you change are written, as a record of their own; what was first written is kept too.',
-  subjectCorrected: 'The subject was corrected.',
+  subjectCorrected: "The client's details were corrected.",
   sessionHistory: 'Sessions',
   sessionCount: (n: number) => plural(n, 'session'),
   conflict: 'Edited on two devices',
@@ -445,8 +445,8 @@ export const en: Strings = {
   pickPractitioner: 'Choose a practitioner to see the sessions they kept here.',
   practitionerName: 'Practitioner name',
   addPractitioner: 'Add practitioner',
-  correctPractitioner: 'Correct the practitioner',
-  practitionerCorrected: 'The practitioner was corrected.',
+  correctPractitioner: 'Correct practitioner details',
+  practitionerCorrected: "The practitioner's details were corrected.",
 
   problems: {
     'passphrase-short': (min: number) => `The passphrase needs at least ${min} characters.`,
