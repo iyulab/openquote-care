@@ -1,0 +1,29 @@
+{
+  "format": "openquote.export/1",
+  "export": "neis-upload",
+  "version": 1,
+  "label": "NEIS 상담현황 업로드",
+  "rows": "session",
+  "period": {
+    "field": "date"
+  },
+  "columns": [
+    { "label": "상담분류", "value": "전문상담" },
+    { "label": "Wee클래스", "value": "Wee클래스" },
+    { "label": "대분류", "field": "neis", "scheme": "neis-counseling", "version": 1, "level": 1 },
+    { "label": "중분류", "field": "neis", "scheme": "neis-counseling", "version": 1, "level": 2 },
+    { "label": "상담구분", "field": "neis", "scheme": "neis-counseling", "version": 1 },
+    { "label": "상담인원", "people": "count" },
+    { "label": "학년도", "year": "date", "startMonth": 3 },
+    { "label": "상담일자", "field": "date", "date": "basic" },
+    { "label": "학년", "field": "grade" },
+    { "label": "성별", "person": "gender", "mixed": "혼성" },
+    { "label": "상담제목", "field": "title" },
+    { "label": "상담내용", "field": "title" },
+    { "label": "상담시간(시)", "field": "minutes", "quotient": 60 },
+    { "label": "상담시간(분)", "field": "minutes", "remainder": 60 },
+    { "label": "상담사소속", "value": "" },
+    { "label": "상담매체구분", "value": "" },
+    { "label": "이름", "person": "name", "all": true }
+  ]
+}

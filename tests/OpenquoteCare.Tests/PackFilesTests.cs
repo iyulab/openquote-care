@@ -120,6 +120,46 @@ public sealed class PackFilesTests
     }
 
     [Fact]
+    public void The_neis_upload_form_lays_out_a_session_in_the_upload_s_columns_and_order()
+    {
+        var w = new VaultWriter("dev1");
+        var records = new List<VaultFile>();
+        string Add(VaultFile f)
+        {
+            records.Add(f);
+            return VaultReader.Read([f]).Changes[0].Entity.Id;
+        }
+        static JsonObject Neis(string code) => new() { ["scheme"] = "neis-counseling", ["version"] = 1, ["code"] = code };
+        var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 1", ["gender"] = "남" }));
+        var two = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 2", ["gender"] = "여" }));
+        var group = Add(w.CreateGroup(new Dictionary<string, JsonNode?> { ["name"] = "또래 집단" }));
+        Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?>
+        {
+            ["date"] = "2026-05-02", ["neis"] = Neis("counseling/individual/academic"), ["grade"] = "1학년", ["title"] = "성적 하락", ["minutes"] = 70,
+        }));
+        Add(w.CreateInGroup(group, "session", new Dictionary<string, JsonNode?>
+        {
+            ["date"] = "2026-08-19", ["neis"] = Neis("counseling/group/personality-relationships"), ["title"] = "친구 관계", ["minutes"] = 50,
+            ["attendees"] = new JsonArray(one, two),
+        }));
+        var content = VaultReader.Read(PacksOf("school-kr").SelectMany(VaultFiles.FromDirectory).Concat(records));
+        var form = content.Exports.Single(e => e.Name == "neis-upload");
+        var entities = Openquote.Records.EntityMerger.Merge(content.Changes).Values;
+
+        var table = Openquote.Exports.ExportRunner.Run(form, new DateOnly(2026, 3, 1), new DateOnly(2027, 2, 28), entities, content.Catalog(), content.FieldCatalog());
+
+        Assert.Equal(
+            ["상담분류", "Wee클래스", "대분류", "중분류", "상담구분", "상담인원", "학년도", "상담일자", "학년", "성별", "상담제목", "상담내용",
+             "상담시간(시)", "상담시간(분)", "상담사소속", "상담매체구분", "이름"],
+            form.Columns.Select(c => c.Label));
+        Assert.Collection(table.Rows,
+            r => Assert.Equal(["전문상담", "Wee클래스", "상담", "개인상담", "학업", "1", "2026", "20260502", "1학년", "남", "성적 하락", "성적 하락", "1", "10", "", "", "가상 학생 1"], r.Cells),
+            r => Assert.Equal(["전문상담", "Wee클래스", "상담", "집단상담", "성격/대인관계", "2", "2026", "20260819", "", "혼성", "친구 관계", "친구 관계", "0", "50", "", "", "가상 학생 1, 가상 학생 2"], r.Cells));
+        Assert.Empty(table.Pending.Concat(table.Unmapped).Concat(table.Conflicted).Concat(table.Withheld));
+        Assert.Equal(0, content.RequiredVersion);
+    }
+
+    [Fact]
     public void The_neutral_track_holds_no_school_field()
     {
         var fields = VaultOn("care-en").FieldCatalog();

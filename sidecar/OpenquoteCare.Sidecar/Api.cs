@@ -515,6 +515,8 @@ internal static class Api
         CodedColumn c => Hidden(fields, rows, c.Field),
         ReferenceColumn c => Hidden(fields, rows, c.Field),
         YearColumn c => Hidden(fields, rows, c.Field),
+        DateColumn c => Hidden(fields, rows, c.Field),
+        DivisionColumn c => Hidden(fields, rows, c.Field),
         PersonColumn c => Hidden(fields, "subject", c.Field),
         _ => false,
     };

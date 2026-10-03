@@ -542,7 +542,7 @@ const scenarios = {
 
   async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
     await app.restart()
-    // As a vault made before the school pack's second to fifth versions holds it.
+    // As a vault made before the school pack's second to sixth versions holds it.
     const added = [
       ['packs', 'care.school.kr', 'v2.json.age'],
       ['suggestions', 'care.school.kr', 'v2.json.age'],
@@ -560,6 +560,8 @@ const scenarios = {
       ['fields', 'care.school.kr', 'session', 'v4.json.age'],
       ['labels', 'care.school.kr', 'v3.ko.json.age'],
       ['suggestions', 'care.school.kr', 'v3.json.age'],
+      ['packs', 'care.school.kr', 'v6.json.age'],
+      ['exports', 'neis-upload', 'v1.json.age'],
     ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
     await app.click('dc-button', '기록 폴더 열기')
@@ -698,6 +700,7 @@ const scenarios = {
     // The export form came with the vault, from the pack it was made with.
     await app.click('button', '기록 목록')
     await app.cdp.waitFor(`!!__e2e.one('nav[aria-label="목록 양식"] button[aria-current=true]')`, 'the export form offered, and picked')
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="session-list@2"]')
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
@@ -724,6 +727,18 @@ const scenarios = {
     assert.deepEqual(await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.children[0].textContent.trim())`), ['2026-04-09', '2026-04-16'])
     await app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === '한 달').click(); return true })()`)
     await app.cdp.waitFor(`!!__e2e.one('select[aria-label="월"]')`, 'back to a month')
+
+    // The NEIS upload form: its columns in the upload's order, the session filed under a NEIS category filled to its three levels.
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 4 && __e2e.all('tr[data-export-row]')[0].children.length === 17`, 'four sessions in seventeen columns')
+    await app.noAlert()
+    const upload = await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => [...tr.children].map((td) => td.textContent.trim()))`)
+    assert.deepEqual(upload[0].slice(0, 8), ['전문상담', 'Wee클래스', '상담', '개인상담', '학업', '1', '2026', '20260402'], 'the session filed under 개인상담 › 학업')
+    assert.deepEqual(upload[2].slice(5, 10), ['2', '2026', '20260416', '', ''], 'the group session: two people; no gender recorded for either, so blank rather than mixed')
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="session-list@2"]')
   },
   async 'records what was said in a session, and keeps it out of the list form'(app, work) {
     const said = '합성 상담 내용: 시험 불안을 이야기함'
