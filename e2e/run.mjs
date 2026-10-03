@@ -1033,14 +1033,18 @@ const scenarios = {
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]') && ${said('대상자 정보를 고쳤습니다.')}`, 'the subject corrected')
     await app.noAlert()
     assert.equal(await recordFiles(), filesBefore + 1, 'the correction is a file of its own')
+    const shown = `__e2e.one('[data-role=record-fields] [data-field=school] dd')?.textContent.trim()`
+    await app.cdp.waitFor(`${shown} === '가상 중학교'`, 'the subject shows what its record holds, without opening the form')
 
     await app.click('dc-button', '대상자 정보 고치기')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=record-fields]')`), false, 'the form takes the place of what the record shows')
     await app.cdp.waitFor(`__e2e.one('input[aria-label="학교"]')?.value === '가상 중학교'`, 'the record now holds it')
     await app.setDate('이름', '') // sets any input's value, a date's or not
     await app.click('dc-button', '고친 내용 저장')
     await app.alert('‘이름’ 칸을 채우세요.')
     await app.click('dc-button', '취소')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the form left')
+    await app.noAlert() // what the form said was wrong leaves with it
     assert.equal(await recordFiles(), filesBefore + 1, 'an empty required field writes nothing')
   },
 

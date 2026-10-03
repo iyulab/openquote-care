@@ -87,6 +87,12 @@ export class OcEntityForm extends StoreElement {
     })
   }
 
+  /** Leaves the form unwritten; what it said was wrong goes with it. */
+  private leave() {
+    this.store.set({ error: undefined })
+    this.dispatchEvent(new Event('oc-edit-cancelled'))
+  }
+
   render() {
     const store = this.store
     const inputs = inputFields(this.defs)
@@ -96,7 +102,7 @@ export class OcEntityForm extends StoreElement {
         <dc-callout><p>${strings.correctionLead}</p></dc-callout>
         <div class="fields">${inputs.map((f) => fieldInput(f, this.values[f.name] ?? '', (v) => (this.values = { ...this.values, [f.name]: v }), store.busy, this.choicesOf(f)))}</div>
       </div>
-      <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+      <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.leave()}>${strings.cancel}</dc-button>
       <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.save()}>${strings.saveCorrection}</dc-button>
     </dc-card>`
   }

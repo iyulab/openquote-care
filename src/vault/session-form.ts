@@ -369,6 +369,12 @@ export class OcSessionForm extends StoreElement {
     </div>`
   }
 
+  /** Leaves the form unwritten; what it said was wrong goes with it. */
+  private leave() {
+    this.store.set({ error: undefined })
+    this.dispatchEvent(new Event('oc-edit-cancelled'))
+  }
+
   render() {
     const store = this.store
     const inputs = inputFields(store.sessionFields)
@@ -384,7 +390,7 @@ export class OcSessionForm extends StoreElement {
           <dc-callout><p>${strings.correctSessionLead}</p></dc-callout>
           <div class="fields">${inputs.map((f) => this.input(f))}</div>
         </div>
-        <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
+        <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.leave()}>${strings.cancel}</dc-button>
         <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.saveCorrection(session)}>${strings.saveCorrection}</dc-button>
       </dc-card>`
     return html`<section>
