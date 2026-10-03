@@ -1036,6 +1036,28 @@ const scenarios = {
     assert.equal(await recordFiles(), filesBefore + 1, 'an empty required field writes nothing')
   },
 
+  async 'corrects a practitioner the same way, from the fields the packs declare for one'(app, work) {
+    const recordFiles = async () => (await readdir(join(work.vault, 'practitioners'))).filter((f) => f.endsWith('.age')).length
+    const filesBefore = await recordFiles()
+    const said = (text) => `__e2e.all('[role=status]').some((el) => el.textContent.trim() === ${q(text)})`
+    const rename = async (from, to) => {
+      await app.click('dc-button', '담당자 정보 고치기')
+      await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-practitioner]')`, 'the practitioner form')
+      await app.cdp.waitFor(`__e2e.one('input[aria-label="이름"]')?.value === ${q(from)}`, 'the form starts from the record')
+      await app.type('이름', to)
+      await app.click('dc-button', '고친 내용 저장')
+      await app.cdp.waitFor(`!__e2e.one('[data-role=correct-practitioner]') && ${said('담당자 정보를 고쳤습니다.')}`, 'the practitioner corrected')
+      await app.cdp.waitFor(`__e2e.one('li button[aria-current=true] .label')?.textContent.trim() === ${q(to)}`, 'the list shows the new name')
+    }
+    await app.click('button', '담당자')
+    await app.click('li button .label', '상담자 가')
+    await rename('상담자 가', '상담자 갑')
+    await app.noAlert()
+    assert.equal(await recordFiles(), filesBefore + 1, 'the correction is a file of its own')
+    await rename('상담자 갑', '상담자 가') // later scenarios name this practitioner
+    assert.equal(await recordFiles(), filesBefore + 2)
+  },
+
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
     await app.click('dc-button', '기록 폴더 닫기')
     const keyFile = join(work.vault, 'keys', 'vault-key.age')

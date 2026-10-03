@@ -1,0 +1,14 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "practitioner",
+  "version": 1,
+  "fields": [
+    {
+      "name": "name",
+      "kind": "text",
+      "required": true,
+      "label": "Name"
+    }
+  ]
+}

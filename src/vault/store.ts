@@ -37,6 +37,7 @@ export class VaultStore extends EventTarget {
   /** The fields the vault's packs declare for sessions and for subjects. */
   sessionFields: FieldView[] = []
   subjectFields: FieldView[] = []
+  practitionerFields: FieldView[] = []
   summary?: VaultSummary
   /** How names are ordered in this vault: by the locales its packs label things in. */
   names = nameCollator()
@@ -134,7 +135,7 @@ export class VaultStore extends EventTarget {
 
   /** The fields the vault declares for an entity type; none for a type this app does not read fields of. */
   fieldsOf(type: string): FieldView[] {
-    return type === 'session' ? this.sessionFields : type === 'subject' ? this.subjectFields : []
+    return type === 'session' ? this.sessionFields : type === 'subject' ? this.subjectFields : type === 'practitioner' ? this.practitionerFields : []
   }
 
   /** The entities a reference field of `type` may point at. */
@@ -168,7 +169,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, backup, sessionHistory] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -177,6 +178,7 @@ export class VaultStore extends EventTarget {
       shell.summary(),
       shell.fields('session'),
       shell.fields('subject'),
+      shell.fields('practitioner'),
       // Every write is followed by a backup: its outcome is read with the rest.
       shell.backupStatus(),
       shell.history('session'),
@@ -204,6 +206,7 @@ export class VaultStore extends EventTarget {
     this.schemes = schemes
     this.sessionFields = sessionFields
     this.subjectFields = subjectFields
+    this.practitionerFields = practitionerFields
     this.draft = { ...startingValues(this, sessionFields), ...this.draft }
     this.changed()
   }

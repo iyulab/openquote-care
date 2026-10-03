@@ -75,6 +75,16 @@ public sealed class PackFilesTests
         Assert.Equal(["상담 상대", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(4));
     }
 
+    [Theory]
+    [MemberData(nameof(Tracks))]
+    public void Every_track_declares_a_practitioners_name_as_a_required_text_field(string track)
+    {
+        var name = VaultOn(track).FieldCatalog().Find("practitioner", "name");
+
+        Assert.NotNull(name);
+        Assert.Equal((FieldKind.Text, true, false), (name.Kind, name.Required, name.Hidden));
+    }
+
     [Fact]
     public void The_neutral_track_holds_no_school_field()
     {
@@ -107,7 +117,7 @@ public sealed class PackFilesTests
         var labels = content.LabelCatalog();
         var fields = content.FieldCatalog();
 
-        foreach (var type in new[] { "session", "subject" })
+        foreach (var type in new[] { "session", "subject", "practitioner" })
             foreach (var field in fields.For(type).Where(f => !f.Hidden))
                 Assert.True(labels.FieldLabel(type, field.Name, [locale]) is not null, $"{track}: {type}.{field.Name}");
         if (track == "school-kr") return; // the school track hides the core's classifications and forms

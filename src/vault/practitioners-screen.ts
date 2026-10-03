@@ -1,9 +1,10 @@
-import { html } from 'lit'
+import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { countBy, listDetail, nameField } from './parts.js'
+import './entity-form.js'
+import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import { sessionTable, toggled } from './session-parts.js'
 
@@ -18,6 +19,8 @@ export class OcPractitioners extends VaultScreen {
   @state() private documentOpen = false
   /** Sessions whose written content is open under their row. */
   @state() private openNotes = new Set<string>()
+  /** The practitioner picked shows the form correcting their record. */
+  @state() private correcting = false
 
   private async addPractitioner() {
     const name = this.practitionerName.trim()
@@ -33,6 +36,7 @@ export class OcPractitioners extends VaultScreen {
   private pick(id: string) {
     this.selected = id
     this.adding = false
+    this.correcting = false
     this.documentOpen = true
   }
 
@@ -85,7 +89,22 @@ export class OcPractitioners extends VaultScreen {
         eyebrow=${strings.practitioners}
         heading=${text(practitioner, 'name')}
         description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
-      ></dp-page-header>
+      >
+        ${this.correcting
+          ? nothing
+          : html`<dc-button slot="actions" variant="secondary" size="sm" data-role="correct-practitioner-open" ?disabled=${store.busy} @click=${() => {
+              store.set({ notice: '' })
+              this.correcting = true
+            }}>${strings.correctPractitioner}</dc-button>`}
+      </dp-page-header>
+      ${this.correcting
+        ? html`<oc-entity-form
+            .store=${store}
+            .entity=${practitioner}
+            @oc-entity-edited=${() => (this.correcting = false)}
+            @oc-edit-cancelled=${() => (this.correcting = false)}
+          ></oc-entity-form>`
+        : nothing}
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
         ${sessions.length === 0
@@ -100,7 +119,8 @@ export class OcPractitioners extends VaultScreen {
                 })}
               </div></dc-card
             >`}
-      </section>`
+      </section>
+      ${noticeLine(store)}`
   }
 }
 

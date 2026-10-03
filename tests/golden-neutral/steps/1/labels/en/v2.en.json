@@ -1,0 +1,83 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "en",
+  "version": 2,
+  "locale": "en",
+  "schemes": {
+    "care.concern": {
+      "1": {
+        "mood": "Mood",
+        "anxiety": "Anxiety and stress",
+        "relationships": "Relationships",
+        "family": "Family",
+        "study-work": "Study or work",
+        "substance": "Substance use",
+        "loss": "Loss and grief",
+        "safety": "Safety and crisis",
+        "other": "Other"
+      }
+    },
+    "care.mode": {
+      "1": {
+        "in-person": "In person",
+        "phone": "Phone",
+        "video": "Video",
+        "message": "Message",
+        "other": "Other"
+      }
+    }
+  },
+  "fields": {
+    "session": {
+      "date": "Date",
+      "practitioner": "Practitioner",
+      "concern": "Concern",
+      "mode": "Mode",
+      "note": "Notes",
+      "grade": "Grade",
+      "class": "Class"
+    },
+    "subject": {
+      "name": "Name",
+      "mgmt_no": "Case number",
+      "gender": "Gender",
+      "phone": "Phone",
+      "school": "School",
+      "grade": "Grade",
+      "class": "Class",
+      "guardian": "Guardian",
+      "guardian_phone": "Guardian phone"
+    },
+    "practitioner": {
+      "name": "Name"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "Full name",
+        "Client"
+      ],
+      "mgmt_no": [
+        "Case no",
+        "ID"
+      ],
+      "phone": [
+        "Phone number",
+        "Mobile"
+      ]
+    }
+  },
+  "reports": {
+    "care.monthly-concern": {
+      "1": "Sessions by concern"
+    }
+  },
+  "exports": {
+    "care.session-list": {
+      "1": {
+        "label": "Session list"
+      }
+    }
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "kr",
+  "version": 2,
+  "locale": "ko",
+  "schemes": {
+    "care.concern": {
+      "1": {
+        "mood": "기분",
+        "anxiety": "불안·스트레스",
+        "relationships": "대인관계",
+        "family": "가족",
+        "study-work": "학업·직업",
+        "substance": "물질 사용",
+        "loss": "상실·애도",
+        "safety": "안전·위기",
+        "other": "기타"
+      }
+    },
+    "care.mode": {
+      "1": {
+        "in-person": "대면",
+        "phone": "전화",
+        "video": "화상",
+        "message": "메시지",
+        "other": "기타"
+      }
+    }
+  },
+  "fields": {
+    "session": {
+      "date": "날짜",
+      "practitioner": "담당자",
+      "concern": "상담 문제",
+      "mode": "상담 방식",
+      "note": "상담 내용",
+      "grade": "학년",
+      "class": "반"
+    },
+    "subject": {
+      "name": "이름",
+      "mgmt_no": "관리번호",
+      "gender": "성별",
+      "phone": "연락처",
+      "school": "학교",
+      "grade": "학년",
+      "class": "반",
+      "guardian": "보호자",
+      "guardian_phone": "보호자 연락처"
+    },
+    "practitioner": {
+      "name": "이름"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "성명",
+        "대상자"
+      ],
+      "mgmt_no": [
+        "사례번호"
+      ],
+      "phone": [
+        "전화",
+        "휴대전화"
+      ],
+      "school": [
+        "학교명"
+      ],
+      "guardian_phone": [
+        "보호자연락처"
+      ]
+    }
+  },
+  "reports": {
+    "care.monthly-concern": {
+      "1": "월별 상담 문제 현황"
+    }
+  },
+  "exports": {
+    "care.session-list": {
+      "1": {
+        "label": "상담 기록 목록",
+        "columns": {
+          "0": "상담일자",
+          "1": "대상자",
+          "2": "상담인원",
+          "3": "상담 문제",
+          "4": "상담 방식",
+          "5": "담당자"
+        }
+      }
+    }
+  }
+}

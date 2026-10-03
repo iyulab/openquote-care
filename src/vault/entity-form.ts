@@ -8,21 +8,32 @@ import { strings } from '../strings.js'
 import { fieldInput, type Choice } from './field-input.js'
 import { StoreElement } from './screen.js'
 
+/** What the form says about the kind of record it corrects. */
+function wordingOf(type: string) {
+  return type === 'practitioner'
+    ? { heading: strings.correctPractitioner, done: strings.practitionerCorrected }
+    : { heading: strings.correctSubject, done: strings.subjectCorrected }
+}
+
 /**
- * The form that corrects what a subject's record holds — its name and every other field the vault's
- * packs declare for a subject. It starts from the record as it is now and writes only the fields a
- * person changed, as an edit of their own. `oc-subject-edited` says it was written,
- * `oc-edit-cancelled` that the person left it.
+ * The form that corrects what a subject's or a practitioner's record holds — its name and every
+ * other field the vault's packs declare for its type. It starts from the record as it is now and
+ * writes only the fields a person changed, as an edit of their own. `oc-entity-edited` says it was
+ * written, `oc-edit-cancelled` that the person left it.
  */
-@customElement('oc-subject-form')
-export class OcSubjectForm extends StoreElement {
-  @property({ attribute: false }) subject!: Entity
+@customElement('oc-entity-form')
+export class OcEntityForm extends StoreElement {
+  @property({ attribute: false }) entity!: Entity
 
   @state() private values: Record<string, string> = {}
 
+  private get defs(): FieldView[] {
+    return this.store.fieldsOf(this.entity.type)
+  }
+
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
-    if (changed.has('subject')) this.values = asDraft(inputFields(this.store.subjectFields), this.subject)
+    if (changed.has('entity')) this.values = asDraft(inputFields(this.defs), this.entity)
   }
 
   private choicesOf(f: FieldView): Choice[] {
@@ -36,7 +47,7 @@ export class OcSubjectForm extends StoreElement {
 
   /** The fields the inputs hold, as they are recorded; undefined (and the person told) when a required one is empty. */
   private filledIn(): Record<string, unknown> | undefined {
-    const defs = this.store.subjectFields
+    const defs = this.defs
     const missing = firstMissingRequired(defs, this.values)
     if (missing) {
       this.store.missing(missing.label)
@@ -62,27 +73,27 @@ export class OcSubjectForm extends StoreElement {
     const store = this.store
     const filled = this.filledIn()
     if (!filled) return
-    const changed = changedFields(inputFields(store.subjectFields), this.subject, filled)
+    const changed = changedFields(inputFields(this.defs), this.entity, filled)
     if (Object.keys(changed).length === 0) {
       store.set({ notice: strings.nothingChanged })
       return
     }
-    const subject = this.subject
+    const entity = this.entity
     await store.run(async () => {
-      await shell.record('/changes/update', { type: subject.type, id: subject.id, fields: changed })
-      this.dispatchEvent(new Event('oc-subject-edited'))
+      await shell.record('/changes/update', { type: entity.type, id: entity.id, fields: changed })
+      this.dispatchEvent(new Event('oc-entity-edited'))
       await store.load()
-      store.notice = strings.subjectCorrected
+      store.notice = wordingOf(entity.type).done
     })
   }
 
   render() {
     const store = this.store
-    const inputs = inputFields(store.subjectFields)
-    return html`<dc-card data-role="correct-subject">
-      <h3 slot="header">${strings.correctSubject}</h3>
+    const inputs = inputFields(this.defs)
+    return html`<dc-card data-role=${`correct-${this.entity.type}`}>
+      <h3 slot="header">${wordingOf(this.entity.type).heading}</h3>
       <div class="stack">
-        <dc-callout><p>${strings.correctSubjectLead}</p></dc-callout>
+        <dc-callout><p>${strings.correctionLead}</p></dc-callout>
         <div class="fields">${inputs.map((f) => fieldInput(f, this.values[f.name] ?? '', (v) => (this.values = { ...this.values, [f.name]: v }), store.busy, this.choicesOf(f)))}</div>
       </div>
       <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.dispatchEvent(new Event('oc-edit-cancelled'))}>${strings.cancel}</dc-button>
@@ -93,6 +104,6 @@ export class OcSubjectForm extends StoreElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'oc-subject-form': OcSubjectForm
+    'oc-entity-form': OcEntityForm
   }
 }

@@ -8,7 +8,7 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './session-form.js'
-import './subject-form.js'
+import './entity-form.js'
 import { conflictPanel, sessionTable, toggled } from './session-parts.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
@@ -189,12 +189,12 @@ export class OcSubjects extends VaultScreen {
             }}>${strings.correctSubject}</dc-button>`}
       </dp-page-header>
       ${this.correctingSubject
-        ? html`<oc-subject-form
+        ? html`<oc-entity-form
             .store=${store}
-            .subject=${subject}
-            @oc-subject-edited=${() => (this.correctingSubject = false)}
+            .entity=${subject}
+            @oc-entity-edited=${() => (this.correctingSubject = false)}
             @oc-edit-cancelled=${() => (this.correctingSubject = false)}
-          ></oc-subject-form>`
+          ></oc-entity-form>`
         : nothing}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting

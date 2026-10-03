@@ -1,0 +1,9 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 3,
+  "label": "Care",
+  "provides": [
+    "fields/care/practitioner/v1.json"
+  ]
+}
