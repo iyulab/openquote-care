@@ -202,6 +202,21 @@ export function today(now = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
+/**
+ * The first and last day of the year that starts in `startMonth` (1–12) and holds `day`, or of the
+ * year before it when `back` — a year from March holds the next January and February.
+ */
+export function yearAround(startMonth: number, day: string, back = false): { from: string; to: string } {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const [y, m] = day.split('-').map(Number)
+  const start = (m >= startMonth ? y : y - 1) - (back ? 1 : 0)
+  const last = new Date(Date.UTC(start + 1, startMonth - 1, 0))
+  return {
+    from: `${start}-${pad(startMonth)}-01`,
+    to: `${last.getUTCFullYear()}-${pad(last.getUTCMonth() + 1)}-${pad(last.getUTCDate())}`,
+  }
+}
+
 /** Who a session is about, by name: its subject, or a group session's attendees. */
 export function namesOf(session: Entity, names: Map<string, string>): string {
   return session.people.map((id) => names.get(id) ?? '').filter((n) => n !== '').join(', ')

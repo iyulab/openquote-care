@@ -52,6 +52,15 @@ export interface Filter {
   in: string[]
 }
 
+/**
+ * The month the vault's years start in: the one start month its year forms use other than January,
+ * such as 3 for years from March; 1 when they all start in January, disagree, or there is none.
+ */
+export function yearStart(forms: ReportEntry[]): number {
+  const months = new Set(forms.filter((f) => f.unit === 'year' && f.startMonth !== 1).map((f) => f.startMonth))
+  return months.size === 1 ? [...months][0] : 1
+}
+
 /** The field a rows-and-column form's rows are classified by. */
 export function rowFieldOf(form: ReportEntry): string {
   return form.dimensions[0]?.field ?? ''

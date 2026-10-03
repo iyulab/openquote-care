@@ -147,6 +147,8 @@ export const en: Strings = {
   periodMonth: 'A month',
   periodRange: 'Any days',
   rangeTo: 'To',
+  thisYear: (school: boolean): string => (school ? 'This school year' : 'This year'),
+  lastYear: (school: boolean): string => (school ? 'Last school year' : 'Last year'),
   rangeMissing: 'Pick the first and the last day of the period; the last day cannot come before the first.',
   allSections: 'All',
   reportFilters: (parts: string[]) => `Only: ${parts.join(' · ')}`,

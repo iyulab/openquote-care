@@ -1,7 +1,7 @@
 import { html, nothing } from 'lit'
 import { open } from '@tauri-apps/plugin-dialog'
-import type { FormEntry } from '../forms.js'
-import type { Entity } from '../records.js'
+import { yearStart, type FormEntry } from '../forms.js'
+import { today, yearAround, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import type { VaultStore } from './store.js'
@@ -98,13 +98,29 @@ export function periodFields(store: VaultStore) {
     </dc-field>`
 }
 
-/** The first and last day of a period a person picks. */
+/**
+ * The first and last day of a period a person picks, and a quick pick of this year or the last one —
+ * named apart when the vault's year forms start in another month than January.
+ */
 export function rangeFields(store: VaultStore) {
   const date = (label: string, value: string, set: (v: string) => void) => html`<dc-field label=${label}>
     <dc-input type="date" aria-label=${label} .value=${value} ?disabled=${store.busy} @input=${(e: Event) => set((e.target as HTMLInputElement).value)}></dc-input>
   </dc-field>`
+  const start = yearStart(store.summary?.reports ?? [])
+  const quick = (role: string, label: string, back: boolean) => html`<dc-button
+    variant="ghost"
+    size="sm"
+    data-role=${role}
+    ?disabled=${store.busy}
+    @click=${() => {
+      const { from, to } = yearAround(start, today(), back)
+      store.set({ rangeFrom: from, rangeTo: to })
+    }}
+    >${label}</dc-button
+  >`
   return html`${date(strings.rangeFrom, store.rangeFrom, (rangeFrom) => store.set({ rangeFrom }))}
-    ${date(strings.rangeTo, store.rangeTo, (rangeTo) => store.set({ rangeTo }))}`
+    ${date(strings.rangeTo, store.rangeTo, (rangeTo) => store.set({ rangeTo }))}
+    ${quick('this-year', strings.thisYear(start !== 1), false)} ${quick('last-year', strings.lastYear(start !== 1), true)}`
 }
 
 /** The store's message, when there is one. */

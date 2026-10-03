@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, conflictsOf, definitionOf, entityOf, labelOf, latest, namesOf, newestFirst, today, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, entityOf, labelOf, latest, namesOf, newestFirst, today, yearAround, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -105,4 +105,18 @@ describe('entityOf', () => {
     expect(entityOf('groups/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04.pc01.json')).toBe('0199a1b0-1a02-7c44-8e21-3d9f0a1b2c04')
     expect(entityOf('practitioners/0199a1b0-1a02-7c44-8e21-3d9f0a1b2c05.pc01.json')).toBe('0199a1b0-1a02-7c44-8e21-3d9f0a1b2c05')
   })
+})
+
+describe('yearAround', () => {
+  it('is the year from March that holds the day', () => {
+    expect(yearAround(3, '2026-10-03')).toEqual({ from: '2026-03-01', to: '2027-02-28' })
+  })
+  it('puts January and February in the year that began the March before', () => {
+    expect(yearAround(3, '2027-02-15')).toEqual({ from: '2026-03-01', to: '2027-02-28' })
+  })
+  it('ends on the 29th of February in a leap year', () => {
+    expect(yearAround(3, '2027-03-01')).toEqual({ from: '2027-03-01', to: '2028-02-29' })
+  })
+  it('steps back a year', () => expect(yearAround(3, '2026-10-03', true)).toEqual({ from: '2025-03-01', to: '2026-02-28' }))
+  it('is the calendar year from January', () => expect(yearAround(1, '2026-10-03')).toEqual({ from: '2026-01-01', to: '2026-12-31' }))
 })

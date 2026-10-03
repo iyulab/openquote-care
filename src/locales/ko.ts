@@ -152,6 +152,8 @@ export const ko = {
   periodMonth: '한 달',
   periodRange: '기간',
   rangeTo: '마지막 날',
+  thisYear: (school: boolean): string => (school ? '이번 학년도' : '올해'),
+  lastYear: (school: boolean): string => (school ? '지난 학년도' : '지난해'),
   rangeMissing: '기간의 시작일과 마지막 날을 고르세요. 마지막 날은 시작일보다 앞일 수 없습니다.',
   allSections: '전체',
   reportFilters: (parts: string[]) => `조건: ${parts.join(' · ')}`,
