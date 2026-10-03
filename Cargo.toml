@@ -9,11 +9,11 @@ repository = "https://github.com/iyulab/openquote-care"
 rust-version = "1.90"
 
 [workspace.dependencies]
-tauri-kit-diagnostics = "0.11"
-tauri-kit-fs = "0.11"
-tauri-kit-sidecar = "0.11"
-tauri-kit-watch = "0.11"
-tauri-kit-webview = "0.11"
+tauri-kit-diagnostics = "0.12"
+tauri-kit-fs = "0.12"
+tauri-kit-sidecar = "0.12"
+tauri-kit-watch = "0.12"
+tauri-kit-webview = "0.12"
 
 # The vault key is wrapped with scrypt at a fixed cost; unoptimized, one unlock takes minutes, so
 # development builds optimize the password-hashing crates the way release builds do.

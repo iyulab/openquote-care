@@ -64,6 +64,10 @@ jobs:
       - name: Publish the engine sidecar
         run: npm run publish:sidecar
 
+      # The installer ships these notices; they must name what this build actually ships.
+      - name: Check the third-party notices are current
+        run: npm run notices -- --check
+
       # The sidecar ships as a bundle resource, which Tauri does not sign, so it is signed here.
       - name: Sign the engine sidecar
         # Pinned to a commit: this job holds an OIDC token that can sign as iyulab.

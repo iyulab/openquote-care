@@ -103,7 +103,7 @@ try {
   run(installer, nsisArgs(target), 'installing the test build')
   assert.ok(existsSync(exe), 'installed')
   // The installer keeps the files' own times, so what shows it ran again is a file it puts back.
-  const marker = join(target, 'licenses', 'Pretendard-OFL.txt')
+  const marker = join(target, 'licenses', 'THIRD-PARTY-NOTICES.txt')
   assert.ok(existsSync(marker))
   await rm(marker)
   console.log('  ✓ the test build installed for the current user')

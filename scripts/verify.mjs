@@ -43,6 +43,8 @@ const steps = [
   ['typecheck', 'npm run typecheck'],
   ['screens', 'npm test'],
   ['sidecar build', 'npm run build:sidecar'],
+  // After the sidecar's restore: the notices read its NuGet packages from it.
+  ['third-party notices are current', 'npm run notices -- --check'],
   ['golden vaults as their generators write them', 'node scripts/check-golden.mjs'],
   ['sidecar and golden-vault tests', 'dotnet test --solution OpenquoteCare.slnx'],
   ['screens build (the shell embeds dist/)', 'npm run build'],

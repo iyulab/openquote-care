@@ -29,12 +29,15 @@ The checks it runs:
 npm run check:tokens                     # every --dc-* design token the UI reads is defined
 npm run typecheck && npm test            # UI
 node scripts/check-golden.mjs            # each golden vault is what its generator writes
+npm run notices -- --check               # the shipped third-party notices name what ships (after the sidecar restore)
 dotnet test --solution OpenquoteCare.slnx
 npm run build                            # the shell embeds dist/
 cargo test --release --workspace
 cargo clippy --workspace --all-targets   # no warnings
 npm run build:sidecar && npm run build:e2e && npm run test:e2e   # the real window over CDP
 ```
+
+The installer ships `LICENSES/THIRD-PARTY-NOTICES.txt`, generated from what ships: the npm lockfile, the shell's crates and the sidecar's restored NuGet packages with the .NET runtime packs (`notices.config.js`). After a dependency change run `npm run notices` and commit the file. A package published without its license text is pinned in `notices/pins.json` (a URL fixed to the published version — a tag, or the commit in a crate's `.cargo_vcs_info.json`) and fetched with `npx tauri-kit-dev notice-pins --pins notices/pins.json --dir notices/texts`.
 
 Before the checks, `verify` checks the machine: Rust on the MSVC toolchain, a `dotnet` on PATH, and — when `DOTNET_ROOT` is unset and .NET is a per-user install — it points `DOTNET_ROOT` at that `dotnet` for the sidecar. The first check is that every file naming the app version names the same one (`node scripts/check-versions.mjs`).
 
