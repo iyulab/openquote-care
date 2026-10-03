@@ -3,6 +3,7 @@
 mod app;
 mod bundle;
 mod diagnostics;
+mod feedback;
 pub mod locale;
 pub mod runtime;
 mod updates;
@@ -210,6 +211,31 @@ fn report_window_error(kind: String, stack: String) {
 }
 
 #[tauri::command]
+fn feedback_status() -> feedback::Status {
+    feedback::status()
+}
+
+/// Sends what the person wrote to the publisher, off the window's thread: the person waits on the
+/// answer, and the window stays responsive while they do.
+#[tauri::command]
+async fn send_feedback(message: String, email: Option<String>) -> CommandResult<()> {
+    let sent = tauri::async_runtime::spawn_blocking(move || {
+        let destination = feedback::configured().ok_or(feedback::Problem::NotConfigured)?;
+        let record = feedback::record(&message, email.as_deref(), &locale::ui_locale())?;
+        feedback::send(&destination, &record)
+    })
+    .await
+    .unwrap_or(Err(feedback::Problem::Network));
+    sent.map_err(|problem| {
+        // A refusal is the app's own fault (its key or address), and every send would meet it.
+        if let feedback::Problem::Refused(status) = problem {
+            diagnostics::command_failed(problem.code(), std::panic::Location::caller(), Some(status), None);
+        }
+        CommandError { code: problem.code(), message: problem.to_string() }
+    })
+}
+
+#[tauri::command]
 fn update_status(updates: State<updates::Updates>) -> updates::Status {
     updates.status()
 }
@@ -365,6 +391,8 @@ pub fn run() {
             set_diagnostics_sending,
             diagnostics_reports,
             report_window_error,
+            feedback_status,
+            send_feedback,
             ui_locale,
             tracks,
             apply_pack,

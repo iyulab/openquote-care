@@ -540,6 +540,75 @@ const scenarios = {
     await app.noAlert()
   },
 
+  async 'sends what a person writes to the publisher only when asked, and keeps it when the send fails'(app, work) {
+    // A stand-in for the publisher's records service: it takes what comes and remembers it.
+    const heard = []
+    const server = createServer((req, res) => {
+      let body = ''
+      req.on('data', (chunk) => (body += chunk))
+      req.on('end', () => {
+        heard.push({ method: req.method, url: req.url, headers: req.headers, body })
+        res.statusCode = 201
+        res.end('{}')
+      })
+    })
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const env = { OPENQUOTE_FEEDBACK_URL: `http://127.0.0.1:${server.address().port}/api/t/openquote/feedback`, OPENQUOTE_FEEDBACK_KEY: 'pk_e2e' }
+    const MESSAGE = '통계 화면에서 지난달과 바로 비교하고 싶습니다.'
+    try {
+      await app.restart(env)
+      await app.click('dc-button', '의견 보내기')
+      await app.heading('의견 보내기')
+      const sendDisabled = () => app.cdp.evaluate(`__e2e.one('dc-button[data-role=send]').disabled`)
+      assert.equal(await sendDisabled(), true, 'nothing to send yet')
+      assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=what]').textContent`), /앱 판 \d+\.\d+\.\d+/, 'what goes along is listed first')
+      await app.write('보낼 글', MESSAGE)
+      await app.type('답을 받을 이메일 (비워 두어도 됩니다)', 'someone@example')
+      await app.click('dc-button[data-role=send]')
+      await app.alert('이메일 주소를 확인해 주세요. 답이 필요 없으면 비워 두어도 됩니다.')
+      assert.equal(heard.length, 0, 'a slip in the address sends nothing')
+      await app.type('답을 받을 이메일 (비워 두어도 됩니다)', 'someone@example.com')
+      await app.click('dc-button[data-role=send]')
+      await app.cdp.waitFor(`!!__e2e.one('[data-role=sent]')`, 'the message sent')
+      assert.equal(heard.length, 1)
+      const [sent] = heard
+      assert.equal(sent.method, 'POST')
+      assert.equal(sent.url, '/api/t/openquote/feedback')
+      assert.equal(sent.headers['x-api-key'], 'pk_e2e')
+      assert.equal(sent.headers.origin, undefined, 'the app does not claim to be a website')
+      const record = JSON.parse(sent.body)
+      assert.deepEqual(Object.keys(record).sort(), ['appVersion', 'email', 'locale', 'message', 'os'])
+      assert.equal(record.message, MESSAGE)
+      assert.equal(record.email, 'someone@example.com')
+      assert.equal(record.locale, 'ko')
+      assert.equal(await app.cdp.evaluate(`__e2e.one('textarea[aria-label="보낼 글"]').value`), '', 'a message sent is cleared')
+
+      // In an open vault it is a setting of its own, and nothing about the vault goes along.
+      await app.click('dc-button', '뒤로')
+      await app.click('dc-button', '기록 폴더 열기')
+      await app.pickFolder(work.vault)
+      await app.type('암호', PASSPHRASE)
+      await app.click('dc-button', '열기')
+      await app.vaultOpen()
+      await app.click('button', '의견 보내기')
+      await app.cdp.waitFor(`(() => { const el = __e2e.one('[data-role=feedback]'); return !!el && el.getBoundingClientRect().width > 0 })()`, 'the feedback screen in the vault')
+      // The service out of reach: the message stays, to be sent again.
+      await new Promise((resolve) => server.close(resolve))
+      await app.write('보낼 글', '두 번째 의견')
+      await app.click('dc-button[data-role=send]')
+      await app.alert('보내지 못했습니다. 인터넷 연결을 확인한 뒤 다시 보내 주세요. 적은 글은 그대로 있습니다.')
+      assert.equal(await app.cdp.evaluate(`__e2e.one('textarea[aria-label="보낼 글"]').value`), '두 번째 의견')
+      assert.equal(heard.length, 1, 'nothing more arrived')
+      assert.doesNotMatch(heard[0].body, /가상|\.age|vault/i, 'nothing of the vault in what was sent')
+    } finally {
+      server.close()
+    }
+    // Without a destination the app offers no feedback at all.
+    await app.restart()
+    await app.heading('Openquote Care')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="feedback-open"]')`), false)
+  },
+
   async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
     await app.restart()
     // As a vault made before the school pack's second to sixth versions holds it.

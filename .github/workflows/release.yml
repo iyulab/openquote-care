@@ -93,6 +93,9 @@ jobs:
           AZURE_TIMESTAMP_URL: http://timestamp.globalsign.com/tsa/r6advanced1
           # Error diagnostics are embedded only in this build (see docs/architecture.md).
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
+          # Feedback: the records service's public key (public by design, so a variable). Without
+          # it the installer offers no feedback (see docs/privacy.md).
+          OPENQUOTE_FEEDBACK_KEY: ${{ vars.OPENQUOTE_FEEDBACK_KEY }}
           # The updater's key: only this build carries the public half and looks for new versions,
           # and its installer gets an updater signature, made after the Authenticode signing.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}

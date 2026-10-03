@@ -4,7 +4,7 @@ import { desktopMinWidth } from '@iyulab/desktop-patterns/breakpoints'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
 import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
-import type { VaultFileKind } from './shell.js'
+import type { FeedbackStatus, VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
 import { errorCallout } from './vault/parts.js'
 import { StoreController, VaultStore } from './vault/store.js'
@@ -16,8 +16,9 @@ import './vault/export-screen.js'
 import './vault/practitioners-screen.js'
 import type { DeviceSection, OcDevices } from './vault/devices-screen.js'
 import './vault/devices-screen.js'
+import './feedback.js'
 
-type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices'
+type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices' | 'feedback'
 
 /**
  * An open vault: the frame around its screens — the sidebar that switches between them, the
@@ -35,6 +36,13 @@ export class OcVault extends LitElement {
       }
       dp-shell {
         height: 100%;
+      }
+      oc-feedback {
+        max-width: 44rem;
+        padding: var(--dc-space-5, 20px) var(--dc-space-6, 24px);
+      }
+      oc-feedback[hidden] {
+        display: none;
       }
       dp-page > dc-callout {
         margin: var(--dc-space-3, 12px) var(--dc-space-6, 24px) 0;
@@ -54,6 +62,8 @@ export class OcVault extends LitElement {
   @property({ attribute: false }) adopted: string[] = []
   /** Opening brought the vault's packs up to the newer version this app carries. */
   @property({ attribute: false }) packsUpdated = false
+  /** What feedback sends along, when this installation can send any; absent, it is not offered. */
+  @property({ attribute: false }) feedback?: FeedbackStatus
 
   @state() private view: View = 'subjects'
   /** The sidebar as a drawer, while the window is narrow: closed until asked for. */
@@ -141,7 +151,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices }[view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
@@ -160,7 +170,10 @@ export class OcVault extends LitElement {
               { id: 'report', icon: '▦', label: strings.navReport },
               { id: 'export', icon: '▤', label: strings.navExport },
             ] },
-            { id: 'settings', label: strings.navGroupSettings, items: [{ id: 'devices', icon: '▣', label: strings.navDevices }] },
+            { id: 'settings', label: strings.navGroupSettings, items: [
+              { id: 'devices', icon: '▣', label: strings.navDevices },
+              ...(this.feedback ? [{ id: 'feedback', icon: '✎', label: strings.feedbackOpen }] : []),
+            ] },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
@@ -194,6 +207,7 @@ export class OcVault extends LitElement {
             .keyFileLost=${this.keyFileLost}
             @oc-passphrase-changed=${() => ((this.openedWithKey = false), (this.keyFileLost = false))}
           ></oc-devices>
+          ${this.feedback ? html`<oc-feedback .status=${this.feedback} ?hidden=${view !== 'feedback'}></oc-feedback>` : nothing}
         </dp-page>
       </dp-shell>
     `

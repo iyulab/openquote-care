@@ -67,7 +67,7 @@ fn place(location: &Location<'_>) -> String {
 /// The failure codes that are the app's own fault and worth a report. The rest (a wrong
 /// passphrase, a folder that is not a vault, …) are a person's situation, not a defect.
 pub fn is_fault(code: &str) -> bool {
-    matches!(code, "engine-start" | "engine" | "io")
+    matches!(code, "engine-start" | "engine" | "io" | "feedback-refused")
 }
 
 /// The report of a command that failed through the app's own fault. When the engine said what
@@ -396,10 +396,10 @@ mod tests {
 
     #[test]
     fn only_the_apps_own_faults_are_reported() {
-        for code in ["engine-start", "engine", "io"] {
+        for code in ["engine-start", "engine", "io", "feedback-refused"] {
             assert!(is_fault(code));
         }
-        for code in ["wrong-passphrase", "not-a-vault", "recovery-key", "pack-conflict", "no-vault", "not-a-choice"] {
+        for code in ["wrong-passphrase", "not-a-vault", "recovery-key", "pack-conflict", "no-vault", "not-a-choice", "feedback-network", "feedback-busy", "feedback-empty"] {
             assert!(!is_fault(code), "{code} is a person's situation, not a defect");
         }
     }

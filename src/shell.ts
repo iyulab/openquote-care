@@ -5,7 +5,7 @@ import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { FormEntry, ReportEntry } from './forms.js'
 
-/** Error reporting on this installation: whether it has somewhere to send reports, and whether it does. */
+/** New versions on this installation: whether it can update itself, and what it found. */
 export interface UpdateStatus {
   /** This installation can update itself (a released installer). */
   configured: boolean
@@ -15,6 +15,16 @@ export interface UpdateStatus {
   available: string | null
 }
 
+/** Feedback on this installation: whether it can send any, and what goes along with a message. */
+export interface FeedbackStatus {
+  configured: boolean
+  version: string
+  os: string
+  /** The most a message may hold, in characters. */
+  maxMessage: number
+}
+
+/** Error reporting on this installation: whether it has somewhere to send reports, and whether it does. */
 export interface DiagnosticsStatus {
   configured: boolean
   /** Configured and not turned off. */
@@ -141,6 +151,10 @@ export const shell = {
   setDiagnosticsSending: (on: boolean) => invoke<void>('set_diagnostics_sending', { on }),
   /** The reports written so far, one JSON object per line — exactly what is sent; empty when none. */
   diagnosticsReports: () => invoke<string>('diagnostics_reports'),
+  /** Whether this installation can send feedback (see docs/privacy.md), and what goes along with a message. */
+  feedbackStatus: () => invoke<FeedbackStatus>('feedback_status'),
+  /** Sends what the person wrote, with a reply address when they gave one; resolves once the service took it. */
+  sendFeedback: (message: string, email?: string) => invoke<void>('send_feedback', { message, email: email || null }),
   /** Whether this installation looks for new versions, and the newer one it found. */
   updateStatus: () => invoke<UpdateStatus>('update_status'),
   /** Turns looking for new versions on or off, remembered for the next launches. */
