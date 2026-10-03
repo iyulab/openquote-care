@@ -178,6 +178,14 @@ impl Engine {
         self.call("POST", "/suggestions", Some(json!({ "type": entity_type, "date": date, "fields": fields })))
     }
 
+    /// What a record of `entity_type` about to be written under `subject` for `date` (`YYYY-MM-DD`)
+    /// takes from that subject: per field that takes a value from the subject, the value, when it
+    /// was written, the years passed since and what the record would take — stale once the year it
+    /// was written in is over. Nothing is written.
+    pub fn carry(&self, entity_type: &str, subject: &str, date: &str) -> Result<Value, EngineError> {
+        self.call("POST", "/carry", Some(json!({ "type": entity_type, "subject": subject, "date": date })))
+    }
+
     /// The run records the vault keeps, oldest first.
     pub fn runs(&self) -> Result<Value, EngineError> {
         self.call("GET", "/runs", None)

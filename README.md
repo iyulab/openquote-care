@@ -24,6 +24,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - Adding and updating subjects from rows pasted out of a spreadsheet
 - Applying a data pack: classification schemes, crosswalks between their versions, report and export forms, field definitions and labels per language. A pack that needs a newer vault format is applied only once a person chooses to raise it, told which devices use the vault
 - A coded field may take several values: a primary one and others that apply; a field may start from a value its pack gives, such as who a session is usually with
+- Values a session takes from its subject that age by the year, as its pack says: when a session is dated in a later year than such a value was written — on the Korean school track, a later school year than a student's grade and class — the session asks for them again before taking them, offering the next grade (never past the last grade of the student's school level) and no class; the subject is corrected to what the person gives
 - The app in Korean or English, following the system's display language
 - Several devices sharing one vault folder, each named so people can tell whose edit is whose
 - Locking the vault on request or after a set idle time

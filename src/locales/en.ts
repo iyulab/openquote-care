@@ -359,6 +359,9 @@ export const en: Strings = {
   showNote: (label: string) => `Show ${label}`,
   hideNote: (label: string) => `Hide ${label}`,
   recordSession: 'Record session',
+  staleSubject: (labels: string[], writtenOn: string) =>
+    `The client's ${labels.map((l) => `“${l}”`).join(' and ')} ${labels.length === 1 ? 'was' : 'were'} written on ${writtenOn}, and may no longer hold on this session's date. Recording the session first corrects the client's record to the values below; a field left empty is cleared.`,
+  staleSubjectWas: (value: string) => `Now: ${value}`,
   packsUpdated: "This vault's classification data now matches the newer version this app carries. Its records and classifications are unchanged.",
   suggested: 'Suggested',
   similarRecords: (n: number) => (n === 1 ? '1 similar record' : `${n} similar records`),

@@ -356,6 +356,9 @@ export const ko = {
   showNote: (label: string) => `${label} 보기`,
   hideNote: (label: string) => `${label} 접기`,
   recordSession: '회기 기록',
+  staleSubject: (labels: string[], writtenOn: string) =>
+    `대상자의 ${labels.map((l) => `「${l}」`).join('·')} 값은 ${writtenOn}에 적은 것이라 이 회기 날짜에는 맞지 않을 수 있습니다. 아래 값으로 대상자 정보를 고친 뒤 회기를 기록합니다. 비운 칸은 지웁니다.`,
+  staleSubjectWas: (value: string) => `지금: ${value}`,
   packsUpdated: '이 기록 폴더의 분류 자료를 이 앱에 들어 있는 새 판으로 맞췄습니다. 있던 기록과 분류는 그대로입니다.',
   suggested: '제안',
   similarRecords: (n: number) => `비슷한 기록 ${n}건`,

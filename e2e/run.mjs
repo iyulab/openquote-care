@@ -611,7 +611,7 @@ const scenarios = {
 
   async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
     await app.restart()
-    // As a vault made before the school pack's second to sixth versions holds it.
+    // As a vault made before the school pack's second to seventh versions (and the base school pack's second) holds it.
     const added = [
       ['packs', 'care.school.kr', 'v2.json.age'],
       ['suggestions', 'care.school.kr', 'v2.json.age'],
@@ -631,6 +631,12 @@ const scenarios = {
       ['suggestions', 'care.school.kr', 'v3.json.age'],
       ['packs', 'care.school.kr', 'v6.json.age'],
       ['exports', 'neis-upload', 'v1.json.age'],
+      ['packs', 'care.school', 'v2.json.age'],
+      ['fields', 'care.school', 'session', 'v2.json.age'],
+      ['packs', 'care.school.kr', 'v7.json.age'],
+      ['fields', 'care.school.kr', 'session', 'v5.json.age'],
+      ['fields', 'care.school.kr', 'subject', 'v1.json.age'],
+      ['labels', 'care.school.kr', 'v5.ko.json.age'],
     ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
     await app.click('dc-button', '기록 폴더 열기')
@@ -641,6 +647,54 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
     for (const file of added) assert.ok(existsSync(file), `${file} is back`)
     await app.noAlert()
+  },
+
+  async 'asks for the grade and class of a student again in a new school year, offering the next grade, before a session takes them'(app) {
+    await app.click('button', '대상자')
+    await app.click('li button .label', '가상 학생 1')
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.type('학년', '2')
+    await app.type('반', '4')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
+    const stale = () => app.cdp.evaluate(`__e2e.one('[data-role=stale-subject]') ? Object.fromEntries(__e2e.all('dc-input[data-stale]').map((i) => [i.dataset.stale, i.value])) : null`)
+
+    // Within the school year the values were written in (by this computer's clock), nothing is asked.
+    const today = new Date()
+    const thisYear = today.getMonth() >= 2 ? today.getFullYear() : today.getFullYear() - 1
+    await app.setDate('날짜', `${thisYear}-12-01`)
+    await app.choose('주제', 'family')
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    assert.equal(await stale(), null, 'the same school year')
+
+    // In the next school year: the next grade is offered (2 is a grade at every school level), the class is not.
+    await app.setDate('날짜', `${thisYear + 1}-03-05`)
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=stale-subject]')`, 'the values asked for again')
+    assert.deepEqual(await stale(), { grade: '3', class: '' })
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=stale-subject]').textContent`), /「학년」·「반」/)
+
+    // With the school level known, a grade past its last one is not offered.
+    await app.click('dc-button', '대상자 정보 고치기')
+    await app.type('학년', '3')
+    await app.choose('학교급', 'middle')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-subject]')`, 'the subject corrected')
+    await app.cdp.waitFor(`(() => { const i = __e2e.one('dc-input[data-stale=grade]'); return !!i && i.value === '' })()`, 'no grade offered past a middle school\'s last')
+
+    // Recording corrects the subject to what the person gave, then the session takes it.
+    await app.type('학년', '1')
+    await app.type('반', '2')
+    const sessionsBefore = await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`)
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === ${sessionsBefore + 1}`, 'the session listed')
+    await app.noAlert()
+    const recorded = await app.cdp.evaluate(`(() => {
+      const store = __e2e.one('oc-vault').store
+      const subject = store.subjects.find((s) => s.fields.name === '가상 학생 1')
+      const session = store.sessions.find((s) => s.subject === subject.id && s.fields.date === '${thisYear + 1}-03-05')
+      return { subject: [subject.fields.grade, subject.fields.class], session: [session.fields.grade, session.fields.class] }
+    })()`)
+    assert.deepEqual(recorded, { subject: ['1', '2'], session: ['1', '2'] }, 'the subject corrected, and the session took the corrected values')
   },
 
   async 'locks on request, forgetting the key until the passphrase is typed again'(app, work) {

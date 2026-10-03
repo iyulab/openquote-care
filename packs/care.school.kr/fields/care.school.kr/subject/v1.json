@@ -1,0 +1,14 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "subject",
+  "version": 1,
+  "fields": [
+    {
+      "name": "level",
+      "kind": "coded",
+      "scheme": "school-level",
+      "label": "School level"
+    }
+  ]
+}

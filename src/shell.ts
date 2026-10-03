@@ -15,6 +15,22 @@ export interface UpdateStatus {
   available: string | null
 }
 
+/**
+ * A value a record about to be written takes from its subject (`subjectField`), as it stands for the record's date:
+ * the subject's value, the day it was written, the years passed since, and what the record would take (null when
+ * nothing can be offered). `stale` says the year it was written in is over: a person looks at it first.
+ */
+export interface CarryView {
+  field: string
+  subjectField: string
+  label: string
+  value: string | null
+  writtenOn: string | null
+  yearsPassed: number
+  offer: string | null
+  stale: boolean
+}
+
 /** Feedback on this installation: whether it can send any, and what goes along with a message. */
 export interface FeedbackStatus {
   configured: boolean
@@ -205,6 +221,8 @@ export const shell = {
    * Codes suggested for the coded fields a record being entered has no value for, given the values
    * it holds (as they are recorded) and the date it is for; nothing is kept.
    */
+  /** What a record of `entityType` dated `date` would take from subject `subject`, field by field; nothing is written. */
+  carry: (entityType: string, subject: string, date: string) => invoke<CarryView[]>('carry', { entityType, subject, date }),
   suggestions: (entityType: string, date: string, fields: Record<string, unknown>) =>
     invoke<Suggestions>('suggestions', { entityType, date, fields }),
   /**

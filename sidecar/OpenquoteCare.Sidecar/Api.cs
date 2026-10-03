@@ -61,6 +61,9 @@ public sealed record ExportRequest(string Export, int Version, string From, stri
 /// <summary>A scheme and the date a value is entered for.</summary>
 public sealed record InForceRequest(string Scheme, DateOnly Date);
 
+/// <summary>A record of <c>Type</c> about to be written under subject <c>Subject</c>, dated <c>Date</c>.</summary>
+public sealed record CarryRequest(string Type, string Subject, DateOnly Date);
+
 // Responses. Typed rather than anonymous so the JSON contract is source-generated (SidecarJson):
 // no reflection at run time, which is what lets the sidecar be published ahead-of-time compiled.
 
@@ -167,6 +170,13 @@ public sealed record FieldView(
     string Label,
     IReadOnlyList<string> Aliases,
     bool Many);
+
+/// <summary>
+/// A value a record takes from its subject, as it stands for the record's date: the subject's value, the day it was
+/// written, how many years have passed since, and what the record would take — null when nothing can be offered.
+/// <c>Stale</c> says the year the value was written in is over, so a person looks at it before the record takes it.
+/// </summary>
+public sealed record CarryView(string Field, string SubjectField, string Label, string? Value, DateOnly? WrittenOn, int YearsPassed, string? Offer, bool Stale);
 
 /// <summary>The scheme version in force on a date, or null when the vault holds none.</summary>
 public sealed record InForceView(int? Version);
@@ -305,6 +315,22 @@ internal static class Api
                     snapshot.Labels.FieldAliases(type, f.Name, snapshot.Locales),
                     f.Many))
                 .ToArray();
+        });
+
+        // What a record about to be written takes from its subject, by the engine's rule for each field that takes a
+        // value from the subject — the screen never ages a value itself.
+        app.MapPost("/carry", (CarryRequest request, VaultSession session) =>
+        {
+            var snapshot = session.Current;
+            if (snapshot.Entities.GetValueOrDefault(new EntityRef("subject", request.Subject)) is not { Destroyed: false } subject)
+                return Results.NotFound();
+            return Results.Ok(snapshot.Fields.For(request.Type)
+                .Where(f => f.DefaultFromSubject is not null && !f.Hidden)
+                .Select(f => (Field: f, Carry: SubjectDefaults.Carry(f, subject, request.Date)))
+                .Select(x => new CarryView(x.Field.Name, x.Field.DefaultFromSubject!,
+                    snapshot.Labels.FieldLabel("subject", x.Field.DefaultFromSubject!, snapshot.Locales) ?? x.Field.Label ?? x.Field.Name,
+                    x.Carry.Value, x.Carry.WrittenOn, x.Carry.YearsPassed, x.Carry.Offer, x.Carry.Stale))
+                .ToArray());
         });
 
         app.MapGet("/runs", (VaultSession session) =>
@@ -568,9 +594,11 @@ internal static class Api
 [JsonSerializable(typeof(RunRequest))]
 [JsonSerializable(typeof(ExportRequest))]
 [JsonSerializable(typeof(InForceRequest))]
+[JsonSerializable(typeof(CarryRequest))]
 [JsonSerializable(typeof(SuggestRequest))]
 [JsonSerializable(typeof(SuggestionsView))]
 [JsonSerializable(typeof(InForceView))]
+[JsonSerializable(typeof(CarryView[]))]
 [JsonSerializable(typeof(FieldView[]))]
 [JsonSerializable(typeof(ExportTableView))]
 [JsonSerializable(typeof(SummaryView))]

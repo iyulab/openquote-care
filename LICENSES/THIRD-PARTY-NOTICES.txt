@@ -20215,14 +20215,14 @@ Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.5.
 Same license text as Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.5.
 
 ------------------------------------------------------------------------------
-Openquote 0.12.0
+Openquote 0.13.0-grade.1
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 
 Same license text as @iyulab/desktop-compact 0.11.1.
 
 ------------------------------------------------------------------------------
-Openquote.Gil 0.12.0
+Openquote.Gil 0.13.0-grade.1
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 

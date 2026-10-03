@@ -131,6 +131,11 @@ fn pending(report: String, version: u32, records: Value, to: Option<String>, app
 }
 
 #[tauri::command]
+fn carry(entity_type: String, subject: String, date: String, app: State<App>) -> CommandResult<Value> {
+    text(app.carry(&entity_type, &subject, &date))
+}
+
+#[tauri::command]
 fn suggestions(entity_type: String, date: String, fields: Value, app: State<App>) -> CommandResult<Value> {
     text(app.suggestions(&entity_type, &date, fields))
 }
@@ -398,6 +403,7 @@ pub fn run() {
             apply_pack,
             pending,
             suggestions,
+            carry,
             runs,
             refresh,
             set_backup,

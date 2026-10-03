@@ -4,7 +4,7 @@ import { copiedFromSubject, firstMissingRequired, inputFields, labelOfField, typ
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
 import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme, type SuggestedCode } from '../records.js'
-import { shell } from '../shell.js'
+import { shell, type CarryView } from '../shell.js'
 import { strings } from '../strings.js'
 import { alsoKey, othersOf, recordedValues } from '../several.js'
 import { fieldInput, type Choice, type FieldExtras } from './field-input.js'
@@ -89,6 +89,14 @@ export class OcSessionForm extends StoreElement {
   private suggestionsFrom?: Entity[]
   private suggestionTimer?: ReturnType<typeof setTimeout>
 
+  /** What the new session would take from its subject on the draft's date; none for a group or while correcting. */
+  @state() private carried: CarryView[] = []
+  /** The values a person gives the subject's stale fields before the session takes them, by the subject's field. */
+  @state() private refreshed: Record<string, string> = {}
+  private readonly carryReads = new Latest()
+  private carryFor = ''
+  private carryFrom?: Entity[]
+
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
     if (changed.has('edit') && this.edit) this.corrected = asDraft(inputFields(this.store.sessionFields), this.edit)
@@ -96,6 +104,13 @@ export class OcSessionForm extends StoreElement {
     if (key !== this.versionsFor) {
       this.versionsFor = key
       void this.readVersions()
+    }
+    // Asked again when the date or the subject changes, or the subjects are read again (one is corrected, say).
+    const carry = !this.edit && this.holder.kind === 'subject' ? `${this.holder.id}|${this.dateOf()}` : ''
+    if (carry !== this.carryFor || this.store.subjects !== this.carryFrom) {
+      this.carryFor = carry
+      this.carryFrom = this.store.subjects
+      void this.readCarry()
     }
     // Asked again once typing pauses, and when the vault's sessions change (one is recorded, say).
     const asked = this.edit ? '' : `${JSON.stringify(this.store.draft)}|${JSON.stringify(this.versions)}`
@@ -218,6 +233,51 @@ export class OcSessionForm extends StoreElement {
       }
     }
     if (current()) this.suggestions = found
+  }
+
+  /** Reads what the session would take from its subject; a stale value is offered for the person to confirm. */
+  private async readCarry() {
+    const current = this.carryReads.begin()
+    const date = this.dateOf()
+    let found: CarryView[] = []
+    if (this.holder.kind === 'subject' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      try {
+        found = await shell.carry('session', this.holder.id, date)
+      } catch {
+        // Then the session takes the subject's values as they stand, as it always did.
+      }
+    }
+    if (!current()) return
+    this.carried = found
+    this.refreshed = Object.fromEntries(found.filter((c) => c.stale).map((c) => [c.subjectField, c.offer ?? '']))
+  }
+
+  /** The subject's values that are stale for the draft's date. */
+  private get stale(): CarryView[] {
+    return this.carried.filter((c) => c.stale)
+  }
+
+  /** Says which of the subject's values may no longer hold, with a field for each, filled with what is offered. */
+  private staleView() {
+    const stale = this.stale
+    if (stale.length === 0) return nothing
+    const writtenOn = stale.map((c) => c.writtenOn ?? '').sort()[0]
+    return html`<dc-callout role="status" data-role="stale-subject">
+      <p>${strings.staleSubject(stale.map((c) => c.label), writtenOn)}</p>
+      <div class="fields">
+        ${stale.map(
+          (c) => html`<dc-field label=${c.label} hint=${c.value ? strings.staleSubjectWas(c.value) : ''}>
+            <dc-input
+              aria-label=${c.label}
+              data-stale=${c.subjectField}
+              .value=${this.refreshed[c.subjectField] ?? ''}
+              ?disabled=${this.store.busy}
+              @input=${(e: Event) => (this.refreshed = { ...this.refreshed, [c.subjectField]: (e.target as HTMLInputElement).value })}
+            ></dc-input>
+          </dc-field>`,
+        )}
+      </div>
+    </dc-callout>`
   }
 
   private take(f: FieldView, code: string) {
@@ -353,6 +413,16 @@ export class OcSessionForm extends StoreElement {
     const defs = store.sessionFields
     const filled = await this.filledIn()
     if (!filled) return
+    const stale = holder.kind === 'subject' ? this.stale : []
+    if (stale.length > 0) {
+      // The subject is corrected first, to what the person confirmed, so the session takes values someone gave.
+      const corrected = Object.fromEntries(stale.map((c) => [c.subjectField, (this.refreshed[c.subjectField] ?? '').trim() || null]))
+      await store.run(async () => {
+        await shell.record('/changes/update', { type: 'subject', id: holder.id, fields: corrected })
+        await store.load()
+      })
+      if (store.error) return
+    }
     const subject = holder.kind === 'subject' ? store.subjects.find((s) => s.id === holder.id) : undefined
     const fields: Record<string, unknown> = { ...(subject ? copiedFromSubject(defs, subject) : {}), ...filled }
     // Only a value still as it was taken, and still recorded, is from a suggestion.
@@ -450,6 +520,7 @@ export class OcSessionForm extends StoreElement {
       <dc-card>
         <div class="stack">
           <div class="fields">${inputs.map((f) => this.input(f))}</div>
+          ${this.staleView()}
           <slot></slot>
         </div>
         <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.recordSession()}>${strings.recordSession}</dc-button>
