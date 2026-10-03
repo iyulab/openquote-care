@@ -53,3 +53,5 @@ npm run tauri dev       # the app, with OPENQUOTE_SIDECAR_EXE set to the sidecar
 Openquote Care is licensed under the [GNU Affero General Public License v3.0](LICENSE). iyulab holds the copyright and also offers Openquote Care under a separate commercial license for organizations that cannot adopt AGPL-3.0 terms.
 
 Contributions require agreeing to the [Contributor License Agreement](CLA.md) — see its Signing section.
+
+The app includes third-party software under its own licenses; their notices and license texts ship with it, in `licenses/THIRD-PARTY-NOTICES.txt` next to the installed app ([the same file here](LICENSES/THIRD-PARTY-NOTICES.txt)).
