@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FieldView } from '../fields.js'
 import { today, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
+import { strings } from '../strings.js'
 
 vi.mock('../shell.js', () => ({
   shell: {
@@ -239,5 +240,22 @@ describe('VaultStore', () => {
     vi.mocked(shell.applyPack).mockResolvedValueOnce(['reports/hidden/v1.json', 'reports/by-level/v1.json'])
     await store.applyPack('D:/packs/b')
     expect(store.reportKey).toBe('by-level@1')
+  })
+
+  it("counts a pack's missing file as a disagreement, and not one the vault holds but could not read", async () => {
+    const issue = (kind: string, detail: string) => ({ kind, pack: 'care', detail })
+    vi.mocked(shell.summary).mockResolvedValue({ ...summary, packIssues: [issue('FileNotRead', 'exports/upload/v1.json')] })
+    const store = new VaultStore()
+    vi.mocked(shell.applyPack).mockResolvedValueOnce(['schemes/topic/v2.json'])
+    await store.applyPack('D:/packs/a')
+    expect(store.notice).not.toContain(strings.packIssues(1))
+
+    vi.mocked(shell.summary).mockResolvedValue({
+      ...summary,
+      packIssues: [issue('FileNotRead', 'exports/upload/v1.json'), issue('MissingFile', 'schemes/mode/v1.json')],
+    })
+    vi.mocked(shell.applyPack).mockResolvedValueOnce(['schemes/topic/v2.json'])
+    await store.applyPack('D:/packs/b')
+    expect(store.notice).toContain(strings.packIssues(1))
   })
 })

@@ -331,7 +331,9 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
     })
     notice = strings.packAdded(names)
   }
-  const issues = summary?.packIssues ?? []
+  // A listed file the vault holds but could not read is not a disagreement: the files that could not
+  // be read are said, each with why, where the vault shows them.
+  const issues = (summary?.packIssues ?? []).filter((i) => i.kind !== 'FileNotRead')
   if (issues.length > 0) notice += ' ' + strings.packIssues(issues.length)
   const behind = leftBehind([...(summary?.reports ?? []), ...(summary?.exports ?? [])])
   if (behind.length > 0) notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
