@@ -84,13 +84,13 @@ export const en: Strings = {
       case 'devices':
         return 'Device names'
       case 'scheme':
-        return `Classification ${f.name}, version ${f.version}`
+        return `Classification ${holder ?? f.name}, version ${f.version}`
       case 'crosswalk':
-        return `Crosswalk for classification ${f.name}, version ${f.from} → ${f.to}`
+        return `Crosswalk for classification ${holder ?? f.name}, version ${f.from} → ${f.to}`
       case 'report':
-        return `Report form ${f.name}, version ${f.version}`
+        return `Report form ${holder ?? f.name}, version ${f.version}`
       case 'export':
-        return `Export form ${f.name}, version ${f.version}`
+        return `Export form ${holder ?? f.name}, version ${f.version}`
       case 'pack':
         return `Contents of data pack ${f.name}, version ${f.version}`
       case 'labels':
@@ -295,14 +295,14 @@ export const en: Strings = {
     'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it.',
   raiseFormatConfirm: 'Raise the format and apply',
   raiseFormatDevices: (devices: string[]) => `Devices that use this vault: ${devices.join(', ')}`,
-  packAdded: (items: string[]) => `Added: ${items.join(', ')}`,
+  packAdded: (items: string[]) => `Added: ${items.join(', ')}.`,
   packNothingNew: 'This material has no classifications or forms the vault does not already hold.',
   packFormsBehind: (forms: string[]) =>
     `No form follows the new classification version yet: ${forms.join(', ')}. Records after the revision stay empty or awaiting in these forms — apply material with new versions of the forms.`,
   packSchemeUnlinked: (versions: string[]) =>
     `Some classifications have no crosswalk from their previous version: ${versions.join(', ')}. Even a revision that only renames needs a crosswalk to carry earlier records forward — without one they are 'Not mapped' in forms on the new version.`,
-  formBehind: (lags: { scheme: string; version: number; latest: number }[]) =>
-    `This form follows ${lags.map((l) => `classification ${l.scheme} v${l.version}`).join(', ')} (the vault holds ${lags.map((l) => `v${l.latest}`).join(', ')}). Use it for months before the revision, and a form on the new version for records after it.`,
+  formBehind: (lags: { name: string; version: number; latest: number }[]) =>
+    `This form counts by an earlier classification — ${lags.map((l) => `${l.name} v${l.version} (now v${l.latest})`).join(', ')}. Use it for months before the revision, and a form on the new version for records after it.`,
   definition: {
     scheme: (name: string, version: number) => `classification ${name} v${version}`,
     crosswalk: (name: string, from: number, to: number) => `crosswalk ${name} v${from}→v${to}`,

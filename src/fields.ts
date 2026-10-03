@@ -97,3 +97,11 @@ export function headingIndex(defs: readonly FieldView[]): (heading: string) => F
 export function labelOfField(defs: readonly FieldView[], name: string): string {
   return defs.find((f) => f.name === name)?.label ?? name
 }
+
+/**
+ * What a person calls a scheme: the label of the coded field that takes its values, or the scheme's
+ * own name when no field the vault declares is bound to it.
+ */
+export function schemeLabel(defs: readonly FieldView[], scheme: string): string {
+  return defs.find((f) => f.kind === 'coded' && f.scheme === scheme)?.label ?? scheme
+}

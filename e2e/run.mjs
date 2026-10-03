@@ -310,7 +310,7 @@ const scenarios = {
     // "relation" splits in two, so its session waits for a person instead of being guessed.
     const pack = join(root, 'tests', 'golden', 'steps', '2')
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('분류 대응표 topic 1판→2판'))`, 'the revision applied')
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('주제 분류 대응표 1판→2판'))`, 'the revision applied')
     await app.noAlert()
     assert.equal(await app.cdp.evaluate(`__e2e.one('nav[aria-label="보고 양식"] button[aria-current=true]').dataset.entry`), 'monthly-topic@2', 'the new form is picked')
     assert.ok(await app.cdp.evaluate(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 분류 판에 맞춘 양식이 없습니다'))`),
@@ -493,7 +493,7 @@ const scenarios = {
     await copyFile(join(schemes, 'v1.json.age'), conflicted)
     await app.cdp.waitFor(listed('NameMismatch'), 'the conflicted copy noticed')
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-role=unreadable] li').textContent`), /충돌 사본/)
-    assert.equal(await what(), '분류 topic 1판')
+    assert.equal(await what(), '주제 분류 1판', 'a scheme named by the field it classifies')
     await rm(conflicted)
     await app.cdp.waitFor(gone, 'its removal noticed')
 
@@ -627,8 +627,8 @@ const scenarios = {
       zone.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data }))
       return true })()`)
     await app.cdp.waitFor(`!!__e2e.one('[data-role=import-tally]')`, 'the pasted rows planned')
-    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=import-tally]').textContent.trim()`), '추가 1 · 갱신 1 · 그대로 0 · 문제 0')
-    await app.click('dc-button', '가져오기 (추가 1 · 갱신 1)')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=import-tally]').textContent.trim()`), '추가 1 · 고침 1 · 그대로 0 · 문제 0')
+    await app.click('dc-button', '가져오기 (추가 1 · 고침 1)')
     await app.cdp.waitFor(`__e2e.all('li button').some((b) => b.querySelector('.label')?.textContent.trim() === '가상 학생 3')`, 'the new subject listed')
     await app.noAlert()
 
@@ -714,7 +714,7 @@ const scenarios = {
       ['2026-04-20', '2026', '가상 학생 3', '1', '1', '4'],
     ], 'in date order, the group session once with both attendees, and the grade and class a session kept')
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
-    assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /1판 기준/, 'the form says which scheme version it lags')
+    assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /^이 양식은 예전 분류로 셉니다 — 주제 분류 1판\(지금은 2판\)\./, 'the form says which scheme version it lags, by the field it classifies')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
 
     // Any days a person picks — a school year, a week — instead of a month.
@@ -821,7 +821,7 @@ const scenarios = {
       await app.noAlert()
       const [made, ...more] = await readdir(folder)
       assert.deepEqual(more, [], 'one new folder')
-      assert.match(made, /^Openquote 기록 사본 \d{4}-\d\d-\d\d \d{4}$/)
+      assert.match(made, /^Openquote 기록 사본 \d{4}-\d\d-\d\d \d\d\.\d\d$/)
       assert.deepEqual((await readdir(join(folder, made))).sort(), ['기록.html', '대상자.csv', '읽어보기.txt', '회기.csv'])
       return join(folder, made)
     }
@@ -851,7 +851,7 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('2026-05-01~2026-05-31'))`, 'the period copy made')
     await app.noAlert()
     const [may] = await readdir(mayFolder)
-    assert.match(may, /^Openquote 기록 사본 2026-05-01~2026-05-31 \d{4}-\d\d-\d\d \d{4}$/)
+    assert.match(may, /^Openquote 기록 사본 2026-05-01~2026-05-31 \d{4}-\d\d-\d\d \d\d\.\d\d$/)
     const mayPage = await readFile(join(mayFolder, may, '기록.html'), 'utf8')
     assert.ok(mayPage.includes('기간 2026-05-01 ~ 2026-05-31'), 'the period on the first page')
     assert.ok(mayPage.includes('>1. 가상 학생 3</h2>'), 'the client with sessions that month, first in the list')
@@ -903,7 +903,7 @@ const scenarios = {
     await writeFile(join(pack, 'schemes', 'method', 'v2.json'),
       JSON.stringify({ format: 'openquote.scheme/0', scheme: 'method', version: 2, items: [{ code: 'interview', label: '개인 면담' }] }))
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류가 있습니다: 분류 method 2판'))`,
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류가 있습니다: 방법 분류 2판'))`,
       'the unlinked version named')
     await app.noAlert()
   },

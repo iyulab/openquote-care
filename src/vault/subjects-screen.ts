@@ -180,7 +180,7 @@ export class OcSubjects extends VaultScreen {
       <dp-page-header
         eyebrow=${strings.subjects}
         heading=${text(subject, 'name')}
-        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+        description=${strings.sessionCount(sessions.length)}
       >
         ${this.correctingSubject
           ? nothing

@@ -89,7 +89,7 @@ export class OcPractitioners extends VaultScreen {
     return html`<dp-page-header
         eyebrow=${strings.practitioners}
         heading=${text(practitioner, 'name')}
-        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+        description=${strings.sessionCount(sessions.length)}
       >
         ${this.correcting
           ? nothing

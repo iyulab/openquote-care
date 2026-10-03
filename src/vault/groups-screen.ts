@@ -110,7 +110,7 @@ export class OcGroups extends VaultScreen {
       <dp-page-header
         eyebrow=${strings.groups}
         heading=${text(group, 'name')}
-        description=${sessions.length === 0 ? strings.noSessions : strings.sessionCount(sessions.length)}
+        description=${strings.sessionCount(sessions.length)}
       ></dp-page-header>
       ${correcting
         ? html`<oc-session-form

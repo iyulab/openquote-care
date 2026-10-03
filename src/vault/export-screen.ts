@@ -114,7 +114,7 @@ export class OcExport extends VaultScreen {
       )
       const pad = (n: number) => String(n).padStart(2, '0')
       const name = words.folder(
-        `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}${pad(at.getMinutes())}`,
+        `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}.${pad(at.getMinutes())}`,
         period ? `${period.from}~${period.to}` : undefined,
       )
       const made = await shell.writePlainCopy(folder, name, files)
@@ -241,7 +241,7 @@ export class OcExport extends VaultScreen {
             : nothing}
         </div>
       </dp-page-header>
-      ${formBehind(store.summary?.exports ?? [], store.exportKey)}
+      ${formBehind(store.summary?.exports ?? [], store.exportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
       ${table ? this.tableView(table) : nothing}`
   }

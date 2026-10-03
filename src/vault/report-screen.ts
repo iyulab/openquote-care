@@ -151,7 +151,7 @@ export class OcReport extends VaultScreen {
           ${this.result ? html`<dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>` : nothing}
         </div>
       </dp-page-header>
-      ${formBehind(store.summary?.reports ?? [], store.reportKey)}
+      ${formBehind(store.summary?.reports ?? [], store.reportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
       ${this.result ? this.reportTable(this.result, title) : nothing}`
   }

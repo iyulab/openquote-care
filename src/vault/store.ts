@@ -5,7 +5,7 @@ import { leftBehind } from '../forms.js'
 import { Latest } from '../latest.js'
 import { definitionOf, text, today, type Entity, type Scheme } from '../records.js'
 import { lastMonth } from '../report.js'
-import { fixedDefaults, type FieldView } from '../fields.js'
+import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { shell, type BackupStatus, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
@@ -138,6 +138,11 @@ export class VaultStore extends EventTarget {
   /** The fields the vault declares for an entity type; none for a type this app does not read fields of. */
   fieldsOf(type: string): FieldView[] {
     return type === 'session' ? this.sessionFields : type === 'subject' ? this.subjectFields : type === 'practitioner' ? this.practitionerFields : []
+  }
+
+  /** What a person calls `scheme`: the label of a field that takes its values, whichever record holds it. */
+  schemeName(scheme: string): string {
+    return schemeLabel([...this.sessionFields, ...this.subjectFields, ...this.practitionerFields], scheme)
   }
 
   /** The entities a reference field of `type` may point at. */
@@ -298,7 +303,7 @@ export class VaultStore extends EventTarget {
         throw e
       }
       await this.load()
-      this.notice = packNotice(added, this.summary)
+      this.notice = packNotice(added, this.summary, (scheme) => this.schemeName(scheme))
       // A new form version is what the person came for: offer it, if this screen shows it.
       const offered = new Set((this.summary?.reports ?? []).map((r) => `${r.name}@${r.version}`))
       const report = added
@@ -311,7 +316,7 @@ export class VaultStore extends EventTarget {
 }
 
 /** What a pack brought, in words, and what the vault still lacks after it. */
-function packNotice(added: string[], summary: VaultSummary | undefined): string {
+function packNotice(added: string[], summary: VaultSummary | undefined, schemeName: (scheme: string) => string): string {
   if (added.length === 0) return strings.packNothingNew
   let notice: string
   // A pack that brings its manifest is named once; a folder of loose definitions, file by file.
@@ -321,11 +326,16 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
   if (named.length > 0) {
     notice = named.map((p) => strings.packApplied(p!.label, p!.version)).join(' ')
   } else {
+    const formLabel = (forms: { name: string; version: number; label: string }[] | undefined, name: string, version: number) =>
+      forms?.find((f) => f.name === name && f.version === version)?.label ?? name
     const names = added.map((p) => {
       const d = definitionOf(p)
       if (!d) return p
       switch (d.kind) {
-        case 'crosswalk': return strings.definition.crosswalk(d.name, d.from, d.to)
+        case 'scheme': return strings.definition.scheme(schemeName(d.name), d.version)
+        case 'crosswalk': return strings.definition.crosswalk(schemeName(d.name), d.from, d.to)
+        case 'report': return strings.definition.report(formLabel(summary?.reports, d.name, d.version), d.version)
+        case 'export': return strings.definition.export(formLabel(summary?.exports, d.name, d.version), d.version)
         case 'labels': return strings.definition.labels(d.name, d.version, d.locale)
         case 'fields': return strings.definition.fields(d.name, d.version, d.type)
         default: return strings.definition[d.kind](d.name, d.version)
@@ -340,7 +350,7 @@ function packNotice(added: string[], summary: VaultSummary | undefined): string 
   const behind = leftBehind([...(summary?.reports ?? []), ...(summary?.exports ?? [])])
   if (behind.length > 0) notice += ' ' + strings.packFormsBehind(behind.map((f) => strings.reportFormOption(f.label, f.version)))
   const unlinked = summary?.unlinked ?? []
-  if (unlinked.length > 0) notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(u.scheme, u.version)))
+  if (unlinked.length > 0) notice += ' ' + strings.packSchemeUnlinked(unlinked.map((u) => strings.definition.scheme(schemeName(u.scheme), u.version)))
   return notice
 }
 

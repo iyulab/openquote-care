@@ -158,6 +158,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Korean wraps between words, not inside one; a word wider than its line still breaks. Both
+   properties inherit, so the components' shadow trees wrap the same way. */
+:root:lang(ko) {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 /* Printing (the recovery kit, a report) prints ink on paper: no grounds, no shadows, no bands. */
 @media print {
   /* Three :root keeps this above the dark palettes (:root:not([data-theme='light']), :root[data-theme='dark']),

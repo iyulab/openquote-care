@@ -8,8 +8,8 @@ describe('unreadableWhat', () => {
     expect(strings.unreadableWhat({ kind: 'subject', id: 's9' })).toBe('이름을 읽지 못한 대상자의 기록')
   })
   it('names definitions and run records by what the engine read from their paths', () => {
-    expect(strings.unreadableWhat({ kind: 'scheme', name: 'topic', version: 2 })).toBe('분류 topic 2판')
-    expect(strings.unreadableWhat({ kind: 'crosswalk', name: 'topic', from: 1, to: 2 })).toBe('분류 topic 1판→2판 대응표')
+    expect(strings.unreadableWhat({ kind: 'scheme', name: 'topic', version: 2 })).toBe('topic 분류 2판')
+    expect(strings.unreadableWhat({ kind: 'crosswalk', name: 'topic', from: 1, to: 2 })).toBe('topic 분류 1판→2판 대응표')
     expect(strings.unreadableWhat({ kind: 'report', name: 'monthly', version: 1 })).toBe('보고 양식 monthly 1판')
     expect(strings.unreadableWhat({ kind: 'export', name: 'session-list', version: 1 })).toBe('내보내기 양식 session-list 1판')
     expect(strings.unreadableWhat({ kind: 'run', year: 2026 })).toBe('2026년 보고 산출 기록')

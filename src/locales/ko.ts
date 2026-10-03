@@ -13,8 +13,8 @@ const objectParticle = (word: string) => {
 export const ko = {
   appName: 'Openquote Care',
   tagline: '이어지는 기록, 근거 있는 통계',
-  welcomeLead: '상담 기록은 이 PC의 기록 폴더에 암호로 잠겨 보관됩니다. 보고 기준이 바뀌어도 다시 세지 않아도 됩니다.',
-  welcomeFacts: ['인터넷 없이 동작', '기록은 이 PC에만', '백업 사본을 다른 곳에'],
+  welcomeLead: '상담 기록은 이 컴퓨터의 기록 폴더에 암호로 잠겨 보관됩니다. 보고 기준이 바뀌어도 다시 세지 않아도 됩니다.',
+  welcomeFacts: ['인터넷 없이 동작', '기록은 이 컴퓨터에만', '백업 사본을 다른 곳에'],
   welcomeOpenLead: '암호 또는 복구 키로 엽니다.',
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.ko.webviewMissing,
@@ -89,13 +89,13 @@ export const ko = {
       case 'devices':
         return '기기 이름 기록'
       case 'scheme':
-        return `분류 ${f.name} ${f.version}판`
+        return `${holder ?? f.name} 분류 ${f.version}판`
       case 'crosswalk':
-        return `분류 ${f.name} ${f.from}판→${f.to}판 대응표`
+        return `${holder ?? f.name} 분류 ${f.from}판→${f.to}판 대응표`
       case 'report':
-        return `보고 양식 ${f.name} ${f.version}판`
+        return `보고 양식 ${holder ?? f.name} ${f.version}판`
       case 'export':
-        return `내보내기 양식 ${f.name} ${f.version}판`
+        return `내보내기 양식 ${holder ?? f.name} ${f.version}판`
       case 'pack':
         return `분류 자료 ${f.name} ${f.version}판의 목록`
       case 'labels':
@@ -293,17 +293,17 @@ export const ko = {
     '이 분류 자료는 기록 폴더를 새 형식으로 올려야 바르게 셉니다. 올리면 이 판보다 오래된 앱에서는 이 기록 폴더가 열리지 않습니다 — 같은 기록 폴더를 쓰는 다른 컴퓨터도 앱을 먼저 새 판으로 올려 주세요.',
   raiseFormatConfirm: '새 형식으로 올리고 적용',
   raiseFormatDevices: (devices: string[]) => `이 기록 폴더를 쓰는 기기: ${devices.join(', ')}`,
-  packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}`,
+  packAdded: (items: string[]) => `추가했습니다: ${items.join(', ')}.`,
   packNothingNew: '이 자료에는 기록 폴더에 없는 새 분류·양식이 없습니다.',
   packFormsBehind: (forms: string[]) =>
     `새 분류 판에 맞춘 양식이 없습니다: ${forms.join(', ')}. 개정 뒤 기록은 이 양식에서 빈칸이나 정리 대기로 남습니다 — 새 판 양식이 든 자료를 적용하세요.`,
   packSchemeUnlinked: (versions: string[]) =>
     `이전 판에서 이어지는 대응표가 없는 분류가 있습니다: ${versions.join(', ')}. 이름만 바꾼 개정이어도 대응표가 있어야 예전 기록이 새 판으로 옮겨집니다 — 없으면 새 판 양식에서 '연계 없음'이 됩니다.`,
-  formBehind: (lags: { scheme: string; version: number; latest: number }[]) =>
-    `이 양식은 ${lags.map((l) => `분류 ${l.scheme} ${l.version}판`).join(', ')} 기준입니다(최신은 ${lags.map((l) => `${l.latest}판`).join(', ')}). 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 판 양식으로 내세요.`,
+  formBehind: (lags: { name: string; version: number; latest: number }[]) =>
+    `이 양식은 예전 분류로 셉니다 — ${lags.map((l) => `${l.name} 분류 ${l.version}판(지금은 ${l.latest}판)`).join(', ')}. 개정 전 달에는 그대로 쓰고, 개정 뒤 기록은 새 판 양식으로 내세요.`,
   definition: {
-    scheme: (name: string, version: number) => `분류 ${name} ${version}판`,
-    crosswalk: (name: string, from: number, to: number) => `분류 대응표 ${name} ${from}판→${to}판`,
+    scheme: (name: string, version: number) => `${name} 분류 ${version}판`,
+    crosswalk: (name: string, from: number, to: number) => `${name} 분류 대응표 ${from}판→${to}판`,
     report: (name: string, version: number) => `양식 ${name} ${version}판`,
     export: (name: string, version: number) => `내보내기 양식 ${name} ${version}판`,
     pack: (name: string, version: number) => `분류 자료 ${name} ${version}판`,
@@ -324,17 +324,17 @@ export const ko = {
   importPaste: '📋 엑셀의 대상자 표(제목 행 포함)를 복사해 여기에 붙여 넣으면 여러 명을 한 번에 추가합니다',
   importTitle: '붙여 넣은 대상자',
   importTally: (create: number, update: number, same: number, problem: number) =>
-    `추가 ${create} · 갱신 ${update} · 그대로 ${same} · 문제 ${problem}`,
+    `추가 ${create} · 고침 ${update} · 그대로 ${same} · 문제 ${problem}`,
   importMissingName: '이름 열이 없습니다. 제목 행에 "이름" 열을 넣어 다시 붙여 넣으세요.',
   importUnknown: (headings: string[]) => `읽지 않는 열: ${headings.join(', ')} — 이 앱이 보관하지 않는 칸입니다.`,
   importCreate: '추가',
-  importUpdate: '갱신',
+  importUpdate: '고침',
   importSame: '그대로',
   importNoName: '이름이 비었습니다',
   importRepeated: (line: number) => `${line}행과 같은 대상자입니다`,
   importAmbiguous: (name: string) => `"${name}" 대상자가 여럿입니다 — 관리번호 열을 넣으세요`,
-  importApply: (create: number, update: number) => `가져오기 (추가 ${create} · 갱신 ${update})`,
-  imported: (create: number, update: number) => `대상자 ${create}명을 추가하고 ${update}명을 갱신했습니다.`,
+  importApply: (create: number, update: number) => `가져오기 (추가 ${create} · 고침 ${update})`,
+  imported: (create: number, update: number) => `대상자 ${create}명을 추가하고 ${update}명을 고쳤습니다.`,
   noSessions: '기록한 회기가 없습니다.',
   newSession: '새 회기',
   none: '(없음)',

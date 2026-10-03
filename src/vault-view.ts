@@ -244,7 +244,16 @@ export class OcVault extends LitElement {
       subject: new Map(subjects.map((s) => [s.id, text(s, 'name')])),
       group: new Map(groups.map((g) => [g.id, text(g, 'name')])),
     }
-    const holder = (k: VaultFileKind) => ((k.kind === 'subject' || k.kind === 'group') && k.id && holders[k.kind].get(k.id)) || undefined
+    // What the file belongs to, in the words a person knows it by: a subject's or group's name, the
+    // field a scheme classifies, a form's title.
+    const formLabel = (forms: { name: string; label: string }[] | undefined, name: string) => forms?.find((f) => f.name === name)?.label
+    const holder = (k: VaultFileKind): string | undefined => {
+      if ((k.kind === 'subject' || k.kind === 'group') && k.id) return holders[k.kind].get(k.id) || undefined
+      if ((k.kind === 'scheme' || k.kind === 'crosswalk') && k.name) return this.store.schemeName(k.name)
+      if (k.kind === 'report' && k.name) return formLabel(summary?.reports, k.name)
+      if (k.kind === 'export' && k.name) return formLabel(summary?.exports, k.name)
+      return undefined
+    }
     return html`<dc-callout variant="warning" data-role="unreadable"><details class="unreadable">
       <summary>${strings.unreadable(files.length)}</summary>
       <ul>

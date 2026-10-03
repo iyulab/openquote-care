@@ -138,10 +138,11 @@ export function errorCallout(error: { text: string; detail?: string } | undefine
 }
 
 /** Says so when the chosen form classifies by a scheme version older than the vault's latest. */
-export function formBehind(forms: FormEntry[], key: string) {
+export function formBehind(forms: FormEntry[], key: string, schemeName: (scheme: string) => string) {
   const chosen = forms.find((f) => `${f.name}@${f.version}` === key)
   if (!chosen || chosen.behind.length === 0) return nothing
-  return html`<p class="muted" data-form-behind>${strings.formBehind(chosen.behind)}</p>`
+  const lags = chosen.behind.map((l) => ({ name: schemeName(l.scheme), version: l.version, latest: l.latest }))
+  return html`<p class="muted" data-form-behind>${strings.formBehind(lags)}</p>`
 }
 
 /** Offers a folder picker and applies the data pack in the folder chosen. */

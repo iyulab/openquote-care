@@ -10,6 +10,7 @@ import {
   listColumns,
   narrativeFields,
   recordFields,
+  schemeLabel,
   type FieldView,
 } from '../fields.js'
 import type { Entity } from '../records.js'
@@ -111,5 +112,11 @@ describe('fields', () => {
       field('note', 'text', { tier: 'narrative' }),
     ]
     expect(recordFields(subject).map((f) => f.name)).toEqual(['school', 'grade', 'note'])
+  })
+
+  it('names a scheme by the field that takes its values, and by its own name when none does', () => {
+    const defs = [field('topic', 'coded', { scheme: 'topic', label: '주제', hidden: true }), field('date', 'date')]
+    expect(schemeLabel(defs, 'topic')).toBe('주제')
+    expect(schemeLabel(defs, 'method')).toBe('method')
   })
 })
