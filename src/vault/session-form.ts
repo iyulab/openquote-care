@@ -36,17 +36,32 @@ export class OcSessionForm extends StoreElement {
       :host {
         display: contents;
       }
+      /*
+       * A classification's suggestions, and why when asked: a row of the form's grid of its own under the
+       * field's row, named by the field — inside the field's narrow column they made the whole row taller.
+       */
+      .suggested {
+        display: flex;
+        flex-direction: column;
+        gap: var(--dc-space-2, 8px);
+        margin-top: calc(-1 * var(--dc-space-1, 4px));
+      }
       .suggestions {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: var(--dc-space-1, 4px);
-        margin-top: var(--dc-space-1, 4px);
       }
       .why {
+        margin: 0;
+        padding: var(--dc-space-2, 8px) var(--dc-space-3, 12px);
+        border-radius: var(--dc-radius-md, 6px);
+        background: var(--dc-color-surface, #f7f7f8);
+        font-size: var(--dc-font-size-sm, 12px);
+      }
+      .why ul {
         margin: var(--dc-space-1, 4px) 0 0;
         padding-left: var(--dc-space-4, 16px);
-        font-size: var(--dc-font-size-sm, 12px);
       }
     `,
   ]
@@ -221,8 +236,11 @@ export class OcSessionForm extends StoreElement {
     return [text(session, 'date'), who].filter(Boolean).join(' ')
   }
 
-  /** What a classification of a new session offers besides its dropdown: the codes suggested for it, and why. */
-  private suggestionExtras(f: FieldView): FieldExtras {
+  /**
+   * What a classification of a new session offers besides its dropdown: the codes suggested for it and —
+   * when asked — why, as a row of the form's grid below the field's row (`below`).
+   */
+  private suggestionExtras(f: FieldView): FieldExtras & { below?: unknown } {
     const store = this.store
     const hint = store.suggested.has(f.name) ? strings.takenFromSuggestion : undefined
     const offered = this.draft[f.name] ? undefined : this.suggestions.find((s) => s.field === f.name)
@@ -233,8 +251,9 @@ export class OcSessionForm extends StoreElement {
     const open = this.whyOpen === f.name
     return {
       hint,
-      after: html`<div class="suggestions" role="group" aria-label=${strings.suggested} data-suggestions=${f.name}>
-          <span class="muted">${strings.suggested}</span>
+      below: html`<div class="suggested wide" data-suggested=${f.name}>
+        <div class="suggestions" role="group" aria-label=${`${f.label} · ${strings.suggested}`} data-suggestions=${f.name}>
+          <span class="muted">${f.label} · ${strings.suggested}</span>
           ${offered.codes.map(
             (c) =>
               html`<dc-button
@@ -261,19 +280,23 @@ export class OcSessionForm extends StoreElement {
             : nothing}
         </div>
         ${open
-          ? html`<ul class="why" aria-label=${strings.suggestedBecause} data-why=${f.name}>
-              ${withRecords.map(
-                (c) =>
-                  html`<li>
-                    <strong>${label(c.code)}</strong>
-                    ${c.similar
-                      .map((id) => this.similarRecord(id))
-                      .filter(Boolean)
-                      .join(', ')}
-                  </li>`,
-              )}
-            </ul>`
-          : nothing}`,
+          ? html`<div class="why" data-why=${f.name}>
+              <span class="muted">${strings.suggestedBecause}</span>
+              <ul aria-label=${`${f.label} · ${strings.suggestedBecause}`}>
+                ${withRecords.map(
+                  (c) =>
+                    html`<li>
+                      <strong>${label(c.code)}</strong>
+                      ${c.similar
+                        .map((id) => this.similarRecord(id))
+                        .filter(Boolean)
+                        .join(', ')}
+                    </li>`,
+                )}
+              </ul>
+            </div>`
+          : nothing}
+      </div>`,
     }
   }
 
@@ -329,10 +352,10 @@ export class OcSessionForm extends StoreElement {
       if (f.kind === 'reference') return store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
       return []
     }
-    const extras = !this.edit && f.kind === 'coded' ? this.suggestionExtras(f) : {}
+    const extras: FieldExtras & { below?: unknown } = !this.edit && f.kind === 'coded' ? this.suggestionExtras(f) : {}
     const options = choicesOf()
     if (f.kind === 'coded' && f.many) extras.after = html`${extras.after ?? nothing}${this.others(f, options)}`
-    return fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, options, extras)
+    return html`${fieldInput(f, this.draft[f.name] ?? '', (v) => this.setValue(f.name, v), store.busy, options, extras)}${extras.below ?? nothing}`
   }
 
   /**
