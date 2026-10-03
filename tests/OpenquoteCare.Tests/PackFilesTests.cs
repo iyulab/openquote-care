@@ -133,9 +133,11 @@ public sealed class PackFilesTests
         var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 1", ["gender"] = "남" }));
         var two = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 2", ["gender"] = "여" }));
         var group = Add(w.CreateGroup(new Dictionary<string, JsonNode?> { ["name"] = "또래 집단" }));
+        var counsellor = Add(w.CreatePractitioner(new Dictionary<string, JsonNode?> { ["name"] = "상담자 가", ["affiliation"] = "전문상담교사" }));
         Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?>
         {
             ["date"] = "2026-05-02", ["neis"] = Neis("counseling/individual/academic"), ["grade"] = "1학년", ["title"] = "성적 하락", ["minutes"] = 70,
+            ["practitioner"] = counsellor,
         }));
         Add(w.CreateInGroup(group, "session", new Dictionary<string, JsonNode?>
         {
@@ -153,10 +155,20 @@ public sealed class PackFilesTests
              "상담시간(시)", "상담시간(분)", "상담사소속", "상담매체구분", "이름"],
             form.Columns.Select(c => c.Label));
         Assert.Collection(table.Rows,
-            r => Assert.Equal(["전문상담", "Wee클래스", "상담", "개인상담", "학업", "1", "2026", "20260502", "1학년", "남", "성적 하락", "성적 하락", "1", "10", "", "", "가상 학생 1"], r.Cells),
+            r => Assert.Equal(["전문상담", "Wee클래스", "상담", "개인상담", "학업", "1", "2026", "20260502", "1학년", "남", "성적 하락", "성적 하락", "1", "10", "전문상담교사", "", "가상 학생 1"], r.Cells),
             r => Assert.Equal(["전문상담", "Wee클래스", "상담", "집단상담", "성격/대인관계", "2", "2026", "20260819", "", "혼성", "친구 관계", "친구 관계", "0", "50", "", "", "가상 학생 1, 가상 학생 2"], r.Cells));
         Assert.Empty(table.Pending.Concat(table.Unmapped).Concat(table.Conflicted).Concat(table.Withheld));
         Assert.Equal(0, content.RequiredVersion);
+    }
+
+    [Fact]
+    public void A_school_practitioner_has_an_affiliation_the_neutral_track_does_not()
+    {
+        var affiliation = VaultOn("school-kr").FieldCatalog().Find("practitioner", "affiliation");
+
+        Assert.NotNull(affiliation);
+        Assert.Equal((FieldKind.Text, false), (affiliation.Kind, affiliation.Required));
+        Assert.Null(VaultOn("care-en").FieldCatalog().Find("practitioner", "affiliation"));
     }
 
     [Fact]

@@ -22,7 +22,7 @@
     { "label": "상담내용", "field": "title" },
     { "label": "상담시간(시)", "field": "minutes", "quotient": 60 },
     { "label": "상담시간(분)", "field": "minutes", "remainder": 60 },
-    { "label": "상담사소속", "value": "" },
+    { "label": "상담사소속", "field": "practitioner", "ref": "affiliation" },
     { "label": "상담매체구분", "value": "" },
     { "label": "이름", "person": "name", "all": true }
   ]

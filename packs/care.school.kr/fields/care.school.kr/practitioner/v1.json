@@ -1,0 +1,13 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "practitioner",
+  "version": 1,
+  "fields": [
+    {
+      "name": "affiliation",
+      "kind": "text",
+      "label": "Affiliation"
+    }
+  ]
+}

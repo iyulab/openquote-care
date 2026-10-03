@@ -8,6 +8,8 @@
     "kr": 1
   },
   "provides": [
-    "exports/neis-upload/v1.json"
+    "exports/neis-upload/v1.json",
+    "fields/care.school.kr/practitioner/v1.json",
+    "labels/care.school.kr/v4.ko.json"
   ]
 }

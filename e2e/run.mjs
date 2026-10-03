@@ -1091,6 +1091,21 @@ const scenarios = {
     assert.equal(await recordFiles(), filesBefore + 1, 'the correction is a file of its own')
     await rename('상담자 갑', '상담자 가') // later scenarios name this practitioner
     assert.equal(await recordFiles(), filesBefore + 2)
+
+    // The school pack gives a practitioner an affiliation, and the NEIS upload fills its column from it.
+    await app.click('dc-button', '담당자 정보 고치기')
+    await app.type('소속', '전문상담교사')
+    await app.click('dc-button', '고친 내용 저장')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-practitioner]') && ${said('담당자 정보를 고쳤습니다.')}`, 'the affiliation recorded')
+    await app.click('button', '기록 목록')
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the upload list')
+    const affiliations = await app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.children[14].textContent.trim())`)
+    assert.ok(affiliations.includes('전문상담교사'), `a session kept by 상담자 가 carries the affiliation: ${affiliations}`)
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="session-list@2"]')
   },
 
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
