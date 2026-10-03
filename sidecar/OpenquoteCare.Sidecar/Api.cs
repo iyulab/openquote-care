@@ -524,7 +524,7 @@ internal static class Api
     private static SchemeVersionView[] Unlinked(VaultContent content) =>
         [.. content.Schemes
             .Where(s => content.Schemes.Any(e => e.Name == s.Name && e.Version < s.Version)
-                && !content.Crosswalks.Any(c => c.Scheme == s.Name && c.To == s.Version && c.From < s.Version))
+                && !content.Crosswalks.Any(c => c.Into is null && c.Scheme == s.Name && c.To == s.Version && c.From < s.Version))
             .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
             .Select(s => new SchemeVersionView(s.Name, s.Version))];
 
