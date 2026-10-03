@@ -64,9 +64,12 @@ jobs:
       - name: Publish the engine sidecar
         run: npm run publish:sidecar
 
-      # The installer ships these notices; they must name what this build actually ships.
-      - name: Check the third-party notices are current
-        run: npm run notices -- --check
+      # The installer ships these notices, so they are written from what this build ships: the
+      # sidecar is compiled with the newest .NET patch here (global.json rolls forward), whose
+      # runtime packs the committed file, written on a development machine, may not name. Strict:
+      # a shipped package without a license text fails the release.
+      - name: Write the third-party notices for what this build ships
+        run: npm run notices
 
       # The sidecar ships as a bundle resource, which Tauri does not sign, so it is signed here.
       - name: Sign the engine sidecar

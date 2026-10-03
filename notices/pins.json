@@ -59,14 +59,6 @@
     "source": "https://raw.githubusercontent.com/dotnet/extensions/v10.10.1/LICENSE",
     "sha256": "47f0ad8ba753eae5de6178291cd8f38bbb42d2368b177f8e11714ad17c701275"
   },
-  "Openquote@0.11.0": {
-    "source": "https://raw.githubusercontent.com/iyulab/openquote/v0.11.0/LICENSE",
-    "sha256": "16d5280c46463f25ada2a292bf61eff7e53bb6d140501d4bb5a8af51fbc07e03"
-  },
-  "Openquote.Gil@0.11.0": {
-    "source": "https://raw.githubusercontent.com/iyulab/openquote/v0.11.0/LICENSE",
-    "sha256": "16d5280c46463f25ada2a292bf61eff7e53bb6d140501d4bb5a8af51fbc07e03"
-  },
   "YamlDotNet@18.1.0": {
     "source": "https://raw.githubusercontent.com/aaubry/YamlDotNet/v18.1.0/LICENSE.txt",
     "sha256": "daea8b7f1b2bab48ea12ad50b0ce91634669d99d7dd0cb64aed8dffeeef69ed3"
