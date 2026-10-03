@@ -836,13 +836,15 @@ const scenarios = {
     assert.ok(days.length > 0 && days.every((d) => d.startsWith('2026-05')), `only that month's sessions: ${JSON.stringify(days)}`)
     assert.ok(page.split('<h2 id=').length > mayPage.split('<h2 id=').length, 'fewer clients than the copy of every record')
     assert.ok(await app.cdp.evaluate(`__e2e.one('[data-role=plain-copy-last]').textContent.includes(${q(copy)})`), 'the last copy is still the one of every record')
-    // A quick pick of a whole year: without a form counting by school year, the calendar year.
-    const year = new Date().getFullYear()
-    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=this-year]').textContent.trim()`), '올해')
+    // A quick pick of a whole year: the school pack's year forms start in March, so a school year.
+    const now = new Date()
+    const begun = now.getMonth() + 1 >= 3 ? now.getFullYear() : now.getFullYear() - 1
+    const leap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=this-year]').textContent.trim()`), '이번 학년도')
     await app.click('[data-role=last-year]')
     await app.cdp.waitFor(
-      `__e2e.one('input[aria-label="시작일"]').value === '${year - 1}-01-01' && __e2e.one('input[aria-label="마지막 날"]').value === '${year - 1}-12-31'`,
-      'last year picked',
+      `__e2e.one('input[aria-label="시작일"]').value === '${begun - 1}-03-01' && __e2e.one('input[aria-label="마지막 날"]').value === '${begun}-02-${leap(begun) ? 29 : 28}'`,
+      'last school year picked',
     )
     await scope('모든 기록')
 
