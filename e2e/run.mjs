@@ -1097,6 +1097,7 @@ const scenarios = {
     await app.type('소속', '전문상담교사')
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-practitioner]') && ${said('담당자 정보를 고쳤습니다.')}`, 'the affiliation recorded')
+    await app.cdp.waitFor(`__e2e.one('[data-role=record-fields] [data-field=affiliation] dd')?.textContent.trim() === '전문상담교사'`, 'the practitioner shows it')
     await app.click('button', '기록 목록')
     await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
     await app.type('연도', '2026')
