@@ -3183,7 +3183,7 @@ version = "0.4.1"
 dependencies = [
  "age",
  "dirs",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "openquote-care-engine",
  "openquote-care-test-support",
  "openquote-care-vault",
@@ -3206,7 +3206,7 @@ name = "openquote-care-engine"
 version = "0.1.0"
 dependencies = [
  "age",
- "base64 0.22.1",
+ "base64 0.23.1",
  "openquote-care-test-support",
  "openquote-care-vault",
  "serde_json",
