@@ -100,7 +100,7 @@ export class VaultStore extends EventTarget {
   /** Reads the vault and starts taking in what other devices write to it. */
   connect() {
     void this.run(() => this.load())
-    this.unlisten = shell.onVaultChanged(() => void this.onOutsideChange())
+    this.unlisten = shell.onVaultChanged(() => void this.takeIn())
   }
 
   disconnect() {
@@ -109,10 +109,12 @@ export class VaultStore extends EventTarget {
   }
 
   /**
-   * Another device wrote to the vault: take it in without getting in the way — no busy state, no
-   * cleared message, and not in the middle of the person's own action (it waits for that to end).
+   * Reads the vault again without getting in the way — when another device wrote to it, or when the
+   * person comes back to the window: no busy state (a click that brings the window back still lands
+   * on what it was aimed at), no cleared message, and not in the middle of the person's own action
+   * (it waits for that to end).
    */
-  private async onOutsideChange() {
+  async takeIn() {
     // One reading at a time: a change that arrives while the vault is being read (by the person's
     // action or an earlier change) is taken in once that reading ends, so an older reading never
     // finishes after a newer one and leaves the window behind.
@@ -129,7 +131,7 @@ export class VaultStore extends EventTarget {
       // Coming back to the window, or the refresh button, reads the vault again.
     } finally {
       this.takingIn = false
-      if (this.outsideChangeWaiting && !this.busy) void this.onOutsideChange()
+      if (this.outsideChangeWaiting && !this.busy) void this.takeIn()
     }
   }
 
@@ -223,7 +225,7 @@ export class VaultStore extends EventTarget {
     } finally {
       this.busy = false
       this.changed()
-      if (this.outsideChangeWaiting) void this.onOutsideChange()
+      if (this.outsideChangeWaiting) void this.takeIn()
     }
   }
 

@@ -92,9 +92,7 @@ export class OcVault extends LitElement {
   }
 
   /** Coming back to the window is when another device's records are most likely waiting. */
-  private onFocus = () => {
-    if (!this.store.busy) void this.refresh()
-  }
+  private onFocus = () => void this.store.takeIn()
 
   /** Reads the vault folder again: records other devices sharing it wrote come in. */
   async refresh() {

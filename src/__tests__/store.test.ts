@@ -179,6 +179,18 @@ describe('VaultStore', () => {
     store.disconnect()
   })
 
+  it('reads the vault again when taken back to without making the window busy, so a click that brings it back still lands', async () => {
+    const store = new VaultStore()
+    await store.load()
+    const busy: boolean[] = []
+    store.addEventListener('change', () => busy.push(store.busy))
+    vaultHolds([subject('a', 'written elsewhere')])
+    await store.takeIn()
+    expect(shell.refresh).toHaveBeenCalledTimes(1)
+    expect(store.subjects.map((s) => s.id)).toEqual(['a'])
+    expect(busy).not.toContain(true)
+  })
+
   it('a change that arrives while another is taken in is read after it, so the window ends on the newest', async () => {
     let outsideChange!: () => void
     vi.mocked(shell.onVaultChanged).mockImplementation(async (f) => {
