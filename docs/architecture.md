@@ -100,7 +100,7 @@ User-facing strings live in one table per language, `src/locales/ko.ts` and `src
 
 ## Offline
 
-Everything works without a network. Apart from error diagnostics (below), the only HTTP traffic is between the shell and its own sidecar on the loopback address. The web view's content security policy allows loading only the app's own resources (`default-src 'self'`). There is no account, no usage tracking and no update check.
+Everything works without a network. Apart from the new-version check and error diagnostics (below), the only HTTP traffic is between the shell and its own sidecar on the loopback address; both go out from the shell, never from the window. The web view's content security policy allows loading only the app's own resources (`default-src 'self'`). There is no account and no usage tracking.
 
 **New versions** come from where the app is released. Only the release build carries the updater's public key and its one address (`src-tauri/tauri.updater.conf.json`, with `tauri-plugin-updater`); development and test builds carry neither and never look. At launch and every twelve hours the shell fetches the newest release's description (`latest.json`, written by the release workflow beside the installers: the version, the standard installer's address and its updater signature) and tells the window when it names a newer version; the window offers it over every screen. Nothing is downloaded until the person chooses to update: the installer is then downloaded and verified against the key (the signature is made over the Authenticode-signed installer and bound to the version announced), the vault is closed, and the installer replaces the app and starts it again. The check can be turned off on the first screen (remembered beside the diagnostics switch); no network is not an error. `npm run test:update` checks the whole way on this computer with a test build and a key made for the run.
 
@@ -129,4 +129,3 @@ npm run build:sidecar && npm run build:e2e && npm run test:e2e
 The following are not implemented in the current code:
 
 - deleting records on request, and retention reminders
-- automatic updates
