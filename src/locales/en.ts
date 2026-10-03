@@ -169,7 +169,7 @@ export const en: Strings = {
   exportTitle: 'Export a record list',
   exportForms: 'List forms',
   pickExportForm: 'Choose a form to see its record list here.',
-  exportLead: "Lists a month's sessions in the form's column order. Copy the table and paste it into your organization's upload spreadsheet or another form. Nothing is kept in the vault.",
+  exportLead: "Lists the sessions of the period you pick in the form's column order. Copy the table and paste it into your organization's upload spreadsheet or another form. Nothing is kept in the vault.",
   exportForm: 'List form',
   makeExport: 'Make list',
   copyExport: 'Copy table',

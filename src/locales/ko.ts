@@ -170,7 +170,7 @@ export const ko = {
   exportTitle: '기록 목록 내보내기',
   exportForms: '목록 양식',
   pickExportForm: '양식을 고르면 그 양식의 기록 목록이 여기에 보입니다.',
-  exportLead: '한 달의 회기를 양식의 열 순서대로 늘어놓습니다. 표를 복사해 기관 업로드 엑셀이나 다른 양식에 붙여 넣으세요. 기록 폴더에는 아무것도 남지 않습니다.',
+  exportLead: '고른 기간의 회기를 양식의 열 순서대로 늘어놓습니다. 표를 복사해 기관 업로드 엑셀이나 다른 양식에 붙여 넣으세요. 기록 폴더에는 아무것도 남지 않습니다.',
   exportForm: '목록 양식',
   makeExport: '목록 만들기',
   copyExport: '표 복사',
