@@ -7,6 +7,6 @@ export default {
   title: 'Openquote Care — third-party notices',
   npm: { lock: 'package-lock.json', installedAt: '.' },
   cargo: { cwd: 'src-tauri', target: 'x86_64-pc-windows-msvc' },
-  nuget: { assets: 'sidecar/OpenquoteCare.Sidecar/obj/project.assets.json' },
+  nuget: { project: 'sidecar/OpenquoteCare.Sidecar/OpenquoteCare.Sidecar.csproj' },
   pinned: { pins: 'notices/pins.json', dir: 'notices/texts' },
 }
