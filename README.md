@@ -17,7 +17,7 @@ Openquote Care is a free desktop app for counselors who keep continuing relation
 - A vault made on a track: counseling in general (in English), or Korean school counseling. The fields a session and a subject have, their classifications and forms come from the vault's data packs, not from the app
 - Subjects, groups (with their members) and sessions, including group sessions counted once per session and once per person; what was said in a session kept as written content, which never enters a count or a list
 - Statistics from report forms — by day, month, school year or any range of days, split by up to three dimensions (a subject's fields among them) and narrowed by conditions — each run kept in the vault with its evidence; comparison with an earlier run
-- Record lists laid out in an export form and copied as a table for a spreadsheet or another system
+- Record lists laid out in an export form and copied as a table for a spreadsheet or another system — on the Korean school track, also in the columns and order of the NEIS counseling upload, each session filed under its NEIS category
 - Suggested classifications while a session is entered, learned on this computer from the vault's own settled sessions: each with the similar sessions behind it (by date and who they are about), crisis-related ones set apart for a person to confirm, never filled in until a person takes one, and the session keeps that its value came from a suggestion
 - Correcting a saved session or what a subject's or a practitioner's record holds (every field the packs declare for it): only the fields changed are written, as an edit of their own, and a corrected session says so
 - Adding and updating subjects from rows pasted out of a spreadsheet
