@@ -1,0 +1,23 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care.school.kr",
+  "version": 3,
+  "locale": "ko",
+  "fields": {
+    "session": {
+      "topic": "주제",
+      "method": "방법",
+      "client_type": "상담 상대",
+      "neis": "NEIS 분류",
+      "title": "상담 제목",
+      "minutes": "상담 시간(분)"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "학생명"
+      ]
+    }
+  }
+}

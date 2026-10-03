@@ -97,6 +97,29 @@ public sealed class PackFilesTests
     }
 
     [Fact]
+    public void A_school_session_may_carry_its_neis_category_three_levels_deep_and_the_vault_keeps_its_format()
+    {
+        var content = VaultOn("school-kr");
+        var neis = content.FieldCatalog().Find("session", "neis")!;
+        var scheme = content.Schemes.Single(s => s.Name == "neis-counseling");
+        var items = scheme.Items.ToDictionary(i => i.Code);
+        var parents = scheme.Items.Select(i => i.Parent).OfType<string>().ToHashSet();
+        var leaves = scheme.Items.Where(i => !parents.Contains(i.Code)).ToList();
+
+        Assert.Equal((FieldKind.Coded, "neis-counseling", false), (neis.Kind, neis.Scheme, neis.Required));
+        Assert.Equal("NEIS 분류", content.LabelCatalog().FieldLabel("session", "neis", ["ko"]));
+        Assert.Equal(["상담", "검사", "자문", "교육", "연구", "의뢰"], scheme.Items.Where(i => i.Parent is null).Select(i => i.Label));
+        // Every choice sits under a middle level under a top level, as the upload form asks for all three.
+        Assert.All(leaves, leaf => Assert.Null(items[items[leaf.Parent!].Parent!].Parent));
+        Assert.Equal(51, leaves.Count);
+        Assert.Equal(["학업", "진로", "학교폭력", "성격/대인관계", "기타"],
+            leaves.Where(l => l.Parent == "counseling/group").Select(l => l.Label));
+        Assert.Equal(Suggestion.Confirm,
+            content.SuggestionCatalog().For("neis-counseling", 1, items["counseling/individual/self-harm-suicide"]));
+        Assert.Equal(0, content.RequiredVersion);
+    }
+
+    [Fact]
     public void The_neutral_track_holds_no_school_field()
     {
         var fields = VaultOn("care-en").FieldCatalog();

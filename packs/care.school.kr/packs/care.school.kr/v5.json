@@ -1,0 +1,16 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care.school.kr",
+  "version": 5,
+  "label": "School counseling · Korea",
+  "depends": {
+    "care.school": 1,
+    "kr": 1
+  },
+  "provides": [
+    "schemes/neis-counseling/v1.json",
+    "fields/care.school.kr/session/v4.json",
+    "labels/care.school.kr/v3.ko.json",
+    "suggestions/care.school.kr/v3.json"
+  ]
+}
