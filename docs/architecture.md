@@ -82,7 +82,7 @@ Every vault the app creates is encrypted. A vault whose declaration says it is n
 
 ## Data packs
 
-Classification schemes, crosswalks between scheme versions, report forms, export forms, field definitions and labels are data, not code. They come as data packs: folders with the vault's own layout (schemes under `schemes/`, report forms under `reports/`, export forms under `exports/`, a pack's manifest under `packs/`, labels under `labels/` and field definitions under `fields/`). Only these six folders enter a vault; anything else in a pack folder stays out.
+Classification schemes, crosswalks between scheme versions, report forms, export forms, field definitions, labels and suggestion files are data, not code. They come as data packs: folders with the vault's own layout (schemes under `schemes/`, report forms under `reports/`, export forms under `exports/`, a pack's manifest under `packs/`, labels under `labels/`, field definitions under `fields/` and which items may be suggested under `suggestions/`). Only these seven folders enter a vault; anything else in a pack folder stays out.
 
 The app bundles packs in layers, each building on the ones below it: `care` (the neutral core: session and subject fields, a short neutral list of concerns, how a session was held, one monthly report and one session list), `en` and `kr` (labels per region), `care.school` (fields of counseling with students) and `care.school.kr` (Korean school counseling: its schemes and forms, and its topic and method fields in place of the core's). `packs/tracks.json` lists the tracks a vault can be made on — the packs it starts from, which bring what they build on — and the app never names a pack in its code.
 
