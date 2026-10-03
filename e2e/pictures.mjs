@@ -10,6 +10,8 @@
 // names nobody, such as a folder at the top of a drive. It is removed afterwards.
 //
 // Korean pictures are of the Korean school track, English ones of the neutral English track.
+// Date fields show in Windows' regional format, which neither a browser argument nor the devtools
+// locale override changes: take the Korean pictures where that format is Korean.
 
 import { existsSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
@@ -29,6 +31,11 @@ const PASSPHRASE = 'picture vault 2026'
 const WIDTH = 1280
 const HEIGHT = 820
 
+const coded = (scheme, code) => ({ scheme, version: 1, code })
+// The school track's NEIS category (under 상담 › 개인상담) and session title for each topic.
+const NEIS = { learning: 'academic', relation: 'relationships', family: 'family', anxiety: 'mental-health', depression: 'mental-health', anger: 'personality', crisis: 'self-harm-suicide' }
+const TITLES = { learning: '학업 고민 상담', relation: '교우 관계 상담', family: '가족 갈등 상담', anxiety: '불안 상담', depression: '우울감 상담', anger: '분노 조절 상담', crisis: '위기 상담' }
+
 /** What each locale needs: the screens' names, the track, and records that read naturally in it. */
 const L = {
   ko: {
@@ -40,8 +47,9 @@ const L = {
       compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', practitioner: '담당자',
     },
     practitioners: ['상담교사 가', '전문상담사 나'],
+    practitionerFields: (i) => ({ affiliation: ['전문상담교사', '전문상담사'][i % 2] }),
     subjects: ['가상 학생 1', '가상 학생 2', '가상 학생 3', '가상 학생 4', '가상 학생 5', '가상 학생 6', '가상 학생 7', '가상 학생 8'],
-    subjectFields: (i) => ({ school: '가상중학교', grade: String((i % 3) + 1), class: String((i % 5) + 1) }),
+    subjectFields: (i) => ({ school: '가상중학교', grade: String((i % 3) + 1), class: String((i % 5) + 1), gender: i % 2 ? '여' : '남' }),
     topic: 'topic',
     method: 'method',
     // Topic codes of the school pack, each with notes of the kind a counsellor might write.
@@ -56,6 +64,17 @@ const L = {
     methods: ['interview', 'interview', 'interview', 'phone', 'consult'],
     // The order sessions take their topics in: the common ones more often.
     sequence: ['learning', 'relation', 'family', 'learning', 'anxiety', 'relation', 'depression', 'family', 'learning', 'anger', 'relation', 'anxiety', 'learning'],
+    // What the school track records beside topic and method: the student's grade and class that day
+    // (the session form copies them from the student), the NEIS category, a title, the length, and
+    // who the session was with (the student unless said otherwise — now and then a parent).
+    sessionFields: (topic, n, subject) => ({
+      grade: String((subject % 3) + 1),
+      class: String((subject % 5) + 1),
+      neis: coded('neis-counseling', `counseling/individual/${NEIS[topic]}`),
+      title: TITLES[topic],
+      minutes: [40, 50, 30][n % 3],
+      ...(topic === 'family' && n % 2 ? { client_type: coded('client-type', 'parent') } : {}),
+    }),
     crisis: { topic: 'crisis', note: '사라지고 싶다는 말을 해 안전 계획을 함께 세움' },
     draft: { subject: '가상 학생 3', date: '2026-05-21', note: '휴대전화 때문에 부모님과 또 다툼', crisisNote: '사라지고 싶다는 말을 다시 함' },
   },
@@ -70,6 +89,8 @@ const L = {
     practitioners: ['Counselor A', 'Counselor B'],
     subjects: ['Client One', 'Client Two', 'Client Three', 'Client Four', 'Client Five', 'Client Six'],
     subjectFields: () => ({}),
+    practitionerFields: () => ({}),
+    sessionFields: () => ({}),
     topic: 'care.concern',
     method: 'care.mode',
     notes: {
@@ -115,7 +136,6 @@ async function shoot(name) {
 const invoke = (command, args) => app.cdp.evaluate(`window.__TAURI_INTERNALS__.invoke(${q(command)}, ${q(args)})`)
 // The entity a first change starts: a subject's folder, or the file's id in the flat list of practitioners.
 const idOf = (path) => path.split('/')[1].split('.')[0]
-const coded = (scheme, code) => ({ scheme, version: 1, code })
 
 try {
   await frame()
@@ -135,7 +155,9 @@ try {
 
   // Made-up records, through the same commands the screens use.
   const practitioners = []
-  for (const name of L.practitioners) practitioners.push(idOf(await invoke('record', { route: '/changes/practitioner', request: { fields: { name } } })))
+  for (const [i, name] of L.practitioners.entries()) {
+    practitioners.push(idOf(await invoke('record', { route: '/changes/practitioner', request: { fields: { name, ...L.practitionerFields(i) } } })))
+  }
   const subjects = []
   for (const [i, name] of L.subjects.entries()) subjects.push(idOf(await invoke('record', { route: '/changes/subject', request: { fields: { name, ...L.subjectFields(i) } } })))
   let n = 0
@@ -143,6 +165,7 @@ try {
     for (let day = 2; day <= 28; day += 2) {
       if (month === '05' && day > 20) break
       const topic = L.sequence[n % L.sequence.length]
+      const subject = (n * 5) % subjects.length
       const notes = L.notes[topic]
       const fields = {
         date: `2026-${month}-${String(day).padStart(2, '0')}`,
@@ -150,8 +173,9 @@ try {
         [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, topic),
         [locale === 'ko' ? 'method' : 'mode']: coded(L.method, L.methods[(n * 2) % L.methods.length]),
         note: notes[n % notes.length],
+        ...L.sessionFields(topic, n, subject),
       }
-      await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[(n * 5) % subjects.length], type: 'session', fields } })
+      await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[subject], type: 'session', fields } })
       n++
     }
   }
@@ -169,7 +193,8 @@ try {
   await shoot('suggest')
   // A crisis-related session recorded earlier: a draft like it is offered that topic, set apart.
   await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[1], type: 'session', fields: {
-    date: '2026-05-14', practitioner: practitioners[1], [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, L.crisis.topic), note: L.crisis.note } } })
+    date: '2026-05-14', practitioner: practitioners[1], [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, L.crisis.topic), note: L.crisis.note,
+    ...L.sessionFields(L.crisis.topic, 0, 1) } } })
   await app.click('dc-button', ui.refresh)
   await app.cdp.waitFor(`!!__e2e.one(${q(`textarea[aria-label="${ui.note}"]`)})`, 'the form again')
   await app.write(ui.note, L.draft.crisisNote)
@@ -191,7 +216,35 @@ try {
   await app.cdp.evaluate(`(__e2e.one('tr[data-evidence]')?.scrollIntoView({ block: 'center' }), true)`)
   await shoot('evidence')
 
+  // The month's sessions in the export form, ready to paste, before any revision of the topics.
+  await app.click('button', ui.lists)
+  await app.cdp.evaluate(`(__e2e.all('nav[aria-label] button[data-entry^="session-list@"]').at(-1)?.click(), true)`)
+  await app.type(ui.year, '2026')
+  await app.choose(ui.month, '4')
+  await app.click('dc-button', ui.makeList)
+  await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the list')
+  await shoot('export')
+
   if (locale === 'ko') {
+    // A school-year form: the sessions of the year by grade and class.
+    await app.click('button', ui.report)
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="year-grade-class@1"]')
+    await app.type('학년도', '2026')
+    await app.click('dc-button', ui.run)
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row]')`, 'the school year by grade and class')
+    await shoot('year')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="monthly-topic@1"]')
+
+    // The NEIS upload list: the month's sessions in the upload's seventeen columns.
+    await app.click('button', ui.lists)
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
+    await app.type(ui.year, '2026')
+    await app.choose(ui.month, '4')
+    await app.click('dc-button', ui.makeList)
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0 && __e2e.all('tr[data-export-row]')[0].children.length === 17`, 'the upload list')
+    await shoot('neis')
+    await app.click('button', ui.report)
+
     // A revision of the topics: one category split in two waits for a person; the report says so.
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(join(root, 'tests', 'golden', 'steps', '2'))}).then(() => true)`)
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('1판→2판'))`, 'the revision applied')
@@ -211,13 +264,6 @@ try {
     await shoot('compare')
   }
 
-  // The month's sessions in the export form, ready to paste.
-  await app.click('button', ui.lists)
-  await app.type(ui.year, '2026')
-  await app.choose(ui.month, '4')
-  await app.click('dc-button', ui.makeList)
-  await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the list')
-  await shoot('export')
 
   // The automatic backup, in another folder.
   const copy = join(work, locale === 'ko' ? '백업' : 'Backup')
