@@ -9055,7 +9055,7 @@ Same license text as miniz_oxide 0.8.9.
 Same license text as miniz_oxide 0.8.9.
 
 ------------------------------------------------------------------------------
-mio 1.2.3
+mio 1.2.4
 License: MIT
 Upstream: https://github.com/tokio-rs/mio
 
@@ -14715,7 +14715,7 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 
 ------------------------------------------------------------------------------
-tokio 1.53.1
+tokio 1.53.2
 License: MIT
 Upstream: https://github.com/tokio-rs/tokio
 
@@ -14979,7 +14979,7 @@ tokio-util 0.7.19
 License: MIT
 Upstream: https://github.com/tokio-rs/tokio
 
-Same license text as tokio 1.53.1.
+Same license text as tokio 1.53.2.
 
 ------------------------------------------------------------------------------
 toml 0.5.11
