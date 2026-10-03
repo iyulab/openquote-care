@@ -43,7 +43,7 @@ Released installers look for a newer version of the app, so that fixes reach the
 
 ## Feedback
 
-Released installers let you send a message to the publisher — something in the way, a feature you want. Builds made from source do not offer it. Nothing is sent unless you write a message and press *Send*.
+Released installers let you send a message to the publisher — something in the way, a feature you want — once the publisher's records service takes messages from the app; until then, and in builds made from source, the screen does not offer it. Nothing is sent unless you write a message and press *Send*.
 
 **What goes out.** The message as you wrote it, the email address you gave for a reply (only if you gave one), the app version, the operating system and architecture, and the app's display language. The screen lists these before you send. The app adds nothing about your records, your vault or this computer, and it does not read or change what you wrote — so do not write counseling content or the names of clients, students or schools in it; the screen says so too.
 
