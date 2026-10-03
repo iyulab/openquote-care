@@ -464,7 +464,7 @@ export const en: Strings = {
     'declaration-changed': 'Another computer has just changed the format of the vault. Try applying again.',
     'pack-conflict': 'The vault already holds a different classification or form under the same name, so nothing was applied. Check the version of the material.',
     'already-exists': 'This folder already holds a vault. Use Open a vault.',
-    'not-a-vault': 'This folder is not a vault.',
+    'not-a-vault': "This folder is not a vault. Pick the vault's folder again, or create a new vault if this is your first.",
     'declaration-missing': 'This folder lost the file that marks it as a vault (vault.json). Its key file and records are still there, so putting that file back opens it as before.',
     'newer-format': 'This vault was made by a newer version of the app. Update the app, then open it.',
     'not-encrypted': 'A vault without encryption cannot be opened yet.',

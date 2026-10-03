@@ -125,7 +125,7 @@ export function rangeFields(store: VaultStore) {
 
 /** The store's message, when there is one. */
 export function noticeLine(store: VaultStore) {
-  return store.notice ? html`<p role="status" class="muted">${store.notice}</p>` : nothing
+  return store.notice ? html`<dc-callout role="status"><p>${store.notice}</p></dc-callout>` : nothing
 }
 
 /** A failure, said where it happened: a danger callout the screen reader announces. */

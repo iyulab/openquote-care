@@ -569,7 +569,7 @@ const scenarios = {
     await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
-    await app.cdp.waitFor(`__e2e.all('p[role=status]').some((p) => p.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
     for (const file of added) assert.ok(existsSync(file), `${file} is back`)
     await app.noAlert()
   },
@@ -1149,7 +1149,7 @@ const scenarios = {
     await app.pickFolder(work.empty)
     await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
-    await app.alert('이 폴더는 기록 폴더가 아닙니다.')
+    await app.alert('이 폴더는 기록 폴더가 아닙니다. 기록 폴더를 다시 고르거나, 처음 쓰는 것이면 새 기록 폴더를 만드세요.')
   },
 
   async 'puts back the file that marks a vault folder when only it went missing, and opens'(app, work) {
