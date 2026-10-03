@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@iyulab/desktop-compact": "^0.11.1",
-    "@iyulab/desktop-patterns": "^0.7.2",
+    "@iyulab/desktop-patterns": "^0.8.0",
     "@tauri-apps/api": "^2.12.1",
     "@tauri-apps/plugin-dialog": "^2.8.1",
     "lit": "^3.3.3",
