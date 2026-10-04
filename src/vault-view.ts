@@ -9,8 +9,12 @@ import { strings } from './strings.js'
 import { errorCallout, packsWaitingCallout } from './vault/parts.js'
 import { StoreController, VaultStore } from './vault/store.js'
 import { vaultStyles } from './vault/styles.js'
+import type { OcSubjects } from './vault/subjects-screen.js'
 import './vault/subjects-screen.js'
+import type { OcGroups } from './vault/groups-screen.js'
 import './vault/groups-screen.js'
+import type { OpenSession } from './vault/search-screen.js'
+import './vault/search-screen.js'
 import './vault/report-screen.js'
 import './vault/export-screen.js'
 import './vault/practitioners-screen.js'
@@ -18,7 +22,7 @@ import type { DeviceSection, OcDevices } from './vault/devices-screen.js'
 import './vault/devices-screen.js'
 import './feedback.js'
 
-type View = 'subjects' | 'groups' | 'report' | 'export' | 'practitioners' | 'devices' | 'feedback'
+type View = 'subjects' | 'groups' | 'practitioners' | 'search' | 'report' | 'export' | 'devices' | 'feedback'
 
 /**
  * An open vault: the frame around its screens — the sidebar that switches between them, the
@@ -142,6 +146,14 @@ export class OcVault extends LitElement {
     if (this.keyFileLost) this.goToDevices('passphrase')
   }
 
+  /** Opens a session found by searching where it is kept: its subject's records, or its group's. */
+  private async openSession(found: OpenSession) {
+    this.view = found.holder === 'group' ? 'groups' : 'subjects'
+    await this.updateComplete
+    const screen = this.renderRoot.querySelector<OcSubjects | OcGroups>(found.holder === 'group' ? 'oc-groups' : 'oc-subjects')
+    await screen?.showSession(found.id, found.session)
+  }
+
   private goToDevices(section: DeviceSection) {
     this.view = 'devices'
     this.renderRoot.querySelector<OcDevices>('oc-devices')?.show(section)
@@ -154,7 +166,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices, feedback: strings.feedbackTitle }[view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
@@ -168,6 +180,7 @@ export class OcVault extends LitElement {
               { id: 'subjects', icon: '◉', label: strings.navSubjects },
               { id: 'groups', icon: '◈', label: strings.navGroups },
               { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
+              { id: 'search', icon: '⌕', label: strings.navSearch },
             ] },
             { id: 'reports', label: strings.navGroupReports, items: [
               { id: 'report', icon: '▦', label: strings.navReport },
@@ -203,6 +216,7 @@ export class OcVault extends LitElement {
           <oc-report .store=${store} ?active=${view === 'report'}></oc-report>
           <oc-export .store=${store} ?active=${view === 'export'}></oc-export>
           <oc-practitioners .store=${store} ?active=${view === 'practitioners'}></oc-practitioners>
+          <oc-search .store=${store} ?active=${view === 'search'} @oc-open-session=${(e: CustomEvent<OpenSession>) => void this.openSession(e.detail)}></oc-search>
           <oc-devices
             .store=${store}
             ?active=${view === 'devices'}

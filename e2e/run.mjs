@@ -269,8 +269,8 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'two sessions')
     await app.noAlert()
     assert.deepEqual(await app.sessionRows(), [
-      ['2026-04-09', '관계', '', '학생', '', '', '상담자 가'],
-      ['2026-04-02', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '', '상담자 가'],
+      ['2026-04-09', '', '관계', '', '학생', '', '', '', '상담자 가'],
+      ['2026-04-02', '', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '', '', '상담자 가'],
     ])
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal(subjects.length, 1, 'one subject folder')
@@ -517,7 +517,7 @@ const scenarios = {
     await app.vaultOpen()
     await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
-    assert.equal((await app.sessionRows())[1][2], '특별 › 학교폭력')
+    assert.equal((await app.sessionRows())[1][3], '특별 › 학교폭력')
     await app.click('dc-button', '다시 읽기')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
 
@@ -658,8 +658,9 @@ const scenarios = {
     await app.cdp.waitFor(`!!__e2e.one('[data-role=packs-waiting-confirm]')`, 'the question before raising the format for the newer data')
     assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
     for (const file of added) assert.ok(!existsSync(file), `${file} waits`)
-    assert.ok((await app.cdp.evaluate(`__e2e.one('[data-role=raise-format-devices]').textContent.trim()`)).startsWith('이 기록 폴더를 쓰는 기기: '),
-      'the devices that must run a version reading the newer format')
+    // The devices that must run a version reading the newer format, once the vault's summary is read.
+    await app.cdp.waitFor(`(__e2e.one('[data-role=packs-waiting] [data-role=raise-format-devices]')?.textContent ?? '').includes('이 기록 폴더를 쓰는 기기: 이 기기')`,
+      'the devices using the vault named')
 
     await app.click('[data-role=packs-waiting-confirm]')
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
@@ -747,7 +748,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '학생', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '', '또래관계', '', '학생', '', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
@@ -910,6 +911,21 @@ const scenarios = {
         assert.ok(!(await readFile(join(work.vault, 'subjects', dir, f))).includes(Buffer.from(said)), 'nothing said is on disk in the clear')
       }
     }
+  },
+
+  async 'finds a session by words of what was said in it, and opens it where it is kept'(app) {
+    await app.click('button', '기록 찾기')
+    await app.type('찾을 말', '불안 시험')
+    await app.cdp.waitFor(`__e2e.all('tr[data-hit]').length === 1`, 'the one session holding both words')
+    const hit = await app.cdp.evaluate(`[...__e2e.one('tr[data-hit]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(hit.slice(0, 4), ['2026-05-07', '가상 학생 3', '상담 내용', '합성 상담 내용: 시험 불안을 이야기함'])
+    await app.type('찾을 말', '불안 없는낱말')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=search-none]')`, 'nothing holds every word')
+    await app.type('찾을 말', '시험 불안')
+    await app.click('[data-role=open-hit]')
+    await app.cdp.waitFor(`__e2e.all('tr[data-note]').some((tr) => tr.textContent.includes('시험 불안을 이야기함'))`, 'the session opened under its subject, what was said open')
+    assert.equal(await app.cdp.evaluate(`__e2e.one('dp-toolbar').getAttribute('heading')`), '대상자')
+    await app.noAlert()
   },
 
   async 'suggests a topic from the most similar settled session, and records that it was taken from the suggestion'(app) {
@@ -1154,7 +1170,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === ${before + 2}`, 'the second session of the day')
     await app.noAlert()
-    const sameDay = (await app.sessionRows()).filter((row) => row[0] === '2026-06-15').map((row) => row[1]).sort()
+    const sameDay = (await app.sessionRows()).filter((row) => row[0] === '2026-06-15').map((row) => row[2]).sort()
     assert.deepEqual(sameDay, ['가정', '또래관계'], 'both sessions of the day are shown, neither replacing the other')
     assert.equal(await recordFiles(), filesBefore + 2, 'one file for each session')
   },
@@ -1163,7 +1179,7 @@ const scenarios = {
     const recordFiles = async () => (await readdir(join(work.vault, 'subjects'), { recursive: true })).filter((f) => f.endsWith('.age')).sort()
     const filesBefore = await recordFiles()
     const contentBefore = await Promise.all(filesBefore.map((f) => readFile(join(work.vault, 'subjects', f))))
-    const row = `__e2e.all('tr[data-session]').find((tr) => tr.children[0].textContent.includes('2026-06-15') && tr.children[1].textContent.trim() === '가정')`
+    const row = `__e2e.all('tr[data-session]').find((tr) => tr.children[0].textContent.includes('2026-06-15') && tr.children[2].textContent.trim() === '가정')`
     const id = await app.cdp.evaluate(`${row}?.dataset.session`)
     assert.ok(id, 'the family session of 15 June')
     await app.cdp.evaluate(`${row}.querySelector('[data-role=correct]').click()`)
@@ -1181,7 +1197,7 @@ const scenarios = {
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-session]') && ${said('회기를 고쳤습니다.')}`, 'the session corrected')
     await app.noAlert()
-    const corrected = (await app.sessionRows()).filter((r) => r[1] === '가정' && r[0].startsWith('2026-06-1'))
+    const corrected = (await app.sessionRows()).filter((r) => r[2] === '가정' && r[0].startsWith('2026-06-1'))
     assert.deepEqual(corrected.map((r) => r[0]), ['2026-06-16'], 'the session shows its corrected date')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('tr[data-session="${id}"] [data-role=corrected]')`), true, 'and says it was corrected')
 
@@ -1554,11 +1570,14 @@ const scenarios = {
     await app.choose('실시한 검사', 'mmpi-a')
     await app.choose('실시한 검사 더하기', 'sct')
     await app.cdp.waitFor(`!!__e2e.one('[data-others=assessments] dc-button[data-other=sct]')`, 'the second assessment listed')
+    await app.type('상담 제목', '첫 면담과 검사')
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 3`, 'the session listed')
     await app.noAlert()
     const rows = await app.sessionRows()
-    assert.ok(rows.some((r) => r.includes('MMPI-A(다면적 인성 청소년용) (함께: SCT(문장완성))')), `the session shows both assessments: ${JSON.stringify(rows)}`)
+    const row = rows.find((r) => r.includes('MMPI-A(다면적 인성 청소년용) (함께: SCT(문장완성))'))
+    assert.ok(row, `the session shows both assessments: ${JSON.stringify(rows)}`)
+    assert.equal(row[1], '첫 면담과 검사', 'its title right after the date, to tell it apart')
 
     await app.click('button', '통계')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
@@ -1567,10 +1586,10 @@ const scenarios = {
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="sct"]')`, 'the month by assessment')
     await app.noAlert()
-    const row = (code) => app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
-    assert.equal((await row('mmpi-a'))[0], 'MMPI-A(다면적 인성 청소년용)')
-    assert.equal((await row('mmpi-a')).at(-1), '1 (1명)', 'counted once for the MMPI-A')
-    assert.equal((await row('sct')).at(-1), '1 (1명)', 'and once for the SCT, from the same session')
+    const tool = (code) => app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
+    assert.equal((await tool('mmpi-a'))[0], 'MMPI-A(다면적 인성 청소년용)')
+    assert.equal((await tool('mmpi-a')).at(-1), '1 (1명)', 'counted once for the MMPI-A')
+    assert.equal((await tool('sct')).at(-1), '1 (1명)', 'and once for the SCT, from the same session')
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

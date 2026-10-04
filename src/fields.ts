@@ -18,15 +18,17 @@ export function inputFields(defs: readonly FieldView[]): FieldView[] {
   return [...inputs.filter((f) => f.tier !== 'narrative'), ...inputs.filter((f) => f.tier === 'narrative')]
 }
 
-const COLUMN_ORDER: Partial<Record<FieldView['kind'], number>> = { date: 0, coded: 1, reference: 2 }
+const COLUMN_ORDER: Partial<Record<FieldView['kind'], number>> = { date: 0, text: 1, coded: 2, number: 3, reference: 4 }
 
 /**
- * The columns of a list of records: dates, then classifications, then references, each in
- * declaration order. Written content is never a column; it opens under its row instead.
+ * The columns of a list of records: dates, then short texts (a title, say — what tells records
+ * apart at a glance), classifications, numbers and references, each in declaration order. Written
+ * content is never a column; it opens under its row instead. A value copied from the subject is
+ * not one either: the subject's own record holds it.
  */
 export function listColumns(defs: readonly FieldView[]): FieldView[] {
   return defs
-    .filter((f) => shown(f) && f.tier !== 'narrative' && COLUMN_ORDER[f.kind] !== undefined)
+    .filter((f) => shown(f) && f.tier !== 'narrative' && !f.defaultFromSubject && COLUMN_ORDER[f.kind] !== undefined)
     .map((f, i) => ({ f, i }))
     .sort((a, b) => COLUMN_ORDER[a.f.kind]! - COLUMN_ORDER[b.f.kind]! || a.i - b.i)
     .map(({ f }) => f)

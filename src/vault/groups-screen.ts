@@ -46,6 +46,14 @@ export class OcGroups extends VaultScreen {
     this.documentOpen = true
   }
 
+  /** Opens `id` with `session`'s written content open under its row, and brings that row into view. */
+  async showSession(id: string, session: string) {
+    this.selectGroup(id)
+    this.openNotes = new Set([...this.openNotes, session])
+    await this.updateComplete
+    this.renderRoot.querySelector(`tr[data-session="${session}"]`)?.scrollIntoView({ block: 'center' })
+  }
+
   private async saveMembers(group: Entity) {
     const members = this.memberDraft
     if (!members) return

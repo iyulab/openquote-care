@@ -76,6 +76,14 @@ export class OcSubjects extends VaultScreen {
     this.documentOpen = true
   }
 
+  /** Opens `id` with `session`'s written content open under its row, and brings that row into view. */
+  async showSession(id: string, session: string) {
+    this.pick(id)
+    this.openNotes = new Set([...this.openNotes, session])
+    await this.updateComplete
+    this.renderRoot.querySelector(`tr[data-session="${session}"]`)?.scrollIntoView({ block: 'center' })
+  }
+
   private startAdding() {
     this.adding = true
     this.documentOpen = true

@@ -36,6 +36,7 @@ const session: FieldView[] = [
   field('concern', 'coded', { hidden: true }),
   field('topic', 'coded', { required: true }),
   field('mode', 'coded'),
+  field('title', 'text'),
   field('grade', 'text', { defaultFromSubject: 'grade' }),
   field('attendees', 'references'),
   field('minutes', 'number'),
@@ -43,7 +44,7 @@ const session: FieldView[] = [
 
 describe('fields', () => {
   it('lists input fields without hidden, copied or multi-reference ones', () => {
-    expect(inputFields(session).map((f) => f.name)).toEqual(['date', 'practitioner', 'topic', 'mode', 'minutes', 'note'])
+    expect(inputFields(session).map((f) => f.name)).toEqual(['date', 'practitioner', 'topic', 'mode', 'title', 'minutes', 'note'])
   })
 
   it('puts a narrative field last in the form and never in the list', () => {
@@ -52,12 +53,12 @@ describe('fields', () => {
     expect(narrativeFields(session).map((f) => f.name)).toEqual(['note'])
   })
 
-  it('orders list columns date, then coded, then references, in declaration order', () => {
-    expect(listColumns(session).map((f) => f.name)).toEqual(['date', 'topic', 'mode', 'practitioner'])
+  it('orders list columns date, short texts, coded, numbers, then references, leaving out what the subject holds', () => {
+    expect(listColumns(session).map((f) => f.name)).toEqual(['date', 'title', 'topic', 'mode', 'minutes', 'practitioner'])
   })
 
   it('puts the attendees before the references in a group list', () => {
-    expect(attendeesAt(listColumns(session))).toBe(3)
+    expect(attendeesAt(listColumns(session))).toBe(5)
     expect(attendeesAt(listColumns([field('date', 'date')]))).toBe(1)
   })
 
