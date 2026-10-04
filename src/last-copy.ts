@@ -2,6 +2,8 @@
 // went in, and how many changes the vault's records had been built from then — so the screen can
 // say when records changed after it. A setting of the device, kept per vault, like the backup folder.
 
+import { safeStorage } from './device-storage.js'
+
 const KEY = 'openquote-care.plain-copy:'
 
 export interface LastCopy {
@@ -32,13 +34,5 @@ export function storeCopy(vaultFolder: string, copy: LastCopy, storage: Pick<Sto
     storage?.setItem(KEY + vaultFolder, JSON.stringify(copy))
   } catch {
     // Storage refused: the copy is remembered until the window closes, by the screen that made it.
-  }
-}
-
-function safeStorage(): Storage | undefined {
-  try {
-    return globalThis.localStorage
-  } catch {
-    return undefined
   }
 }

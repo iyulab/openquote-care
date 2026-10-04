@@ -1,6 +1,8 @@
 // The folder this computer keeps a vault's backup in. Like the idle lock it is a setting of the
 // device, not of the vault — and one per vault, since a device may open more than one.
 
+import { safeStorage } from './device-storage.js'
+
 const KEY = 'openquote-care.backup:'
 
 /** The backup folder this computer keeps for the vault in `vaultFolder`, or null. */
@@ -19,13 +21,5 @@ export function storeBackup(vaultFolder: string, backup: string | null, storage:
     else storage?.removeItem(KEY + vaultFolder)
   } catch {
     // Storage refused: the backup is kept until the window closes.
-  }
-}
-
-function safeStorage(): Storage | undefined {
-  try {
-    return globalThis.localStorage
-  } catch {
-    return undefined
   }
 }

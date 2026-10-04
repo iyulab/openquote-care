@@ -7,6 +7,7 @@ import { definitionOf, text, today, type Entity, type Scheme } from '../records.
 import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
+import { storeReportForm, storedReportForm } from '../report-form.js'
 import { shell, type BackupStatus, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -203,8 +204,11 @@ export class VaultStore extends EventTarget {
     })
     if (!this.exportKey && exports.length > 0) this.exportKey = `${exports[0].name}@${exports[0].version}`
     if (!this.reportKey && reports.length > 0) {
-      const newest = [...reports].sort((a, b) => b.version - a.version)[0]
-      this.reportKey = `${newest.name}@${newest.version}`
+      // The newest version of the form last chosen on this computer, while the vault offers it; else the newest form.
+      const remembered = storedReportForm(this.folder)
+      const byVersion = [...reports].sort((a, b) => b.version - a.version)
+      const chosen = byVersion.find((r) => r.name === remembered) ?? byVersion[0]
+      this.reportKey = `${chosen.name}@${chosen.version}`
     }
     this.names = nameCollator(summary.locales)
     const byName = (a: Entity, b: Entity) => this.names.compare(text(a, 'name'), text(b, 'name'))
@@ -288,6 +292,12 @@ export class VaultStore extends EventTarget {
       this.backupProblem = typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string' ? (e as { code: string }).code : 'unknown'
     }
     this.changed()
+  }
+
+  /** Picks the report form to work on, and remembers it for this vault on this computer. */
+  chooseReport(key: string) {
+    storeReportForm(this.folder, key.split('@')[0])
+    this.set({ reportKey: key })
   }
 
   /** Raises the vault's format — a person chose to — and takes on the pack versions this app carries that waited for it. */

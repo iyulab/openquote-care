@@ -1,5 +1,7 @@
 // Locking an open vault when nobody has used the window for a while.
 
+import { safeStorage } from './device-storage.js'
+
 const KEY = 'openquote-care.idle-lock-minutes'
 
 /** The choices offered for the idle lock, in minutes; 0 turns it off. */
@@ -26,14 +28,6 @@ export function setIdleMinutes(minutes: number, storage: Pick<Storage, 'setItem'
     storage?.setItem(KEY, String(minutes))
   } catch {
     // Storage refused: the choice lasts until the window closes.
-  }
-}
-
-function safeStorage(): Storage | undefined {
-  try {
-    return globalThis.localStorage
-  } catch {
-    return undefined
   }
 }
 

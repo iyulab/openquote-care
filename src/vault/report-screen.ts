@@ -114,7 +114,7 @@ export class OcReport extends VaultScreen {
   private pick(key: string) {
     this.documentOpen = true
     if (key === this.store.reportKey) return
-    this.store.set({ reportKey: key })
+    this.store.chooseReport(key)
     this.result = undefined
     this.evidence = undefined
     this.pendingChoices = undefined
