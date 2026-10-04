@@ -34,6 +34,9 @@ const HEIGHT = 820
 const coded = (scheme, code) => ({ scheme, version: 1, code })
 // The school track's NEIS category (under 상담 › 개인상담) and session title for each topic.
 const NEIS = { learning: 'academic', relation: 'relationships', family: 'family', anxiety: 'mental-health', depression: 'mental-health', anger: 'personality', crisis: 'self-harm-suicide' }
+// The assessments sessions give, in turn: a battery (the first marked primary), one alone, or none.
+const tool = (code, primary) => ({ ...coded('assessment-tool', code), ...(primary ? { primary: true } : {}) })
+const ASSESSMENTS = [[tool('mmpi-a', true), tool('sct'), tool('htp')], null, tool('sct'), null, [tool('k-wisc-v', true), tool('bgt')], null, null]
 const TITLES = { learning: '학업 고민 상담', relation: '교우 관계 상담', family: '가족 갈등 상담', anxiety: '불안 상담', depression: '우울감 상담', anger: '분노 조절 상담', crisis: '위기 상담' }
 
 /** What each locale needs: the screens' names, the track, and records that read naturally in it. */
@@ -45,6 +48,7 @@ const L = {
       kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', subjects: '대상자', date: '날짜', note: '상담 내용',
       report: '통계', year: '연도', month: '월', run: '산출', lists: '기록 목록', makeList: '목록 만들기', refresh: '다시 읽기',
       compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', practitioner: '담당자',
+      find: '기록 찾기', findLabel: '찾을 말',
     },
     practitioners: ['상담교사 가', '전문상담사 나'],
     practitionerFields: (i) => ({ affiliation: ['전문상담교사', '전문상담사'][i % 2] }),
@@ -65,8 +69,9 @@ const L = {
     // The order sessions take their topics in: the common ones more often.
     sequence: ['learning', 'relation', 'family', 'learning', 'anxiety', 'relation', 'depression', 'family', 'learning', 'anger', 'relation', 'anxiety', 'learning'],
     // What the school track records beside topic and method: the student's grade and class that day
-    // (the session form copies them from the student), the NEIS category, a title, the length, and
-    // who the session was with (the student unless said otherwise — now and then a parent).
+    // (the session form copies them from the student), the NEIS category, a title, the length,
+    // who the session was with (the student unless said otherwise — now and then a parent), and now
+    // and then the assessments given — a battery at a first meeting, one on its own later.
     sessionFields: (topic, n, subject) => ({
       grade: String((subject % 3) + 1),
       class: String((subject % 5) + 1),
@@ -74,7 +79,9 @@ const L = {
       title: TITLES[topic],
       minutes: [40, 50, 30][n % 3],
       ...(topic === 'family' && n % 2 ? { client_type: coded('client-type', 'parent') } : {}),
+      ...(ASSESSMENTS[n % ASSESSMENTS.length] ? { assessments: ASSESSMENTS[n % ASSESSMENTS.length] } : {}),
     }),
+    search: '친구',
     crisis: { topic: 'crisis', note: '사라지고 싶다는 말을 해 안전 계획을 함께 세움' },
     draft: { subject: '가상 학생 3', date: '2026-05-21', note: '휴대전화 때문에 부모님과 또 다툼', crisisNote: '사라지고 싶다는 말을 다시 함' },
   },
@@ -85,6 +92,7 @@ const L = {
       kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', subjects: 'Clients', date: 'Date',
       note: 'Notes', report: 'Statistics', year: 'Year', month: 'Month', run: 'Run', lists: 'Record lists', makeList: 'Make list', refresh: 'Reload',
       compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', practitioner: 'Practitioner',
+      find: 'Find records', findLabel: 'Words to find',
     },
     practitioners: ['Counselor A', 'Counselor B'],
     subjects: ['Client One', 'Client Two', 'Client Three', 'Client Four', 'Client Five', 'Client Six'],
@@ -102,6 +110,7 @@ const L = {
     },
     methods: ['in-person', 'in-person', 'video', 'phone'],
     sequence: ['study-work', 'relationships', 'family', 'study-work', 'anxiety', 'relationships', 'mood', 'family', 'study-work', 'anxiety', 'relationships'],
+    search: 'friend',
     crisis: { topic: 'safety', note: 'Said they want to disappear; made a safety plan together' },
     draft: { subject: 'Client Three', date: '2026-05-21', note: 'Argued with parents about the phone again', crisisNote: 'Said again they want to disappear' },
   },
@@ -205,6 +214,7 @@ try {
 
   // The monthly report, and what one count is made of.
   await app.click('button', ui.report)
+  await app.click(`nav[aria-label] button[data-entry="${locale === 'ko' ? 'monthly-topic@1' : 'care.monthly-concern@1'}"]`)
   await app.type(ui.year, '2026')
   await app.choose(ui.month, '4')
   await app.click('dc-button', ui.run)
@@ -225,6 +235,12 @@ try {
   await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the list')
   await shoot('export')
 
+  // Finding sessions by a word of what they say.
+  await app.click('button', ui.find)
+  await app.type(ui.findLabel, L.search)
+  await app.cdp.waitFor(`__e2e.all('tr[data-hit]').length > 1`, 'the sessions found')
+  await shoot('search')
+
   if (locale === 'ko') {
     // A school-year form: the sessions of the year by grade and class.
     await app.click('button', ui.report)
@@ -233,6 +249,14 @@ try {
     await app.click('dc-button', ui.run)
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row]')`, 'the school year by grade and class')
     await shoot('year')
+
+    // Each assessment given in a month, by practitioner: a battery counts each of its assessments.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
+    await app.type(ui.year, '2026')
+    await app.choose(ui.month, '4')
+    await app.click('dc-button', ui.run)
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="sct"]')`, 'the month by assessment')
+    await shoot('assessment')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="monthly-topic@1"]')
 
     // The NEIS upload list: the month's sessions in the upload's seventeen columns.
