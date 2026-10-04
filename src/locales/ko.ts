@@ -184,6 +184,7 @@ export const ko = {
   metricVisits: '연인원',
   measureNote: (parts: string[]) => ` (${parts.join(' · ')})`,
   measurePart: { records: (n: number) => `${n}건`, people: (n: number) => `${n}명`, visits: (n: number) => `연인원 ${n}` },
+  sumPart: (field: string, sum: number, missing: number) => `${field} 합 ${sum.toLocaleString('ko')}${missing > 0 ? `, 값 없음 ${missing}건` : ''}`,
   runReport: '산출',
   noReports: '이 기록 폴더에는 보고 양식이 없습니다.',
   reportPeriod: (from: string, to: string) => `기간 ${from} ~ ${to} · 산출 결과를 기록 폴더에 남겼습니다.`,

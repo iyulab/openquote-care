@@ -183,6 +183,7 @@ export const en: Strings = {
     people: (n: number) => plural(n, 'person', 'people'),
     visits: (n: number) => plural(n, 'visit'),
   },
+  sumPart: (field: string, sum: number, missing: number) => `${field} total ${sum.toLocaleString('en')}${missing > 0 ? `, ${missing} without a value` : ''}`,
   runReport: 'Run',
   noReports: 'This vault has no report forms.',
   reportPeriod: (from: string, to: string) => `Period ${from} – ${to} · The run is kept in the vault.`,

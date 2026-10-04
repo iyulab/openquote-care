@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { comparable, headCount, lastMonth, layOut, measureOf, placesOf, referenceAxis, schemeAxis, valueAxis, visitCount, type KeptRun, type RunRecord } from '../report.js'
+import { comparable, headCount, lastMonth, layOut, measureOf, placesOf, referenceAxis, schemeAxis, sumOf, valueAxis, visitCount, type KeptRun, type RunRecord } from '../report.js'
 import type { Entity, Scheme } from '../records.js'
 
 const topic: Scheme = {
@@ -160,6 +160,16 @@ describe('layOut — three dimensions', () => {
     const all = layOut(several, [valueAxis('-'), valueAxis('-'), topicAxis], '전체').sections[0].table
     expect(all.rows[0].cells.map((c) => c.count)).toEqual([1, 1])
     expect([all.rows[0].total, all.placed]).toEqual([2, 2])
+  })
+})
+
+describe('sumOf', () => {
+  it('adds up the numbers the records hold and says how many hold none', () => {
+    const withValues: RunRecord = { ...run, values: { minutes: { a: 50, b: 30.5 } } }
+    expect(sumOf(withValues, ['a', 'b', 'c'], 'minutes')).toEqual({ sum: 80.5, missing: 1 })
+    expect(sumOf(withValues, [], 'minutes')).toEqual({ sum: 0, missing: 0 })
+    expect(sumOf(withValues, ['a'], 'hours')).toBeNull()
+    expect(sumOf(run, ['a'], 'minutes')).toBeNull()
   })
 })
 

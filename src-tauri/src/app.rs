@@ -1518,7 +1518,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school", "care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 8));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 9));
         assert_eq!(summary["packIssues"], json!([]));
         for file in &added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
@@ -1527,15 +1527,19 @@ cut off").unwrap();
         assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("updatedPacks").is_none(), "nothing to take on the next time");
     }
 
-    /// The files the school pack's eighth version adds: a field that takes several values, so a
-    /// vault holding it needs format 1.
-    const SCHOOL_PACK_8: [&str; 6] = [
+    /// The files the school pack's eighth and ninth versions add: a field that takes several values,
+    /// and forms reading it, so a vault holding them needs format 1.
+    const SCHOOL_PACK_8: [&str; 10] = [
         "packs/care.school.kr/v8.json.age",
         "schemes/assessment-tool/v1.json.age",
         "fields/care.school.kr/session/v6.json.age",
         "labels/care.school.kr/v6.ko.json.age",
         "reports/month-assessment-tool/v1.json.age",
         "reports/year-assessment-level/v1.json.age",
+        "packs/care.school.kr/v9.json.age",
+        "reports/month-practitioner-minutes/v1.json.age",
+        "reports/year-practitioner-minutes/v1.json.age",
+        "exports/session-list/v3.json.age",
     ];
 
     fn declared_format(dir: &Path) -> String {
@@ -1582,7 +1586,7 @@ cut off").unwrap();
         app.close_vault();
         let reopened = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert!(reopened.get("waitingPacks").is_none() && reopened.get("updatedPacks").is_none());
-        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 8));
+        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 9));
     }
 
     #[test]
@@ -1734,7 +1738,10 @@ cut off").unwrap();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
         // The core's forms stand on the fields the school track hides: they are not offered.
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
-        assert_eq!(offered, ["month-assessment-tool", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender"]);
+        assert_eq!(
+            offered,
+            ["month-assessment-tool", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
+        );
     }
 
     /// A vault as a version before packs named themselves left it: the golden vault's files through

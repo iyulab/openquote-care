@@ -1,0 +1,24 @@
+{
+  "format": "openquote.report/1",
+  "report": "year-practitioner-minutes",
+  "version": 1,
+  "label": "학년도 담당자별 상담 시간",
+  "counts": "session",
+  "period": {
+    "unit": "year",
+    "field": "date",
+    "startMonth": 3
+  },
+  "dimensions": [
+    {
+      "field": "practitioner"
+    }
+  ],
+  "measures": [
+    "records",
+    "people",
+    {
+      "sum": "minutes"
+    }
+  ]
+}

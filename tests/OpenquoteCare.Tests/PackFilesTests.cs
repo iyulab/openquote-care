@@ -71,8 +71,8 @@ public sealed class PackFilesTests
         Assert.Equal(FieldKind.Text, fields.Find("session", "title")!.Kind);
         Assert.Equal(FieldKind.Number, fields.Find("session", "minutes")!.Kind);
         var list = content.Exports.Where(e => e.Name == "session-list").MaxBy(e => e.Version)!;
-        Assert.Equal(2, list.Version);
-        Assert.Equal(["상담 상대", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(4));
+        Assert.Equal(3, list.Version);
+        Assert.Equal(["상담 상대", "실시한 검사", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(5));
     }
 
     [Theory]
@@ -91,7 +91,7 @@ public sealed class PackFilesTests
         var content = VaultOn("school-kr");
 
         Assert.Equal("student", content.FieldCatalog().Find("session", "client_type")!.DefaultValue);
-        Assert.Equal(["year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender"],
+        Assert.Equal(["year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"],
             content.Reports.Where(r => r.Name.StartsWith("year-", StringComparison.Ordinal)).Select(r => r.Name).Order());
     }
 
@@ -115,6 +115,48 @@ public sealed class PackFilesTests
             leaves.Where(l => l.Parent == "counseling/group").Select(l => l.Label));
         Assert.Equal(Suggestion.Confirm,
             content.SuggestionCatalog().For("neis-counseling", 1, items["counseling/individual/self-harm-suicide"]));
+    }
+
+    [Fact]
+    public void School_forms_add_up_the_minutes_of_sessions_and_the_list_names_every_assessment()
+    {
+        var w = new VaultWriter("dev1");
+        var records = new List<VaultFile>();
+        string Add(VaultFile f)
+        {
+            records.Add(f);
+            return VaultReader.Read([f]).Changes[0].Entity.Id;
+        }
+        static JsonObject Tool(string code, bool primary = false)
+        {
+            var value = new JsonObject { ["scheme"] = "assessment-tool", ["version"] = 1, ["code"] = code };
+            if (primary) value["primary"] = true;
+            return value;
+        }
+        var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 1" }));
+        var counsellor = Add(w.CreatePractitioner(new Dictionary<string, JsonNode?> { ["name"] = "상담자 가" }));
+        Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?>
+        {
+            ["date"] = "2026-05-02", ["minutes"] = 70, ["practitioner"] = counsellor,
+            ["assessments"] = new JsonArray(Tool("sct"), Tool("mmpi-a", primary: true)),
+        }));
+        Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?> { ["date"] = "2026-05-09", ["minutes"] = 50, ["practitioner"] = counsellor }));
+        Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?> { ["date"] = "2026-05-16", ["practitioner"] = counsellor }));
+        var content = VaultReader.Read(PacksOf("school-kr").SelectMany(VaultFiles.FromDirectory).Concat(records));
+        var entities = Openquote.Records.EntityMerger.Merge(content.Changes).Values;
+
+        var month = Openquote.Reports.ReportRunner.RunContaining(content.Reports.Single(r => r.Name == "month-practitioner-minutes"),
+            new DateOnly(2026, 5, 1), entities, content.Catalog());
+        var year = Openquote.Reports.ReportRunner.RunContaining(content.Reports.Single(r => r.Name == "year-practitioner-minutes"),
+            new DateOnly(2026, 5, 1), entities, content.Catalog());
+        var list = Openquote.Exports.ExportRunner.Run(content.Exports.Single(e => e.Name == "session-list" && e.Version == 3),
+            new DateOnly(2026, 5, 1), new DateOnly(2026, 5, 31), entities, content.Catalog(), content.FieldCatalog());
+
+        Assert.Equal((120m, 1), month.SumOf("minutes", month.Total)); // the session with no length is said, not counted as 0
+        Assert.Equal((120m, 1), year.SumOf("minutes", year.Total));
+        var column = content.Exports.Single(e => e.Name == "session-list" && e.Version == 3).Columns.Select(c => c.Label).ToList().IndexOf("실시한 검사");
+        var assessments = list.Rows[0].Cells[column];
+        Assert.Equal("MMPI-A(다면적 인성 청소년용), SCT(문장완성)", assessments);
     }
 
     [Fact]

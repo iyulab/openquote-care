@@ -645,6 +645,10 @@ const scenarios = {
       ['labels', 'care.school.kr', 'v6.ko.json.age'],
       ['reports', 'month-assessment-tool', 'v1.json.age'],
       ['reports', 'year-assessment-level', 'v1.json.age'],
+      ['packs', 'care.school.kr', 'v9.json.age'],
+      ['reports', 'month-practitioner-minutes', 'v1.json.age'],
+      ['reports', 'year-practitioner-minutes', 'v1.json.age'],
+      ['exports', 'session-list', 'v3.json.age'],
     ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
     const declaration = join(work.vault, 'vault.json')
@@ -1590,6 +1594,16 @@ const scenarios = {
     assert.equal((await tool('mmpi-a'))[0], 'MMPI-A(다면적 인성 청소년용)')
     assert.equal((await tool('mmpi-a')).at(-1), '1 (1명)', 'counted once for the MMPI-A')
     assert.equal((await tool('sct')).at(-1), '1 (1명)', 'and once for the SCT, from the same session')
+
+    // The month's minutes by practitioner: the session's length added up, and the sessions holding none said.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="month-practitioner-minutes@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row]')`, 'the month by practitioner')
+    await app.noAlert()
+    const total = await app.cdp.evaluate(`__e2e.one('[data-section="0"] tr[data-row]').lastElementChild.textContent.trim()`)
+    assert.equal(total, '1 (1명 · 상담 시간(분) 합 0, 값 없음 1건)', 'no length entered: the sum says so rather than counting it')
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

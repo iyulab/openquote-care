@@ -1,6 +1,7 @@
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { comparable, headCount, layOut, measureOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
+import { comparable, headCount, layOut, measureOf, sumOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
+import { labelOfField } from '../fields.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
@@ -170,6 +171,11 @@ export class OcReport extends VaultScreen {
         const n = measureOf(result, records, m)
         return n === null ? [] : [strings.measurePart[m](n)]
       })
+      // Each field the form adds up: its sum, and how many records hold no number there.
+      for (const field of form?.sums ?? []) {
+        const s = sumOf(result, records, field)
+        if (s) parts.push(strings.sumPart(labelOfField(store.sessionFields, field), s.sum, s.missing))
+      }
       return parts.length === 0 ? nothing : html`<span class="people" data-role="measures">${strings.measureNote(parts)}</span>`
     }
     const foremost = (records: string[]) => measureOf(result, records, first) ?? records.length

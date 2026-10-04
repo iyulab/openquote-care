@@ -39,6 +39,8 @@ export interface ReportEntry extends FormEntry {
   dimensions: Dimension[]
   /** The numbers the form shows, the first one foremost. */
   measures: ('records' | 'people' | 'visits')[]
+  /** The number fields of the counted records the form adds up, after the measures. */
+  sums: string[]
   /** The conditions every record the form counts meets. */
   filters: Filter[]
 }
