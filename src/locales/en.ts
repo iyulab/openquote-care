@@ -315,7 +315,7 @@ export const en: Strings = {
   applyPack: 'Apply classification revision',
   applyPackTitle: 'Choose the data pack folder to apply',
   raiseFormatAsk:
-    'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it.',
+    'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app too old to read the newer format no longer open the vault — update the app first on every other computer that uses it.',
   raiseFormatConfirm: 'Raise the format and apply',
   raiseFormatDevices: (devices: string[]) => `Devices that use this vault: ${devices.join(', ')}`,
   packAdded: (items: string[]) => `Added: ${items.join(', ')}.`,
@@ -375,7 +375,7 @@ export const en: Strings = {
   staleSubjectWas: (value: string) => `Now: ${value}`,
   packsUpdated: "This vault's classification data now matches the newer version this app carries. Its records and classifications are unchanged.",
   packsWaiting:
-    "The newer classification data this app carries comes into this vault only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it. Its records and classifications are unchanged.",
+    "The newer classification data this app carries comes into this vault only once the vault is raised to a newer format. After that, versions of the app too old to read the newer format no longer open the vault — update the app first on every other computer that uses it. Its records and classifications are unchanged.",
   later: 'Later',
   suggested: 'Suggested',
   similarRecords: (n: number) => (n === 1 ? '1 similar record' : `${n} similar records`),
