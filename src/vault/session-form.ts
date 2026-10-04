@@ -476,8 +476,8 @@ export class OcSessionForm extends StoreElement {
       ${primary && left.length > 0
         ? html`<dc-select
             size="sm"
-            aria-label=${strings.addOther}
-            placeholder=${strings.addOther}
+            aria-label=${strings.addOther(f.label)}
+            placeholder=${strings.addOther(f.label)}
             data-add-other=${f.name}
             .options=${left}
             .value=${''}

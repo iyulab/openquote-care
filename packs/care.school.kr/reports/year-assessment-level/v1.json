@@ -1,0 +1,30 @@
+{
+  "format": "openquote.report/1",
+  "report": "year-assessment-level",
+  "version": 1,
+  "label": "학년도 검사 도구·학교급별 실시",
+  "counts": "session",
+  "period": {
+    "unit": "year",
+    "field": "date",
+    "startMonth": 3
+  },
+  "dimensions": [
+    {
+      "field": "assessments",
+      "scheme": "assessment-tool",
+      "version": "in-force",
+      "values": "all"
+    },
+    {
+      "field": "level",
+      "scheme": "school-level",
+      "version": 1,
+      "of": "subject"
+    }
+  ],
+  "measures": [
+    "records",
+    "people"
+  ]
+}

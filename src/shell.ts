@@ -115,6 +115,8 @@ export interface VaultSummary {
   adopted?: { track: string; label: Record<string, string> }
   /** On opening: the packs the vault held an earlier version of, brought up to the version this app carries. */
   updatedPacks?: string[]
+  /** On opening: the packs whose newer version this app carries needs the vault raised to `format` first — a person's choice. */
+  waitingPacks?: { packs: string[]; format: number }
   /** On opening: the folder is a backup this app keeps of another vault. */
   backupCopy?: boolean
   /** Opened with the recovery key while the key file is missing or damaged: only a new passphrase mends it. */
@@ -202,6 +204,8 @@ export const shell = {
    * `needs-new-format` unless `raiseFormat` says a person chose to raise it.
    */
   applyPack: (folder: string, raiseFormat = false) => invoke<string[]>('apply_pack', { folder, raiseFormat }),
+  /** Raises the open vault's format and takes on the bundled pack versions that waited for it; returns their ids. */
+  updateBundledPacks: () => invoke<string[]>('update_bundled_packs'),
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
   setBackup: (folder: string | null) => invoke<BackupStatus>('set_backup', { folder }),
   backupStatus: () => invoke<BackupStatus>('backup_status'),

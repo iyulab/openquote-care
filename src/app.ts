@@ -22,7 +22,7 @@ type Screen =
   | { name: 'create' }
   | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
-  | { name: 'vault'; folder: string; withKey?: boolean; keyFileLost?: boolean; adopted?: string[]; packsUpdated?: boolean; backupCopy?: boolean }
+  | { name: 'vault'; folder: string; withKey?: boolean; keyFileLost?: boolean; adopted?: string[]; packsUpdated?: boolean; packsWaiting?: boolean; backupCopy?: boolean }
 
 @customElement('oc-app')
 export class OcApp extends LitElement {
@@ -400,7 +400,8 @@ export class OcApp extends LitElement {
       })
       const adopted = summary.adopted ? [inAppLanguage(summary.adopted.label, summary.adopted.track)] : undefined
       const packsUpdated = (summary.updatedPacks?.length ?? 0) > 0
-      this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted, packsUpdated, backupCopy: summary.backupCopy === true })
+      const packsWaiting = (summary.waitingPacks?.packs.length ?? 0) > 0
+      this.go({ name: 'vault', folder, withKey, keyFileLost: summary.keyFileLost === true, adopted, packsUpdated, packsWaiting, backupCopy: summary.backupCopy === true })
     })
   }
 
@@ -440,6 +441,7 @@ export class OcApp extends LitElement {
         .keyFileLost=${s.keyFileLost ?? false}
         .adopted=${s.adopted ?? []}
         .packsUpdated=${s.packsUpdated ?? false}
+        .packsWaiting=${s.packsWaiting ?? false}
         .backupCopy=${s.backupCopy ?? false}
         .feedback=${this.feedback?.configured ? this.feedback : undefined}
         @oc-close=${() => void this.closeVault()}

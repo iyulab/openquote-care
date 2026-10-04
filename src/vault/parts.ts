@@ -152,10 +152,7 @@ export function applyPackButton(store: VaultStore) {
     if (typeof folder === 'string') await store.applyPack(folder)
   }
   const folder = store.raiseFormatFor
-  // This device and every other the vault names, this one first: each must run a version that reads the newer format.
-  const summary = store.summary
-  const others = Object.keys(summary?.devices ?? {}).filter((d) => d !== summary?.device)
-  const devices = summary ? [summary.device, ...others].map((d) => deviceLabel(summary, d)) : []
+  const devices = formatDevices(store.summary)
   return html`<dc-button variant="secondary" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>
     ${folder === undefined
       ? nothing
@@ -165,6 +162,27 @@ export function applyPackButton(store: VaultStore) {
           <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="raise-format-confirm" @click=${() => void store.applyPack(folder, true)}>${strings.raiseFormatConfirm}</dc-button>
           <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ raiseFormatFor: undefined })}>${strings.cancel}</dc-button>
         </dc-callout>`}`
+}
+
+/**
+ * The newer version of the vault's packs this app carries, waiting for the vault to be raised to a
+ * newer format: what raising it means, who it shuts out, and the choice — now or later.
+ */
+export function packsWaitingCallout(store: VaultStore) {
+  if (!store.packsWaiting) return nothing
+  const devices = formatDevices(store.summary)
+  return html`<dc-callout variant="warning" data-role="packs-waiting">
+    <p>${strings.packsWaiting}</p>
+    ${devices.length === 0 ? nothing : html`<p data-role="raise-format-devices">${strings.raiseFormatDevices(devices)}</p>`}
+    <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="packs-waiting-confirm" @click=${() => void store.updateBundledPacks()}>${strings.raiseFormatConfirm}</dc-button>
+    <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ packsWaiting: false })}>${strings.later}</dc-button>
+  </dc-callout>`
+}
+
+/** This device and every other the vault names, this one first: each must run a version that reads a newer format. */
+function formatDevices(summary: VaultSummary | undefined): string[] {
+  const others = Object.keys(summary?.devices ?? {}).filter((d) => d !== summary?.device)
+  return summary ? [summary.device, ...others].map((d) => deviceLabel(summary, d)) : []
 }
 
 /** How a device reads to a person: its name, and which one is this computer. */

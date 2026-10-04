@@ -6,7 +6,7 @@ import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import type { FeedbackStatus, VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
-import { errorCallout } from './vault/parts.js'
+import { errorCallout, packsWaitingCallout } from './vault/parts.js'
 import { StoreController, VaultStore } from './vault/store.js'
 import { vaultStyles } from './vault/styles.js'
 import './vault/subjects-screen.js'
@@ -62,6 +62,8 @@ export class OcVault extends LitElement {
   @property({ attribute: false }) adopted: string[] = []
   /** Opening brought the vault's packs up to the newer version this app carries. */
   @property({ attribute: false }) packsUpdated = false
+  /** Opening found a newer version of the vault's packs in this app that needs the vault raised to a newer format first. */
+  @property({ attribute: false }) packsWaiting = false
   /** What feedback sends along, when this installation can send any; absent, it is not offered. */
   @property({ attribute: false }) feedback?: FeedbackStatus
 
@@ -89,6 +91,7 @@ export class OcVault extends LitElement {
     void this.store.resumeBackup()
     if (this.adopted.length > 0) this.store.notice = strings.adopted(this.adopted)
     else if (this.packsUpdated) this.store.notice = strings.packsUpdated
+    this.store.packsWaiting = this.packsWaiting
     window.addEventListener('focus', this.onFocus)
     this.wideQuery.addEventListener('change', this.onWidth)
     this.onWidth()
@@ -194,7 +197,7 @@ export class OcVault extends LitElement {
           <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
         </dp-toolbar>
         <dp-page fill max-width="full">
-          ${this.unreadableView()} ${this.backupCopyHint()} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
+          ${this.unreadableView()} ${this.backupCopyHint()} ${packsWaitingCallout(store)} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           <oc-subjects .store=${store} ?active=${view === 'subjects'}></oc-subjects>
           <oc-groups .store=${store} ?active=${view === 'groups'}></oc-groups>
           <oc-report .store=${store} ?active=${view === 'report'}></oc-report>

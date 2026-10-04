@@ -266,7 +266,7 @@ export const ko = {
   unmappedHint: '분류 대응표에 없는 옛 분류의 기록입니다. 분류 자료를 확인하세요.',
   blankHint: '이 칸을 비워 두고 기록했습니다. 전체에는 들고, 어느 줄에도 들지 않습니다.',
   severalValues: (primary: string, others: string[]) => (others.length === 0 ? primary : `${primary} (함께: ${others.join(', ')})`),
-  addOther: '함께 해당하는 항목 더하기',
+  addOther: (field: string) => `${field} 더하기`,
   removeOther: (label: string) => `${label} 빼기`,
   conflictedHint: '두 기기에서 서로 모르게 고친 기록입니다. 그 기록에서 맞는 값을 고르면 줄에 들어갑니다. 전체에는 듭니다.',
   grandTotal: '전체',
@@ -360,6 +360,9 @@ export const ko = {
     `대상자의 ${labels.map((l) => `「${l}」`).join('·')} 값은 ${writtenOn}에 적은 것이라 이 회기 날짜에는 맞지 않을 수 있습니다. 아래 값으로 대상자 정보를 고친 뒤 회기를 기록합니다. 비운 칸은 지웁니다.`,
   staleSubjectWas: (value: string) => `지금: ${value}`,
   packsUpdated: '이 기록 폴더의 분류 자료를 이 앱에 들어 있는 새 판으로 맞췄습니다. 있던 기록과 분류는 그대로입니다.',
+  packsWaiting:
+    '이 앱에 들어 있는 분류 자료의 새 판은 기록 폴더를 새 형식으로 올려야 들어옵니다. 올리면 이 판보다 오래된 앱에서는 이 기록 폴더가 열리지 않습니다 — 같은 기록 폴더를 쓰는 다른 컴퓨터도 앱을 먼저 새 판으로 올려 주세요. 있던 기록과 분류는 그대로입니다.',
+  later: '나중에',
   suggested: '제안',
   similarRecords: (n: number) => `비슷한 기록 ${n}건`,
   showWhySuggested: '왜 제안했나요',

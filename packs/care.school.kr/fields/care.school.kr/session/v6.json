@@ -1,0 +1,95 @@
+{
+  "format": "openquote.fields/1",
+  "pack": "care.school.kr",
+  "type": "session",
+  "version": 6,
+  "fields": [
+    {
+      "name": "grade",
+      "kind": "text",
+      "default": {
+        "subject": "grade",
+        "year": {
+          "startMonth": 3,
+          "then": "advance",
+          "max": {
+            "subject": "level",
+            "by": {
+              "elementary": 6,
+              "middle": 3,
+              "high": 3
+            }
+          }
+        }
+      },
+      "label": "Grade"
+    },
+    {
+      "name": "class",
+      "kind": "text",
+      "default": {
+        "subject": "class",
+        "year": {
+          "startMonth": 3,
+          "then": "drop"
+        }
+      },
+      "label": "Class"
+    },
+    {
+      "name": "topic",
+      "kind": "coded",
+      "scheme": "topic",
+      "required": true,
+      "label": "Topic"
+    },
+    {
+      "name": "method",
+      "kind": "coded",
+      "scheme": "method",
+      "label": "Method"
+    },
+    {
+      "name": "client_type",
+      "kind": "coded",
+      "scheme": "client-type",
+      "label": "Session with",
+      "default": {
+        "value": "student"
+      }
+    },
+    {
+      "name": "neis",
+      "kind": "coded",
+      "scheme": "neis-counseling",
+      "label": "NEIS category"
+    },
+    {
+      "name": "assessments",
+      "kind": "coded",
+      "scheme": "assessment-tool",
+      "many": true,
+      "label": "Assessments"
+    },
+    {
+      "name": "title",
+      "kind": "text",
+      "label": "Title"
+    },
+    {
+      "name": "minutes",
+      "kind": "number",
+      "label": "Minutes"
+    }
+  ],
+  "constrain": [
+    {
+      "name": "concern",
+      "hidden": true
+    },
+    {
+      "name": "mode",
+      "hidden": true
+    }
+  ]
+}

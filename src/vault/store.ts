@@ -22,7 +22,7 @@ export type ErrorText = { text: string; detail?: string }
 export type SessionDraft = Record<string, string>
 
 /** What the screens may set directly; everything else changes through the store's actions. */
-type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
+type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'packsWaiting' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
 
 /**
  * An open vault as the screens see it: what was read from it, the action in progress and its
@@ -46,6 +46,8 @@ export class VaultStore extends EventTarget {
   notice = ''
   /** A data pack folder that needs the vault raised to a newer format: applied only once a person chooses to. */
   raiseFormatFor: string | undefined
+  /** A newer version of the vault's packs, carried by this app, waits for the vault to be raised to a newer format. */
+  packsWaiting = false
   /** The report form chosen: loading picks the newest when none is, and a pack offers its new version. */
   reportKey = ''
   /** The export form chosen: loading picks the first when none is. */
@@ -286,6 +288,17 @@ export class VaultStore extends EventTarget {
       this.backupProblem = typeof e === 'object' && e !== null && typeof (e as { code?: unknown }).code === 'string' ? (e as { code: string }).code : 'unknown'
     }
     this.changed()
+  }
+
+  /** Raises the vault's format — a person chose to — and takes on the pack versions this app carries that waited for it. */
+  async updateBundledPacks() {
+    this.set({ notice: '' })
+    await this.run(async () => {
+      const updated = await shell.updateBundledPacks()
+      this.packsWaiting = false
+      await this.load()
+      if (updated.length > 0) this.notice = strings.packsUpdated
+    })
   }
 
   async applyPack(folder: string, raiseFormat = false) {

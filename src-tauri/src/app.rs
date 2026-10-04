@@ -145,6 +145,26 @@ impl From<io::Error> for AppError {
     }
 }
 
+/// What opening did about a vault made before packs named themselves.
+enum Adoption {
+    /// The vault names its packs, or fits no track.
+    None,
+    /// The vault was taken onto the track.
+    Adopted(Track),
+    /// The track needs the vault raised to `format` first.
+    Waiting { track: Track, format: u32 },
+}
+
+/// What opening did with the bundled versions of the vault's packs.
+enum PackUpdate {
+    /// Nothing newer to take on, or the vault holds one of its files with other content.
+    None,
+    /// The packs brought up to the version this app carries.
+    Updated(Vec<String>),
+    /// The packs whose bundled version needs the vault raised to `format` first.
+    Waiting { packs: Vec<String>, format: u32 },
+}
+
 enum Stage {
     Closed,
     /// A new vault whose recovery kit has been shown but not yet confirmed. It exists only in
@@ -294,10 +314,17 @@ impl App {
                     }
                 };
                 let mut open = OpenVault::open(new.write()?, engine)?;
+                let mut files = Vec::new();
                 for pack in &packs {
-                    for file in pack_files(pack)? {
-                        open.keep(file)?;
-                    }
+                    files.extend(pack_files(pack)?);
+                }
+                // No device has opened a new vault yet: it is declared in the format its track needs
+                // from the start, rather than raised the first time it is opened again.
+                if let Some(format) = open.format_needed(&files)? {
+                    open.vault.raise_format(format)?;
+                }
+                for file in files {
+                    open.keep(file)?;
                 }
                 *stage = self.opened(open);
                 Ok(())
@@ -352,14 +379,20 @@ impl App {
         // Taking packs on adds to a vault that reads without them: a failed write (a read-only share,
         // another device adding the same file first) never keeps the vault from opening. What was not
         // added is tried again the next time, since the manifests go last.
-        let adopted = self.adopt(&mut open).unwrap_or_default();
-        let updated = if adopted.is_none() { self.update_packs(&mut open).unwrap_or_default() } else { Vec::new() };
+        let adoption = self.adopt(&mut open, false).unwrap_or(Adoption::None);
+        let update = match adoption {
+            Adoption::None => self.update_packs(&mut open, false).unwrap_or(PackUpdate::None),
+            Adoption::Adopted(_) => PackUpdate::None,
+            Adoption::Waiting { ref track, format } => PackUpdate::Waiting { packs: track.packs.clone(), format },
+        };
         let mut summary = open.summary.clone();
-        if let Some(track) = adopted {
+        if let Adoption::Adopted(track) = adoption {
             summary["adopted"] = serde_json::json!({ "track": track.id, "label": track.label });
         }
-        if !updated.is_empty() {
-            summary["updatedPacks"] = serde_json::json!(updated);
+        match update {
+            PackUpdate::None => {}
+            PackUpdate::Updated(ids) => summary["updatedPacks"] = serde_json::json!(ids),
+            PackUpdate::Waiting { packs, format } => summary["waitingPacks"] = serde_json::json!({ "packs": packs, "format": format }),
         }
         // A backup opened as the vault it copies (the original lost, say): the window says so for
         // as long as it is open, since what is written here does not reach the original.
@@ -374,14 +407,15 @@ impl App {
     /// the track whose bundled files it holds unchanged (see [`Bundle::adoption`]): the files of that
     /// track it lacks are added, and no file it holds is changed. The manifests are written last, so a
     /// vault left part-way still names no pack and is taken on the rest of the way when next opened.
-    /// Returns the track, or None when the vault names its packs or fits no track.
-    fn adopt(&self, open: &mut OpenVault) -> Result<Option<Track>, AppError> {
+    /// A track needing a newer format than the folder declares waits, as a bundled pack version
+    /// does (see [`App::update_packs`]), unless `raise_format` says a person chose to raise it.
+    fn adopt(&self, open: &mut OpenVault, raise_format: bool) -> Result<Adoption, AppError> {
         if open.summary["packs"].as_array().is_some_and(|p| !p.is_empty()) {
-            return Ok(None);
+            return Ok(Adoption::None);
         }
         let vault = &open.vault;
         let Some(track) = self.bundle.adoption(&|path: &str| vault.read(path).ok().flatten())?.cloned() else {
-            return Ok(None);
+            return Ok(Adoption::None);
         };
         let mut new = Vec::new();
         for pack in self.bundle.track_packs(&track.id)? {
@@ -392,26 +426,31 @@ impl App {
             }
         }
         new.sort_by_key(|f| f.path.starts_with("packs/"));
-        // Raising the folder's format is a person's choice: a track needing it is not taken on.
-        if open.format_needed(&new)?.is_some() {
-            return Ok(None);
+        if let Some(format) = open.format_needed(&new)? {
+            if !raise_format {
+                return Ok(Adoption::Waiting { track, format });
+            }
+            open.vault.raise_format(format)?;
         }
         if !new.is_empty() {
             open.keep_all(new)?;
         }
-        Ok(Some(track))
+        Ok(Adoption::Adopted(track))
     }
 
     /// A vault holding an earlier version of a bundled pack takes the bundled version on, as a vault
     /// is taken onto its track: the files of that pack and of the packs it builds on that the vault
     /// lacks are added, manifests last, and no file it holds is changed. When it holds one of those
-    /// files with other content, nothing is added — a person applying the pack sees why. Returns the
-    /// ids of the packs brought up to date.
-    fn update_packs(&self, open: &mut OpenVault) -> Result<Vec<String>, AppError> {
+    /// files with other content, nothing is added — a person applying the pack sees why.
+    ///
+    /// Raising the folder's format is a person's choice, since earlier versions of the app stop
+    /// opening it: a bundled version needing a newer format than the folder declares waits for one
+    /// ([`PackUpdate::Waiting`]) unless `raise_format` says they made it.
+    fn update_packs(&self, open: &mut OpenVault, raise_format: bool) -> Result<PackUpdate, AppError> {
         let packs = open.summary["packs"].as_array().cloned().unwrap_or_default();
         let ids = self.bundle.newer(packs.iter().filter_map(|p| Some((p["id"].as_str()?, p["version"].as_u64()?))));
         if ids.is_empty() {
-            return Ok(ids);
+            return Ok(PackUpdate::None);
         }
         let mut new = Vec::new();
         for dir in self.bundle.closure(&ids)? {
@@ -419,19 +458,41 @@ impl App {
                 match open.vault.read(&file.path)? {
                     None => new.push(file),
                     Some(held) if held == file.content => {}
-                    Some(_) => return Ok(Vec::new()),
+                    Some(_) => return Ok(PackUpdate::None),
                 }
             }
         }
         new.sort_by_key(|f| f.path.starts_with("packs/"));
-        // Raising the folder's format is a person's choice: a bundled version needing it waits for one.
-        if open.format_needed(&new)?.is_some() {
-            return Ok(Vec::new());
+        if let Some(format) = open.format_needed(&new)? {
+            if !raise_format {
+                return Ok(PackUpdate::Waiting { packs: ids, format });
+            }
+            open.vault.raise_format(format)?;
         }
         if !new.is_empty() {
             open.keep_all(new)?;
         }
-        Ok(ids)
+        Ok(PackUpdate::Updated(ids))
+    }
+
+    /// Takes on the bundled packs that waited for the vault's format to be raised — the track a vault
+    /// made before packs named themselves fits, or the newer versions of the packs it holds — raising
+    /// it first: a person chose to, knowing earlier versions of the app stop opening the folder.
+    /// Returns the ids of the packs taken on (none when nothing was waiting).
+    pub fn update_bundled_packs(&self) -> Result<Vec<String>, AppError> {
+        self.with_open(|open| {
+            let ids = match self.adopt(open, true)? {
+                Adoption::Adopted(track) => track.packs,
+                Adoption::None | Adoption::Waiting { .. } => match self.update_packs(open, true)? {
+                    PackUpdate::Updated(ids) => ids,
+                    PackUpdate::None | PackUpdate::Waiting { .. } => Vec::new(),
+                },
+            };
+            if !ids.is_empty() {
+                self.back_up(&open.vault, None);
+            }
+            Ok(ids)
+        })
     }
 
     /// Sets a new passphrase for the open vault. The old one stops opening it on every device
@@ -1419,7 +1480,8 @@ cut off").unwrap();
         let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.close_vault();
-        // As a vault made before the school pack's second to seventh versions (and the base school pack's second) holds it.
+        // As a vault made before the school pack's second to eighth versions (and the base school pack's second) holds it —
+        // one already declared in the format the eighth needs.
         let added = [
             "packs/care.school.kr/v2.json.age",
             "suggestions/care.school.kr/v2.json.age",
@@ -1445,21 +1507,82 @@ cut off").unwrap();
             "fields/care.school.kr/session/v5.json.age",
             "fields/care.school.kr/subject/v1.json.age",
             "labels/care.school.kr/v5.ko.json.age",
-        ];
-        for file in added {
+        ]
+        .into_iter()
+        .chain(SCHOOL_PACK_8)
+        .collect::<Vec<_>>();
+        for file in &added {
             fs::remove_file(dir.path().join(file)).unwrap();
         }
 
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school", "care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 7));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 8));
         assert_eq!(summary["packIssues"], json!([]));
-        for file in added {
+        for file in &added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
         }
         app.close_vault();
         assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("updatedPacks").is_none(), "nothing to take on the next time");
+    }
+
+    /// The files the school pack's eighth version adds: a field that takes several values, so a
+    /// vault holding it needs format 1.
+    const SCHOOL_PACK_8: [&str; 6] = [
+        "packs/care.school.kr/v8.json.age",
+        "schemes/assessment-tool/v1.json.age",
+        "fields/care.school.kr/session/v6.json.age",
+        "labels/care.school.kr/v6.ko.json.age",
+        "reports/month-assessment-tool/v1.json.age",
+        "reports/year-assessment-level/v1.json.age",
+    ];
+
+    fn declared_format(dir: &Path) -> String {
+        let text = fs::read_to_string(dir.join(openquote_care_vault::VAULT_FILE)).unwrap();
+        serde_json::from_str::<Value>(&text).unwrap()["format"].as_str().unwrap().to_owned()
+    }
+
+    #[test]
+    fn a_new_vault_is_declared_in_the_format_its_track_needs() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+
+        assert_eq!(declared_format(dir.path()), "openquote.vault/1");
+    }
+
+    #[test]
+    fn a_bundled_version_needing_a_newer_format_waits_for_a_person_to_raise_it() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.close_vault();
+        // As a vault made before the school pack's eighth version holds it: in format 0.
+        for file in SCHOOL_PACK_8 {
+            fs::remove_file(dir.path().join(file)).unwrap();
+        }
+        fs::write(dir.path().join(openquote_care_vault::VAULT_FILE), "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n").unwrap();
+
+        let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        assert_eq!(summary["waitingPacks"], json!({ "packs": ["care.school.kr"], "format": 1 }));
+        assert!(summary.get("updatedPacks").is_none());
+        assert_eq!(declared_format(dir.path()), "openquote.vault/0", "opening alone never raises it");
+        assert!(SCHOOL_PACK_8.iter().all(|f| !dir.path().join(f).exists()));
+
+        assert_eq!(app.update_bundled_packs().unwrap(), ["care.school.kr"]);
+        assert_eq!(declared_format(dir.path()), "openquote.vault/1");
+        for file in SCHOOL_PACK_8 {
+            assert!(dir.path().join(file).is_file(), "{file} is added");
+        }
+        assert!(app.update_bundled_packs().unwrap().is_empty(), "nothing is left waiting");
+        app.close_vault();
+        let reopened = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        assert!(reopened.get("waitingPacks").is_none() && reopened.get("updatedPacks").is_none());
+        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 8));
     }
 
     #[test]
@@ -1533,7 +1656,8 @@ cut off").unwrap();
     fn a_pack_needing_a_newer_vault_format_is_applied_only_once_a_person_chooses_to_raise_it() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        // A track whose packs an engine reading only format 0 counts right: its vault is declared in format 0.
+        let key = app.create_vault(dir.path(), "pass".to_owned(), "care-en").unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         let declaration = fs::read_to_string(dir.path().join("vault.json")).unwrap();
         assert!(declaration.contains("openquote.vault/0"));
@@ -1610,7 +1734,7 @@ cut off").unwrap();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
         // The core's forms stand on the fields the school track hides: they are not offered.
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
-        assert_eq!(offered, ["monthly-topic", "year-client-type", "year-grade-class", "year-grade-gender"]);
+        assert_eq!(offered, ["month-assessment-tool", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender"]);
     }
 
     /// A vault as a version before packs named themselves left it: the golden vault's files through
@@ -1643,10 +1767,16 @@ cut off").unwrap();
 
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
-        assert_eq!(summary["adopted"]["track"], TRACK);
-        assert_eq!(summary["unreadable"], json!([]));
+        // The school track holds a field taking several values: taking it on waits for a person to raise the format.
+        assert!(summary.get("adopted").is_none());
+        assert_eq!(summary["waitingPacks"]["format"], 1);
+        assert_eq!(files_under(dir.path()), held, "nothing is written until a person chooses");
+        assert_eq!(app.update_bundled_packs().unwrap(), ["care.school.kr"]);
+        assert_eq!(declared_format(dir.path()), "openquote.vault/1");
+        assert_eq!(app.summary().unwrap()["unreadable"], json!([]));
         let now = files_under(dir.path());
-        for (path, bytes) in &held {
+        // Every record and definition it held is unchanged; only its declaration was raised.
+        for (path, bytes) in held.iter().filter(|(p, _)| *p != Path::new(openquote_care_vault::VAULT_FILE)) {
             assert_eq!(now.get(path), Some(bytes), "{} is unchanged", path.display());
         }
         let run = app.run_report("monthly-topic", 2, "2026-04-01", None).unwrap();
@@ -1663,6 +1793,7 @@ cut off").unwrap();
         let dir = tempfile::tempdir().unwrap();
         earlier_vault(dir.path(), 1);
         app.open_vault(dir.path(), "pass".to_owned()).unwrap();
+        app.update_bundled_packs().unwrap();
         app.close_vault();
         let held = files_under(dir.path());
 
@@ -1684,7 +1815,7 @@ cut off").unwrap();
 
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
-        assert!(summary.get("adopted").is_none());
+        assert!(summary.get("adopted").is_none() && summary.get("waitingPacks").is_none());
         assert_eq!(files_under(dir.path()), held);
     }
 
@@ -1701,6 +1832,7 @@ cut off").unwrap();
                 std::thread::spawn(move || {
                     let app = App::new(exe, device.to_owned()).with_bundle(bundle());
                     let summary = app.open_vault(&path, "pass".to_owned()).unwrap();
+                    app.update_bundled_packs().unwrap();
                     app.close_vault();
                     summary
                 })

@@ -126,6 +126,11 @@ fn apply_pack(folder: String, raise_format: Option<bool>, app: State<App>) -> Co
 }
 
 #[tauri::command]
+fn update_bundled_packs(app: State<App>) -> CommandResult<Vec<String>> {
+    text(app.update_bundled_packs())
+}
+
+#[tauri::command]
 fn pending(report: String, version: u32, records: Value, to: Option<String>, app: State<App>) -> CommandResult<Value> {
     text(app.pending(&report, version, records, to.as_deref()))
 }
@@ -401,6 +406,7 @@ pub fn run() {
             ui_locale,
             tracks,
             apply_pack,
+            update_bundled_packs,
             pending,
             suggestions,
             carry,

@@ -1,0 +1,26 @@
+{
+  "format": "openquote.report/1",
+  "report": "month-assessment-tool",
+  "version": 1,
+  "label": "월별 검사 도구별 실시",
+  "counts": "session",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "dimensions": [
+    {
+      "field": "assessments",
+      "scheme": "assessment-tool",
+      "version": "in-force",
+      "values": "all"
+    },
+    {
+      "field": "practitioner"
+    }
+  ],
+  "measures": [
+    "records",
+    "people"
+  ]
+}

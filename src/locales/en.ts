@@ -267,7 +267,7 @@ export const en: Strings = {
   unmappedHint: 'Records in an old category that the crosswalk does not carry forward. Check the classification material.',
   blankHint: 'Recorded with this left empty. Counted in the total, in no row.',
   severalValues: (primary: string, others: string[]) => (others.length === 0 ? primary : `${primary} (also: ${others.join(', ')})`),
-  addOther: 'Add another that applies',
+  addOther: (field: string) => `Add to ${field}`,
   removeOther: (label: string) => `Remove ${label}`,
   conflictedHint: 'Changed on two devices without seeing each other. Choose the right value on the record and it is counted in a row. Counted in the total.',
   grandTotal: 'All',
@@ -363,6 +363,9 @@ export const en: Strings = {
     `The client's ${labels.map((l) => `“${l}”`).join(' and ')} ${labels.length === 1 ? 'was' : 'were'} written on ${writtenOn}, and may no longer hold on this session's date. Recording the session first corrects the client's record to the values below; a field left empty is cleared.`,
   staleSubjectWas: (value: string) => `Now: ${value}`,
   packsUpdated: "This vault's classification data now matches the newer version this app carries. Its records and classifications are unchanged.",
+  packsWaiting:
+    "The newer classification data this app carries comes into this vault only once the vault is raised to a newer format. After that, versions of the app older than this one no longer open the vault — update the app first on every other computer that uses it. Its records and classifications are unchanged.",
+  later: 'Later',
   suggested: 'Suggested',
   similarRecords: (n: number) => (n === 1 ? '1 similar record' : `${n} similar records`),
   showWhySuggested: 'Why these?',

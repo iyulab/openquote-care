@@ -1,0 +1,24 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "assessment-tool",
+  "version": 1,
+  "items": [
+    { "code": "k-wisc-v", "label": "K-WISC-V(아동 지능)" },
+    { "code": "k-wais-iv", "label": "K-WAIS-IV(성인 지능)" },
+    { "code": "mmpi-a", "label": "MMPI-A(다면적 인성 청소년용)" },
+    { "code": "mmpi-2", "label": "MMPI-2(다면적 인성)" },
+    { "code": "pai-a", "label": "PAI-A(성격평가 청소년용)" },
+    { "code": "jtci", "label": "JTCI(기질 및 성격)" },
+    { "code": "sct", "label": "SCT(문장완성)" },
+    { "code": "htp", "label": "HTP(집-나무-사람)" },
+    { "code": "kfd", "label": "KFD(동적 가족화)" },
+    { "code": "bgt", "label": "BGT(벤더 게슈탈트)" },
+    { "code": "rorschach", "label": "로르샤흐" },
+    { "code": "tat-cat", "label": "TAT·CAT(주제통각)" },
+    { "code": "k-cbcl", "label": "K-CBCL(아동·청소년 행동평가, 보호자)" },
+    { "code": "ysr", "label": "YSR(청소년 자기보고)" },
+    { "code": "k-ars", "label": "K-ARS(ADHD 평정)" },
+    { "code": "cdi", "label": "CDI(아동 우울)" },
+    { "code": "other", "label": "기타 검사" }
+  ]
+}

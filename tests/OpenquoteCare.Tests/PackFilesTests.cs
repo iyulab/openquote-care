@@ -86,18 +86,17 @@ public sealed class PackFilesTests
     }
 
     [Fact]
-    public void A_school_session_starts_with_the_student_and_the_vault_keeps_its_format()
+    public void A_school_session_starts_with_the_student()
     {
         var content = VaultOn("school-kr");
 
         Assert.Equal("student", content.FieldCatalog().Find("session", "client_type")!.DefaultValue);
-        Assert.Equal(0, content.RequiredVersion); // taken on by a vault of either format without raising it
-        Assert.Equal(["year-client-type", "year-grade-class", "year-grade-gender"],
+        Assert.Equal(["year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender"],
             content.Reports.Where(r => r.Name.StartsWith("year-", StringComparison.Ordinal)).Select(r => r.Name).Order());
     }
 
     [Fact]
-    public void A_school_session_may_carry_its_neis_category_three_levels_deep_and_the_vault_keeps_its_format()
+    public void A_school_session_may_carry_its_neis_category_three_levels_deep()
     {
         var content = VaultOn("school-kr");
         var neis = content.FieldCatalog().Find("session", "neis")!;
@@ -116,7 +115,62 @@ public sealed class PackFilesTests
             leaves.Where(l => l.Parent == "counseling/group").Select(l => l.Label));
         Assert.Equal(Suggestion.Confirm,
             content.SuggestionCatalog().For("neis-counseling", 1, items["counseling/individual/self-harm-suicide"]));
-        Assert.Equal(0, content.RequiredVersion);
+    }
+
+    [Fact]
+    public void A_school_session_names_the_assessments_given_and_forms_count_each_one()
+    {
+        var w = new VaultWriter("dev1");
+        var records = new List<VaultFile>();
+        string Add(VaultFile f)
+        {
+            records.Add(f);
+            return VaultReader.Read([f]).Changes[0].Entity.Id;
+        }
+        static JsonObject Tool(string code, bool primary = false)
+        {
+            var value = new JsonObject { ["scheme"] = "assessment-tool", ["version"] = 1, ["code"] = code };
+            if (primary) value["primary"] = true;
+            return value;
+        }
+        static JsonObject Level(string code) => new() { ["scheme"] = "school-level", ["version"] = 1, ["code"] = code };
+        var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 1", ["level"] = Level("middle") }));
+        var two = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "가상 학생 2", ["level"] = Level("high") }));
+        var counsellor = Add(w.CreatePractitioner(new Dictionary<string, JsonNode?> { ["name"] = "상담자 가" }));
+        // A first meeting that was an interview and a battery of three; a later one with one assessment; one with none.
+        Add(w.CreateInSubject(one, "session", new Dictionary<string, JsonNode?>
+        {
+            ["date"] = "2026-05-02", ["method"] = new JsonObject { ["scheme"] = "method", ["version"] = 1, ["code"] = "interview" },
+            ["assessments"] = new JsonArray(Tool("mmpi-a", primary: true), Tool("sct"), Tool("htp")), ["practitioner"] = counsellor,
+        }));
+        Add(w.CreateInSubject(two, "session", new Dictionary<string, JsonNode?>
+        {
+            ["date"] = "2026-05-09", ["assessments"] = Tool("sct"), ["practitioner"] = counsellor,
+        }));
+        Add(w.CreateInSubject(two, "session", new Dictionary<string, JsonNode?> { ["date"] = "2026-05-16", ["practitioner"] = counsellor }));
+        var content = VaultReader.Read(PacksOf("school-kr").SelectMany(VaultFiles.FromDirectory).Concat(records));
+        var entities = Openquote.Records.EntityMerger.Merge(content.Changes).Values;
+        var field = content.FieldCatalog().Find("session", "assessments")!;
+        var tools = content.Schemes.Single(s => s.Name == "assessment-tool" && s.Version == 1);
+
+        Assert.Equal((FieldKind.Coded, "assessment-tool", true, false), (field.Kind, field.Scheme, field.Many, field.Required));
+        Assert.Equal("실시한 검사", content.LabelCatalog().FieldLabel("session", "assessments", ["ko"]));
+        Assert.Contains(tools.Items, i => i.Code == "other");
+        // Which assessment was given is a fact the counsellor records, never a suggestion.
+        Assert.All(tools.Items, i => Assert.Equal(Suggestion.Off, content.SuggestionCatalog().For("assessment-tool", 1, i)));
+        // A field taking several values is counted right only by an engine that reads format 1.
+        Assert.Equal(1, content.RequiredVersion);
+
+        var month = Openquote.Reports.ReportRunner.RunContaining(content.Reports.Single(r => r.Name == "month-assessment-tool"),
+            new DateOnly(2026, 5, 1), entities, content.Catalog());
+        int Count(Openquote.Reports.ReportRun run, string tool) => run.Cells.Where(c => c.Key[0] == tool).Sum(c => c.Records.Count);
+        Assert.Equal((2, 1, 1, 0), (Count(month, "sct"), Count(month, "mmpi-a"), Count(month, "htp"), Count(month, "k-wisc-v")));
+        Assert.Equal((3, 1), (month.Total.Count, month.Blank.Count)); // two sessions with an assessment, one without
+
+        var year = Openquote.Reports.ReportRunner.RunContaining(content.Reports.Single(r => r.Name == "year-assessment-level"),
+            new DateOnly(2026, 5, 1), entities, content.Catalog());
+        Assert.Equal((1, 1), (year.Cells.Single(c => c.Key[0] == "sct" && c.Key[1] == "middle").Records.Count,
+            year.Cells.Single(c => c.Key[0] == "sct" && c.Key[1] == "high").Records.Count));
     }
 
     [Fact]
@@ -158,7 +212,6 @@ public sealed class PackFilesTests
             r => Assert.Equal(["전문상담", "Wee클래스", "상담", "개인상담", "학업", "1", "2026", "20260502", "1학년", "남", "성적 하락", "성적 하락", "1", "10", "전문상담교사", "", "가상 학생 1"], r.Cells),
             r => Assert.Equal(["전문상담", "Wee클래스", "상담", "집단상담", "성격/대인관계", "2", "2026", "20260819", "", "혼성", "친구 관계", "친구 관계", "0", "50", "", "", "가상 학생 1, 가상 학생 2"], r.Cells));
         Assert.Empty(table.Pending.Concat(table.Unmapped).Concat(table.Conflicted).Concat(table.Withheld));
-        Assert.Equal(0, content.RequiredVersion);
     }
 
     [Fact]

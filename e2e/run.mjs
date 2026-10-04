@@ -269,8 +269,8 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'two sessions')
     await app.noAlert()
     assert.deepEqual(await app.sessionRows(), [
-      ['2026-04-09', '관계', '', '학생', '', '상담자 가'],
-      ['2026-04-02', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '상담자 가'],
+      ['2026-04-09', '관계', '', '학생', '', '', '상담자 가'],
+      ['2026-04-02', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '', '상담자 가'],
     ])
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal(subjects.length, 1, 'one subject folder')
@@ -281,6 +281,7 @@ const scenarios = {
 
   async 'produces the monthly report and shows what each count is made of'(app, work) {
     await app.click('button', '통계')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="monthly-topic@1"]')
     await app.type('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
@@ -609,9 +610,10 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="feedback-open"]')`), false)
   },
 
-  async 'brings a vault holding an earlier version of its classification data up to the one this app carries, and says so'(app, work) {
+  async 'brings a vault holding an earlier version of its classification data up to the one this app carries once a person raises its format, and says so'(app, work) {
     await app.restart()
-    // As a vault made before the school pack's second to seventh versions (and the base school pack's second) holds it.
+    // As a vault made before the school pack's second to eighth versions (and the base school pack's second) holds it:
+    // in format 0, which the eighth version's field taking several values needs raised.
     const added = [
       ['packs', 'care.school.kr', 'v2.json.age'],
       ['suggestions', 'care.school.kr', 'v2.json.age'],
@@ -637,14 +639,32 @@ const scenarios = {
       ['fields', 'care.school.kr', 'session', 'v5.json.age'],
       ['fields', 'care.school.kr', 'subject', 'v1.json.age'],
       ['labels', 'care.school.kr', 'v5.ko.json.age'],
+      ['packs', 'care.school.kr', 'v8.json.age'],
+      ['schemes', 'assessment-tool', 'v1.json.age'],
+      ['fields', 'care.school.kr', 'session', 'v6.json.age'],
+      ['labels', 'care.school.kr', 'v6.ko.json.age'],
+      ['reports', 'month-assessment-tool', 'v1.json.age'],
+      ['reports', 'year-assessment-level', 'v1.json.age'],
     ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
+    const declaration = join(work.vault, 'vault.json')
+    const declared = async () => JSON.parse(await readFile(declaration, 'utf8')).format
+    await writeFile(declaration, (await readFile(declaration, 'utf8')).replace('openquote.vault/1', 'openquote.vault/0'))
     await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
     await app.type('암호', PASSPHRASE)
     await app.click('dc-button', '열기')
     await app.vaultOpen()
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=packs-waiting-confirm]')`, 'the question before raising the format for the newer data')
+    assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
+    for (const file of added) assert.ok(!existsSync(file), `${file} waits`)
+    assert.ok((await app.cdp.evaluate(`__e2e.one('[data-role=raise-format-devices]').textContent.trim()`)).startsWith('이 기록 폴더를 쓰는 기기: '),
+      'the devices that must run a version reading the newer format')
+
+    await app.click('[data-role=packs-waiting-confirm]')
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('새 판으로 맞췄습니다'))`, 'the notice that the data was brought up to date')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=packs-waiting]')`, 'the question gone')
+    assert.equal(await declared(), 'openquote.vault/1')
     for (const file of added) assert.ok(existsSync(file), `${file} is back`)
     await app.noAlert()
   },
@@ -727,7 +747,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '학생', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '또래관계', '', '학생', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
@@ -1416,23 +1436,18 @@ const scenarios = {
     await app.noAlert()
   },
 
-  async 'raises the vault to the newer format only once a person chooses, then lays a school year out by grade, class and topic'(app, work) {
-    // The test pack of format 1 report forms and a coded field taking several values, applied to the school vault above.
+  async 'applies a pack of format 1 forms to a new school vault, then lays a school year out by grade, class and topic'(app, work) {
+    // The test pack of format 1 report forms and a coded field taking several values, applied to the school vault above —
+    // declared in format 1 from the start, as its track holds a field taking several values: nothing to ask.
     const vault = join(dirname(work.vault), 'school-vault')
     const declared = async () => JSON.parse(await readFile(join(vault, 'vault.json'), 'utf8')).format
-    assert.equal(await declared(), 'openquote.vault/0')
+    assert.equal(await declared(), 'openquote.vault/1')
     const pack = join(root, 'tests', 'format1')
     await app.click('button', '통계') // where a pack is applied
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`!!__e2e.one('[data-role=raise-format-confirm]')`, 'the question before raising the format')
-    assert.equal(await declared(), 'openquote.vault/0', 'nothing changes until a person chooses')
-    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=raise-format-devices]').textContent.trim()`), '이 기록 폴더를 쓰는 기기: 이 기기',
-      'the devices that must run a version reading the newer format, this one among them')
-
-    await app.click('[data-role=raise-format-confirm]')
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('Format 1 report forms (test)'))`, 'the pack applied')
+    assert.ok(!(await app.cdp.evaluate(`!!__e2e.one('[data-role=raise-format-confirm]')`)), 'no question: the format is already the one it needs')
     await app.noAlert()
-    assert.equal(await declared(), 'openquote.vault/1')
     const entries = await app.cdp.evaluate(`__e2e.all('nav[aria-label="보고 양식"] button').map((b) => b.dataset.entry)`)
     for (const form of ['test.format1.year-grade-class@1', 'test.format1.month-girls@1', 'test.format1.range-concerns@1']) {
       assert.ok(entries.includes(form), `${form} is offered as a report: ${JSON.stringify(entries)}`)
@@ -1453,7 +1468,7 @@ const scenarios = {
     assert.deepEqual(await startsFrom(), ['parent', '45'])
     await app.choose('주제', 'family')
     await app.choose('함께 다룬 주제', 'family')
-    await app.choose('함께 해당하는 항목 더하기', 'learning')
+    await app.choose('함께 다룬 주제 더하기', 'learning')
     await app.cdp.waitFor(`!!__e2e.one('[data-others=concerns] dc-button[data-other=learning]')`, 'the other value listed')
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the session listed')
@@ -1527,6 +1542,35 @@ const scenarios = {
     assert.deepEqual((await row('learning')).slice(1), ['1 (1명)', '1 (1명)'])
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1명)', 'one session, counted once in the total')
     assert.equal(await app.cdp.evaluate(`__e2e.one('dc-metric[data-group=blank]').value`), '1', 'the crisis session covers no topic yet')
+  },
+
+  async 'records the assessments a session gave, and counts each one in its month'(app) {
+    // A first meeting that was an interview and two assessments, in the school vault above.
+    await app.click('button', '대상자')
+    await app.click('li button .label', '가상 학생 9')
+    await app.setDate('날짜', '2026-04-07')
+    await app.choose('주제', 'family')
+    await app.choose('방법', 'interview')
+    await app.choose('실시한 검사', 'mmpi-a')
+    await app.choose('실시한 검사 더하기', 'sct')
+    await app.cdp.waitFor(`!!__e2e.one('[data-others=assessments] dc-button[data-other=sct]')`, 'the second assessment listed')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 3`, 'the session listed')
+    await app.noAlert()
+    const rows = await app.sessionRows()
+    assert.ok(rows.some((r) => r.includes('MMPI-A(다면적 인성 청소년용) (함께: SCT(문장완성))')), `the session shows both assessments: ${JSON.stringify(rows)}`)
+
+    await app.click('button', '통계')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="sct"]')`, 'the month by assessment')
+    await app.noAlert()
+    const row = (code) => app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="${code}"]').children].map((c) => c.textContent.trim())`)
+    assert.equal((await row('mmpi-a'))[0], 'MMPI-A(다면적 인성 청소년용)')
+    assert.equal((await row('mmpi-a')).at(-1), '1 (1명)', 'counted once for the MMPI-A')
+    assert.equal((await row('sct')).at(-1), '1 (1명)', 'and once for the SCT, from the same session')
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
