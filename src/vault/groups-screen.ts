@@ -7,7 +7,7 @@ import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './record-form.js'
 import './record-kinds.js'
-import { sessionTable, subjectPicker, toggled } from './session-parts.js'
+import { recordTable, subjectPicker, toggled } from './session-parts.js'
 
 /** Groups: their members, and the sessions held with them. */
 @customElement('oc-groups')
@@ -150,8 +150,8 @@ export class OcGroups extends VaultScreen {
           ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
           : html`<dc-card
               ><div class="scroll">
-                ${sessionTable(store, {
-                  sessions,
+                ${recordTable(store, {
+                  records: sessions,
                   attendees: true,
                   openNotes: this.openNotes,
                   toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),

@@ -6,7 +6,7 @@ import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import './record-form.js'
 import { StoreElement } from './screen.js'
-import { conflictPanel, sessionTable, subjectPicker, toggled, type Holder } from './session-parts.js'
+import { conflictPanel, recordTable, subjectPicker, toggled, type Holder } from './session-parts.js'
 
 /**
  * The kinds of record besides sessions that the vault's packs keep under a subject or a group — a referral, say —
@@ -104,8 +104,8 @@ export class OcRecordKinds extends StoreElement {
         ? html`<dc-empty-state description=${strings.noRecordsOf(name)}></dc-empty-state>`
         : html`<dc-card
             ><div class="scroll">
-              ${sessionTable(store, {
-                sessions: records,
+              ${recordTable(store, {
+                records,
                 fields,
                 attendees: this.holder.kind === 'group',
                 openNotes: this.openNotes,

@@ -1,18 +1,18 @@
-// Finding sessions by what they say: every word a person types must appear somewhere in a session —
+// Finding records by what they say — sessions and every other kind: every word a person types must appear somewhere in a record —
 // a field's value in words, what was written in it, or the names of the people it is about. The
 // search runs over the records the window already holds; nothing is written down to make it faster.
 
 import type { Entity } from './records.js'
 
-/** One thing a session says, as a person reads it: the field's label and its value in words. */
-export interface SessionText {
+/** One thing a record says, as a person reads it: the field's label and its value in words. */
+export interface RecordText {
   label: string
   text: string
 }
 
-/** A session that holds every word, with where the first word was found and the words around it. */
+/** A record that holds every word, with where the first word was found and the words around it. */
 export interface SearchHit {
-  session: Entity
+  record: Entity
   label: string
   snippet: string
 }
@@ -38,21 +38,21 @@ function around(text: string, at: number, length: number): string {
 }
 
 /**
- * The sessions holding every word of `query`, in the order given, each with where its first word
- * was found. `describe` says what a session says; a query of no words finds nothing.
+ * The records holding every word of `query`, in the order given, each with where its first word
+ * was found. `describe` says what a record says; a query of no words finds nothing.
  */
-export function searchSessions(sessions: readonly Entity[], query: string, describe: (s: Entity) => SessionText[]): SearchHit[] {
+export function searchRecords(records: readonly Entity[], query: string, describe: (r: Entity) => RecordText[]): SearchHit[] {
   const words = searchWords(query)
   if (words.length === 0) return []
   const hits: SearchHit[] = []
-  for (const session of sessions) {
-    const texts = describe(session).filter((t) => t.text.trim() !== '')
+  for (const record of records) {
+    const texts = describe(record).filter((t) => t.text.trim() !== '')
     const folded = texts.map((t) => fold(t.text))
     if (!words.every((w) => folded.some((t) => t.includes(w)))) continue
     const i = folded.findIndex((t) => t.includes(words[0]))
     // Folding keeps a text's length for the letters people type, so the place found is the place shown.
     const text = texts[i].text.normalize('NFC')
-    hits.push({ session, label: texts[i].label, snippet: around(text, folded[i].indexOf(words[0]), words[0].length) })
+    hits.push({ record, label: texts[i].label, snippet: around(text, folded[i].indexOf(words[0]), words[0].length) })
   }
   return hits
 }

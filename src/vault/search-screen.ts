@@ -1,7 +1,7 @@
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
-import { searchSessions, searchWords, type SessionText } from '../search.js'
+import { searchRecords, searchWords, type RecordText } from '../search.js'
 import { strings } from '../strings.js'
 import { VaultScreen } from './screen.js'
 import { valueText } from './session-parts.js'
@@ -28,7 +28,7 @@ export class OcSearch extends VaultScreen {
   }
 
   /** What a record says, in words: each field shown (named with its kind, for a kind other than sessions), then who it is about and the group that held it. */
-  private describe(s: Entity): SessionText[] {
+  private describe(s: Entity): RecordText[] {
     const store = this.store
     const names = new Map(store.subjects.map((p) => [p.id, text(p, 'name')]))
     const kind = this.kindName(s.type)
@@ -53,7 +53,7 @@ export class OcSearch extends VaultScreen {
     const names = new Map(store.subjects.map((p) => [p.id, text(p, 'name')]))
     const asked = searchWords(this.query).length > 0
     const records = store.kinds.length > 0 ? store.kinds.flatMap((k) => store.recordsOf(k.type)) : store.sessions
-    const hits = asked ? searchSessions(newestFirst(records), this.query, (s) => this.describe(s)) : []
+    const hits = asked ? searchRecords(newestFirst(records), this.query, (s) => this.describe(s)) : []
     const dateOf = (s: Entity) => {
       const field = store.fieldsOf(s.type).find((f) => f.kind === 'date')
       return field ? valueText(store, field, s.fields[field.name]) : ''
@@ -88,12 +88,12 @@ export class OcSearch extends VaultScreen {
                 </thead>
                 <tbody>
                   ${hits.slice(0, SHOWN).map(
-                    (h) => html`<tr data-hit=${h.session.id}>
-                      <td>${dateOf(h.session) || nothing}</td>
-                      <td class="wrap">${h.session.people.map((id) => names.get(id) ?? '').join(', ')}</td>
+                    (h) => html`<tr data-hit=${h.record.id}>
+                      <td>${dateOf(h.record) || nothing}</td>
+                      <td class="wrap">${h.record.people.map((id) => names.get(id) ?? '').join(', ')}</td>
                       <td>${h.label}</td>
                       <td class="wrap">${h.snippet}</td>
-                      <td><dc-button size="sm" variant="ghost" data-role="open-hit" @click=${() => this.open(h.session)}>${strings.searchOpen}</dc-button></td>
+                      <td><dc-button size="sm" variant="ghost" data-role="open-hit" @click=${() => this.open(h.record)}>${strings.searchOpen}</dc-button></td>
                     </tr>`,
                   )}
                 </tbody>

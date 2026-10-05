@@ -59,9 +59,9 @@ export function toggled(set: ReadonlySet<string>, id: string): Set<string> {
   return next
 }
 
-/** How the session list of a screen draws: whose sessions, and what a row's buttons do. */
-export interface SessionTable {
-  sessions: Entity[]
+/** How a list of records on a screen draws — sessions or another kind: which records, and what a row's buttons do. */
+export interface RecordTable {
+  records: Entity[]
   /** The fields of the kind of record listed: sessions' when not given. */
   fields?: FieldView[]
   /** A group's list: the participants get a column, before the references. */
@@ -76,10 +76,10 @@ export interface SessionTable {
 }
 
 /**
- * Sessions as a table whose columns are the vault's session fields (dates, classifications, references).
+ * Records as a table whose columns are the fields of their kind (dates, classifications, references).
  * Written content is not a column: a row that has some offers to open it underneath.
  */
-export function sessionTable(store: VaultStore, t: SessionTable) {
+export function recordTable(store: VaultStore, t: RecordTable) {
   const defs = t.fields ?? store.sessionFields
   const columns = listColumns(defs)
   const notes = narrativeFields(defs)
@@ -95,7 +95,7 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
       </tr>
     </thead>
     <tbody>
-      ${t.sessions.map((s) => {
+      ${t.records.map((s) => {
         const cells = columns.map((f) => valueText(store, f, s.fields[f.name]))
         if (at >= 0) cells.splice(at, 0, namesOf(s, subjectNames))
         const written = notes.filter((f) => typeof s.fields[f.name] === 'string' && (s.fields[f.name] as string).trim() !== '')

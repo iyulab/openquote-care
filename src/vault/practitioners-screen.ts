@@ -7,7 +7,7 @@ import './entity-form.js'
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
-import { sessionTable, toggled } from './session-parts.js'
+import { recordTable, toggled } from './session-parts.js'
 
 /** The practitioners sessions are kept by, and the sessions each one kept. */
 @customElement('oc-practitioners')
@@ -112,8 +112,8 @@ export class OcPractitioners extends VaultScreen {
           ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
           : html`<dc-card
               ><div class="scroll">
-                ${sessionTable(store, {
-                  sessions,
+                ${recordTable(store, {
+                  records: sessions,
                   attendees: true,
                   openNotes: this.openNotes,
                   toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),

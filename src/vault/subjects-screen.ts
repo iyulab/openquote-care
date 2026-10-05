@@ -11,7 +11,7 @@ import { VaultScreen } from './screen.js'
 import './record-form.js'
 import './record-kinds.js'
 import './entity-form.js'
-import { conflictPanel, sessionTable, toggled } from './session-parts.js'
+import { conflictPanel, recordTable, toggled } from './session-parts.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
 @customElement('oc-subjects')
@@ -226,8 +226,8 @@ export class OcSubjects extends VaultScreen {
           ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
           : html`<dc-card
               ><div class="scroll">
-                ${sessionTable(store, {
-                  sessions,
+                ${recordTable(store, {
+                  records: sessions,
                   openNotes: this.openNotes,
                   toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
                   settle: (id) => (this.settling = id),
