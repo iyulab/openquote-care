@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
 import { App as KitApp } from '@iyulab/tauri-kit-dev/app'
+import { checkMachine } from '@iyulab/tauri-kit-dev/machine'
 
 const here = dirname(fileURLToPath(import.meta.url))
 export const root = join(here, '..')
@@ -14,6 +15,10 @@ export const sidecar = resolve(
     join(root, 'sidecar', 'OpenquoteCare.Sidecar', 'bin', 'Release', 'net10.0', process.platform === 'win32' ? 'openquote-care-sidecar.exe' : 'openquote-care-sidecar'),
 )
 export const PORT = 9224
+
+// The sidecar finds a per-user .NET only through DOTNET_ROOT; without it the window says only that
+// the app could not get ready to open records. Set it as `npm run verify` does, when the shell has not.
+const machine = process.env.DOTNET_ROOT ? {} : checkMachine({ dotnet: true }).set
 
 export const q = (s) => JSON.stringify(s)
 
@@ -32,7 +37,7 @@ export class App {
     app.kit = await KitApp.launch({
       exe,
       port: PORT,
-      env: { OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env },
+      env: { OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...machine, ...env },
       // The e2e build's window configuration opens the debugging port itself.
       debugPortFromEnv: false,
       ready: `customElements.get('oc-app') && !!document.querySelector('oc-app')`,
