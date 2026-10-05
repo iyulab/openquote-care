@@ -7,13 +7,17 @@
 
 ## 1. Identity and philosophy
 
-**Openquote Care is a free, local desktop app that lets counselors record the people and cases they follow, and report on them without counting again.**
+**Openquote Care is a free, local desktop app that helps counselors keep the people and cases they follow on record, report on them without counting again, and see each case more clearly — how it is progressing, which past cases resemble it, and what established practice and published measures say about it — with every insight traceable to the records and the standard it rests on.**
+
+Recording once and reporting without recounting are the floor. Better-grounded professional judgment, drawn from records already kept, is what the app builds on that floor.
 
 It is the first product built on the [Openquote engine](https://github.com/iyulab/openquote). The engine knows the record format and nothing about any field of work; this app knows counseling and nothing about any one country or institution. What is specific to a field or a region lives in data packs.
 
 ### Layers and tracks
 
 Packs stack in layers, and each builds only on the layers below it: the core profile (`care`), a field of work (`care.school`), a region (`kr`, `en`), a track holding what only a field and a region together need (`care.school.kr`), an institution, and the person's own additions. A pack adds codes, fields, forms and labels; it never changes what a lower layer counts. An item an institution or a person adds is anchored to a code of a lower layer, so reports stay comparable across them.
+
+Counseling approaches and measures are a third axis, independent of field and region. An approach pack (`care.approach.<id>`) holds what one approach records — its techniques and elements as classifications, its own kinds of record, its forms. A measure pack (`care.measure.<id>`) holds a published measure — its items, response options, scoring rules, change and cut-off coefficients with their sources, and the licence under which it may be used, with the date that permission was confirmed. Both build only on the core profile, take their labels from the region, and several may be in use at once, added while a vault is in use. Theories and measures are data, never code: the app renders them and computes from them, it does not hard-code any one school of practice.
 
 One installation serves two tracks. A regional track is built for day-to-day use in one country. A neutral track (`care` with English labels) proves that the core stands without any field or regional pack. A feature enters the core only if it works in the neutral track; what one track alone needs goes into that track's packs.
 
@@ -34,11 +38,11 @@ Nothing in this document outranks this principle, and no feature is worth weaken
 | **Record once** | What is recorded is not typed again — not to count it, not to move it, not to rebuild its history. |
 | **People decide** | The app offers candidates and shows where they came from; a person confirms. An unconfirmed value takes no part in records or statistics. |
 | **Classifications change; records stay** | A classification is editable data with versions. A revision is absorbed by a crosswalk from the old version; past records keep their original values and past reports keep their numbers. |
-| **Complete on the device** | Every core function works on an ordinary office PC with no GPU and no internet connection, including installing and updating. |
+| **Complete on the device** | Every core function works on an ordinary office PC with no GPU and no internet connection, including installing and updating. Analysis and AI that support judgment run on the device by default; a stronger model elsewhere is an addition the person asks for each time, with explicit permission for what is sent, and no core function depends on it. |
 
 ### What quality means here
 
-**Every number goes back to its evidence.** Any count the app shows opens to the records that make it up and to the classification mapping applied to them. A number that cannot be traced is a defect, however convenient it would be.
+**Every number and every insight goes back to its evidence.** Any count, trend, change judgment or suggestion the app shows opens to the records that make it up, to the classification mapping or scoring rule applied to them, and to the published standard that rule comes from. A number or an insight that cannot be traced is a defect, however convenient it would be.
 
 ### When values conflict
 
@@ -52,7 +56,12 @@ Reading record files written by an earlier version is record protection, not com
 
 ### The overreach test
 
-The first question for any proposed feature: **does it help a record be written once and be done?** A feature that does not reduce retyping, recounting or rebuilding history is overreach, however attractive.
+A proposed feature must pass one of two tests:
+
+1. **Record once** — does it help a record be written once and be done? It reduces retyping, recounting or rebuilding history.
+2. **Better-grounded judgment** — does it help the counselor judge a case better from records already kept, on the basis of a published standard (a measure, an approach, a guideline), with every insight traceable to those records and that standard?
+
+A feature that passes neither is overreach, however attractive. The second test does not admit asking for more input in order to produce more output: making better use of what is already recorded comes before adding to what must be recorded. The app supports judgment and shows its grounds; it does not assess or decide in the counselor's place.
 
 Where a feature belongs:
 

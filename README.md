@@ -4,6 +4,8 @@
 
 Openquote Care is a free desktop app for counselors who keep continuing relationships with the people they support. You record subjects, groups and sessions once; the monthly statistics your organisation asks for come out of those records — and when the classification behind those statistics is revised, past records are carried to the new version instead of being recounted by hand.
 
+Beyond keeping and counting records, the app is growing toward helping counselors see each case more clearly — how it is progressing, which past cases resemble it, and what published measures and established practice say about it — computed on this computer and always traceable to the records and standards behind it. The [constitution](docs/CONSTITUTION.md) sets out how.
+
 - **Your records, in your folder.** Records are encrypted files in a folder you choose — on this computer, or a shared network or sync folder several devices use. No account, no server: everything works offline, and the files open with standard [age](https://age-encryption.org) tools even without the app. Released installers send the publisher only content-free reports of the app's own failures and a request for the newest version's description — both can be turned off — and, once feedback is offered, a message only when you write one and press send, as described in [docs/privacy.md](docs/privacy.md).
 - **Record once.** Every edit is a new file and nothing is overwritten, so edits made on different devices are kept side by side until a person picks one.
 - **Numbers that trace back.** Every count in a report opens to the records behind it, with the number of different people beside it. Two runs of the same report can be compared record by record.
