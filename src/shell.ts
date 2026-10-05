@@ -94,6 +94,16 @@ export interface TrackView {
 }
 
 /** What the engine reports when a vault opens. */
+/**
+ * A kind of record the vault's packs declare: what people call it in the vault's locale (null when no pack names
+ * it) and where one is kept — under a subject, a group or either.
+ */
+export interface RecordKind {
+  type: string
+  label: string | null
+  under: ('subject' | 'group')[]
+}
+
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
   unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
@@ -111,6 +121,8 @@ export interface VaultSummary {
   packIssues: { kind: string; pack: string; detail: string }[]
   /** The locales the vault's packs label things in, the most specific pack's first; empty for a vault without labels. */
   locales: string[]
+  /** The kinds of record the vault's packs declare under a subject or a group, in pack order. */
+  kinds: RecordKind[]
   /** On opening: the track a vault made before packs named themselves was taken onto, with its names per language. */
   adopted?: { track: string; label: Record<string, string> }
   /** On opening: the packs the vault held an earlier version of, brought up to the version this app carries. */

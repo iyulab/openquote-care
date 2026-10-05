@@ -165,4 +165,31 @@ describe('plain copy', () => {
   it('the note reads with Windows line ends', () => {
     expect(file(plainCopy(source(false), en.plainCopy), 'read-me.txt')).toMatch(/^Openquote Care records copy\r\n/)
   })
+
+  it('holds every kind of record besides sessions: on the page of each subject, in its own table, and in the changes', () => {
+    const referralFields = [field('date', 'date'), field('to', 'text'), field('note', 'text', { tier: 'narrative' })]
+    const referrals = [entity('referral', 'r1', { date: '2026-04-15', to: 'Clinic', note: 'called ahead' }, { subject: 's2', people: ['s2'] })]
+    const withKinds: PlainCopySource = {
+      ...source(false),
+      others: [{ label: 'Referral', fields: referralFields, records: referrals }],
+      history: new Map([['r1', [
+        { id: 'c1', op: 'create', at: '2026-04-15T10:00:00+09:00', device: 'pc', fields: { date: '2026-04-15', to: 'Hospital' }, source: {} },
+        { id: 'c2', op: 'update', at: '2026-04-16T10:00:00+09:00', device: 'pc', fields: { to: 'Clinic' }, source: {} },
+      ]]]),
+    }
+
+    const files = plainCopy(withKinds, en.plainCopy)
+    expect(files.map((f) => f.name)).toEqual(['records.html', 'clients.csv', 'sessions.csv', 'referral.csv', 'read-me.txt'])
+    const page = file(files, 'records.html')
+    expect(page).toContain('<h3>Referral</h3>')
+    expect(page).toContain('Clinic')
+    expect(page).toContain('Referral of 2026-04-15')
+    expect(page).not.toContain('called ahead')
+    expect(file(files, 'referral.csv')).toContain('Zed,,2026-04-15,Clinic')
+
+    const april1to10 = plainCopy({ ...withKinds, period: { from: '2026-04-01', to: '2026-04-10' } }, en.plainCopy)
+    expect(april1to10.map((f) => f.name)).not.toContain('referral.csv')
+    const april15 = plainCopy({ ...withKinds, period: { from: '2026-04-15', to: '2026-04-15' } }, en.plainCopy)
+    expect(file(april15, 'records.html')).toContain('Zed')
+  })
 })

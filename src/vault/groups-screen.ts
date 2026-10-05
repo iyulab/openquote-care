@@ -5,7 +5,8 @@ import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
-import './session-form.js'
+import './record-form.js'
+import './record-kinds.js'
 import { sessionTable, subjectPicker, toggled } from './session-parts.js'
 
 /** Groups: their members, and the sessions held with them. */
@@ -121,13 +122,13 @@ export class OcGroups extends VaultScreen {
         description=${strings.sessionCount(sessions.length)}
       ></dp-page-header>
       ${correcting
-        ? html`<oc-session-form
+        ? html`<oc-record-form
             .store=${store}
             .holder=${{ kind: 'group', id: group.id }}
             .edit=${correcting}
-            @oc-session-edited=${() => (this.correcting = undefined)}
+            @oc-record-edited=${() => (this.correcting = undefined)}
             @oc-edit-cancelled=${() => (this.correcting = undefined)}
-          ></oc-session-form>`
+          ></oc-record-form>`
         : nothing}
       <dc-card data-role="members">
         <h3 slot="header">${strings.groupMembers}</h3>
@@ -136,12 +137,12 @@ export class OcGroups extends VaultScreen {
           >${strings.saveMembers}</dc-button
         >
       </dc-card>
-      <oc-session-form
+      <oc-record-form
         .store=${store}
         .holder=${{ kind: 'group', id: group.id }}
         .attendees=${this.attendeesOf(group.id)}
-        @oc-session-recorded=${() => (this.attendeeDraft = undefined)}
-        >${subjectPicker(store, strings.attendees, () => this.attendeesOf(group.id), (ids) => (this.attendeeDraft = ids))}</oc-session-form
+        @oc-record-recorded=${() => (this.attendeeDraft = undefined)}
+        >${subjectPicker(store, strings.attendees, () => this.attendeesOf(group.id), (ids) => (this.attendeeDraft = ids))}</oc-record-form
       >
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
@@ -162,6 +163,7 @@ export class OcGroups extends VaultScreen {
               </div></dc-card
             >`}
       </section>
+      <oc-record-kinds .store=${store} .holder=${{ kind: 'group', id: group.id }} .members=${this.membersOf(group.id)}></oc-record-kinds>
       ${noticeLine(store)}
     `
   }

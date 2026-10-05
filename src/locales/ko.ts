@@ -241,6 +241,8 @@ export const ko = {
     historyWhat: '무엇',
     historyFields: '고친 칸',
     sessionOn: (date: string) => `${date} 회기`,
+    recordOn: (kind: string, date: string) => `${date} ${kind}`,
+    recordsFile: (kind: string) => `${kind}.csv`,
     reclassified: '(분류 개정에 맞춤)',
     readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string, period?: string) =>
       [
@@ -367,6 +369,14 @@ export const ko = {
   showNote: (label: string) => `${label} 보기`,
   hideNote: (label: string) => `${label} 접기`,
   recordSession: '회기 기록',
+  newRecordOf: (kind: string) => `새 ${kind} 기록`,
+  recordRecordOf: (kind: string) => `${kind} 기록`,
+  correctRecordOf: (kind: string) => `${kind} 기록 고치기`,
+  correctRecordLead: '바꾼 칸만 새 기록으로 남고, 처음 쓴 기록도 그대로 보관됩니다.',
+  recordCorrectedOf: (kind: string) => `${kind} 기록을 고쳤습니다.`,
+  noRecordsOf: (kind: string) => `${kind} 기록이 없습니다.`,
+  recordCountOf: (kind: string, n: number) => `${kind} ${n}건`,
+  openRecordForm: (kind: string) => `${kind} 기록하기`,
   staleSubject: (labels: string[], writtenOn: string) =>
     `대상자의 ${labels.map((l) => `「${l}」`).join('·')} 값은 ${writtenOn}에 적은 것이라 이 회기 날짜에는 맞지 않을 수 있습니다. 아래 값으로 대상자 정보를 고친 뒤 회기를 기록합니다. 비운 칸은 지웁니다.`,
   staleSubjectWas: (value: string) => `지금: ${value}`,

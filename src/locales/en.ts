@@ -4,6 +4,8 @@ import type { VaultFileKind } from '../shell.js'
 import type { Strings } from './index.js'
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
+// A kind's name inside a sentence: its first letter in lower case, unless the word is written in capitals.
+const lower = (kind: string) => (/^[A-Z][a-z]/.test(kind) ? kind[0].toLowerCase() + kind.slice(1) : kind)
 
 export const en: Strings = {
   appName: 'Openquote Care',
@@ -241,6 +243,8 @@ export const en: Strings = {
     historyWhat: 'What',
     historyFields: 'Fields changed',
     sessionOn: (date: string) => `Session of ${date}`,
+    recordOn: (kind: string, date: string) => `${kind} of ${date}`,
+    recordsFile: (kind: string) => `${lower(kind).replaceAll(' ', '-')}.csv`,
     reclassified: '(moved to the revised classification)',
     readMe: (files: { page: string; subjects: string; sessions: string; readMe: string }, withNarrative: boolean, made: string, period?: string) =>
       [
@@ -370,6 +374,14 @@ export const en: Strings = {
   showNote: (label: string) => `Show ${label}`,
   hideNote: (label: string) => `Hide ${label}`,
   recordSession: 'Record session',
+  newRecordOf: (kind: string) => `New ${lower(kind)}`,
+  recordRecordOf: (kind: string) => `Record ${lower(kind)}`,
+  correctRecordOf: (kind: string) => `Correct the ${lower(kind)}`,
+  correctRecordLead: 'Only the fields you change are written, as a record of their own; the record as first written is kept too.',
+  recordCorrectedOf: (kind: string) => `The ${lower(kind)} was corrected.`,
+  noRecordsOf: (kind: string) => `No ${lower(kind)} recorded.`,
+  recordCountOf: (kind: string, n: number) => `${kind}: ${n}`,
+  openRecordForm: (kind: string) => `Add a ${lower(kind)}`,
   staleSubject: (labels: string[], writtenOn: string) =>
     `The client's ${labels.map((l) => `“${l}”`).join(' and ')} ${labels.length === 1 ? 'was' : 'were'} written on ${writtenOn}, and may no longer hold on this session's date. Recording the session first corrects the client's record to the values below; a field left empty is cleared.`,
   staleSubjectWas: (value: string) => `Now: ${value}`,

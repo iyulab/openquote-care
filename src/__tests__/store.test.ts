@@ -30,7 +30,7 @@ function deferred<T>() {
 
 const subject = (id: string, name: string): Entity => ({ type: 'subject', id, subject: id, group: null, people: [id], fields: { name }, conflicts: {} })
 
-const summary: VaultSummary = { unreadable: [], reports: [], exports: [], unlinked: [], device: 'd1', devices: {}, packs: [], packIssues: [], locales: [] }
+const summary: VaultSummary = { unreadable: [], reports: [], exports: [], unlinked: [], device: 'd1', devices: {}, packs: [], packIssues: [], locales: [], kinds: [] }
 
 /** Every read answers at once: `subjects` for subjects, nothing for the rest. */
 function vaultHolds(subjects: Entity[]) {
@@ -117,6 +117,50 @@ describe('VaultStore', () => {
     store.editDraft({ topic: 'family' }, 'suggestion')
     store.clearDraft()
     expect(store.suggested.size).toBe(0)
+  })
+
+  it('reads every kind of record the packs keep under subjects or groups, with its fields and corrections', async () => {
+    const field = (name: string, kind: FieldView['kind']): FieldView => ({
+      name, kind, scheme: kind === 'coded' ? name : null, refType: null, required: kind === 'date', hidden: false, tier: 'structured', defaultFromSubject: null, label: name, aliases: [],
+    })
+    const referral: Entity = { type: 'referral', id: 'r1', subject: 's1', group: null, people: ['s1'], fields: { date: '2026-04-02', to: 'medical' }, conflicts: {} }
+    vi.mocked(shell.summary).mockResolvedValue({
+      ...summary,
+      kinds: [
+        { type: 'session', label: null, under: ['subject', 'group'] },
+        { type: 'referral', label: 'Referral', under: ['subject'] },
+      ],
+    })
+    vi.mocked(shell.entities).mockImplementation(async (type) => (type === 'referral' ? [referral] : []))
+    vi.mocked(shell.fields).mockImplementation(async (type) => (type === 'referral' ? [field('date', 'date'), field('to', 'coded')] : []))
+    vi.mocked(shell.history).mockImplementation(async (type) =>
+      type === 'referral' ? [{ id: 'r1', changes: [{ op: 'create' }, { op: 'update' }] }] as Awaited<ReturnType<typeof shell.history>> : [],
+    )
+    const store = new VaultStore()
+
+    await store.load()
+
+    expect(store.kindsUnder('subject').map((k) => k.type)).toEqual(['session', 'referral'])
+    expect(store.kindsUnder('group').map((k) => k.type)).toEqual(['session'])
+    expect(store.recordsOf('referral')).toEqual([referral])
+    expect(store.fieldsOf('referral').map((f) => f.name)).toEqual(['date', 'to'])
+    expect(store.corrected.has('r1')).toBe(true)
+    expect(store.draftOf('referral')).toEqual({ date: today() })
+  })
+
+  it('keeps a draft of its own for each kind of record', () => {
+    const store = new VaultStore()
+
+    store.editDraft({ topic: 'family' }, 'suggestion')
+    store.editDraft({ to: 'medical' }, 'suggestion', 'referral')
+    expect(store.draftOf('session')).toEqual({ topic: 'family' })
+    expect(store.draftOf('referral')).toEqual({ to: 'medical' })
+    expect([...store.suggestedOf('referral')]).toEqual(['to'])
+
+    store.clearDraft('referral')
+    expect(store.draftOf('referral')).toEqual({})
+    expect(store.draft).toEqual({ topic: 'family' })
+    expect([...store.suggested]).toEqual(['topic'])
   })
 
   it('drops a read overtaken by a newer one', async () => {

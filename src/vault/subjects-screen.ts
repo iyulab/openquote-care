@@ -8,7 +8,8 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
-import './session-form.js'
+import './record-form.js'
+import './record-kinds.js'
 import './entity-form.js'
 import { conflictPanel, sessionTable, toggled } from './session-parts.js'
 
@@ -76,12 +77,15 @@ export class OcSubjects extends VaultScreen {
     this.documentOpen = true
   }
 
-  /** Opens `id` with `session`'s written content open under its row, and brings that row into view. */
+  /** Opens `id` with `session`'s written content open under its row, and brings that row into view — a session's or another record's. */
   async showSession(id: string, session: string) {
     this.pick(id)
     this.openNotes = new Set([...this.openNotes, session])
     await this.updateComplete
-    this.renderRoot.querySelector(`tr[data-session="${session}"]`)?.scrollIntoView({ block: 'center' })
+    const kinds = this.renderRoot.querySelector('oc-record-kinds')
+    await kinds?.updateComplete
+    const row = this.renderRoot.querySelector(`tr[data-session="${session}"]`) ?? kinds?.renderRoot.querySelector(`tr[data-record="${session}"]`)
+    row?.scrollIntoView({ block: 'center' })
   }
 
   private startAdding() {
@@ -207,15 +211,15 @@ export class OcSubjects extends VaultScreen {
         : recordFieldList(store, subject)}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
-        ? html`<oc-session-form
+        ? html`<oc-record-form
             .store=${store}
             .holder=${{ kind: 'subject', id: subject.id }}
             .edit=${correcting}
-            @oc-session-edited=${() => (this.correcting = undefined)}
+            @oc-record-edited=${() => (this.correcting = undefined)}
             @oc-edit-cancelled=${() => (this.correcting = undefined)}
-          ></oc-session-form>`
+          ></oc-record-form>`
         : nothing}
-      <oc-session-form .store=${store} .holder=${{ kind: 'subject', id: subject.id }}></oc-session-form>
+      <oc-record-form .store=${store} .holder=${{ kind: 'subject', id: subject.id }}></oc-record-form>
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
         ${sessions.length === 0
@@ -235,6 +239,7 @@ export class OcSubjects extends VaultScreen {
               </div></dc-card
             >`}
       </section>
+      <oc-record-kinds .store=${store} .holder=${{ kind: 'subject', id: subject.id }}></oc-record-kinds>
       ${noticeLine(store)}
     `
   }
