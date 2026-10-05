@@ -7,6 +7,10 @@ export default {
   title: 'Openquote Care — third-party notices',
   npm: { lock: 'package-lock.json', installedAt: '.' },
   cargo: { cwd: 'src-tauri', target: 'x86_64-pc-windows-msvc' },
-  nuget: { project: 'sidecar/OpenquoteCare.Sidecar/OpenquoteCare.Sidecar.csproj' },
+  nuget: {
+    project: 'sidecar/OpenquoteCare.Sidecar/OpenquoteCare.Sidecar.csproj',
+    // Restored as it is published (scripts/publish-sidecar.mjs): the runtime packs come only with the RID.
+    properties: { RuntimeIdentifier: 'win-x64' },
+  },
   pinned: { pins: 'notices/pins.json', dir: 'notices/texts' },
 }

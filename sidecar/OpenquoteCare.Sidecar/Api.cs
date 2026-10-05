@@ -81,7 +81,14 @@ public sealed record SummaryView(
     IReadOnlyList<PackIssueView> PackIssues,
     IReadOnlyList<FieldIssueView> FieldIssues,
     IReadOnlyList<LabelConflictView> LabelConflicts,
-    IReadOnlyList<string> Locales);
+    IReadOnlyList<string> Locales,
+    IReadOnlyList<RecordKindView> Kinds);
+
+/// <summary>
+/// A kind of record the vault's packs declare fields for and keep under a subject, a group or both (<c>Under</c>):
+/// what people read for it in the vault's locale, or null when no pack names it.
+/// </summary>
+public sealed record RecordKindView(string Type, string? Label, IReadOnlyList<string> Under);
 
 /// <summary>A data pack the vault holds (its latest version).</summary>
 public sealed record PackView(string Id, int Version, string Label, IReadOnlyDictionary<string, int> Depends);
@@ -520,7 +527,9 @@ internal static class Api
             [.. s.Content.CheckPacks().Select(i => new PackIssueView(i.Kind.ToString(), i.Pack, i.Detail))],
             [.. s.Fields.Issues.Select(i => new FieldIssueView(i.Kind.ToString(), i.Type, i.Field, i.Detail))],
             [.. s.Labels.Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
-            s.Locales);
+            s.Locales,
+            [.. s.Fields.Types.Where(t => s.Fields.KeptUnder(t).Count > 0)
+                .Select(t => new RecordKindView(t, s.Labels.TypeLabel(t, s.Locales) ?? s.Fields.TypeLabel(t), s.Fields.KeptUnder(t)))]);
     }
 
     // A form standing on a field the packs hide is not offered: hiding a field hides what is built on it.

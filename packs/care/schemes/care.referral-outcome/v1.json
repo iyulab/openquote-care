@@ -1,0 +1,27 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.referral-outcome",
+  "version": 1,
+  "items": [
+    {
+      "code": "waiting",
+      "label": "Referred, not started yet"
+    },
+    {
+      "code": "taken-up",
+      "label": "Taken up"
+    },
+    {
+      "code": "declined",
+      "label": "Declined by the person or family"
+    },
+    {
+      "code": "not-accepted",
+      "label": "Not accepted by the service"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

@@ -16,16 +16,26 @@ export interface OpenSession {
   session: string
 }
 
-/** Finding sessions by what they say, newest first; each one found opens where it is kept. */
+/** Finding sessions and other records by what they say, newest first; each one found opens where it is kept. */
 @customElement('oc-search')
 export class OcSearch extends VaultScreen {
   @state() private query = ''
 
-  /** What a session says, in words: each field shown, then who it is about and the group that held it. */
+  /** What people call a kind of record other than sessions; nothing for a session. */
+  private kindName(type: string): string {
+    if (type === 'session') return ''
+    return this.store.kinds.find((k) => k.type === type)?.label ?? type
+  }
+
+  /** What a record says, in words: each field shown (named with its kind, for a kind other than sessions), then who it is about and the group that held it. */
   private describe(s: Entity): SessionText[] {
     const store = this.store
     const names = new Map(store.subjects.map((p) => [p.id, text(p, 'name')]))
-    const texts = store.sessionFields.filter((f) => !f.hidden).map((f) => ({ label: f.label, text: valueText(store, f, s.fields[f.name]) }))
+    const kind = this.kindName(s.type)
+    const texts = store
+      .fieldsOf(s.type)
+      .filter((f) => !f.hidden)
+      .map((f) => ({ label: kind ? `${kind} · ${f.label}` : f.label, text: valueText(store, f, s.fields[f.name]) }))
     texts.push({ label: strings.searchPeople, text: s.people.map((id) => names.get(id) ?? '').join(', ') })
     const group = s.group ? store.groups.find((g) => g.id === s.group) : undefined
     if (group) texts.push({ label: strings.searchGroup, text: text(group, 'name') })
@@ -42,7 +52,12 @@ export class OcSearch extends VaultScreen {
     const date = store.sessionFields.find((f) => f.kind === 'date')
     const names = new Map(store.subjects.map((p) => [p.id, text(p, 'name')]))
     const asked = searchWords(this.query).length > 0
-    const hits = asked ? searchSessions(newestFirst(store.sessions), this.query, (s) => this.describe(s)) : []
+    const records = store.kinds.length > 0 ? store.kinds.flatMap((k) => store.recordsOf(k.type)) : store.sessions
+    const hits = asked ? searchSessions(newestFirst(records), this.query, (s) => this.describe(s)) : []
+    const dateOf = (s: Entity) => {
+      const field = store.fieldsOf(s.type).find((f) => f.kind === 'date')
+      return field ? valueText(store, field, s.fields[field.name]) : ''
+    }
     return html`<dp-page-header eyebrow=${strings.navGroupRecords} heading=${strings.searchTitle}></dp-page-header>
       <dc-card>
         <div class="stack">
@@ -74,7 +89,7 @@ export class OcSearch extends VaultScreen {
                 <tbody>
                   ${hits.slice(0, SHOWN).map(
                     (h) => html`<tr data-hit=${h.session.id}>
-                      <td>${date ? valueText(store, date, h.session.fields[date.name]) : nothing}</td>
+                      <td>${dateOf(h.session) || nothing}</td>
                       <td class="wrap">${h.session.people.map((id) => names.get(id) ?? '').join(', ')}</td>
                       <td>${h.label}</td>
                       <td class="wrap">${h.snippet}</td>

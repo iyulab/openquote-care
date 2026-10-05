@@ -1,0 +1,53 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "referral",
+  "version": 1,
+  "label": "Referral",
+  "under": [
+    "subject"
+  ],
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "label": "Practitioner"
+    },
+    {
+      "name": "to",
+      "kind": "coded",
+      "scheme": "care.service",
+      "required": true,
+      "label": "Referred to"
+    },
+    {
+      "name": "organisation",
+      "kind": "text",
+      "label": "Organisation"
+    },
+    {
+      "name": "outcome",
+      "kind": "coded",
+      "scheme": "care.referral-outcome",
+      "label": "Outcome"
+    },
+    {
+      "name": "reason",
+      "kind": "text",
+      "label": "Why it was not taken up"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

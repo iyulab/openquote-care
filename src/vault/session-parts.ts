@@ -62,6 +62,8 @@ export function toggled(set: ReadonlySet<string>, id: string): Set<string> {
 /** How the session list of a screen draws: whose sessions, and what a row's buttons do. */
 export interface SessionTable {
   sessions: Entity[]
+  /** The fields of the kind of record listed: sessions' when not given. */
+  fields?: FieldView[]
   /** A group's list: the participants get a column, before the references. */
   attendees?: boolean
   /** Sessions whose written content is open under their row. */
@@ -78,7 +80,7 @@ export interface SessionTable {
  * Written content is not a column: a row that has some offers to open it underneath.
  */
 export function sessionTable(store: VaultStore, t: SessionTable) {
-  const defs = store.sessionFields
+  const defs = t.fields ?? store.sessionFields
   const columns = listColumns(defs)
   const notes = narrativeFields(defs)
   const subjectNames = new Map(store.subjects.map((s) => [s.id, text(s, 'name')]))
@@ -98,7 +100,7 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
         if (at >= 0) cells.splice(at, 0, namesOf(s, subjectNames))
         const written = notes.filter((f) => typeof s.fields[f.name] === 'string' && (s.fields[f.name] as string).trim() !== '')
         const open = t.openNotes.has(s.id)
-        return html`<tr data-session=${s.id}>
+        return html`<tr data-session=${s.type === 'session' ? s.id : nothing} data-record=${s.id}>
             ${cells.map(
               (c, i) =>
                 html`<td class=${i === at ? 'wrap' : nothing}>
@@ -130,9 +132,9 @@ export function sessionTable(store: VaultStore, t: SessionTable) {
   </table>`
 }
 
-/** A session's concurrent changes, each field with every device's value to keep. */
-export function conflictPanel(store: VaultStore, session: Entity, settle: (field: string, value: unknown) => void) {
-  const defs = store.sessionFields
+/** A record's concurrent changes, each field with every device's value to keep; `fields` are sessions' when not given. */
+export function conflictPanel(store: VaultStore, session: Entity, settle: (field: string, value: unknown) => void, fields?: FieldView[]) {
+  const defs = fields ?? store.sessionFields
   const date = defs.find((f) => f.kind === 'date')
   return html`<dc-callout variant="warning" data-role="settle"><div class="stack">
     <h3>${strings.conflictTitle}${date ? ` · ${valueText(store, date, session.fields[date.name])}` : ''}</h3>

@@ -1367,6 +1367,28 @@ const scenarios = {
     assert.ok(row[0].startsWith('2026-04-02'), 'the date first (its cell also offers to open the notes)')
     assert.deepEqual(row.slice(1), ['Anxiety and stress', 'Video', 'Counselor A'], 'then the concern, the mode and the practitioner')
 
+    // A referral is a kind of record of its own, kept under the client beside the sessions and never counted as one.
+    const inReferralForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'referral'; n = host } })`
+    await app.click('dc-button', 'Add a referral')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inReferralForm('input[aria-label="Date"]')}; if (!el) return false; el.value = '2026-04-03'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the referral date',
+    )
+    await app.choose('Referred to', 'mental-health')
+    await app.type('Organisation', 'Synthetic Wellbeing Centre')
+    await app.choose('Outcome', 'declined')
+    await app.type('Why it was not taken up', 'The family preferred to wait')
+    await app.click('dc-button', 'Record referral')
+    const referralRows = `__e2e.all('section[data-kind="referral"] tr[data-record]')`
+    await app.cdp.waitFor(`${referralRows}.length === 1`, 'the referral listed')
+    await app.noAlert()
+    const referralRow = await app.cdp.evaluate(
+      `${referralRows}[0] ? [...${referralRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
+    )
+    assert.deepEqual(referralRow, ['2026-04-03', 'Mental health service', 'Declined by the person or family', ''], 'its date, where to, the outcome and no practitioner')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a referral is not a session')
+
     // The concern is optional on this track: a session without one is counted, in no row, and said so.
     await app.setDate('Date', '2026-04-09')
     await app.choose('Mode', 'phone')

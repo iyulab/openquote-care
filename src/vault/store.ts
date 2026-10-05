@@ -8,7 +8,7 @@ import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
-import { shell, type BackupStatus, type VaultSummary } from '../shell.js'
+import { shell, type BackupStatus, type RecordKind, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 
 export type Problem = keyof typeof strings.problems
@@ -17,10 +17,13 @@ export type Problem = keyof typeof strings.problems
 export type ErrorText = { text: string; detail?: string }
 
 /**
- * The new-session form as being filled in, by field name: a code for a classification, an id for a
- * reference, the text otherwise. The subject and group screens share it.
+ * A record form as being filled in, by field name: a code for a classification, an id for a
+ * reference, the text otherwise. The subject and group screens share it, one per kind of record.
  */
 export type SessionDraft = Record<string, string>
+
+/** A kind of record's form as being filled in, and the fields whose value a person took from a suggestion. */
+type Draft = { values: SessionDraft; suggested: ReadonlySet<string> }
 
 /** What the screens may set directly; everything else changes through the store's actions. */
 type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'packsWaiting' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
@@ -39,6 +42,13 @@ export class VaultStore extends EventTarget {
   sessionFields: FieldView[] = []
   subjectFields: FieldView[] = []
   practitionerFields: FieldView[] = []
+  /** The kinds of record the vault's packs declare under subjects and groups, sessions among them. */
+  kinds: RecordKind[] = []
+  /** Records of every kind but sessions, and the fields declared for them, by kind. */
+  private others = new Map<string, Entity[]>()
+  private otherFields = new Map<string, FieldView[]>()
+  /** The forms of every kind but sessions as being filled in, by kind. */
+  private otherDrafts = new Map<string, Draft>()
   summary?: VaultSummary
   /** How names are ordered in this vault: by the locales its packs label things in. */
   names = nameCollator()
@@ -67,7 +77,7 @@ export class VaultStore extends EventTarget {
   folder = ''
   /** The backup this computer keeps of the vault, as the shell last reported it. */
   backup: BackupStatus = { folder: null }
-  /** Sessions corrected after they were first written, by id: each correction is a change of its own. */
+  /** Records corrected after they were first written, by id: each correction is a change of its own. */
   corrected: ReadonlySet<string> = new Set()
   /** Why the backup remembered for this vault could not be taken up when it opened, as an error code. */
   backupProblem?: string
@@ -88,16 +98,43 @@ export class VaultStore extends EventTarget {
     this.changed()
   }
 
-  /** Fills in the draft; `from` says whether a person typed or picked the values, or took a suggestion. */
-  editDraft(patch: SessionDraft, from: 'person' | 'suggestion' = 'person') {
-    this.draft = { ...this.draft, ...patch }
-    const suggested = new Set(this.suggested)
+  /** The form of a kind of record as being filled in. */
+  draftOf(type: string): SessionDraft {
+    return type === 'session' ? this.draft : (this.otherDrafts.get(type)?.values ?? {})
+  }
+
+  /** The fields of a kind of record's form whose value a person took from a suggestion, and has not changed since. */
+  suggestedOf(type: string): ReadonlySet<string> {
+    return type === 'session' ? this.suggested : (this.otherDrafts.get(type)?.suggested ?? new Set())
+  }
+
+  /** Fills in a kind of record's form; `from` says whether a person typed or picked the values, or took a suggestion. */
+  editDraft(patch: SessionDraft, from: 'person' | 'suggestion' = 'person', type = 'session') {
+    const suggested = new Set(this.suggestedOf(type))
     for (const name of Object.keys(patch)) {
       if (from === 'suggestion') suggested.add(name)
       else suggested.delete(name)
     }
-    this.suggested = suggested
+    this.setDraft(type, { values: { ...this.draftOf(type), ...patch }, suggested })
     this.changed()
+  }
+
+  private setDraft(type: string, draft: Draft) {
+    if (type !== 'session') this.otherDrafts.set(type, draft)
+    else {
+      this.draft = draft.values
+      this.suggested = draft.suggested
+    }
+  }
+
+  /** The records of a kind kept under subjects or groups. */
+  recordsOf(type: string): Entity[] {
+    return type === 'session' ? this.sessions : (this.others.get(type) ?? [])
+  }
+
+  /** The kinds of record kept under a subject's folder, or a group's. */
+  kindsUnder(holder: 'subject' | 'group'): RecordKind[] {
+    return this.kinds.filter((k) => k.under.includes(holder))
   }
 
   /** Reads the vault and starts taking in what other devices write to it. */
@@ -140,12 +177,18 @@ export class VaultStore extends EventTarget {
 
   /** The fields the vault declares for an entity type; none for a type this app does not read fields of. */
   fieldsOf(type: string): FieldView[] {
-    return type === 'session' ? this.sessionFields : type === 'subject' ? this.subjectFields : type === 'practitioner' ? this.practitionerFields : []
+    return type === 'session'
+      ? this.sessionFields
+      : type === 'subject'
+        ? this.subjectFields
+        : type === 'practitioner'
+          ? this.practitionerFields
+          : (this.otherFields.get(type) ?? [])
   }
 
   /** What a person calls `scheme`: the label of a field that takes its values, whichever record holds it. */
   schemeName(scheme: string): string {
-    return schemeLabel([...this.sessionFields, ...this.subjectFields, ...this.practitionerFields], scheme)
+    return schemeLabel([...this.sessionFields, ...this.subjectFields, ...this.practitionerFields, ...[...this.otherFields.values()].flat()], scheme)
   }
 
   /** The entities a reference field of `type` may point at. */
@@ -154,17 +197,19 @@ export class VaultStore extends EventTarget {
   }
 
   /**
-   * What the form holds after a session is written: the date and who was there stay, the fields the
+   * What a kind of record's form holds after one is written: the date and who was there stay, the fields the
    * vault gives a fixed value start from it again, and the rest is cleared.
    */
-  clearDraft() {
-    this.draft = {
-      ...fixedDefaults(this.sessionFields),
-      ...Object.fromEntries(
-        this.sessionFields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, this.draft[f.name] ?? '']),
-      ),
-    }
-    this.suggested = new Set()
+  clearDraft(type = 'session') {
+    const fields = this.fieldsOf(type)
+    const draft = this.draftOf(type)
+    this.setDraft(type, {
+      values: {
+        ...fixedDefaults(fields),
+        ...Object.fromEntries(fields.filter((f) => f.kind === 'date' || f.kind === 'reference').map((f) => [f.name, draft[f.name] ?? ''])),
+      },
+      suggested: new Set(),
+    })
     this.changed()
   }
 
@@ -194,8 +239,24 @@ export class VaultStore extends EventTarget {
       shell.history('session'),
     ])
     if (!current()) return
+    // The kinds of record besides sessions come from the packs: what the summary names is read next.
+    const kinds = summary.kinds ?? []
+    const others = await Promise.all(
+      kinds
+        .filter((k) => k.type !== 'session')
+        .map(async (k) => {
+          const [records, fields, history] = await Promise.all([shell.entities(k.type), shell.fields(k.type), shell.history(k.type)])
+          return { type: k.type, records, fields, history }
+        }),
+    )
+    if (!current()) return
     this.backup = backup
-    this.corrected = new Set(sessionHistory.filter((h) => h.changes.some((c) => c.op === 'update')).map((h) => h.id))
+    this.corrected = new Set(
+      [...sessionHistory, ...others.flatMap((o) => o.history)].filter((h) => h.changes.some((c) => c.op === 'update')).map((h) => h.id),
+    )
+    this.kinds = kinds
+    this.others = new Map(others.map((o) => [o.type, o.records]))
+    this.otherFields = new Map(others.map((o) => [o.type, o.fields]))
     // A form standing on a hidden field is never shown; the sidecar decides which those are.
     const { reports, exports } = (this.summary = {
       ...summary,
@@ -221,6 +282,7 @@ export class VaultStore extends EventTarget {
     this.subjectFields = subjectFields
     this.practitionerFields = practitionerFields
     this.draft = { ...startingValues(this, sessionFields), ...this.draft }
+    for (const o of others) this.setDraft(o.type, { values: { ...startingValues(this, o.fields), ...this.draftOf(o.type) }, suggested: this.suggestedOf(o.type) })
     this.changed()
   }
 

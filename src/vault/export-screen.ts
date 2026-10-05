@@ -32,9 +32,9 @@ export class OcExport extends VaultScreen {
   /** The copy that reads without the app covers the days the range picks rather than every record. */
   @state() private copyByRange = false
 
-  /** Every change the records a copy holds were built from: subjects, sessions, groups and practitioners. */
+  /** Every change the records a copy holds were built from: subjects, groups, practitioners and every kind of record. */
   private async changes() {
-    const kinds = ['subject', 'session', 'group', 'practitioner'] as const
+    const kinds = ['subject', 'group', 'practitioner', ...new Set(['session', ...this.store.kinds.map((k) => k.type)])]
     return new Map((await Promise.all(kinds.map((k) => shell.history(k)))).flat().map((h) => [h.id, h.changes]))
   }
 
@@ -103,6 +103,9 @@ export class OcExport extends VaultScreen {
           sessions: store.sessions,
           subjectFields: store.subjectFields,
           sessionFields: store.sessionFields,
+          others: store.kinds
+            .filter((k) => k.type !== 'session')
+            .map((k) => ({ label: k.label ?? k.type, fields: store.fieldsOf(k.type), records: store.recordsOf(k.type) })),
           valueText: (field, value) => valueText(store, field, value),
           withNarrative: this.withNarrative,
           history,

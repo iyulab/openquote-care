@@ -1,0 +1,11 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 4,
+  "label": "Care",
+  "provides": [
+    "schemes/care.service/v1.json",
+    "schemes/care.referral-outcome/v1.json",
+    "fields/care/referral/v1.json"
+  ]
+}
