@@ -216,6 +216,12 @@ export const shell = {
    * `needs-new-format` unless `raiseFormat` says a person chose to raise it.
    */
   applyPack: (folder: string, raiseFormat = false) => invoke<string[]>('apply_pack', { folder, raiseFormat }),
+  /**
+   * Adds an item to the vault's own list beside `scheme`, counted as its item `anchor`; the paths
+   * added. Fails `needs-new-format` unless `raiseFormat`, as a pack does.
+   */
+  addLocalItem: (scheme: string, date: string, label: string, anchor: string, raiseFormat = false) =>
+    invoke<string[]>('add_local_item', { scheme, date, label, anchor, raiseFormat }),
   /** Raises the open vault's format and takes on the bundled pack versions that waited for it; returns their ids. */
   updateBundledPacks: () => invoke<string[]>('update_bundled_packs'),
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */

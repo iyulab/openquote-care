@@ -29,7 +29,12 @@ describe('othersOf', () => {
 
 describe('recordedValues', () => {
   it('records one value as one value, and several with the primary first and marked', () => {
-    expect(recordedValues('topic', 1, 'a', [])).toEqual(coded('a'))
-    expect(recordedValues('topic', 1, 'a', ['b', 'c'])).toEqual([coded('a', true), coded('b'), coded('c')])
+    expect(recordedValues(coded('a'), [])).toEqual(coded('a'))
+    expect(recordedValues(coded('a'), [coded('b'), coded('c')])).toEqual([coded('a', true), coded('b'), coded('c')])
+  })
+
+  it("keeps the scheme of each value: a list kept beside the field's scheme names its own", () => {
+    const ours = { scheme: 'local.topic', version: 2, code: 'local-1' }
+    expect(recordedValues(coded('a'), [ours])).toEqual([coded('a', true), ours])
   })
 })

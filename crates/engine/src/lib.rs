@@ -201,6 +201,15 @@ impl Engine {
         PlainFile::from_wire(&self.call("POST", path, Some(request))?)
     }
 
+    /// The files that add an item to the vault's own list beside `scheme`: the list's next version,
+    /// extending the version in force on `date` (`YYYY-MM-DD`), and the crosswalk from the one before.
+    /// A refusal is an [`EngineError::Status`] 422 whose answer names why.
+    pub fn local_item(&self, scheme: &str, date: &str, label: &str, anchor: &str) -> Result<Vec<PlainFile>, EngineError> {
+        let answer = self.call("POST", "/schemes/local-item", Some(json!({ "scheme": scheme, "date": date, "label": label, "anchor": anchor })))?;
+        let files = answer.as_array().ok_or_else(|| EngineError::Transport(format!("not a list of files: {answer}")))?;
+        files.iter().map(PlainFile::from_wire).collect()
+    }
+
     /// Lays the records from `from` to `to` (`YYYY-MM-DD`) out as an export form's rows. Nothing is kept in the vault.
     pub fn run_export(&self, export: &str, version: u32, from: &str, to: &str) -> Result<Value, EngineError> {
         self.call("POST", "/exports/run", Some(json!({ "export": export, "version": version, "from": from, "to": to })))

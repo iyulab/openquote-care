@@ -2,7 +2,7 @@ import { html, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { asDraft, changedFields } from '../correction.js'
 import { firstMissingRequired, inputFields, type FieldView } from '../fields.js'
-import { choices, latest, text, type Entity } from '../records.js'
+import { extensionsOf, latest, offeredChoices, ownerOf, text, type Entity, type Offered } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { fieldInput, type Choice } from './field-input.js'
@@ -36,11 +36,13 @@ export class OcEntityForm extends StoreElement {
     if (changed.has('entity')) this.values = asDraft(inputFields(this.defs), this.entity)
   }
 
+  // A record of this kind is classified in a scheme's newest version, or in a list the vault keeps beside it.
+  private offeredFor(scheme: string): Offered {
+    return { base: latest(this.store.schemes, scheme), extensions: extensionsOf(this.store.schemes, scheme) }
+  }
+
   private choicesOf(f: FieldView): Choice[] {
-    if (f.kind === 'coded' && f.scheme) {
-      const scheme = latest(this.store.schemes, f.scheme)
-      return scheme ? choices(scheme) : []
-    }
+    if (f.kind === 'coded' && f.scheme) return offeredChoices(this.offeredFor(f.scheme))
     if (f.kind === 'reference') return this.store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
     return []
   }
@@ -58,8 +60,8 @@ export class OcEntityForm extends StoreElement {
       const value = (this.values[f.name] ?? '').trim()
       if (!value) continue
       if (f.kind === 'coded' && f.scheme) {
-        const scheme = latest(this.store.schemes, f.scheme)
-        if (scheme?.items.some((i) => i.code === value)) fields[f.name] = { scheme: scheme.scheme, version: scheme.version, code: value }
+        const owner = ownerOf(this.offeredFor(f.scheme), value)
+        if (owner) fields[f.name] = { scheme: owner.scheme, version: owner.version, code: value }
       } else if (f.kind === 'number') {
         fields[f.name] = Number(value)
       } else {

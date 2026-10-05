@@ -39,11 +39,11 @@ export function othersOf(draft: Record<string, string>, field: string): string[]
 }
 
 /**
- * The value a field taking several records: the primary code alone as one value, or — with others —
- * every code in `version` of `scheme`, the primary one first and marked.
+ * The value a field taking several records: the primary value alone, or — with others — every value,
+ * the primary one first and marked. Each value keeps its own scheme: a field offers the items of the
+ * lists kept beside its scheme too.
  */
-export function recordedValues(scheme: string, version: number, primary: string, others: string[]): Coded | Coded[] {
-  const value = (code: string): Coded => ({ scheme, version, code })
-  if (others.length === 0) return value(primary)
-  return [{ ...value(primary), primary: true }, ...others.map(value)]
+export function recordedValues(primary: Coded, others: Coded[]): Coded | Coded[] {
+  if (others.length === 0) return primary
+  return [{ ...primary, primary: true }, ...others]
 }

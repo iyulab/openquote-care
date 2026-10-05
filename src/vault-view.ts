@@ -18,11 +18,12 @@ import './vault/search-screen.js'
 import './vault/report-screen.js'
 import './vault/export-screen.js'
 import './vault/practitioners-screen.js'
+import './vault/lists-screen.js'
 import type { DeviceSection, OcDevices } from './vault/devices-screen.js'
 import './vault/devices-screen.js'
 import './feedback.js'
 
-type View = 'subjects' | 'groups' | 'practitioners' | 'search' | 'report' | 'export' | 'devices' | 'feedback'
+type View = 'subjects' | 'groups' | 'practitioners' | 'search' | 'report' | 'export' | 'lists' | 'devices' | 'feedback'
 
 /**
  * An open vault: the frame around its screens — the sidebar that switches between them, the
@@ -166,7 +167,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, devices: strings.devices, feedback: strings.feedbackTitle }[view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
@@ -187,6 +188,7 @@ export class OcVault extends LitElement {
               { id: 'export', icon: '▤', label: strings.navExport },
             ] },
             { id: 'settings', label: strings.navGroupSettings, items: [
+              { id: 'lists', icon: '☰', label: strings.navLists },
               { id: 'devices', icon: '▣', label: strings.navDevices },
               ...(this.feedback ? [{ id: 'feedback', icon: '✎', label: strings.feedbackOpen }] : []),
             ] },
@@ -216,6 +218,7 @@ export class OcVault extends LitElement {
           <oc-report .store=${store} ?active=${view === 'report'}></oc-report>
           <oc-export .store=${store} ?active=${view === 'export'}></oc-export>
           <oc-practitioners .store=${store} ?active=${view === 'practitioners'}></oc-practitioners>
+          <oc-lists .store=${store} ?active=${view === 'lists'}></oc-lists>
           <oc-search .store=${store} ?active=${view === 'search'} @oc-open-session=${(e: CustomEvent<OpenSession>) => void this.openSession(e.detail)}></oc-search>
           <oc-devices
             .store=${store}

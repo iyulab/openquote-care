@@ -85,12 +85,16 @@ export interface SchemeItem {
   label: string
   parent: string | null
   suggest: boolean
+  /** In a list extending another scheme: the item of that scheme this one counts as. */
+  anchor?: string | null
 }
 
 export interface Scheme {
   scheme: string
   version: number
   items: SchemeItem[]
+  /** The scheme version this one extends — a list the vault keeps beside a shared one — when it does. */
+  extends?: { scheme: string; version: number } | null
 }
 
 export interface Choice {
@@ -102,6 +106,31 @@ export interface Choice {
 /** The newest version of `name`, which is what a new record is classified in. */
 export function latest(schemes: Scheme[], name: string): Scheme | undefined {
   return schemes.filter((s) => s.scheme === name).reduce<Scheme | undefined>((a, s) => (!a || s.version > a.version ? s : a), undefined)
+}
+
+/**
+ * The lists the vault keeps beside `name` (schemes extending a version of it), each at its newest
+ * version: their items are offered beside the scheme's own wherever a field takes it, and each counts
+ * as the item of the scheme it names.
+ */
+export function extensionsOf(schemes: Scheme[], name: string): Scheme[] {
+  const names = [...new Set(schemes.filter((s) => s.extends?.scheme === name).map((s) => s.scheme))].sort()
+  return names.map((n) => latest(schemes.filter((s) => s.extends?.scheme === name), n)!)
+}
+
+/** What a field offers: the version of its scheme in use, then the items of the lists kept beside it. */
+export interface Offered {
+  base: Scheme | undefined
+  extensions: Scheme[]
+}
+
+export function offeredChoices(offered: Offered): Choice[] {
+  return [...(offered.base ? choices(offered.base) : []), ...offered.extensions.flatMap(choices)]
+}
+
+/** The scheme version a code offered for a field is recorded in: the field's own first, then a list kept beside it. */
+export function ownerOf(offered: Offered, code: string): Scheme | undefined {
+  return [offered.base, ...offered.extensions].find((s) => s?.items.some((i) => i.code === code))
 }
 
 /**

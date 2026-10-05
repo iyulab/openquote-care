@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, conflictsOf, definitionOf, entityOf, labelOf, latest, namesOf, newestFirst, today, yearAround, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, entityOf, extensionsOf, labelOf, latest, namesOf, newestFirst, offeredChoices, ownerOf, today, yearAround, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -119,4 +119,31 @@ describe('yearAround', () => {
   })
   it('steps back a year', () => expect(yearAround(3, '2026-10-03', true)).toEqual({ from: '2025-03-01', to: '2026-02-28' }))
   it('is the calendar year from January', () => expect(yearAround(1, '2026-10-03')).toEqual({ from: '2026-01-01', to: '2026-12-31' }))
+})
+
+describe('lists kept beside a scheme', () => {
+  const ours = (version: number, ...codes: string[]): Scheme => ({
+    scheme: 'local.method',
+    version,
+    extends: { scheme: 'method', version: 1 },
+    items: codes.map((code) => ({ code, label: `ours ${code}`, parent: null, suggest: false, anchor: 'interview' })),
+  })
+  const schemes = [method, ours(1, 'local-1'), ours(2, 'local-1', 'local-2')]
+
+  it('are found by the scheme they extend, at their newest version', () => {
+    expect(extensionsOf(schemes, 'method').map((s) => [s.scheme, s.version])).toEqual([['local.method', 2]])
+    expect(extensionsOf(schemes, 'local.method')).toEqual([])
+  })
+
+  it('offer their items after the scheme its own', () => {
+    const offered = { base: method, extensions: extensionsOf(schemes, 'method') }
+    expect(offeredChoices(offered).map((c) => c.value)).toEqual(['interview', 'special', 'special/school-violence', 'local-1', 'local-2'])
+  })
+
+  it('record a code in the scheme that holds it, the field its own first', () => {
+    const offered = { base: method, extensions: extensionsOf(schemes, 'method') }
+    expect(ownerOf(offered, 'interview')?.scheme).toBe('method')
+    expect([ownerOf(offered, 'local-2')?.scheme, ownerOf(offered, 'local-2')?.version]).toEqual(['local.method', 2])
+    expect(ownerOf(offered, 'nothing')).toBeUndefined()
+  })
 })

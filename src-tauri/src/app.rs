@@ -31,6 +31,8 @@ pub enum AppError {
     /// folder's format, after which earlier versions of the app no longer open it. Nothing was
     /// applied; a person chooses to raise it.
     NeedsNewFormat(u32),
+    /// An item cannot be added to the vault's own list beside a scheme: why, as the engine names it.
+    ItemRefused(String),
     /// The packs bundled with the app cannot be read, or lack what a track needs.
     Bundle(BundleError),
     /// The folder chosen for the backup cannot hold it.
@@ -50,6 +52,7 @@ impl fmt::Display for AppError {
             Self::NotAPack => f.write_str("the folder holds no scheme or report form"),
             Self::PackConflict(paths) => write!(f, "the vault already has different content at {}", paths.join(", ")),
             Self::NeedsNewFormat(v) => write!(f, "the pack needs vault format {v}"),
+            Self::ItemRefused(why) => write!(f, "the item cannot be added: {why}"),
             Self::Bundle(e) => write!(f, "{e}"),
             Self::Backup(e) => write!(f, "{e}"),
             Self::PlainCopy(e) => write!(f, "{e}"),
@@ -72,6 +75,12 @@ impl AppError {
             Self::NotAPack => "not-a-pack",
             Self::PackConflict(_) => "pack-conflict",
             Self::NeedsNewFormat(_) => "needs-new-format",
+            Self::ItemRefused(why) => match why.as_str() {
+                "label-empty" => "item-label-empty",
+                "label-taken" => "item-label-taken",
+                "anchor-unknown" => "item-anchor-unknown",
+                _ => "item-no-scheme",
+            },
             Self::Bundle(_) => "bundle",
             Self::Backup(e) => backup_code(e),
             Self::PlainCopy(PlainCopyError::Overlaps) => "plain-copy-overlaps",
@@ -99,6 +108,11 @@ impl AppError {
             Self::Io(_) => "io",
         }
     }
+}
+
+/// Why the engine refused an item, from its answer (`{"error": "<why>"}`).
+fn refusal(answer: &str) -> String {
+    serde_json::from_str::<Value>(answer).ok().and_then(|v| v["error"].as_str().map(str::to_owned)).unwrap_or_default()
 }
 
 fn backup_code(e: &BackupError) -> &'static str {
@@ -651,6 +665,42 @@ impl App {
                 self.back_up(&open.vault, Some(&added));
             }
             Ok(added)
+        })
+    }
+
+    /// Adds an item labelled `label`, counted as the item `anchor` of `scheme`, to the open vault's
+    /// own list beside that scheme: the list's next version, extending the version in force on
+    /// `date`. A list kept beside a scheme needs vault format 1, so as with a pack nothing is added
+    /// to a folder declaring less unless `raise_format`. When another device sharing the folder
+    /// wrote that version first, the vault is read again and the next version written. Returns
+    /// the paths added.
+    pub fn add_local_item(&self, scheme: &str, date: &str, label: &str, anchor: &str, raise_format: bool) -> Result<Vec<String>, AppError> {
+        self.with_open(|open| {
+            let mut attempts = 0;
+            loop {
+                let files = open.engine.local_item(scheme, date, label, anchor).map_err(|e| match e {
+                    EngineError::Status(422, answer, _) => AppError::ItemRefused(refusal(&answer)),
+                    other => other.into(),
+                })?;
+                if let Some(format) = open.format_needed(&files)? {
+                    if !raise_format {
+                        return Err(AppError::NeedsNewFormat(format));
+                    }
+                    open.vault.raise_format(format)?;
+                }
+                let added: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
+                match open.keep_all(files) {
+                    Ok(_) => {
+                        self.back_up(&open.vault, Some(&added));
+                        return Ok(added);
+                    }
+                    Err(EngineError::Vault(VaultError::AlreadyExists)) if attempts < 2 => {
+                        attempts += 1;
+                        open.reload()?;
+                    }
+                    Err(e) => return Err(e.into()),
+                }
+            }
         })
     }
 
@@ -1439,6 +1489,33 @@ cut off").unwrap();
         assert_eq!(app.apply_pack(other.path(), false).unwrap_err().code(), "pack-conflict");
         let empty = tempfile::tempdir().unwrap();
         assert_eq!(app.apply_pack(empty.path(), false).unwrap_err().code(), "not-a-pack");
+    }
+
+    #[test]
+    fn keeps_the_vaults_own_list_beside_a_scheme_as_versions_of_it() {
+        let Some(app) = app() else { return };
+        let dir = tempfile::tempdir().unwrap();
+        let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+
+        // A list extending a scheme needs format 1: a folder declaring less asks first, as for a pack.
+        let first = match app.add_local_item("topic", "2026-03-10", "Ours", "family", false) {
+            Err(e) if e.code() == "needs-new-format" => {
+                assert!(fs::read_dir(dir.path().join("schemes")).unwrap().all(|e| e.unwrap().file_name() != "local.topic"), "nothing written before the person chooses");
+                app.add_local_item("topic", "2026-03-10", "Ours", "family", true).unwrap()
+            }
+            other => other.unwrap(),
+        };
+        assert_eq!(first, ["schemes/local.topic/v1.json"]);
+        let mut second = app.add_local_item("topic", "2026-03-10", "Also ours", "family", false).unwrap();
+        second.sort();
+        assert_eq!(second, ["schemes/local.topic/v1-v2.json", "schemes/local.topic/v2.json"]);
+        let schemes = app.schemes().unwrap();
+        let list = schemes.as_array().unwrap().iter().find(|s| s["scheme"] == "local.topic" && s["version"] == 2).expect("the list's second version");
+        assert_eq!(list["items"].as_array().unwrap().len(), 2);
+
+        assert_eq!(app.add_local_item("topic", "2026-03-10", "ours", "family", false).unwrap_err().code(), "item-label-taken");
+        assert_eq!(app.add_local_item("topic", "2026-03-10", "New", "nothing", false).unwrap_err().code(), "item-anchor-unknown");
     }
 
     #[test]

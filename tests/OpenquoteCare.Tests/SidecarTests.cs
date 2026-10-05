@@ -252,6 +252,51 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Null((await Post("/schemes/in-force", new { scheme = "nothing", date = "2026-03-01" }))["version"]);
     }
 
+    private static Openquote.Vault.VaultFile[] FromWire(JsonNode files) =>
+        [.. files.AsArray().Select(f => new Openquote.Vault.VaultFile(f!["path"]!.GetValue<string>(), Convert.FromBase64String(f["content"]!.GetValue<string>())))];
+
+    [Fact]
+    public async Task Adds_an_item_to_the_folders_own_list_beside_a_scheme_counted_as_an_item_of_it()
+    {
+        Openquote.Vault.VaultFile[] vault = [.. GoldenVault.School.Through(1), .. FieldPacks];
+        await Post("/vault/load", Files(vault));
+
+        var first = FromWire(await Post("/schemes/local-item", new { scheme = "kind", date = "2026-03-02", label = "Ours", anchor = "a" }));
+
+        var list = Assert.Single(first);
+        Assert.Equal("schemes/local.kind/v1.json", list.Path);
+        vault = [.. vault, .. first];
+        await Post("/vault/load", Files(vault));
+        var schemes = (await Get("/schemes")).AsArray();
+        var local = Assert.Single(schemes, s => s!["scheme"]!.GetValue<string>() == "local.kind")!;
+        Assert.Equal(("kind", 2), (local["extends"]!["scheme"]!.GetValue<string>(), local["extends"]!["version"]!.GetValue<int>()));
+        var item = Assert.Single(local["items"]!.AsArray())!;
+        Assert.Equal(("local-1", "Ours", "a"), (item["code"]!.GetValue<string>(), item["label"]!.GetValue<string>(), item["anchor"]!.GetValue<string>()));
+        Assert.Null(Assert.Single(schemes, s => s!["scheme"]!.GetValue<string>() == "kind" && s["version"]!.GetValue<int>() == 2)!["extends"]);
+
+        // The next item makes the list's next version, every earlier item linked to itself.
+        var second = FromWire(await Post("/schemes/local-item", new { scheme = "kind", date = "2026-03-02", label = "Also ours", anchor = "a" }));
+
+        Assert.Equal(["schemes/local.kind/v1-v2.json", "schemes/local.kind/v2.json"], second.Select(f => f.Path).Order());
+        await Post("/vault/load", Files([.. vault, .. second]));
+        var grown = Assert.Single((await Get("/schemes")).AsArray(), s => s!["scheme"]!.GetValue<string>() == "local.kind" && s["version"]!.GetValue<int>() == 2)!;
+        Assert.Equal(["local-1", "local-2"], grown["items"]!.AsArray().Select(i => i!["code"]!.GetValue<string>()));
+    }
+
+    [Theory]
+    [InlineData("kind", "  ", "a", "label-empty")]
+    [InlineData("kind", "a", "a", "label-taken")]
+    [InlineData("kind", "Ours", "nothing", "anchor-unknown")]
+    [InlineData("nothing", "Ours", "a", "no-scheme")]
+    public async Task Refuses_an_item_it_cannot_add_and_says_why(string scheme, string label, string anchor, string why)
+    {
+        await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks]));
+
+        var refused = await Post("/schemes/local-item", new { scheme, date = "2026-03-02", label, anchor }, HttpStatusCode.UnprocessableEntity);
+
+        Assert.Equal(why, refused["error"]!.GetValue<string>());
+    }
+
     [Fact]
     public async Task Does_not_offer_a_form_that_reads_a_hidden_field()
     {

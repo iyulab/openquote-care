@@ -180,7 +180,7 @@ export function packsWaitingCallout(store: VaultStore) {
 }
 
 /** This device and every other the vault names, this one first: each must run a version that reads a newer format. */
-function formatDevices(summary: VaultSummary | undefined): string[] {
+export function formatDevices(summary: VaultSummary | undefined): string[] {
   const others = Object.keys(summary?.devices ?? {}).filter((d) => d !== summary?.device)
   return summary ? [summary.device, ...others].map((d) => deviceLabel(summary, d)) : []
 }

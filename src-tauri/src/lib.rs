@@ -126,6 +126,11 @@ fn apply_pack(folder: String, raise_format: Option<bool>, app: State<App>) -> Co
 }
 
 #[tauri::command]
+fn add_local_item(scheme: String, date: String, label: String, anchor: String, raise_format: Option<bool>, app: State<App>) -> CommandResult<Vec<String>> {
+    text(app.add_local_item(&scheme, &date, &label, &anchor, raise_format.unwrap_or(false)))
+}
+
+#[tauri::command]
 fn update_bundled_packs(app: State<App>) -> CommandResult<Vec<String>> {
     text(app.update_bundled_packs())
 }
@@ -406,6 +411,7 @@ pub fn run() {
             ui_locale,
             tracks,
             apply_pack,
+            add_local_item,
             update_bundled_packs,
             pending,
             suggestions,

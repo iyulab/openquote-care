@@ -211,7 +211,11 @@ public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Chan
 /// <summary>One change file: who wrote it, when, what it did, the fields it set, and where a value it set came from when not from a person typing or picking it.</summary>
 public sealed record ChangeView(string Id, string Device, DateTimeOffset At, string Op, IReadOnlyDictionary<string, JsonElement> Fields, IReadOnlyDictionary<string, string> Source);
 
-public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<SchemeItem> Items);
+/// <param name="Extends">The scheme version this one extends — a list the folder keeps beside a shared scheme — or null.</param>
+public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<SchemeItem> Items, SchemeVersion? Extends = null);
+
+/// <summary>An item a person adds to the folder's list beside a scheme: its label, and the item of the scheme it counts as.</summary>
+public sealed record LocalItemRequest(string Scheme, DateOnly Date, string Label, string Anchor);
 
 /// <summary>A record waiting for a person: the field and value the form carries, and the codes to choose from.</summary>
 public sealed record PendingView(string Record, string Field, string Scheme, int Version, JsonElement? Was, IReadOnlyList<string> Candidates);
@@ -298,12 +302,28 @@ internal static class Api
             return snapshot.Content.Schemes
                 .OrderBy(s => s.Name, StringComparer.Ordinal).ThenBy(s => s.Version)
                 .Select(s => new SchemeView(s.Name, s.Version, [.. s.Items.Select(i =>
-                    i with { Label = snapshot.Labels.SchemeLabel(s.Name, s.Version, i.Code, snapshot.Locales) ?? i.Label })]))
+                    i with { Label = snapshot.Labels.SchemeLabel(s.Name, s.Version, i.Code, snapshot.Locales) ?? i.Label })], s.Extends))
                 .ToArray();
         });
 
         app.MapPost("/schemes/in-force", (InForceRequest request, VaultSession session) =>
             new InForceView(session.Current.Content.Catalog().InForce(request.Scheme, request.Date)?.Version));
+
+        // The files that add an item to the folder's own list beside a scheme; the host writes them
+        // (never replacing a file) and, when another device wrote that version first, reads again and asks anew.
+        app.MapPost("/schemes/local-item", (LocalItemRequest request, VaultSession session) =>
+        {
+            var content = session.Current.Content;
+            try
+            {
+                return Results.Ok(LocalLists.Add(content.Schemes, content.Catalog(), request.Scheme, request.Date, request.Label, request.Anchor)
+                    .Select(WireFile.From).ToArray());
+            }
+            catch (LocalLists.Refused e)
+            {
+                return Results.UnprocessableEntity(new ErrorView(e.Message));
+            }
+        });
 
         // The fields the vault's packs declare for a type, in declaration order; none for a vault without field definitions.
         app.MapGet("/fields/{type}", (string type, VaultSession session) =>
@@ -606,6 +626,8 @@ internal static class Api
 [JsonSerializable(typeof(RunRequest))]
 [JsonSerializable(typeof(ExportRequest))]
 [JsonSerializable(typeof(InForceRequest))]
+[JsonSerializable(typeof(LocalItemRequest))]
+[JsonSerializable(typeof(WireFile[]))]
 [JsonSerializable(typeof(CarryRequest))]
 [JsonSerializable(typeof(SuggestRequest))]
 [JsonSerializable(typeof(SuggestionsView))]

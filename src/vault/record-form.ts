@@ -3,7 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 import { copiedFromSubject, firstMissingRequired, inputFields, labelOfField, type FieldView } from '../fields.js'
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
-import { choices, latest, text, type Entity, type FieldSuggestions, type Scheme, type SuggestedCode } from '../records.js'
+import { extensionsOf, latest, offeredChoices, ownerOf, text, type Entity, type FieldSuggestions, type Offered, type Scheme, type SuggestedCode } from '../records.js'
 import { shell, type CarryView } from '../shell.js'
 import { strings } from '../strings.js'
 import { alsoKey, othersOf, recordedValues } from '../several.js'
@@ -190,6 +190,11 @@ export class OcRecordForm extends StoreElement {
     return this.store.schemes.find((s) => s.scheme === name && s.version === version) ?? latest(this.store.schemes, name)
   }
 
+  // What a classification offers: its version in use, and the lists the vault keeps beside it.
+  private offeredFor(field: FieldView, versions = this.versions): Offered {
+    return { base: this.schemeFor(field, versions), extensions: extensionsOf(this.store.schemes, field.scheme!) }
+  }
+
   /**
    * The values the form's inputs hold, as they are recorded: a classification as its code in the
    * version in force that day. An input left empty is not among them, nor is a code that version
@@ -203,14 +208,19 @@ export class OcRecordForm extends StoreElement {
       const value = (draft[f.name] ?? '').trim()
       if (!value) continue
       if (f.kind === 'coded') {
-        const scheme = this.schemeFor(f, versions)
-        if (!scheme?.items.some((i) => i.code === value)) {
+        const offered = this.offeredFor(f, versions)
+        const coded = (code: string) => {
+          const owner = ownerOf(offered, code)
+          return owner ? { scheme: owner.scheme, version: owner.version, code } : undefined
+        }
+        const primary = coded(value)
+        if (!primary) {
           dropped.push(f)
           continue
         }
-        // A field taking several: the others that version holds go with the primary value.
-        const others = f.many ? othersOf(draft, f.name).filter((c) => scheme.items.some((i) => i.code === c)) : []
-        fields[f.name] = recordedValues(scheme.scheme, scheme.version, value, others)
+        // A field taking several: the others still offered go with the primary value.
+        const others = f.many ? othersOf(draft, f.name).flatMap((c) => coded(c) ?? []) : []
+        fields[f.name] = recordedValues(primary, others)
       } else if (f.kind === 'number') {
         fields[f.name] = Number(value)
       } else {
@@ -463,10 +473,7 @@ export class OcRecordForm extends StoreElement {
   private input(f: FieldView) {
     const store = this.store
     const choicesOf = (): Choice[] => {
-      if (f.kind === 'coded') {
-        const scheme = this.schemeFor(f)
-        return scheme ? choices(scheme) : []
-      }
+      if (f.kind === 'coded') return offeredChoices(this.offeredFor(f))
       if (f.kind === 'reference') return store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
       return []
     }
