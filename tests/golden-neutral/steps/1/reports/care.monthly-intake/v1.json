@@ -1,0 +1,19 @@
+{
+  "format": "openquote.report/0",
+  "report": "care.monthly-intake",
+  "version": 1,
+  "label": "Intakes by who brought them",
+  "counts": "intake",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "rows": {
+    "field": "source",
+    "scheme": "care.intake-source",
+    "version": 1
+  },
+  "columns": {
+    "field": "practitioner"
+  }
+}

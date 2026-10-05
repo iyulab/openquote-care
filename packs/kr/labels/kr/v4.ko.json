@@ -4,6 +4,7 @@
   "version": 4,
   "locale": "ko",
   "types": {
+    "intake": "접수",
     "referral": "연계",
     "closing": "종결"
   },
@@ -60,6 +61,16 @@
         "moved-away": "전학·이사",
         "other": "기타"
       }
+    },
+    "care.intake-source": {
+      "1": {
+        "self": "본인 신청",
+        "family": "보호자",
+        "school": "교사·학교",
+        "service": "다른 기관 의뢰",
+        "screening": "검사 결과",
+        "other": "기타"
+      }
     }
   },
   "fields": {
@@ -100,6 +111,12 @@
       "practitioner": "담당자",
       "reason": "종결 사유",
       "summary": "종결 소견"
+    },
+    "intake": {
+      "date": "접수일",
+      "practitioner": "담당자",
+      "source": "유입 경로",
+      "presenting": "호소 내용"
     }
   },
   "aliases": {
@@ -129,6 +146,9 @@
     },
     "care.monthly-closing": {
       "1": "종결 사유별 현황"
+    },
+    "care.monthly-intake": {
+      "1": "유입 경로별 접수 현황"
     }
   },
   "exports": {

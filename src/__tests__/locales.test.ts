@@ -59,4 +59,9 @@ describe('locale tables', () => {
       useLocale('ko')
     }
   })
+
+  it('names a kind of record in English with the article its first letter takes', () => {
+    expect(en.openRecordForm('Intake')).toBe('Add an intake')
+    expect(en.openRecordForm('Referral')).toBe('Add a referral')
+  })
 })

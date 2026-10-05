@@ -4,6 +4,7 @@
   "version": 4,
   "locale": "en",
   "types": {
+    "intake": "Intake",
     "referral": "Referral",
     "closing": "Closing"
   },
@@ -60,6 +61,16 @@
         "moved-away": "Moved away",
         "other": "Other"
       }
+    },
+    "care.intake-source": {
+      "1": {
+        "self": "The person asked",
+        "family": "Family",
+        "school": "School or teacher",
+        "service": "Another service",
+        "screening": "Screening result",
+        "other": "Other"
+      }
     }
   },
   "fields": {
@@ -100,6 +111,12 @@
       "practitioner": "Practitioner",
       "reason": "Why it closed",
       "summary": "Closing summary"
+    },
+    "intake": {
+      "date": "Taken on",
+      "practitioner": "Practitioner",
+      "source": "Who brought them",
+      "presenting": "What they came with"
     }
   },
   "aliases": {
@@ -124,6 +141,9 @@
     },
     "care.monthly-closing": {
       "1": "Closings by reason"
+    },
+    "care.monthly-intake": {
+      "1": "Intakes by who brought them"
     }
   },
   "exports": {

@@ -1,0 +1,31 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.intake-source",
+  "version": 1,
+  "items": [
+    {
+      "code": "self",
+      "label": "The person asked"
+    },
+    {
+      "code": "family",
+      "label": "Family"
+    },
+    {
+      "code": "school",
+      "label": "School or teacher"
+    },
+    {
+      "code": "service",
+      "label": "Another service"
+    },
+    {
+      "code": "screening",
+      "label": "Screening result"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

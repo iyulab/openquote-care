@@ -6,6 +6,8 @@ import type { Strings } from './index.js'
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 // A kind's name inside a sentence: its first letter in lower case, unless the word is written in capitals.
 const lower = (kind: string) => (/^[A-Z][a-z]/.test(kind) ? kind[0].toLowerCase() + kind.slice(1) : kind)
+/** The kind with its indefinite article, by the letter it starts with: "an intake", "a referral". */
+const aOrAn = (kind: string) => `${/^[aeiou]/i.test(kind) ? 'an' : 'a'} ${lower(kind)}`
 
 export const en: Strings = {
   appName: 'Openquote Care',
@@ -402,7 +404,7 @@ export const en: Strings = {
   recordCorrectedOf: (kind: string) => `The ${lower(kind)} was corrected.`,
   noRecordsOf: (kind: string) => `No ${lower(kind)} recorded.`,
   recordCountOf: (kind: string, n: number) => `${kind}: ${n}`,
-  openRecordForm: (kind: string) => `Add a ${lower(kind)}`,
+  openRecordForm: (kind: string) => `Add ${aOrAn(kind)}`,
   staleSubject: (labels: string[], writtenOn: string) =>
     `The client's ${labels.map((l) => `“${l}”`).join(' and ')} ${labels.length === 1 ? 'was' : 'were'} written on ${writtenOn}, and may no longer hold on this session's date. Recording the session first corrects the client's record to the values below; a field left empty is cleared.`,
   staleSubjectWas: (value: string) => `Now: ${value}`,

@@ -4,6 +4,9 @@
   "version": 5,
   "label": "Care",
   "provides": [
+    "schemes/care.intake-source/v1.json",
+    "fields/care/intake/v1.json",
+    "reports/care.monthly-intake/v1.json",
     "schemes/care.closing-reason/v1.json",
     "fields/care/closing/v1.json",
     "reports/care.monthly-closing/v1.json"

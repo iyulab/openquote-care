@@ -1401,6 +1401,24 @@ const scenarios = {
     )
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a referral is not a session')
 
+    // An intake opens the work: when, and who brought the client.
+    const inIntakeForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'intake'; n = host } })`
+    await app.click('dc-button', 'Add an intake')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inIntakeForm('input[aria-label="Taken on"]')}; if (!el) return false; el.value = '2026-04-01'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the intake date',
+    )
+    await app.choose('Who brought them', 'school')
+    await app.click('dc-button', 'Record intake')
+    const intakeRows = `__e2e.all('section[data-kind="intake"] tr[data-record]')`
+    await app.cdp.waitFor(`${intakeRows}.length === 1`, 'the intake listed')
+    await app.noAlert()
+    const intakeRow = await app.cdp.evaluate(
+      `${intakeRows}[0] ? [...${intakeRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
+    )
+    assert.deepEqual(intakeRow.slice(0, 2), ['2026-04-01', 'School or teacher'], 'its date and who brought the client')
+
     // A closing is another kind of record under the client: when and why the work ended, the summary written content.
     const inClosingForm = (selector) =>
       `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'closing'; n = host } })`
@@ -1445,6 +1463,14 @@ const scenarios = {
     await app.noAlert()
     const closed = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="lost-contact"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([closed[0], closed.at(-1)], ['Lost contact', '1 (1 person)'], 'the closing counted once, by its reason')
+    await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-intake@1"]')
+    await app.type('Year', '2026')
+    await app.choose('Month', '4')
+    await app.click('dc-button', 'Run')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="school"]')`, 'the month by who brought them')
+    await app.noAlert()
+    const taken = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="school"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual([taken[0], taken.at(-1)], ['School or teacher', '1 (1 person)'], 'the intake counted once, by who brought the client')
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-concern@1"]')
 
     // The core suggests a concern from the most similar settled session, and sets safety apart, to be confirmed.
