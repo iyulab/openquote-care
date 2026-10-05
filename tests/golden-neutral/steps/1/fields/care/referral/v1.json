@@ -41,6 +41,7 @@
     {
       "name": "reason",
       "kind": "text",
+      "tier": "narrative",
       "label": "Why it was not taken up"
     },
     {

@@ -1382,7 +1382,7 @@ const scenarios = {
     await app.choose('Referred to', 'mental-health')
     await app.type('Organisation', 'Synthetic Wellbeing Centre')
     await app.choose('Outcome', 'declined')
-    await app.type('Why it was not taken up', 'The family preferred to wait')
+    await app.write('Why it was not taken up', 'The family preferred to wait')
     await app.click('dc-button', 'Record referral')
     const referralRows = `__e2e.all('section[data-kind="referral"] tr[data-record]')`
     await app.cdp.waitFor(`${referralRows}.length === 1`, 'the referral listed')
@@ -1390,7 +1390,15 @@ const scenarios = {
     const referralRow = await app.cdp.evaluate(
       `${referralRows}[0] ? [...${referralRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
     )
-    assert.deepEqual(referralRow, ['2026-04-03', 'Mental health service', 'Declined by the person or family', ''], 'its date, where to, the outcome and no practitioner')
+    assert.deepEqual(
+      referralRow,
+      ['2026-04-03', 'Synthetic Wellbeing Centre', 'Mental health service', 'Declined by the person or family', ''],
+      'its date, the organisation, where to, the outcome and no practitioner — why it was not taken up is written content, under the row',
+    )
+    assert.ok(
+      await app.cdp.evaluate(`!!${referralRows}[0].querySelector('button[data-role=note]')`),
+      'the row offers to open why it was not taken up',
+    )
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a referral is not a session')
 
     // The concern is optional on this track: a session without one is counted, in no row, and said so.
