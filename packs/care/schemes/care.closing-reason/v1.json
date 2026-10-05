@@ -1,0 +1,39 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.closing-reason",
+  "version": 1,
+  "items": [
+    {
+      "code": "completed",
+      "label": "Completed as planned"
+    },
+    {
+      "code": "referred",
+      "label": "Moved to another service"
+    },
+    {
+      "code": "request-withdrawn",
+      "label": "Request withdrawn"
+    },
+    {
+      "code": "lost-contact",
+      "label": "Lost contact"
+    },
+    {
+      "code": "declined",
+      "label": "Declined by the person"
+    },
+    {
+      "code": "declined-family",
+      "label": "Declined by the family"
+    },
+    {
+      "code": "moved-away",
+      "label": "Moved away"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

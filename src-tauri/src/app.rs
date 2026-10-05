@@ -1895,11 +1895,11 @@ cut off").unwrap();
         assert_eq!((&topic["label"], &topic["required"]), (&json!("주제"), &json!(true)));
         let name = app.fields("subject").unwrap().as_array().unwrap().iter().find(|f| f["name"] == "name").unwrap().clone();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
-        // The core's forms stand on the fields the school track hides: they are not offered.
+        // The core's session forms stand on the fields the school track hides: they are not offered. Its closing form is.
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
         assert_eq!(
             offered,
-            ["month-assessment-tool", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
+            ["care.monthly-closing", "month-assessment-tool", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
         );
     }
 

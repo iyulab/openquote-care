@@ -269,9 +269,10 @@ export class VaultStore extends EventTarget {
     })
     if (!this.exportKey && exports.length > 0) this.exportKey = `${exports[0].name}@${exports[0].version}`
     if (!this.reportKey && reports.length > 0) {
-      // The newest version of the form last chosen on this computer, while the vault offers it; else the newest form.
+      // The newest version of the form last chosen on this computer, while the vault offers it; else the
+      // newest form counting sessions, the record every vault keeps, before forms of other kinds of record.
       const remembered = storedReportForm(this.folder)
-      const byVersion = [...reports].sort((a, b) => b.version - a.version)
+      const byVersion = [...reports].sort((a, b) => Number(b.counts === 'session') - Number(a.counts === 'session') || b.version - a.version)
       const chosen = byVersion.find((r) => r.name === remembered) ?? byVersion[0]
       this.reportKey = `${chosen.name}@${chosen.version}`
     }

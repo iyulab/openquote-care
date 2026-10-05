@@ -1,0 +1,19 @@
+{
+  "format": "openquote.report/0",
+  "report": "care.monthly-closing",
+  "version": 1,
+  "label": "Closings by reason",
+  "counts": "closing",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "rows": {
+    "field": "reason",
+    "scheme": "care.closing-reason",
+    "version": 1
+  },
+  "columns": {
+    "field": "practitioner"
+  }
+}

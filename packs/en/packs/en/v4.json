@@ -1,0 +1,12 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "en",
+  "version": 4,
+  "label": "English",
+  "depends": {
+    "care": 5
+  },
+  "provides": [
+    "labels/en/v4.en.json"
+  ]
+}

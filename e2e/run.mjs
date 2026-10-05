@@ -1401,6 +1401,25 @@ const scenarios = {
     )
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a referral is not a session')
 
+    // A closing is another kind of record under the client: when and why the work ended, the summary written content.
+    const inClosingForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'closing'; n = host } })`
+    await app.click('dc-button', 'Add a closing')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inClosingForm('input[aria-label="Closed on"]')}; if (!el) return false; el.value = '2026-04-20'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the closing date',
+    )
+    await app.choose('Why it closed', 'lost-contact')
+    await app.write('Closing summary', 'Synthetic summary: no reply after two calls')
+    await app.click('dc-button', 'Record closing')
+    const closingRows = `__e2e.all('section[data-kind="closing"] tr[data-record]')`
+    await app.cdp.waitFor(`${closingRows}.length === 1`, 'the closing listed')
+    await app.noAlert()
+    const closingRow = await app.cdp.evaluate(
+      `${closingRows}[0] ? [...${closingRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
+    )
+    assert.deepEqual(closingRow.slice(0, 2), ['2026-04-20', 'Lost contact'], 'its date and why it closed')
+
     // The concern is optional on this track: a session without one is counted, in no row, and said so.
     await app.setDate('Date', '2026-04-09')
     await app.choose('Mode', 'phone')
@@ -1416,6 +1435,17 @@ const scenarios = {
     assert.deepEqual(blank, ['(No concern)', '1 (1 person)'], 'the session without a concern, apart from the rows')
     assert.equal(await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=unmapped]'); return (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() })()`), '0', 'not a gap in a crosswalk')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1 person)', 'one session in the rows')
+
+    // Closings are counted by why they closed, in a form of their own.
+    await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-closing@1"]')
+    await app.type('Year', '2026')
+    await app.choose('Month', '4')
+    await app.click('dc-button', 'Run')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="lost-contact"]')`, 'the month by closing reason')
+    await app.noAlert()
+    const closed = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="lost-contact"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual([closed[0], closed.at(-1)], ['Lost contact', '1 (1 person)'], 'the closing counted once, by its reason')
+    await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-concern@1"]')
 
     // The core suggests a concern from the most similar settled session, and sets safety apart, to be confirmed.
     await app.click('button', 'Clients')
