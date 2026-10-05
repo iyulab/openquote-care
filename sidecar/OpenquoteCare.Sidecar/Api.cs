@@ -217,6 +217,9 @@ public sealed record SchemeView(string Scheme, int Version, IReadOnlyList<Scheme
 /// <summary>An item a person adds to the folder's list beside a scheme: its label, and the item of the scheme it counts as.</summary>
 public sealed record LocalItemRequest(string Scheme, DateOnly Date, string Label, string Anchor);
 
+/// <summary>What follows a form's name in the name of the form counting by the folder's own list.</summary>
+public sealed record LocalFormsRequest(string Suffix);
+
 /// <summary>A record waiting for a person: the field and value the form carries, and the codes to choose from.</summary>
 public sealed record PendingView(string Record, string Field, string Scheme, int Version, JsonElement? Was, IReadOnlyList<string> Candidates);
 
@@ -323,6 +326,15 @@ internal static class Api
             {
                 return Results.UnprocessableEntity(new ErrorView(e.Message));
             }
+        });
+
+        // The forms counting by the folder's own lists it does not hold yet; the host writes them as it
+        // writes a list's items, skipping one another device wrote first.
+        app.MapPost("/reports/local-forms", (LocalFormsRequest request, VaultSession session) =>
+        {
+            var snapshot = session.Current;
+            return LocalLists.Forms(snapshot.Content, r => snapshot.Labels.ReportLabel(r.Name, r.Version, snapshot.Locales) ?? r.Label, request.Suffix)
+                .Select(WireFile.From).ToArray();
         });
 
         // The fields the vault's packs declare for a type, in declaration order; none for a vault without field definitions.
@@ -627,6 +639,7 @@ internal static class Api
 [JsonSerializable(typeof(ExportRequest))]
 [JsonSerializable(typeof(InForceRequest))]
 [JsonSerializable(typeof(LocalItemRequest))]
+[JsonSerializable(typeof(LocalFormsRequest))]
 [JsonSerializable(typeof(WireFile[]))]
 [JsonSerializable(typeof(CarryRequest))]
 [JsonSerializable(typeof(SuggestRequest))]

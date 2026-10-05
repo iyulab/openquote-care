@@ -139,7 +139,10 @@ export class VaultStore extends EventTarget {
 
   /** Reads the vault and starts taking in what other devices write to it. */
   connect() {
-    void this.run(() => this.load())
+    void this.run(async () => {
+      await this.writeLocalForms()
+      await this.load()
+    })
     this.unlisten = shell.onVaultChanged(() => void this.takeIn())
   }
 
@@ -356,6 +359,19 @@ export class VaultStore extends EventTarget {
     this.changed()
   }
 
+  /**
+   * Writes the forms counting by the folder's own lists that it does not hold yet: a list kept
+   * before such forms came with one, or a form a pack added since. A folder that cannot be written
+   * to now is left as it is; the forms come at the next opening that can.
+   */
+  private async writeLocalForms() {
+    try {
+      await shell.writeLocalForms(strings.localFormSuffix)
+    } catch {
+      // Nothing the person asked for failed: the forms follow when the folder takes writes again.
+    }
+  }
+
   /** Picks the report form to work on, and remembers it for this vault on this computer. */
   chooseReport(key: string) {
     storeReportForm(this.folder, key.split('@')[0])
@@ -368,6 +384,7 @@ export class VaultStore extends EventTarget {
     await this.run(async () => {
       const updated = await shell.updateBundledPacks()
       this.packsWaiting = false
+      await this.writeLocalForms()
       await this.load()
       if (updated.length > 0) this.notice = strings.packsUpdated
     })
@@ -387,6 +404,7 @@ export class VaultStore extends EventTarget {
         }
         throw e
       }
+      await this.writeLocalForms()
       await this.load()
       this.notice = packNotice(added, this.summary, (scheme) => this.schemeName(scheme))
       // A new form version is what the person came for: offer it, if this screen shows it.

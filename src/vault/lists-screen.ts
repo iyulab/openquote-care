@@ -53,7 +53,7 @@ export class OcLists extends VaultScreen {
     store.set({ notice: '' })
     await store.run(async () => {
       try {
-        await shell.addLocalItem(scheme, today(), label, this.countedAs, raiseFormat)
+        await shell.addLocalItem(scheme, today(), label, this.countedAs, strings.localFormSuffix, raiseFormat)
       } catch (e) {
         // The list needs a newer format of the folder, which earlier versions of the app cannot open.
         if (isCommandError(e) && e.code === 'needs-new-format') {

@@ -6,7 +6,7 @@ import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
 import type { ReportEntry } from '../forms.js'
-import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, type PendingEntry } from './report-parts.js'
+import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
 import type { VaultStore } from './store.js'
 
@@ -191,6 +191,7 @@ export class OcReport extends VaultScreen {
     const peopleTotal = total.length === 0 || !measures.includes('people') ? null : headCount(result, total)
     const visitsTotal = total.length === 0 || !measures.includes('visits') ? null : visitCount(result, total)
     const blank = blankLabel(store, form)
+    const unmapped = unmappedWording(store, form)
     const filters = filterParts(store, form, result)
     const sectioned = layout.sections.length > 1
     const active = Math.min(this.section, layout.sections.length - 1)
@@ -238,13 +239,13 @@ export class OcReport extends VaultScreen {
         ${visitsTotal === null ? nothing : html`<dc-metric data-role="visits" label=${strings.metricVisits} value=${String(visitsTotal)} unit=${strings.peopleUnit}></dc-metric>`}
         ${metric('total', strings.grandTotal, layout.total, () => void this.showEvidence(strings.grandTotal, layout.total), '2')}
         ${metric('pending', strings.pending, layout.pending, () => void this.showPending(result))}
-        ${metric('unmapped', strings.unmapped, layout.unmapped, () => void this.showEvidence(strings.unmapped, layout.unmapped))}
+        ${metric('unmapped', unmapped.label, layout.unmapped, () => void this.showEvidence(unmapped.label, layout.unmapped))}
         ${layout.blank.count === 0 ? nothing : metric('blank', blank, layout.blank, () => void this.showEvidence(blank, layout.blank))}
         ${layout.conflicted.count === 0 ? nothing : metric('conflicted', strings.conflict, layout.conflicted, () => void this.showEvidence(strings.conflict, layout.conflicted))}
       </div>
       <dl class="legend">
         ${layout.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
-        ${layout.unmapped.count > 0 ? html`<div><dt>${strings.unmapped}</dt><dd>${strings.unmappedHint}</dd></div>` : nothing}
+        ${layout.unmapped.count > 0 ? html`<div><dt>${unmapped.label}</dt><dd>${unmapped.hint}</dd></div>` : nothing}
         ${layout.blank.count > 0 ? html`<div><dt>${blank}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
         ${layout.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
       </dl>

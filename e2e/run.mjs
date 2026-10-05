@@ -1669,6 +1669,21 @@ const scenarios = {
     await app.noAlert()
     const other = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="other"]').children].map((c) => c.textContent.trim())`)
     assert.equal(other.at(-1), '1 (1명)', 'counted once, as an assessment other than those listed')
+
+    // The form that came with the list counts the added item itself; the list's own items fall outside it.
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="local.assessment-tool.month-assessment-tool@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="local-1"]')`, 'the month by added assessment')
+    await app.noAlert()
+    const ours = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="local-1"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual([ours[0], ours.at(-1)], ['MMPI-A 단축형', '1 (1명)'], 'the added assessment counted by its own name')
+    const outside = await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group="unmapped"]'); return [m.getAttribute('label'), m.getAttribute('value')] })()`)
+    assert.equal(outside[0], '더한 항목 밖', 'the session with listed assessments only is outside the added items, not of an old category')
+    assert.notEqual(outside[1], '0')
+    const formLabel = await app.cdp.evaluate(`__e2e.one('nav[aria-label="보고 양식"] button[data-entry="local.assessment-tool.month-assessment-tool@1"]').textContent.trim()`)
+    assert.ok(formLabel.includes('— 더한 항목별'), formLabel)
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

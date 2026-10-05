@@ -78,6 +78,17 @@ export function blankLabel(store: VaultStore, form: ReportEntry | undefined): st
   return strings.noValue(form ? labelOfField(store.fieldsOf(form.counts), rowFieldOf(form)) : strings.reportRow)
 }
 
+/**
+ * What a form calls the records it cannot carry into the version it counts in. A form counting by
+ * lists that extend another — the items added to a vault — counts no value of the list it extends:
+ * those records are outside the added items, not of an old category.
+ */
+export function unmappedWording(store: VaultStore, form: ReportEntry | undefined): { label: string; hint: string } {
+  const classified = form?.dimensions.filter((d) => d.scheme !== null) ?? []
+  const extending = classified.length > 0 && classified.every((d) => store.schemes.some((s) => s.scheme === d.scheme && s.extends))
+  return extending ? { label: strings.outsideAdded, hint: strings.outsideAddedHint } : { label: strings.unmapped, hint: strings.unmappedHint }
+}
+
 /** The field a form places records in a month by, and how to read it on a record. */
 function periodOf(store: VaultStore, form: ReportEntry | undefined): { label: string; of: (e: Entity) => string } {
   const defs = store.fieldsOf(form?.counts ?? 'session')
@@ -90,7 +101,7 @@ function periodOf(store: VaultStore, form: ReportEntry | undefined): { label: st
 function placeText(store: VaultStore, run: RunRecord, place: Place | undefined): string {
   if (!place) return strings.nowhere
   if (place.kind === 'pending') return strings.pending
-  if (place.kind === 'unmapped') return strings.unmapped
+  if (place.kind === 'unmapped') return unmappedWording(store, formOf(store, run)).label
   if (place.kind === 'blank') return blankLabel(store, formOf(store, run))
   if (place.kind === 'conflicted') return strings.conflict
   const axes = axesOf(store, formOf(store, run), run)

@@ -115,6 +115,26 @@ fn refusal(answer: &str) -> String {
     serde_json::from_str::<Value>(answer).ok().and_then(|v| v["error"].as_str().map(str::to_owned)).unwrap_or_default()
 }
 
+/// Writes the forms counting by the vault's own lists that it does not hold yet, one by one: a
+/// form another device sharing the folder wrote first is that device's, the same form, and the
+/// vault is read again to take it in. Returns the paths this device wrote.
+fn keep_local_forms(open: &mut OpenVault, form_suffix: &str) -> Result<Vec<String>, AppError> {
+    let mut added = Vec::new();
+    let mut taken = false;
+    for form in open.engine.local_forms(form_suffix)? {
+        let path = form.path.clone();
+        match open.keep(form) {
+            Ok(_) => added.push(path),
+            Err(EngineError::Vault(VaultError::AlreadyExists)) => taken = true,
+            Err(e) => return Err(e.into()),
+        }
+    }
+    if taken {
+        open.reload()?;
+    }
+    Ok(added)
+}
+
 fn backup_code(e: &BackupError) -> &'static str {
     match e {
         BackupError::Overlaps => "backup-overlaps",
@@ -672,9 +692,10 @@ impl App {
     /// own list beside that scheme: the list's next version, extending the version in force on
     /// `date`. A list kept beside a scheme needs vault format 1, so as with a pack nothing is added
     /// to a folder declaring less unless `raise_format`. When another device sharing the folder
-    /// wrote that version first, the vault is read again and the next version written. Returns
-    /// the paths added.
-    pub fn add_local_item(&self, scheme: &str, date: &str, label: &str, anchor: &str, raise_format: bool) -> Result<Vec<String>, AppError> {
+    /// wrote that version first, the vault is read again and the next version written. The forms
+    /// counting by the list come with its first item (see [`App::write_local_forms`]). Returns the
+    /// paths added.
+    pub fn add_local_item(&self, scheme: &str, date: &str, label: &str, anchor: &str, raise_format: bool, form_suffix: &str) -> Result<Vec<String>, AppError> {
         self.with_open(|open| {
             let mut attempts = 0;
             loop {
@@ -688,9 +709,10 @@ impl App {
                     }
                     open.vault.raise_format(format)?;
                 }
-                let added: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
+                let mut added: Vec<String> = files.iter().map(|f| f.path.clone()).collect();
                 match open.keep_all(files) {
                     Ok(_) => {
+                        added.extend(keep_local_forms(open, form_suffix)?);
                         self.back_up(&open.vault, Some(&added));
                         return Ok(added);
                     }
@@ -701,6 +723,20 @@ impl App {
                     Err(e) => return Err(e.into()),
                 }
             }
+        })
+    }
+
+    /// Writes the forms counting by the open vault's own lists that it does not hold yet — for a
+    /// list kept before such forms came with one, or a form a pack added since — each named after
+    /// the form it follows with `form_suffix` after that name. Returns the paths added; none when
+    /// the vault holds them all.
+    pub fn write_local_forms(&self, form_suffix: &str) -> Result<Vec<String>, AppError> {
+        self.with_open(|open| {
+            let added = keep_local_forms(open, form_suffix)?;
+            if !added.is_empty() {
+                self.back_up(&open.vault, Some(&added));
+            }
+            Ok(added)
         })
     }
 
@@ -840,6 +876,7 @@ mod tests {
 
     /// The track the tests make vaults on: the one whose schemes and forms the golden vault holds.
     const TRACK: &str = "school-kr";
+    const SUFFIX: &str = " — ours";
 
     /// The packs as the app bundles them.
     fn bundle() -> Bundle {
@@ -1499,23 +1536,32 @@ cut off").unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
 
         // A list extending a scheme needs format 1: a folder declaring less asks first, as for a pack.
-        let first = match app.add_local_item("topic", "2026-03-10", "Ours", "family", false) {
+        let first = match app.add_local_item("topic", "2026-03-10", "Ours", "family", false, SUFFIX) {
             Err(e) if e.code() == "needs-new-format" => {
                 assert!(fs::read_dir(dir.path().join("schemes")).unwrap().all(|e| e.unwrap().file_name() != "local.topic"), "nothing written before the person chooses");
-                app.add_local_item("topic", "2026-03-10", "Ours", "family", true).unwrap()
+                app.add_local_item("topic", "2026-03-10", "Ours", "family", true, SUFFIX).unwrap()
             }
             other => other.unwrap(),
         };
-        assert_eq!(first, ["schemes/local.topic/v1.json"]);
-        let mut second = app.add_local_item("topic", "2026-03-10", "Also ours", "family", false).unwrap();
+        // The first item brings the forms counting by the list: one for each form counting the scheme.
+        assert_eq!(first[0], "schemes/local.topic/v1.json");
+        let forms = &first[1..];
+        assert!(!forms.is_empty() && forms.iter().all(|p| p.starts_with("reports/local.topic.")), "{first:?}");
+        let summary = app.summary().unwrap();
+        let labels: Vec<&str> = summary["reports"].as_array().unwrap().iter()
+            .filter(|r| r["name"].as_str().unwrap().starts_with("local.topic."))
+            .map(|r| r["label"].as_str().unwrap()).collect();
+        assert!(labels.len() == forms.len() && labels.iter().all(|l| l.ends_with(SUFFIX)), "{labels:?}");
+        assert!(app.write_local_forms(SUFFIX).unwrap().is_empty(), "the folder holds them all");
+        let mut second = app.add_local_item("topic", "2026-03-10", "Also ours", "family", false, SUFFIX).unwrap();
         second.sort();
         assert_eq!(second, ["schemes/local.topic/v1-v2.json", "schemes/local.topic/v2.json"]);
         let schemes = app.schemes().unwrap();
         let list = schemes.as_array().unwrap().iter().find(|s| s["scheme"] == "local.topic" && s["version"] == 2).expect("the list's second version");
         assert_eq!(list["items"].as_array().unwrap().len(), 2);
 
-        assert_eq!(app.add_local_item("topic", "2026-03-10", "ours", "family", false).unwrap_err().code(), "item-label-taken");
-        assert_eq!(app.add_local_item("topic", "2026-03-10", "New", "nothing", false).unwrap_err().code(), "item-anchor-unknown");
+        assert_eq!(app.add_local_item("topic", "2026-03-10", "ours", "family", false, SUFFIX).unwrap_err().code(), "item-label-taken");
+        assert_eq!(app.add_local_item("topic", "2026-03-10", "New", "nothing", false, SUFFIX).unwrap_err().code(), "item-anchor-unknown");
     }
 
     #[test]

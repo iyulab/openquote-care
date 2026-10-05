@@ -1,5 +1,6 @@
 using System.Globalization;
 using Openquote.Classification;
+using Openquote.Reports;
 using Openquote.Vault;
 
 namespace OpenquoteCare.Sidecar;
@@ -60,6 +61,37 @@ internal static class LocalLists
         var files = new List<VaultFile> { DefinitionWriter.Scheme(list) };
         if (current is not null)
             files.Add(DefinitionWriter.Crosswalk(new Crosswalk(name, current.Version, version, [.. current.Items.Select(i => (i.Code, i.Code))])));
+        return files;
+    }
+
+    /// <summary>
+    /// The forms counting by the folder's own lists that it does not hold yet: for the newest version
+    /// of each form that places records by a scheme the folder keeps a list beside, the same form
+    /// placing them by that list instead — in its version in force, so the form follows the list as it
+    /// grows, and records of the scheme's own items fall outside it. Named <c>local.&lt;scheme&gt;.&lt;form&gt;</c>
+    /// at the form's version, labelled <paramref name="labelOf"/>'s name for the form followed by
+    /// <paramref name="suffix"/>.
+    /// </summary>
+    internal static IReadOnlyList<VaultFile> Forms(VaultContent content, Func<ReportDefinition, string> labelOf, string suffix)
+    {
+        var lists = content.Schemes.Where(s => s.Name.StartsWith(Prefix, StringComparison.Ordinal))
+            .Select(s => s.Name[Prefix.Length..]).ToHashSet(StringComparer.Ordinal);
+        var held = content.Reports.Select(r => (r.Name, r.Version)).ToHashSet();
+        var files = new List<VaultFile>();
+        foreach (var form in content.Reports.GroupBy(r => r.Name, StringComparer.Ordinal).Select(g => g.MaxBy(r => r.Version)!))
+        {
+            foreach (var scheme in form.Dimensions.Where(d => d.Scheme is { } s && lists.Contains(s)).Select(d => d.Scheme!).Distinct(StringComparer.Ordinal))
+            {
+                var local = form with
+                {
+                    Name = $"{NameFor(scheme)}.{form.Name}",
+                    Label = labelOf(form) + suffix,
+                    Dimensions = [.. form.Dimensions.Select(d => d.Scheme == scheme ? d with { Scheme = NameFor(scheme), Version = null } : d)],
+                };
+                if (held.Contains((local.Name, local.Version)) || local.Problem() is not null) continue;
+                files.Add(DefinitionWriter.Report(local));
+            }
+        }
         return files;
     }
 }

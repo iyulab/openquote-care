@@ -283,6 +283,29 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal(["local-1", "local-2"], grown["items"]!.AsArray().Select(i => i!["code"]!.GetValue<string>()));
     }
 
+    [Fact]
+    public async Task Gives_each_form_counting_a_scheme_a_form_counting_by_the_folders_list_beside_it_once()
+    {
+        Openquote.Vault.VaultFile[] vault = [.. GoldenVault.School.Through(1), .. FieldPacks];
+        await Post("/vault/load", Files(vault));
+        Assert.Empty(FromWire(await Post("/reports/local-forms", new { suffix = " — ours" })));
+
+        var list = FromWire(await Post("/schemes/local-item", new { scheme = "topic", date = "2026-03-02", label = "Ours", anchor = "depression" }));
+        vault = [.. vault, .. list];
+        await Post("/vault/load", Files(vault));
+        var forms = FromWire(await Post("/reports/local-forms", new { suffix = " — ours" }));
+
+        var form = Assert.Single(forms);
+        Assert.Equal("reports/local.topic.monthly-topic/v1.json", form.Path);
+        var summary = await Post("/vault/load", Files([.. vault, .. forms]));
+        var view = Assert.Single(summary["reports"]!.AsArray(), r => r!["name"]!.GetValue<string>() == "local.topic.monthly-topic")!;
+        Assert.Equal("Sessions by topic — ours", view["label"]!.GetValue<string>());
+        var rows = view["dimensions"]![0]!;
+        Assert.Equal(("local.topic", null), (rows["scheme"]!.GetValue<string>(), rows["version"]?.GetValue<int>()));
+        Assert.Equal("practitioner", view["dimensions"]![1]!["field"]!.GetValue<string>());
+        Assert.Empty(FromWire(await Post("/reports/local-forms", new { suffix = " — ours" })));
+    }
+
     [Theory]
     [InlineData("kind", "  ", "a", "label-empty")]
     [InlineData("kind", "a", "a", "label-taken")]

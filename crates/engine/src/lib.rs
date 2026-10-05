@@ -210,6 +210,14 @@ impl Engine {
         files.iter().map(PlainFile::from_wire).collect()
     }
 
+    /// The forms counting by the vault's own lists that it does not hold yet, each named after the
+    /// form it follows with `suffix` after that name.
+    pub fn local_forms(&self, suffix: &str) -> Result<Vec<PlainFile>, EngineError> {
+        let answer = self.call("POST", "/reports/local-forms", Some(json!({ "suffix": suffix })))?;
+        let files = answer.as_array().ok_or_else(|| EngineError::Transport(format!("not a list of files: {answer}")))?;
+        files.iter().map(PlainFile::from_wire).collect()
+    }
+
     /// Lays the records from `from` to `to` (`YYYY-MM-DD`) out as an export form's rows. Nothing is kept in the vault.
     pub fn run_export(&self, export: &str, version: u32, from: &str, to: &str) -> Result<Value, EngineError> {
         self.call("POST", "/exports/run", Some(json!({ "export": export, "version": version, "from": from, "to": to })))

@@ -218,10 +218,14 @@ export const shell = {
   applyPack: (folder: string, raiseFormat = false) => invoke<string[]>('apply_pack', { folder, raiseFormat }),
   /**
    * Adds an item to the vault's own list beside `scheme`, counted as its item `anchor`; the paths
-   * added. Fails `needs-new-format` unless `raiseFormat`, as a pack does.
+   * added — with the first item, the forms counting by the list, each named after the form it
+   * follows with `formSuffix` after that name. Fails `needs-new-format` unless `raiseFormat`, as a
+   * pack does.
    */
-  addLocalItem: (scheme: string, date: string, label: string, anchor: string, raiseFormat = false) =>
-    invoke<string[]>('add_local_item', { scheme, date, label, anchor, raiseFormat }),
+  addLocalItem: (scheme: string, date: string, label: string, anchor: string, formSuffix: string, raiseFormat = false) =>
+    invoke<string[]>('add_local_item', { scheme, date, label, anchor, raiseFormat, formSuffix }),
+  /** Writes the forms counting by the vault's own lists that it does not hold yet; the paths added. */
+  writeLocalForms: (formSuffix: string) => invoke<string[]>('write_local_forms', { formSuffix }),
   /** Raises the open vault's format and takes on the bundled pack versions that waited for it; returns their ids. */
   updateBundledPacks: () => invoke<string[]>('update_bundled_packs'),
   /** Keeps the open vault's backup in `folder` from now on (null: stops); brings it up to date at once. */
