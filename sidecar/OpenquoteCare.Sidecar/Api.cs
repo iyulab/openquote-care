@@ -140,6 +140,7 @@ public sealed record FilterView(string Field, string? Scheme, int? Version, bool
 /// <param name="StartMonth">The month a year starts in (1–12), such as 3 for a year from March. 1 for every other unit.</param>
 /// <param name="Dimensions">The dimensions a cell's key is made of, in key order.</param>
 /// <param name="Measures">The numbers the form shows: <c>records</c>, <c>people</c>, <c>visits</c>.</param>
+/// <param name="Sums">The number fields of the counted records the form adds up, after <paramref name="Measures"/>.</param>
 /// <param name="Filters">The conditions every record the form counts meets.</param>
 /// <param name="Offered">False when a dimension or filter reads a field the vault's packs hide: the form is not offered.</param>
 public sealed record ReportView(
@@ -152,6 +153,7 @@ public sealed record ReportView(
     int StartMonth,
     IReadOnlyList<DimensionView> Dimensions,
     IReadOnlyList<string> Measures,
+    IReadOnlyList<string> Sums,
     IReadOnlyList<FilterView> Filters,
     IReadOnlyList<SchemeLagView> Behind,
     bool Offered);
@@ -511,6 +513,7 @@ internal static class Api
                 s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit), r.Period.StartMonth,
                 [.. r.Dimensions.Select(d => new DimensionView(d.Field, d.Scheme, d.Version, d.OfSubject, d.All))],
                 [.. r.Measures.Select(m => m.ToString().ToLowerInvariant())],
+                r.Sums,
                 [.. r.Filters.Select(f => new FilterView(f.On.Field, f.On.Scheme, f.On.Version, f.On.OfSubject, f.In))],
                 Behind(r.Schemes.Where(x => r.VersionOf(x) is not null).Select(x => (x, r.VersionOf(x)!.Value)), latest),
                 !r.Dimensions.Concat(r.Filters.Select(f => f.On)).Any(d => Hidden(s.Fields, d.OfSubject ? "subject" : r.Counts, d.Field))))],

@@ -52,7 +52,7 @@ describe('VaultStore', () => {
   it('never shows a form the vault does not offer, nor picks it first', async () => {
     const form = (name: string, offered: boolean) => ({
       name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
-      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], filters: [],
+      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], sums: [], filters: [],
     })
     vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [form('hidden', false)] })
     const store = new VaultStore()
@@ -282,7 +282,7 @@ describe('VaultStore', () => {
   it('offers a form a pack brought, unless the vault does not offer it', async () => {
     const form = (name: string, offered: boolean) => ({
       name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
-      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], filters: [],
+      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], sums: [], filters: [],
     })
     vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('monthly', true), form('by-level', true), form('hidden', false)] })
     const store = new VaultStore()

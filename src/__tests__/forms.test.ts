@@ -26,7 +26,7 @@ describe('yearStart', () => {
     unit,
     startMonth,
     dimensions: [],
-    measures: ['records'],
+    measures: ['records'], sums: [],
     filters: [],
   })
 

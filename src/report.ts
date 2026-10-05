@@ -36,6 +36,8 @@ export interface RunRecord {
   total: Group
   /** For every record in the total, the subjects it is about. Absent from runs kept before people were counted. */
   people?: Record<string, string[]>
+  /** For each field the form adds up, the number each record holds there; a record holding none is not listed. */
+  values?: Record<string, Record<string, number>>
 }
 
 export interface Group {
@@ -210,6 +212,22 @@ export type Measure = 'records' | 'people' | 'visits'
 export function measureOf(run: RunRecord, records: string[], measure: Measure): number | null {
   if (measure === 'records') return records.length
   return measure === 'people' ? headCount(run, records) : visitCount(run, records)
+}
+
+/**
+ * The numbers `records` hold in `field`, added up, and how many hold none — a sum is only as whole as
+ * its records. Null when the run did not record that field.
+ */
+export function sumOf(run: RunRecord, records: string[], field: string): { sum: number; missing: number } | null {
+  const values = run.values?.[field]
+  if (!values) return null
+  let sum = 0
+  let missing = 0
+  for (const r of records) {
+    if (typeof values[r] === 'number') sum += values[r]
+    else missing++
+  }
+  return { sum, missing }
 }
 
 /**
