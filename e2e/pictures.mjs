@@ -48,7 +48,7 @@ const L = {
       kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', subjects: '대상자', date: '날짜', note: '상담 내용',
       report: '통계', year: '연도', month: '월', run: '산출', lists: '기록 목록', makeList: '목록 만들기', refresh: '다시 읽기',
       compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', practitioner: '담당자',
-      find: '기록 찾기', findLabel: '찾을 말',
+      find: '기록 찾기', findLabel: '찾을 말', choices: '선택 목록', itemName: '항목 이름', countedAs: '통계에서 세는 항목', addToList: '목록에 더하기',
     },
     practitioners: ['상담교사 가', '전문상담사 나'],
     practitionerFields: (i) => ({ affiliation: ['전문상담교사', '전문상담사'][i % 2] }),
@@ -82,6 +82,12 @@ const L = {
       ...(ASSESSMENTS[n % ASSESSMENTS.length] ? { assessments: ASSESSMENTS[n % ASSESSMENTS.length] } : {}),
     }),
     search: '친구',
+    // Referrals kept under a student, and an assessment the school uses that the list lacks.
+    referrals: [
+      { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: '가상 정신건강복지센터', outcome: 'taken-up' },
+      { subject: 1, date: '2026-05-15', to: 'medical', organisation: '가상 소아청소년과의원', outcome: 'waiting' },
+    ],
+    extend: { list: 'assessment-tool', label: 'MMPI-A 단축형', anchor: 'other' },
     crisis: { topic: 'crisis', note: '사라지고 싶다는 말을 해 안전 계획을 함께 세움' },
     draft: { subject: '가상 학생 3', date: '2026-05-21', note: '휴대전화 때문에 부모님과 또 다툼', crisisNote: '사라지고 싶다는 말을 다시 함' },
   },
@@ -92,7 +98,8 @@ const L = {
       kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', subjects: 'Clients', date: 'Date',
       note: 'Notes', report: 'Statistics', year: 'Year', month: 'Month', run: 'Run', lists: 'Record lists', makeList: 'Make list', refresh: 'Reload',
       compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', practitioner: 'Practitioner',
-      find: 'Find records', findLabel: 'Words to find',
+      find: 'Find records', findLabel: 'Words to find', choices: 'Choice lists', itemName: 'Item name', countedAs: 'Counted in statistics as',
+      addToList: 'Add to the list',
     },
     practitioners: ['Counselor A', 'Counselor B'],
     subjects: ['Client One', 'Client Two', 'Client Three', 'Client Four', 'Client Five', 'Client Six'],
@@ -111,6 +118,11 @@ const L = {
     methods: ['in-person', 'in-person', 'video', 'phone'],
     sequence: ['study-work', 'relationships', 'family', 'study-work', 'anxiety', 'relationships', 'mood', 'family', 'study-work', 'anxiety', 'relationships'],
     search: 'friend',
+    referrals: [
+      { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: 'Synthetic Wellbeing Centre', outcome: 'taken-up' },
+      { subject: 1, date: '2026-05-15', to: 'medical', organisation: 'Synthetic Family Practice', outcome: 'waiting' },
+    ],
+    extend: { list: 'care.concern', label: 'Exam pressure', anchor: 'study-work' },
     crisis: { topic: 'safety', note: 'Said they want to disappear; made a safety plan together' },
     draft: { subject: 'Client Three', date: '2026-05-21', note: 'Argued with parents about the phone again', crisisNote: 'Said again they want to disappear' },
   },
@@ -240,6 +252,33 @@ try {
   await app.type(ui.findLabel, L.search)
   await app.cdp.waitFor(`__e2e.all('tr[data-hit]').length > 1`, 'the sessions found')
   await shoot('search')
+
+  // Records besides sessions: referrals kept under a subject, listed on the subject's page.
+  for (const r of L.referrals) {
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[r.subject], type: 'referral', fields: {
+      date: r.date, practitioner: practitioners[0], to: coded('care.service', r.to), organisation: r.organisation,
+      outcome: coded('care.referral-outcome', r.outcome) } } })
+  }
+  await app.click('dc-button', ui.refresh)
+  await sleep(1500)
+  await app.click('button', ui.subjects)
+  await app.click('li button .label', L.subjects[L.referrals[0].subject])
+  await app.cdp.waitFor(`__e2e.all('section[data-kind="referral"] tr[data-record]').length === ${L.referrals.length}`, 'the referrals')
+  await app.cdp.evaluate(`(__e2e.one('section[data-kind="referral"]')?.scrollIntoView({ block: 'center' }), true)`)
+  await shoot('referral')
+
+  // A choice list: an item the list lacks, added to this vault and counted as an item of the list.
+  await app.click('button', ui.choices)
+  await app.click(`nav[aria-label="${ui.choices}"] button[data-entry="${L.extend.list}"]`)
+  await app.type(ui.itemName, L.extend.label)
+  await app.choose(ui.countedAs, L.extend.anchor)
+  await app.click('dc-button', ui.addToList)
+  await app.cdp.waitFor(`!!__e2e.one('tr[data-local-item]') || !!__e2e.one('[data-role=raise-format-confirm]')`, 'the item added, or the format asked about')
+  if (await app.cdp.evaluate(`!!__e2e.one('[data-role=raise-format-confirm]')`)) {
+    await app.click('[data-role=raise-format-confirm]')
+    await app.cdp.waitFor(`!!__e2e.one('tr[data-local-item]')`, 'the item added')
+  }
+  await shoot('choices')
 
   if (locale === 'ko') {
     // A school-year form: the sessions of the year by grade and class.
