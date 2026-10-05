@@ -17597,14 +17597,14 @@ Upstream: https://github.com/dtolnay/zmij
 Same license text as adler2 2.0.1.
 
 ------------------------------------------------------------------------------
-Gil 0.11.0
+Gil 0.13.0
 License: Apache-2.0
 Upstream: https://github.com/iyulab/Gil
 
 Same license text as rustls-platform-verifier 0.7.1.
 
 ------------------------------------------------------------------------------
-Gil.Abstractions 0.11.0
+Gil.Abstractions 0.13.0
 License: Apache-2.0
 Upstream: https://github.com/iyulab/Gil
 
@@ -20215,14 +20215,14 @@ Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.5.
 Same license text as Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.5.
 
 ------------------------------------------------------------------------------
-Openquote 0.14.0-kinds.1
+Openquote 0.14.0
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 
 Same license text as @iyulab/desktop-compact 0.11.1.
 
 ------------------------------------------------------------------------------
-Openquote.Gil 0.14.0-kinds.1
+Openquote.Gil 0.14.0
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 
