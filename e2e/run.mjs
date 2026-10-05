@@ -1636,6 +1636,41 @@ const scenarios = {
     assert.equal(total, '1 (1명 · 상담 시간(분) 합 0, 값 없음 1건)', 'no length entered: the sum says so rather than counting it')
   },
 
+  async 'adds an assessment the list lacks to this vault, offers it in a session, and counts it as the item it was given'(app) {
+    await app.click('button', '선택 목록')
+    await app.click('nav[aria-label="선택 목록"] button[data-entry="assessment-tool"]')
+    await app.type('항목 이름', 'MMPI-A 단축형')
+    await app.choose('통계에서 세는 항목', 'other')
+    await app.click('dc-button', '목록에 더하기')
+    await app.cdp.waitFor(`!!__e2e.one('tr[data-local-item="local-1"]')`, 'the item added to the list')
+    await app.noAlert()
+    const added = await app.cdp.evaluate(`[...__e2e.one('tr[data-local-item="local-1"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(added, ['MMPI-A 단축형', '기타 검사'], 'the item, and the item of the list statistics count it as')
+
+    // The session form offers it after the list's own items, and the session names it.
+    await app.click('button', '대상자')
+    await app.click('li button .label', '가상 학생 9')
+    await app.setDate('날짜', '2026-04-14')
+    await app.choose('주제', 'family')
+    await app.choose('방법', 'interview')
+    await app.choose('실시한 검사', 'local-1')
+    await app.click('dc-button', '회기 기록')
+    await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 4`, 'the session listed')
+    await app.noAlert()
+    assert.ok((await app.sessionRows()).some((r) => r.includes('MMPI-A 단축형')), 'the session names the added assessment')
+
+    // The month by assessment counts it as the item it was given.
+    await app.click('button', '통계')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
+    await app.type('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="other"]')`, 'the month by assessment')
+    await app.noAlert()
+    const other = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="other"]').children].map((c) => c.textContent.trim())`)
+    assert.equal(other.at(-1), '1 (1명)', 'counted once, as an assessment other than those listed')
+  },
+
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
