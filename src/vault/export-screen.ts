@@ -100,12 +100,8 @@ export class OcExport extends VaultScreen {
           subjects: store.subjects,
           groups: store.groups,
           practitioners: store.practitioners,
-          sessions: store.sessions,
           subjectFields: store.subjectFields,
-          sessionFields: store.sessionFields,
-          others: store.kinds
-            .filter((k) => k.type !== 'session')
-            .map((k) => ({ label: k.label ?? k.type, fields: store.fieldsOf(k.type), records: store.recordsOf(k.type) })),
+          kinds: store.kinds.map((k) => ({ label: store.labelOf(k), fields: store.fieldsOf(k.type), records: store.recordsOf(k.type) })),
           valueText: (field, value) => valueText(store, field, value),
           withNarrative: this.withNarrative,
           history,

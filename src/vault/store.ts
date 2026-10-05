@@ -133,6 +133,11 @@ export class VaultStore extends EventTarget {
     return type === 'session' ? this.sessions : (this.others.get(type) ?? [])
   }
 
+  /** What people call a kind of record: the packs' name for it, sessions by the app's own word when the packs give none. */
+  labelOf(kind: RecordKind): string {
+    return kind.label ?? (kind.type === 'session' ? strings.sessionKind : kind.type)
+  }
+
   /** The kinds of record kept under a subject's folder, or a group's. */
   kindsUnder(holder: 'subject' | 'group'): RecordKind[] {
     return this.kinds.filter((k) => k.under.includes(holder))
@@ -470,14 +475,15 @@ function packNotice(added: string[], summary: VaultSummary | undefined, schemeNa
 }
 
 /**
- * What an empty form starts with: today in a required date, and the one entity a required reference
- * can point at when there is only one (a vault kept by a single practitioner).
+ * What an empty form starts with: today in a required date, and the one entity a reference can point
+ * at when there is only one (a vault kept by a single practitioner) — required or not, as a default a
+ * person can clear, so every kind of record starts with the practitioner a session does.
  */
 function startingValues(store: VaultStore, fields: FieldView[]): SessionDraft {
   const values: SessionDraft = fixedDefaults(fields)
   for (const f of fields) {
-    if (!f.required || f.hidden) continue
-    if (f.kind === 'date') values[f.name] = today()
+    if (f.hidden) continue
+    if (f.kind === 'date' && f.required) values[f.name] = today()
     const only = f.kind === 'reference' ? store.entitiesOf(f.refType) : []
     if (only.length === 1) values[f.name] = only[0].id
   }

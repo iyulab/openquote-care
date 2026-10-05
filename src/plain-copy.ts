@@ -3,7 +3,7 @@
 // shell only decides where it may be written.
 
 import { listColumns, recordFields, type FieldView } from './fields.js'
-import { text, type ChangeEntry, type Classified, type Entity } from './records.js'
+import { inOrderOfFirstRecord, text, type ChangeEntry, type Classified, type Entity } from './records.js'
 
 /** What the copy is made from. */
 export interface PlainCopySource {
@@ -14,11 +14,9 @@ export interface PlainCopySource {
   subjects: Entity[]
   groups: Entity[]
   practitioners: Entity[]
-  sessions: Entity[]
   subjectFields: FieldView[]
-  sessionFields: FieldView[]
-  /** The kinds of record besides sessions the packs keep under subjects and groups — a referral, say. */
-  others?: PlainKind[]
+  /** The kinds of record the packs keep under subjects and groups — sessions, an intake, a referral — each with its records. */
+  kinds: PlainKind[]
   /** How a value reads to a person: a classification's label, a reference's name. */
   valueText(field: FieldView | undefined, value: unknown): string
   /** Whether written content (`narrative` fields) goes in. */
@@ -30,13 +28,13 @@ export interface PlainCopySource {
   /** How names are put in order: the vault's, as everywhere in the app. */
   names: Intl.Collator
   /**
-   * The days the copy covers (`YYYY-MM-DD`, both included): only the sessions on them, and the
-   * clients and groups those sessions are about. Every record when absent.
+   * The days the copy covers (`YYYY-MM-DD`, both included): only the records on them, and the
+   * clients and groups those records are about. Every record when absent.
    */
   period?: { from: string; to: string }
 }
 
-/** One kind of record besides sessions: what people call it, its fields and its records. */
+/** One kind of record: what people call it, its fields and its records. */
 export interface PlainKind {
   label: string
   fields: FieldView[]
@@ -45,15 +43,15 @@ export interface PlainKind {
 
 /** The words of the copy, in the app's language. */
 export interface PlainCopyWords {
-  files: { page: string; subjects: string; sessions: string; readMe: string }
+  files: { page: string; subjects: string; readMe: string }
   title: string
   made: (vault: string, at: string, device: string) => string
-  /** What the copy holds, on its first page. */
-  counts: (subjects: number, groups: number, sessions: number) => string
-  /** The days its sessions were on, from the first to the last. */
-  sessionDays: (days: string) => string
-  /** A subject's line in the list at the front: how many sessions, on which days. */
-  entry: (sessions: number, days: string) => string
+  /** What the copy holds, on its first page: its subjects, groups and records of each kind it has. */
+  counts: (subjects: number, groups: number, records: KindCount[]) => string
+  /** The days its records were on, from the first to the last. */
+  recordDays: (days: string) => string
+  /** A subject's line in the list at the front: how many records of each kind, on which days. */
+  entry: (records: KindCount[], days: string) => string
   /** The days a copy over a period covers, and what it then holds. */
   period: (from: string, to: string) => string
   unprotected: string
@@ -65,19 +63,27 @@ export interface PlainCopyWords {
   people: string
   group: string
   members: string
-  noSessions: string
+  noRecords: string
+  /** The heading over the records of a kind a subject took part in with a group. */
+  inGroups: (kind: string) => string
   history: string
   historyWhen: string
   historyDevice: string
   historyWhat: string
   historyFields: string
-  sessionOn: (date: string) => string
-  /** A record of another kind in the changes section: its kind and date. */
+  /** A record in the changes section: its kind and date. */
   recordOn: (kind: string, date: string) => string
   /** The table of one kind of record. */
   recordsFile: (kind: string) => string
   reclassified: string
-  readMe: (files: PlainCopyWords['files'], withNarrative: boolean, made: string, period?: string) => string
+  /** The note on what the copy is; `tables` are the tables of records, one per kind, in the order of the copy. */
+  readMe: (files: PlainCopyWords['files'], tables: string[], withNarrative: boolean, made: string, period?: string) => string
+}
+
+/** How many records of one kind. */
+export interface KindCount {
+  label: string
+  count: number
 }
 
 export interface PlainFile {
@@ -91,57 +97,64 @@ const BOM = '﻿'
 export function plainCopy(whole: PlainCopySource, words: PlainCopyWords): PlainFile[] {
   const source = within(whole)
   const period = source.period ? words.period(source.period.from, source.period.to) : undefined
-  const sessionFields = sessionColumns(source.sessionFields, source.withNarrative)
   const subjectFields = recordFields(source.subjectFields)
-  const others = kindsOf(source)
+  const kinds = kindsOf(source)
+  const tables = kinds.map((k) => ({ name: words.recordsFile(k.label), content: recordsCsv(source, words, k.fields, k.records) }))
   return [
-    { name: words.files.page, content: page(source, words, subjectFields, sessionFields, others) },
+    { name: words.files.page, content: page(source, words, subjectFields, kinds) },
     { name: words.files.subjects, content: subjectsCsv(source, words, subjectFields) },
-    { name: words.files.sessions, content: sessionsCsv(source, words, sessionFields, source.sessions) },
-    ...others.map((k) => ({ name: words.recordsFile(k.label), content: sessionsCsv(source, words, k.fields, k.records) })),
+    ...tables,
     {
       name: words.files.readMe,
-      content: words.readMe(words.files, source.withNarrative, words.made(source.vault, stamp(source.at), source.device), period).replaceAll('\n', '\r\n'),
+      content: words
+        .readMe(words.files, tables.map((t) => t.name), source.withNarrative, words.made(source.vault, stamp(source.at), source.device), period)
+        .replaceAll('\n', '\r\n'),
     },
   ]
 }
 
-/** The records a copy over a period holds: its sessions and other records, and the clients and groups they are about. */
+/** The records a copy over a period holds: its records of every kind, and the clients and groups they are about. */
 function within(source: PlainCopySource): PlainCopySource {
   if (!source.period) return source
   const { from, to } = source.period
-  const inPeriod = (records: Entity[]) =>
-    records.filter((s) => {
-      const day = text(s, 'date')
+  const kinds = source.kinds.map((k) => ({
+    ...k,
+    records: k.records.filter((r) => {
+      const day = text(r, 'date')
       return day >= from && day <= to
-    })
-  const sessions = inPeriod(source.sessions)
-  const others = (source.others ?? []).map((k) => ({ ...k, records: inPeriod(k.records) }))
-  const all = [...sessions, ...others.flatMap((k) => k.records)]
-  const people = new Set(all.flatMap((s) => s.people))
-  const groups = new Set(all.map((s) => s.group))
+    }),
+  }))
+  const all = kinds.flatMap((k) => k.records)
+  const people = new Set(all.flatMap((r) => r.people))
+  const groups = new Set(all.map((r) => r.group))
   return {
     ...source,
-    sessions,
-    others,
+    kinds,
     subjects: source.subjects.filter((s) => people.has(s.id)),
     groups: source.groups.filter((g) => groups.has(g.id)),
   }
 }
 
-/** The kinds of record besides sessions the copy holds, with their fields as it shows them; a kind with no record is left out. */
+/**
+ * The kinds the copy holds, with their fields as it shows them, in the order their first record
+ * happened — the order the work took; a kind with no record is left out.
+ */
 function kindsOf(source: PlainCopySource): PlainKind[] {
-  return (source.others ?? [])
-    .filter((k) => k.records.length > 0)
-    .map((k) => ({ ...k, fields: sessionColumns(k.fields, source.withNarrative) }))
+  const held = source.kinds.filter((k) => k.records.length > 0).map((k) => ({ ...k, fields: recordColumns(k.fields, source.withNarrative) }))
+  return inOrderOfFirstRecord(held, (k) => k.records)
+}
+
+/** How many records of each kind, leaving out the kinds with none. */
+function countsOf(kinds: PlainKind[], recordsOf: (k: PlainKind) => Entity[]): KindCount[] {
+  return kinds.map((k) => ({ label: k.label, count: recordsOf(k).length })).filter((c) => c.count > 0)
 }
 
 /**
- * A session's fields as the copy shows them: the list's columns (dates, classifications, references),
+ * A record's fields as the copy shows them: the list's columns (dates, classifications, references),
  * then any other structured field, then written content when it goes in. Attendees are the
- * session's people, shown on their own.
+ * record's people, shown on their own.
  */
-function sessionColumns(defs: FieldView[], withNarrative: boolean): FieldView[] {
+function recordColumns(defs: FieldView[], withNarrative: boolean): FieldView[] {
   const listed = listColumns(defs)
   const rest = defs.filter((f) => !f.hidden && f.kind !== 'references' && f.tier !== 'narrative' && !listed.includes(f))
   const narrative = withNarrative ? defs.filter((f) => !f.hidden && f.tier === 'narrative') : []
@@ -160,8 +173,8 @@ function cell(source: PlainCopySource, field: FieldView, value: unknown): string
 }
 
 /** Oldest first: a copy is read as a history. */
-function oldestFirst(sessions: Entity[]): Entity[] {
-  return [...sessions].sort((a, b) => text(a, 'date').localeCompare(text(b, 'date')) || a.id.localeCompare(b.id))
+function oldestFirst(records: Entity[]): Entity[] {
+  return [...records].sort((a, b) => text(a, 'date').localeCompare(text(b, 'date')) || a.id.localeCompare(b.id))
 }
 
 function names(entities: Entity[], ids: string[]): string {
@@ -177,9 +190,9 @@ function byName(entities: Entity[], names: Intl.Collator): Entity[] {
   return [...entities].sort((a, b) => names.compare(text(a, 'name'), text(b, 'name')) || a.id.localeCompare(b.id))
 }
 
-/** The first and last date the sessions were on, as one stretch; empty when none has a date. */
-function days(sessions: Entity[]): string {
-  const dates = sessions.map((s) => text(s, 'date')).filter(Boolean).sort()
+/** The first and last date the records were on, as one stretch; empty when none has a date. */
+function days(records: Entity[]): string {
+  const dates = records.map((s) => text(s, 'date')).filter(Boolean).sort()
   if (dates.length === 0) return ''
   return dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ~ ${dates.at(-1)}`
 }
@@ -200,10 +213,9 @@ th{color:#555}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1r
 .note{white-space:pre-wrap}.warn{border:1px solid #b00020;padding:.5rem 1rem;color:#b00020}
 @media print{h2{break-before:page}a{color:inherit;text-decoration:none}tr{break-inside:avoid}}`
 
-function sessionTable(source: PlainCopySource, words: PlainCopyWords, columns: FieldView[], sessions: Entity[], people: boolean): string {
-  if (sessions.length === 0) return `<p>${escape(words.noSessions)}</p>`
+function recordTable(source: PlainCopySource, words: PlainCopyWords, columns: FieldView[], records: Entity[], people: boolean): string {
   const heads = [...(people ? [words.people] : []), ...columns.map((f) => f.label)]
-  const rows = oldestFirst(sessions).map((s) => {
+  const rows = oldestFirst(records).map((s) => {
     const cells = [...(people ? [names(source.subjects, s.people)] : []), ...columns.map((f) => cell(source, f, s.fields[f.name]))]
     return `<tr>${cells.map((c, i) => `<td${columns[people ? i - 1 : i]?.tier === 'narrative' ? ' class="note"' : ''}>${escape(c)}</td>`).join('')}</tr>`
   })
@@ -235,61 +247,59 @@ function changesTable(source: PlainCopySource, words: PlainCopyWords, entries: {
   return `<h3>${escape(words.history)}</h3><table><thead><tr>${heads.map((h) => `<th>${escape(h)}</th>`).join('')}</tr></thead><tbody>${body.join('')}</tbody></table>`
 }
 
-function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: FieldView[], sessionFields: FieldView[], others: PlainKind[]): string {
+function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: FieldView[], kinds: PlainKind[]): string {
   const subjects = byName(source.subjects, source.names)
   const anchor = (e: Entity) => `s-${e.id}`
-  const sessionsOf = (s: Entity) => source.sessions.filter((x) => x.people.includes(s.id))
-  const span = days(source.sessions)
+  const span = days(kinds.flatMap((k) => k.records))
+  // The records of a kind a subject or a group holds, and those a subject took part in with a group.
+  const own = (k: PlainKind, s: Entity) => k.records.filter((r) => r.people.includes(s.id) && r.group === null)
+  const withGroups = (k: PlainKind, s: Entity) => k.records.filter((r) => r.people.includes(s.id) && r.group !== null)
+  const ofGroup = (k: PlainKind, g: Entity) => k.records.filter((r) => r.group === g.id)
+  const changesOf = (k: PlainKind, records: Entity[]) => records.map((r) => ({ entity: r, what: words.recordOn(k.label, text(r, 'date')), fields: k.fields }))
   // The first page says what the copy holds; on paper the numbered list after it finds each subject's pages.
   const parts: string[] = [
     `<h1>${escape(words.title)}</h1>`,
     `<p>${escape(words.made(source.vault, stamp(source.at), source.device))}</p>`,
-    `<p>${escape(words.counts(source.subjects.length, source.groups.length, source.sessions.length))}</p>`,
+    `<p>${escape(words.counts(source.subjects.length, source.groups.length, countsOf(kinds, (k) => k.records)))}</p>`,
     source.period ? `<p data-period>${escape(words.period(source.period.from, source.period.to))}</p>` : '',
-    span ? `<p>${escape(words.sessionDays(span))}</p>` : '',
+    span ? `<p>${escape(words.recordDays(span))}</p>` : '',
     `<p class="warn">${escape(words.unprotected)}</p>`,
     source.withNarrative ? '' : `<p>${escape(words.narrativeLeftOut)}</p>`,
     `<h2>${escape(words.subjects)}</h2>`,
     `<ol>${subjects
       .map((s) => {
-        const all = sessionsOf(s)
-        return `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a> — ${escape(words.entry(all.length, days(all)))}</li>`
+        const about = (k: PlainKind) => k.records.filter((r) => r.people.includes(s.id))
+        return `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a> — ${escape(words.entry(countsOf(kinds, about), days(kinds.flatMap(about))))}</li>`
       })
       .join('')}</ol>`,
   ]
   for (const [i, s] of subjects.entries()) {
     const fields = subjectFields.map((f) => [f.label, cell(source, f, s.fields[f.name])]).filter(([, v]) => v)
-    const own = source.sessions.filter((x) => x.people.includes(s.id) && x.group === null)
-    const inGroups = source.sessions.filter((x) => x.people.includes(s.id) && x.group !== null)
-    const kinds = others.map((k) => ({ ...k, own: k.records.filter((x) => x.people.includes(s.id) && x.group === null) })).filter((k) => k.own.length > 0)
+    // The subject's kinds in the order their work took, as on the subject's page in the app.
+    const held = inOrderOfFirstRecord(kinds, (k) => own(k, s)).filter((k) => own(k, s).length > 0)
+    const together = kinds.filter((k) => withGroups(k, s).length > 0)
     parts.push(
       `<h2 id="${anchor(s)}">${i + 1}. ${escape(text(s, 'name'))}</h2>`,
       fields.length ? `<dl>${fields.map(([k, v]) => `<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl>` : '',
-      sessionTable(source, words, sessionFields, own, false),
-      inGroups.length ? `<h3>${escape(words.groups)}</h3>${sessionTable(source, words, sessionFields, inGroups, true)}` : '',
-      ...kinds.map((k) => `<h3>${escape(k.label)}</h3>${sessionTable(source, words, k.fields, k.own, false)}`),
+      held.length + together.length === 0 ? `<p>${escape(words.noRecords)}</p>` : '',
+      ...held.map((k) => `<h3>${escape(k.label)}</h3>${recordTable(source, words, k.fields, own(k, s), false)}`),
+      ...together.map((k) => `<h3>${escape(words.inGroups(k.label))}</h3>${recordTable(source, words, k.fields, withGroups(k, s), true)}`),
       changesTable(source, words, [
         { entity: s, what: text(s, 'name'), fields: [...subjectFields, ...source.subjectFields.filter((f) => f.name === 'name')] },
-        ...own.map((x) => ({ entity: x, what: words.sessionOn(text(x, 'date')), fields: sessionFields })),
-        ...kinds.flatMap((k) => k.own.map((x) => ({ entity: x, what: words.recordOn(k.label, text(x, 'date')), fields: k.fields }))),
+        ...held.flatMap((k) => changesOf(k, own(k, s))),
       ]),
     )
   }
   if (source.groups.length) {
     parts.push(`<h2>${escape(words.groups)}</h2>`)
     for (const g of byName(source.groups, source.names)) {
+      const held = inOrderOfFirstRecord(kinds, (k) => ofGroup(k, g)).filter((k) => ofGroup(k, g).length > 0)
       parts.push(
         `<h3>${escape(text(g, 'name'))}</h3>`,
         `<p>${escape(words.members)}: ${escape(names(source.subjects, membersOf(g)))}</p>`,
-        sessionTable(source, words, sessionFields, source.sessions.filter((x) => x.group === g.id), true),
-        ...others
-          .map((k) => ({ ...k, own: k.records.filter((x) => x.group === g.id) }))
-          .filter((k) => k.own.length > 0)
-          .map((k) => `<h3>${escape(k.label)}</h3>${sessionTable(source, words, k.fields, k.own, true)}`),
-        changesTable(source, words, [
-          ...source.sessions.filter((x) => x.group === g.id).map((x) => ({ entity: x, what: words.sessionOn(text(x, 'date')), fields: sessionFields })),
-          ...others.flatMap((k) => k.records.filter((x) => x.group === g.id).map((x) => ({ entity: x, what: words.recordOn(k.label, text(x, 'date')), fields: k.fields }))),
-        ]),
+        held.length === 0 ? `<p>${escape(words.noRecords)}</p>` : '',
+        ...held.map((k) => `<h4>${escape(k.label)}</h4>${recordTable(source, words, k.fields, ofGroup(k, g), true)}`),
+        changesTable(source, words, held.flatMap((k) => changesOf(k, ofGroup(k, g)))),
       )
     }
   }
@@ -312,7 +322,7 @@ function subjectsCsv(source: PlainCopySource, words: PlainCopyWords, fields: Fie
   return csv([[words.name, ...fields.map((f) => f.label)], ...byName(source.subjects, source.names).map((s) => [text(s, 'name'), ...fields.map((f) => cell(source, f, s.fields[f.name]))])])
 }
 
-function sessionsCsv(source: PlainCopySource, words: PlainCopyWords, fields: FieldView[], records: Entity[]): string {
+function recordsCsv(source: PlainCopySource, words: PlainCopyWords, fields: FieldView[], records: Entity[]): string {
   const groupName = (id: string | null) => (id ? text(source.groups.find((g) => g.id === id) ?? ({ fields: {} } as Entity), 'name') : '')
   return csv([
     [words.people, words.group, ...fields.map((f) => f.label)],

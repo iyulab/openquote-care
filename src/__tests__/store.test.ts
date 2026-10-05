@@ -173,6 +173,29 @@ describe('VaultStore', () => {
     expect(store.draftOf('referral')).toEqual({ date: today() })
   })
 
+  it('starts every kind of record on the only practitioner, the practitioner optional or not', async () => {
+    const field = (name: string, kind: FieldView['kind'], required: boolean, refType: string | null = null): FieldView => ({
+      name, kind, scheme: null, refType, required, hidden: false, tier: 'structured', defaultFromSubject: null, label: name, aliases: [],
+    })
+    vi.mocked(shell.summary).mockResolvedValue({
+      ...summary,
+      kinds: [
+        { type: 'session', label: null, under: ['subject', 'group'] },
+        { type: 'intake', label: 'Intake', under: ['subject'] },
+      ],
+    })
+    vi.mocked(shell.fields).mockImplementation(async (type) =>
+      type === 'intake' ? [field('date', 'date', true), field('practitioner', 'reference', false, 'practitioner'), field('taken', 'date', false)] : [],
+    )
+    vi.mocked(shell.entities).mockImplementation(async (type) => (type === 'practitioner' ? [{ ...subject('p1', 'Kim'), type: 'practitioner' }] : []))
+    const store = new VaultStore()
+
+    await store.load()
+
+    // An optional date stays empty: only a required one starts on today.
+    expect(store.draftOf('intake')).toEqual({ date: today(), practitioner: 'p1' })
+  })
+
   it('keeps a draft of its own for each kind of record', () => {
     const store = new VaultStore()
 

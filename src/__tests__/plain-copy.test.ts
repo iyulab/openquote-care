@@ -3,6 +3,7 @@ import type { FieldView } from '../fields.js'
 import { plainCopy, type PlainCopySource } from '../plain-copy.js'
 import type { Entity } from '../records.js'
 import { en } from '../locales/en.js'
+import { ko } from '../locales/ko.js'
 
 const field = (name: string, kind: FieldView['kind'], extra: Partial<FieldView> = {}): FieldView => ({
   name,
@@ -54,9 +55,8 @@ function source(withNarrative: boolean): PlainCopySource {
     subjects,
     groups,
     practitioners,
-    sessions,
     subjectFields: [field('name', 'text'), field('grade', 'text')],
-    sessionFields,
+    kinds: [{ label: 'Session', fields: sessionFields, records: sessions }],
     valueText: (f, v) => {
       if (f?.kind === 'reference') return practitioners.find((p) => p.id === v)?.fields.name as string
       if (f?.kind === 'coded') return ({ peer: 'Peers', study: 'Study' } as Record<string, string>)[(v as { code: string }).code] ?? ''
@@ -135,7 +135,7 @@ describe('plain copy', () => {
   it('opens with what the copy holds and a numbered list that finds each subject on paper', () => {
     const page = file(plainCopy(source(false), en.plainCopy), 'records.html')
     expect(page).toContain('<p>Clients 2 · Groups 1 · Sessions 3</p>')
-    expect(page).toContain('<p>Sessions on 2026-04-02 ~ 2026-04-20</p>')
+    expect(page).toContain('<p>Records on 2026-04-02 ~ 2026-04-20</p>')
     expect(page).toContain('<ol><li><a href="#s-s1">Ann &lt;b&gt;</a> — 3 sessions · 2026-04-02 ~ 2026-04-20</li><li><a href="#s-s2">Zed</a> — 1 session · 2026-04-10</li></ol>')
     expect(page.indexOf('Clients 2')).toBeLessThan(page.indexOf('<h2>Clients</h2>'))
   })
@@ -143,12 +143,12 @@ describe('plain copy', () => {
   it('puts names in the vault’s order, the same as the app', () => {
     const korean = [entity('subject', 'k2', { name: '나영' }), entity('subject', 'k1', { name: '가람' }), entity('subject', 'k3', { name: 'Bo' })]
     const order = (names: Intl.Collator) =>
-      file(plainCopy({ ...source(false), subjects: korean, sessions: [], groups: [], names }, en.plainCopy), 'clients.csv').split('\r\n').slice(1, 4).map((r) => r.split(',')[0])
+      file(plainCopy({ ...source(false), subjects: korean, kinds: [], groups: [], names }, en.plainCopy), 'clients.csv').split('\r\n').slice(1, 4).map((r) => r.split(',')[0])
     expect(order(new Intl.Collator('ko'))).toEqual(['가람', '나영', 'Bo'])
     expect(order(new Intl.Collator('en'))).toEqual(['Bo', '가람', '나영'])
   })
 
-  it('over a period holds its sessions and the clients and groups they are about, and says so', () => {
+  it('over a period holds its records and the clients and groups they are about, and says so', () => {
     const files = plainCopy({ ...source(false), period: { from: '2026-04-15', to: '2026-04-30' } }, en.plainCopy)
     const page = file(files, 'records.html')
     expect(page).toContain('Period 2026-04-15 ~ 2026-04-30')
@@ -156,7 +156,7 @@ describe('plain copy', () => {
     expect(page).not.toContain('Zed')
     expect(page).not.toContain('2026-04-02')
     expect(file(files, 'sessions.csv').split('\r\n').filter(Boolean)).toHaveLength(2)
-    expect(file(files, 'read-me.txt').split('\r\n')[2]).toBe('Period 2026-04-15 ~ 2026-04-30 — only the sessions in it, and the clients and groups they are about.')
+    expect(file(files, 'read-me.txt').split('\r\n')[2]).toBe('Period 2026-04-15 ~ 2026-04-30 — only the records in it, and the clients and groups they are about.')
     // A group session in the period brings in everyone it is about, and the group.
     const withGroup = file(plainCopy({ ...source(false), period: { from: '2026-04-10', to: '2026-04-10' } }, en.plainCopy), 'records.html')
     expect(withGroup).toContain('<p>Clients 2 · Groups 1 · Sessions 1</p>')
@@ -171,7 +171,7 @@ describe('plain copy', () => {
     const referrals = [entity('referral', 'r1', { date: '2026-04-15', to: 'Clinic', note: 'called ahead' }, { subject: 's2', people: ['s2'] })]
     const withKinds: PlainCopySource = {
       ...source(false),
-      others: [{ label: 'Referral', fields: referralFields, records: referrals }],
+      kinds: [...source(false).kinds, { label: 'Referral', fields: referralFields, records: referrals }],
       history: new Map([['r1', [
         { id: 'c1', op: 'create', at: '2026-04-15T10:00:00+09:00', device: 'pc', fields: { date: '2026-04-15', to: 'Hospital' }, source: {} },
         { id: 'c2', op: 'update', at: '2026-04-16T10:00:00+09:00', device: 'pc', fields: { to: 'Clinic' }, source: {} },
@@ -179,17 +179,73 @@ describe('plain copy', () => {
     }
 
     const files = plainCopy(withKinds, en.plainCopy)
-    expect(files.map((f) => f.name)).toEqual(['records.html', 'clients.csv', 'sessions.csv', 'referral.csv', 'read-me.txt'])
+    expect(files.map((f) => f.name)).toEqual(['records.html', 'clients.csv', 'sessions.csv', 'referrals.csv', 'read-me.txt'])
     const page = file(files, 'records.html')
     expect(page).toContain('<h3>Referral</h3>')
     expect(page).toContain('Clinic')
     expect(page).toContain('Referral of 2026-04-15')
     expect(page).not.toContain('called ahead')
-    expect(file(files, 'referral.csv')).toContain('Zed,,2026-04-15,Clinic')
+    expect(file(files, 'referrals.csv')).toContain('Zed,,2026-04-15,Clinic')
 
     const april1to10 = plainCopy({ ...withKinds, period: { from: '2026-04-01', to: '2026-04-10' } }, en.plainCopy)
-    expect(april1to10.map((f) => f.name)).not.toContain('referral.csv')
+    expect(april1to10.map((f) => f.name)).not.toContain('referrals.csv')
     const april15 = plainCopy({ ...withKinds, period: { from: '2026-04-15', to: '2026-04-15' } }, en.plainCopy)
     expect(file(april15, 'records.html')).toContain('Zed')
+  })
+
+  it('counts every kind of record: a client with only an intake has records, not "no sessions"', () => {
+    const intakeFields = [field('date', 'date'), field('source', 'text')]
+    const closingFields = [field('date', 'date'), field('reason', 'text')]
+    const intakes = [
+      entity('intake', 'i1', { date: '2026-03-30', source: 'teacher' }, { subject: 's1', people: ['s1'] }),
+      entity('intake', 'i2', { date: '2026-05-01', source: 'self' }, { subject: 's3', people: ['s3'] }),
+    ]
+    const closings = [entity('closing', 'c1', { date: '2026-04-25', reason: 'done' }, { subject: 's1', people: ['s1'] })]
+    const newcomer = entity('subject', 's3', { name: 'Kim', grade: '3' })
+    // The packs list kinds by name — closing, intake, session — not in the order the work took.
+    const whole: PlainCopySource = {
+      ...source(false),
+      subjects: [...subjects, newcomer],
+      kinds: [
+        { label: 'Closing', fields: closingFields, records: closings },
+        { label: 'Intake', fields: intakeFields, records: intakes },
+        ...source(false).kinds,
+      ],
+    }
+
+    const files = plainCopy(whole, en.plainCopy)
+    const page = file(files, 'records.html')
+    expect(page).toContain('<p>Clients 3 · Groups 1 · Intakes 2 · Sessions 3 · Closings 1</p>')
+    expect(page).toContain('<p>Records on 2026-03-30 ~ 2026-05-01</p>')
+    expect(page).toContain('<a href="#s-s3">Kim</a> — 1 intake · 2026-05-01</li>')
+    expect(page).toContain('<a href="#s-s1">Ann &lt;b&gt;</a> — 1 intake · 3 sessions · 1 closing · 2026-03-30 ~ 2026-04-25</li>')
+    const section = (name: string) => {
+      const from = page.indexOf(`. ${name}</h2>`)
+      const next = page.indexOf('<h2', from)
+      return page.slice(from, next < 0 ? undefined : next)
+    }
+    const kim = section('Kim')
+    expect(kim).toContain('<h3>Intake</h3>')
+    expect(kim).not.toContain('No records.')
+    // A client's records in the order the work took: the intake, the sessions, the closing.
+    const ann = section('Ann &lt;b&gt;')
+    expect(ann.indexOf('<h3>Intake</h3>')).toBeLessThan(ann.indexOf('<h3>Session</h3>'))
+    expect(ann.indexOf('<h3>Session</h3>')).toBeLessThan(ann.indexOf('<h3>Closing</h3>'))
+    expect(ann).toContain('<h3>Sessions with a group</h3>')
+    // One table per kind, and the note names every one.
+    expect(files.map((f) => f.name)).toEqual(['records.html', 'clients.csv', 'intakes.csv', 'sessions.csv', 'closings.csv', 'read-me.txt'])
+    expect(file(files, 'read-me.txt')).toContain('clients.csv, intakes.csv, sessions.csv, closings.csv: open them in a spreadsheet')
+  })
+
+  it('says a client has no records only when none of any kind is about them, in Korean too', () => {
+    const intakes = [entity('intake', 'i1', { date: '2026-04-01' }, { subject: 's2', people: ['s2'] })]
+    const words = ko.plainCopy
+    const page = file(plainCopy({ ...source(false), kinds: [{ label: '접수', fields: [field('date', 'date')], records: intakes }] }, words), '기록.html')
+    expect(page).toContain('<p>대상자 2명 · 집단 1개 · 접수 1건</p>')
+    expect(page).toContain('Zed</a> — 접수 1건 · 2026-04-01</li>')
+    expect(page).toContain('Ann &lt;b&gt;</a> — 기록 없음</li>')
+    expect(page).toContain('<p>기록이 없습니다.</p>')
+    const empty = file(plainCopy({ ...source(false), kinds: [] }, words), '기록.html')
+    expect(empty).toContain('<p>대상자 2명 · 집단 1개 · 기록 0건</p>')
   })
 })

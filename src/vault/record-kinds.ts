@@ -55,7 +55,7 @@ export class OcRecordKinds extends StoreElement {
 
   private section(kind: RecordKind) {
     const store = this.store
-    const name = kind.label ?? kind.type
+    const name = this.store.labelOf(kind)
     const fields = store.fieldsOf(kind.type)
     const records = this.recordsHere(kind)
     const correcting = records.find((r) => r.id === this.correcting)

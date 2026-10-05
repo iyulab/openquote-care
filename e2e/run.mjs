@@ -1392,8 +1392,8 @@ const scenarios = {
     )
     assert.deepEqual(
       referralRow,
-      ['2026-04-03', 'Synthetic Wellbeing Centre', 'Mental health service', 'Declined by the person or family', ''],
-      'its date, the organisation, where to, the outcome and no practitioner — why it was not taken up is written content, under the row',
+      ['2026-04-03', 'Synthetic Wellbeing Centre', 'Mental health service', 'Declined by the person or family', 'Counselor A'],
+      'its date, the organisation, where to, the outcome and the only practitioner, filled in as on a session — why it was not taken up is written content, under the row',
     )
     assert.ok(
       await app.cdp.evaluate(`!!${referralRows}[0].querySelector('button[data-role=note]')`),
