@@ -95,26 +95,19 @@ jobs:
       - name: Write the third-party notices for what this build ships
         run: npm run notices
 
-      # The sidecar ships as a bundle resource, which Tauri does not sign, so it is signed here.
-      - name: Sign the engine sidecar
+      # Prepares the job for Tauri's sign hook (`code-sign-file.cmd %1` in tauri.sign.conf.json), which
+      # signs every binary Tauri bundles one at a time with the action's own Key Vault settings: the
+      # app, the engine sidecar (a bundle resource), the installer's plugins, the uninstaller and the
+      # installer. Run just before the builds: its sign-in lasts about an hour.
+      - name: Prepare the sign hook
         # Pinned to a commit: this job holds an OIDC token that can sign as iyulab.
-        uses: iyulab/code-sign@693f7261b2e4aef517ff8972db7d07eb53ffc623 # main, 2026-09-30
+        uses: iyulab/code-sign@ad912c9656a20729c7891c0e9b6b4857164efee9 # main, 2026-10-04
         with:
-          files: sidecar/publish/openquote-care-sidecar.exe
-
-      - name: Acquire a Key Vault access token
-        shell: pwsh
-        run: |
-          $token = az account get-access-token --resource https://vault.azure.net --query accessToken -o tsv
-          if (-not $token) { throw "Failed to acquire a Key Vault access token" }
-          echo "::add-mask::$token"
-          "AZURE_KV_TOKEN=$token" >> $env:GITHUB_ENV
+          description: Openquote Care
+          description-url: https://openquote.me
 
       - name: Build and sign the installer
         env:
-          AZURE_KV_URL: https://kv-codesign-iyulab.vault.azure.net/
-          AZURE_KV_CERT: globalsign-ev-codesign
-          AZURE_TIMESTAMP_URL: http://timestamp.globalsign.com/tsa/r6advanced1
           # Error diagnostics are embedded only in this build (see docs/architecture.md).
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
           # Feedback: the records service's public key (public by design, so a variable). Without
@@ -139,7 +132,8 @@ jobs:
           # NSIS: /S is silent, /D= must come last and unquoted.
           $process = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$target" -Wait -PassThru
           if ($process.ExitCode -ne 0) { throw "The installer exited with $($process.ExitCode)" }
-          $files = @($installer.FullName, (Join-Path $target 'openquote-care.exe'), (Join-Path $target 'sidecar/openquote-care-sidecar.exe'))
+          # The uninstaller too: makensis ignores a failing sign command for it and still succeeds.
+          $files = @($installer.FullName, (Join-Path $target 'openquote-care.exe'), (Join-Path $target 'uninstall.exe'), (Join-Path $target 'sidecar/openquote-care-sidecar.exe'))
           foreach ($file in $files) {
             $signature = Get-AuthenticodeSignature $file
             if ($signature.Status -ne 'Valid') { throw "$file is not validly signed: $($signature.Status)" }
@@ -167,9 +161,6 @@ jobs:
       - name: Bundle and sign the offline installer
         id: offline
         env:
-          AZURE_KV_URL: https://kv-codesign-iyulab.vault.azure.net/
-          AZURE_KV_CERT: globalsign-ev-codesign
-          AZURE_TIMESTAMP_URL: http://timestamp.globalsign.com/tsa/r6advanced1
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: pwsh
@@ -183,6 +174,12 @@ jobs:
           $name = $installer.Name -replace '_x64-setup\.exe$', '_x64-offline-setup.exe'
           $kept = Move-Item $installer.FullName (Join-Path $env:RUNNER_TEMP "installers/$name") -PassThru
           "path=$($kept.FullName)" >> $env:GITHUB_OUTPUT
+
+      # What the sign hook did, file by file, when a later step failed.
+      - name: Show the signing log
+        if: failure()
+        shell: pwsh
+        run: if ($env:CODE_SIGN_LOG -and (Test-Path $env:CODE_SIGN_LOG)) { Get-Content $env:CODE_SIGN_LOG } else { 'No signing log' }
 
       - name: Create a draft release
         env:
