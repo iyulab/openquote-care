@@ -1180,6 +1180,42 @@ cut off").unwrap();
     }
 
     #[test]
+    fn a_form_counting_added_items_another_device_wrote_first_is_taken_in_not_written_again() {
+        let Some(exe) = openquote_care_test_support::sidecar() else { return };
+        let dir = shared_folder();
+        let one = App::new(exe.clone(), "pc01".to_owned()).with_bundle(bundle());
+        let two = App::new(exe.clone(), "pc02".to_owned()).with_bundle(bundle());
+        let key = one.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
+        one.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        two.open_vault(dir.path(), "pass".to_owned()).unwrap();
+
+        // The second device keeps a list without its forms (as a version of the app before them did),
+        // the first reads it, and then the second writes the forms the first does not know of yet.
+        two.with_open(|open| {
+            let files = open.engine.local_item("topic", "2026-03-10", "Ours", "family").unwrap();
+            if let Some(format) = open.format_needed(&files).unwrap() {
+                open.vault.raise_format(format).unwrap();
+            }
+            open.keep_all(files).unwrap();
+            Ok(())
+        })
+        .unwrap();
+        one.refresh().unwrap();
+        let written = two.write_local_forms(SUFFIX).unwrap();
+        assert!(!written.is_empty());
+
+        // The first device speaks another language: its forms differ only in their names, and the
+        // second device's stand. (Forms of the same bytes are the same file: writing one is a no-op.)
+        assert!(one.write_local_forms(" — in other words").unwrap().is_empty(), "the forms are the second device's: none written over or beside them");
+        let summary = one.summary().unwrap();
+        let labels: Vec<&str> = summary["reports"].as_array().unwrap().iter()
+            .filter(|r| r["name"].as_str().unwrap().starts_with("local.topic."))
+            .map(|r| r["label"].as_str().unwrap()).collect();
+        assert!(labels.len() == written.len() && labels.iter().all(|l| l.ends_with(SUFFIX)), "read in as the second device wrote them: {labels:?}");
+        assert_eq!(summary["unreadable"], json!([]));
+    }
+
+    #[test]
     fn two_devices_sharing_a_folder_see_each_others_records() {
         let Some(exe) = openquote_care_test_support::sidecar() else { return };
         let dir = shared_folder();

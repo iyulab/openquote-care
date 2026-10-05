@@ -38,6 +38,14 @@ function vaultHolds(subjects: Entity[]) {
 }
 
 describe('VaultStore', () => {
+  it('names the forms counting added items in the vault language, whatever language the window speaks', () => {
+    const store = new VaultStore()
+    store.summary = { ...summary, locales: ['ko'] }
+    expect(store.localFormSuffix()).toBe(' — 더한 항목별')
+    store.summary = { ...summary, locales: ['en'] }
+    expect(store.localFormSuffix()).toBe(' — by added item')
+  })
+
   beforeEach(() => {
     vi.resetAllMocks()
     vaultHolds([])

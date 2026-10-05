@@ -10,6 +10,7 @@ import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
 import { shell, type BackupStatus, type RecordKind, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
+import { pickLocale, tables } from '../locales/index.js'
 
 export type Problem = keyof typeof strings.problems
 
@@ -140,8 +141,8 @@ export class VaultStore extends EventTarget {
   /** Reads the vault and starts taking in what other devices write to it. */
   connect() {
     void this.run(async () => {
-      await this.writeLocalForms()
       await this.load()
+      if (await this.writeLocalForms()) await this.load()
     })
     this.unlisten = shell.onVaultChanged(() => void this.takeIn())
   }
@@ -364,12 +365,21 @@ export class VaultStore extends EventTarget {
    * before such forms came with one, or a form a pack added since. A folder that cannot be written
    * to now is left as it is; the forms come at the next opening that can.
    */
-  private async writeLocalForms() {
+  private async writeLocalForms(): Promise<boolean> {
     try {
-      await shell.writeLocalForms(strings.localFormSuffix)
+      return (await shell.writeLocalForms(this.localFormSuffix())).length > 0
     } catch {
       // Nothing the person asked for failed: the forms follow when the folder takes writes again.
+      return false
     }
+  }
+
+  /**
+   * What follows a form's name in the name of the form counting a list's added items — in the
+   * vault's language, as the name of the form it follows is, whatever language this window speaks.
+   */
+  localFormSuffix(): string {
+    return tables[pickLocale(this.summary?.locales ?? [])].localFormSuffix
   }
 
   /** Picks the report form to work on, and remembers it for this vault on this computer. */
@@ -384,8 +394,8 @@ export class VaultStore extends EventTarget {
     await this.run(async () => {
       const updated = await shell.updateBundledPacks()
       this.packsWaiting = false
-      await this.writeLocalForms()
       await this.load()
+      if (await this.writeLocalForms()) await this.load()
       if (updated.length > 0) this.notice = strings.packsUpdated
     })
   }
@@ -404,8 +414,8 @@ export class VaultStore extends EventTarget {
         }
         throw e
       }
-      await this.writeLocalForms()
       await this.load()
+      if (await this.writeLocalForms()) await this.load()
       this.notice = packNotice(added, this.summary, (scheme) => this.schemeName(scheme))
       // A new form version is what the person came for: offer it, if this screen shows it.
       const offered = new Set((this.summary?.reports ?? []).map((r) => `${r.name}@${r.version}`))
