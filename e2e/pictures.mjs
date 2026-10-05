@@ -87,6 +87,18 @@ const L = {
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: '가상 정신건강복지센터', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: '가상 소아청소년과의원', outcome: 'waiting' },
     ],
+    // How each student's work began, and how some of it ended: a closing note says what was done.
+    cases: {
+      presenting: ['수업 집중이 어렵고 성적이 떨어졌다고 담임이 의뢰', '친구 관계가 힘들다며 직접 찾아옴', '집에서 다툼이 잦다고 보호자가 연락'],
+      intakes: ['school', 'self', 'family', 'school', 'screening', 'service', 'self', 'school'],
+      closings: [
+        { subject: 1, date: '2026-05-20', reason: 'referred', summary: '정신건강복지센터 상담을 이어 가기로 하고 학교 상담은 마침' },
+        { subject: 3, date: '2026-04-10', reason: 'completed', summary: '시험 불안이 줄었다고 스스로 말해 목표를 이룬 것으로 봄' },
+        { subject: 5, date: '2026-04-17', reason: 'lost-contact', summary: '두 차례 약속에 오지 않고 연락이 닿지 않음' },
+        { subject: 6, date: '2026-04-24', reason: 'completed', summary: '친구 관계가 회복되어 상담을 마침' },
+        { subject: 7, date: '2026-04-28', reason: 'moved-away', summary: '전학으로 상담을 마침' },
+      ],
+    },
     extend: { list: 'assessment-tool', label: 'MMPI-A 단축형', anchor: 'other', form: 'local.assessment-tool.month-assessment-tool@1',
       fields: (value) => ({ assessments: [{ ...value, primary: true }] }) },
     crisis: { topic: 'crisis', note: '사라지고 싶다는 말을 해 안전 계획을 함께 세움' },
@@ -123,6 +135,16 @@ const L = {
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: 'Synthetic Wellbeing Centre', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: 'Synthetic Family Practice', outcome: 'waiting' },
     ],
+    cases: {
+      presenting: ['Finds it hard to concentrate; referred by a teacher', 'Came in on their own about friendships', 'Family called about frequent arguments at home'],
+      intakes: ['school', 'self', 'family', 'screening', 'service', 'self'],
+      closings: [
+        { subject: 1, date: '2026-05-20', reason: 'referred', summary: 'Continuing with the wellbeing centre; our sessions end here' },
+        { subject: 3, date: '2026-04-10', reason: 'completed', summary: 'Says the exam worry has eased; goals met' },
+        { subject: 4, date: '2026-04-17', reason: 'lost-contact', summary: 'Missed two appointments and could not be reached' },
+        { subject: 5, date: '2026-04-24', reason: 'completed', summary: 'Friendships back on track; work ended' },
+      ],
+    },
     extend: { list: 'care.concern', label: 'Exam pressure', anchor: 'study-work', form: 'local.care.concern.care.monthly-concern@1',
       fields: (value) => ({ concern: value }) },
     crisis: { topic: 'safety', note: 'Said they want to disappear; made a safety plan together' },
@@ -255,7 +277,16 @@ try {
   await app.cdp.waitFor(`__e2e.all('tr[data-hit]').length > 1`, 'the sessions found')
   await shoot('search')
 
-  // Records besides sessions: referrals kept under a subject, listed on the subject's page.
+  // Records besides sessions, kept under a subject: how each one's work began, referrals, and how some of it ended.
+  for (const [i, source] of L.cases.intakes.entries()) {
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[i], type: 'intake', fields: {
+      date: `2026-03-0${i + 1}`, practitioner: practitioners[i % practitioners.length], source: coded('care.intake-source', source),
+      presenting: L.cases.presenting[i % L.cases.presenting.length] } } })
+  }
+  for (const [i, c] of L.cases.closings.entries()) {
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[c.subject], type: 'closing', fields: {
+      date: c.date, practitioner: practitioners[i % practitioners.length], reason: coded('care.closing-reason', c.reason), summary: c.summary } } })
+  }
   for (const r of L.referrals) {
     await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[r.subject], type: 'referral', fields: {
       date: r.date, practitioner: practitioners[0], to: coded('care.service', r.to), organisation: r.organisation,
@@ -268,6 +299,18 @@ try {
   await app.cdp.waitFor(`__e2e.all('section[data-kind="referral"] tr[data-record]').length === ${L.referrals.length}`, 'the referrals')
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="referral"]')?.scrollIntoView({ block: 'center' }), true)`)
   await shoot('referral')
+  // The same page from its first kind of record: the intake, the referrals and the closing together.
+  await app.cdp.evaluate(`(__e2e.one('section[data-kind="intake"]')?.scrollIntoView({ block: 'start' }), true)`)
+  await shoot('case')
+
+  // The month's closings by reason, per practitioner.
+  await app.click('button', ui.report)
+  await app.click('nav[aria-label] button[data-entry="care.monthly-closing@1"]')
+  await app.type(ui.year, '2026')
+  await app.choose(ui.month, '4')
+  await app.click('dc-button', ui.run)
+  await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="completed"]')`, 'the month by closing reason')
+  await shoot('closing')
 
   // A choice list: an item the list lacks, added to this vault and counted as an item of the list.
   await app.click('button', ui.choices)
