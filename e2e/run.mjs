@@ -1437,6 +1437,8 @@ const scenarios = {
       `${closingRows}[0] ? [...${closingRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
     )
     assert.deepEqual(closingRow.slice(0, 2), ['2026-04-20', 'Lost contact'], 'its date and why it closed')
+    const kinds = await app.cdp.evaluate(`__e2e.all('section[data-kind]').map((s) => s.dataset.kind).filter((k) => k === 'intake' || k === 'closing')`)
+    assert.deepEqual(kinds, ['intake', 'closing'], 'the intake listed above the closing, in the order the work took')
 
     // The concern is optional on this track: a session without one is counted, in no row, and said so.
     await app.setDate('Date', '2026-04-09')
@@ -1454,7 +1456,9 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`(() => { const m = __e2e.one('dc-metric[data-group=unmapped]'); return (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() })()`), '0', 'not a gap in a crosswalk')
     assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=placed]').textContent.trim()`), '1 (1 person)', 'one session in the rows')
 
-    // Closings are counted by why they closed, in a form of their own.
+    // Closings are counted by why they closed, in a form of their own — listed after the forms counting sessions.
+    const entries = await app.cdp.evaluate(`__e2e.all('nav[aria-label="Report forms"] button[data-entry]').map((b) => b.dataset.entry)`)
+    assert.ok(entries.indexOf('care.monthly-concern@1') < entries.indexOf('care.monthly-closing@1'), `forms counting sessions first: ${entries.join(', ')}`)
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-closing@1"]')
     await app.type('Year', '2026')
     await app.choose('Month', '4')

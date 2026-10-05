@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, conflictsOf, definitionOf, entityOf, extensionsOf, labelOf, latest, namesOf, newestFirst, offeredChoices, ownerOf, today, yearAround, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, entityOf, extensionsOf, inOrderOfFirstRecord, labelOf, latest, namesOf, newestFirst, offeredChoices, ownerOf, today, yearAround, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -145,5 +145,19 @@ describe('lists kept beside a scheme', () => {
     expect(ownerOf(offered, 'interview')?.scheme).toBe('method')
     expect([ownerOf(offered, 'local-2')?.scheme, ownerOf(offered, 'local-2')?.version]).toEqual(['local.method', 2])
     expect(ownerOf(offered, 'nothing')).toBeUndefined()
+  })
+})
+
+describe('inOrderOfFirstRecord', () => {
+  const record = (date: string) => ({ id: date, fields: { date } }) as unknown as Entity
+  it('puts kinds in the order their first record happened, and kinds with none after, as given', () => {
+    const records: Record<string, Entity[]> = {
+      closing: [record('2026-05-20')],
+      intake: [record('2026-04-02'), record('2026-03-02')],
+      note: [],
+      referral: [record('2026-05-15'), record('2026-04-20')],
+      other: [],
+    }
+    expect(inOrderOfFirstRecord(['closing', 'intake', 'note', 'referral', 'other'], (k) => records[k])).toEqual(['intake', 'referral', 'closing', 'note', 'other'])
   })
 })

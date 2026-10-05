@@ -73,6 +73,23 @@ describe('VaultStore', () => {
     expect(store.exportKey).toBeFalsy()
   })
 
+  it('lists the forms counting sessions before those counting other kinds of record, and picks one of them first', async () => {
+    const form = (name: string, counts: string) => ({
+      name, version: 1, label: name, behind: [], offered: true, counts, periodField: 'date', unit: 'month' as const, startMonth: 1,
+      dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], sums: [], filters: [],
+    })
+    vi.mocked(shell.summary).mockResolvedValue({
+      ...summary,
+      reports: [form('care.monthly-closing', 'closing'), form('care.monthly-intake', 'intake'), form('month-topic', 'session'), form('year-topic', 'session')],
+    })
+    const store = new VaultStore()
+
+    await store.load()
+
+    expect(store.summary?.reports.map((f) => f.name)).toEqual(['month-topic', 'year-topic', 'care.monthly-closing', 'care.monthly-intake'])
+    expect(store.reportKey).toBe('month-topic@1')
+  })
+
   it('starts the form with today and the only practitioner, and keeps them when it clears', async () => {
     const field = (name: string, kind: FieldView['kind'], refType: string | null = null): FieldView => ({
       name, kind, scheme: kind === 'coded' ? name : null, refType, required: true, hidden: false, tier: 'structured', defaultFromSubject: null, label: name, aliases: [],

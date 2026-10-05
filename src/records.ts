@@ -191,6 +191,19 @@ export function newestFirst(sessions: Entity[]): Entity[] {
   return [...sessions].sort((a, b) => text(b, 'date').localeCompare(text(a, 'date')) || b.id.localeCompare(a.id))
 }
 
+/**
+ * Kinds of record in the order their first record happened — the order the work took, an intake before
+ * a referral before a closing, whatever the packs call them. Kinds with no dated record yet keep their
+ * order after those.
+ */
+export function inOrderOfFirstRecord<K>(kinds: K[], recordsOf: (kind: K) => Entity[]): K[] {
+  const first = new Map(kinds.map((k) => [k, recordsOf(k).map((r) => text(r, 'date')).filter(Boolean).sort()[0]]))
+  return [...kinds].sort((a, b) => {
+    const [x, y] = [first.get(a), first.get(b)]
+    return x && y ? x.localeCompare(y) : Number(!x) - Number(!y)
+  })
+}
+
 /** What a definition file added from a data pack is, in the pack's own terms. */
 export type Definition =
   | { kind: 'scheme'; name: string; version: number }

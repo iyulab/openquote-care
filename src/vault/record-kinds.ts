@@ -1,6 +1,6 @@
 import { html, nothing } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
-import { conflictsOf, newestFirst, type Entity } from '../records.js'
+import { conflictsOf, inOrderOfFirstRecord, newestFirst, type Entity } from '../records.js'
 import type { RecordKind } from '../shell.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
@@ -10,7 +10,7 @@ import { conflictPanel, sessionTable, subjectPicker, toggled, type Holder } from
 
 /**
  * The kinds of record besides sessions that the vault's packs keep under a subject or a group — a referral, say —
- * each with its records, newest first, and a form a person opens to add one. A record's concurrent changes are
+ * in the order their first record here happened, each with its records, newest first, and a form a person opens to add one. A record's concurrent changes are
  * shown for a person to settle, and a record can be corrected, as a session can.
  */
 @customElement('oc-record-kinds')
@@ -50,7 +50,7 @@ export class OcRecordKinds extends StoreElement {
 
   render() {
     const kinds = this.store.kindsUnder(this.holder.kind).filter((k) => k.type !== 'session')
-    return kinds.map((kind) => this.section(kind))
+    return inOrderOfFirstRecord(kinds, (kind) => this.recordsHere(kind)).map((kind) => this.section(kind))
   }
 
   private section(kind: RecordKind) {
