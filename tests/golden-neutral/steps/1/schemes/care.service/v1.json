@@ -1,0 +1,31 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.service",
+  "version": 1,
+  "items": [
+    {
+      "code": "mental-health",
+      "label": "Mental health service"
+    },
+    {
+      "code": "medical",
+      "label": "Hospital or clinic"
+    },
+    {
+      "code": "counseling",
+      "label": "Counseling service"
+    },
+    {
+      "code": "welfare",
+      "label": "Social or welfare service"
+    },
+    {
+      "code": "internal",
+      "label": "Within the organisation"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

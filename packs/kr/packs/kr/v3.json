@@ -1,0 +1,12 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "kr",
+  "version": 3,
+  "label": "Korea",
+  "depends": {
+    "care": 4
+  },
+  "provides": [
+    "labels/kr/v3.ko.json"
+  ]
+}

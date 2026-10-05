@@ -205,6 +205,25 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Summarises_the_kinds_of_record_the_packs_declare_and_where_each_is_kept()
+    {
+        var summary = await Post("/vault/load", Files([.. GoldenVault.School.Through(1), .. FieldPacks,
+            Def("packs/referrals/v1.json", """{"format":"openquote.pack/0","pack":"referrals","version":1,"label":"Referrals","depends":{"core":1},"provides":["fields/referrals/referral/v1.json","labels/referrals/v1.en.json"]}"""),
+            Def("fields/referrals/referral/v1.json", """{"format":"openquote.fields/0","pack":"referrals","type":"referral","version":1,"label":"Referral record","under":["subject"],"fields":[{"name":"date","kind":"date","required":true}]}"""),
+            Def("labels/referrals/v1.en.json", """{"format":"openquote.labels/0","pack":"referrals","version":1,"locale":"en","types":{"referral":"Referral"}}""")]));
+
+        var kinds = summary["kinds"]!.AsArray();
+        // Subjects and practitioners are kept on their own: they are not kinds of record.
+        Assert.Equal(["session", "referral"], kinds.Select(k => k!["type"]!.GetValue<string>()));
+        var session = kinds[0]!;
+        Assert.Null(session["label"]);                                         // no pack names it: the screen does
+        Assert.Equal(["subject", "group"], session["under"]!.AsArray().Select(u => u!.GetValue<string>()));
+        var referral = kinds[1]!;
+        Assert.Equal("Referral", referral["label"]!.GetValue<string>());       // the vault's labels before the definition's own
+        Assert.Equal(["subject"], referral["under"]!.AsArray().Select(u => u!.GetValue<string>()));
+    }
+
+    [Fact]
     public async Task Lists_no_fields_for_a_vault_without_field_definitions()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(1)));
