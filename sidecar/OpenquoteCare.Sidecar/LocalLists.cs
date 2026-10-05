@@ -65,6 +65,25 @@ internal static class LocalLists
     }
 
     /// <summary>
+    /// <paramref name="reports"/> in their order, each form counting by a list of the folder's own
+    /// (see <see cref="Forms"/>) moved to just after the form it follows, so the two are read together.
+    /// </summary>
+    internal static IReadOnlyList<ReportDefinition> InOrder(IReadOnlyList<ReportDefinition> reports, IEnumerable<Scheme> schemes)
+    {
+        var prefixes = schemes.Where(s => s.Name.StartsWith(Prefix, StringComparison.Ordinal))
+            .Select(s => s.Name + ".").Distinct(StringComparer.Ordinal).ToList();
+        var names = reports.Select(r => r.Name).ToHashSet(StringComparer.Ordinal);
+        string? Follows(ReportDefinition r) => prefixes
+            .Where(p => r.Name.StartsWith(p, StringComparison.Ordinal) && names.Contains(r.Name[p.Length..]))
+            .Select(p => r.Name[p.Length..]).FirstOrDefault();
+        var first = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (r, i) in reports.Select((r, i) => (r, i))) first.TryAdd(Follows(r) ?? r.Name, i);
+        return [.. reports.Select((r, i) => (r, i))
+            .OrderBy(x => first[Follows(x.r) ?? x.r.Name]).ThenBy(x => Follows(x.r) is null ? 0 : 1).ThenBy(x => x.i)
+            .Select(x => x.r)];
+    }
+
+    /// <summary>
     /// The forms counting by the folder's own lists that it does not hold yet: for the newest version
     /// of each form that places records by a scheme the folder keeps a list beside, the same form
     /// placing them by that list instead — in its version in force, so the form follows the list as it

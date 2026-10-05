@@ -87,7 +87,8 @@ const L = {
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: '가상 정신건강복지센터', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: '가상 소아청소년과의원', outcome: 'waiting' },
     ],
-    extend: { list: 'assessment-tool', label: 'MMPI-A 단축형', anchor: 'other' },
+    extend: { list: 'assessment-tool', label: 'MMPI-A 단축형', anchor: 'other', form: 'local.assessment-tool.month-assessment-tool@1',
+      fields: (value) => ({ assessments: [{ ...value, primary: true }] }) },
     crisis: { topic: 'crisis', note: '사라지고 싶다는 말을 해 안전 계획을 함께 세움' },
     draft: { subject: '가상 학생 3', date: '2026-05-21', note: '휴대전화 때문에 부모님과 또 다툼', crisisNote: '사라지고 싶다는 말을 다시 함' },
   },
@@ -122,7 +123,8 @@ const L = {
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: 'Synthetic Wellbeing Centre', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: 'Synthetic Family Practice', outcome: 'waiting' },
     ],
-    extend: { list: 'care.concern', label: 'Exam pressure', anchor: 'study-work' },
+    extend: { list: 'care.concern', label: 'Exam pressure', anchor: 'study-work', form: 'local.care.concern.care.monthly-concern@1',
+      fields: (value) => ({ concern: value }) },
     crisis: { topic: 'safety', note: 'Said they want to disappear; made a safety plan together' },
     draft: { subject: 'Client Three', date: '2026-05-21', note: 'Argued with parents about the phone again', crisisNote: 'Said again they want to disappear' },
   },
@@ -279,6 +281,26 @@ try {
     await app.cdp.waitFor(`!!__e2e.one('tr[data-local-item]')`, 'the item added')
   }
   await shoot('choices')
+
+  // Sessions that used the added item, and the form that came with the list counting them by name.
+  const added = { scheme: `local.${L.extend.list}`, version: 1, code: 'local-1' }
+  for (const [i, day] of ['06', '13', '20'].entries()) {
+    const topic = L.sequence[i]
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[i], type: 'session', fields: {
+      date: `2026-04-${day}`, practitioner: practitioners[i % practitioners.length],
+      [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, topic),
+      [locale === 'ko' ? 'method' : 'mode']: coded(L.method, L.methods[0]),
+      note: L.notes[topic][0], ...L.sessionFields(topic, i, i), ...L.extend.fields(added) } } })
+  }
+  await app.click('dc-button', ui.refresh)
+  await sleep(1500)
+  await app.click('button', ui.report)
+  await app.click(`nav[aria-label] button[data-entry="${L.extend.form}"]`)
+  await app.type(ui.year, '2026')
+  await app.choose(ui.month, '4')
+  await app.click('dc-button', ui.run)
+  await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="local-1"]')`, 'the month by added item')
+  await shoot('added')
 
   if (locale === 'ko') {
     // A school-year form: the sessions of the year by grade and class.

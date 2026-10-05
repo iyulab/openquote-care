@@ -541,7 +541,7 @@ internal static class Api
             s.Content.Changes.Count,
             s.Entities.Count,
             s.Entities.Values.Count(e => e.Conflicts.Count > 0),
-            [.. s.Content.Reports.Select(r => new ReportView(r.Name, r.Version,
+            [.. LocalLists.InOrder(s.Content.Reports, s.Content.Schemes).Select(r => new ReportView(r.Name, r.Version,
                 s.Labels.ReportLabel(r.Name, r.Version, s.Locales) ?? r.Label, r.Counts, r.Period.Field, UnitOf(r.Period.Unit), r.Period.StartMonth,
                 [.. r.Dimensions.Select(d => new DimensionView(d.Field, d.Scheme, d.Version, d.OfSubject, d.All))],
                 [.. r.Measures.Select(m => m.ToString().ToLowerInvariant())],

@@ -300,6 +300,7 @@ public sealed class SidecarTests : IAsyncLifetime
         var summary = await Post("/vault/load", Files([.. vault, .. forms]));
         var view = Assert.Single(summary["reports"]!.AsArray(), r => r!["name"]!.GetValue<string>() == "local.topic.monthly-topic")!;
         Assert.Equal("Sessions by topic — ours", view["label"]!.GetValue<string>());
+        Assert.Equal(["by-method", "monthly-topic", "local.topic.monthly-topic"], summary["reports"]!.AsArray().Select(r => r!["name"]!.GetValue<string>()));
         var rows = view["dimensions"]![0]!;
         Assert.Equal(("local.topic", null), (rows["scheme"]!.GetValue<string>(), rows["version"]?.GetValue<int>()));
         Assert.Equal("practitioner", view["dimensions"]![1]!["field"]!.GetValue<string>());
