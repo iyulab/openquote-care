@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-10-06
+
 ### Fixed
 - The choice that hides names in the list of records now says on each option that it is about names ("Names as written", "First letters only", "Numbers for names"). Before, the options read without saying what they changed.
 
@@ -40,7 +42,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/iyulab/openquote-care/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/iyulab/openquote-care/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/iyulab/openquote-care/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/iyulab/openquote-care/compare/v0.11.0...v0.11.1
