@@ -142,7 +142,7 @@ export class OcDevices extends VaultScreen {
                 : nothing,
           ...this.backupFindings(),
         ]
-    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.backup} description=${strings.backupLead}></dp-page-header>
+    return html`<dp-page-header heading=${strings.backup} description=${strings.backupLead}></dp-page-header>
       ${lines}
       ${noticeLine(this.store)}
       <div class="row" data-role="backup">
@@ -191,7 +191,7 @@ export class OcDevices extends VaultScreen {
     const save = () => void this.saveDeviceName()
     const label = (d: string) => deviceLabel(summary, d)
     const named = Object.keys(summary?.devices ?? {}).sort((a, b) => this.store.names.compare(label(a), label(b)))
-    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.deviceName} description=${strings.devicesLead}></dp-page-header>
+    return html`<dp-page-header heading=${strings.deviceName} description=${strings.devicesLead}></dp-page-header>
       <div class="row">
         ${nameField(busy, strings.deviceName, this.deviceName, (v) => (this.deviceName = v), save)}
         <dc-button variant="secondary" ?disabled=${busy} @click=${save}>${strings.saveDeviceName}</dc-button>
@@ -206,7 +206,7 @@ export class OcDevices extends VaultScreen {
   }
 
   private idleSection() {
-    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.idleLock} description=${strings.idleLockLead}></dp-page-header>
+    return html`<dp-page-header heading=${strings.idleLock} description=${strings.idleLockLead}></dp-page-header>
       <div class="row" data-role="idle-lock">
         <dc-field label=${strings.idleLock}>
           <dc-select
@@ -222,7 +222,7 @@ export class OcDevices extends VaultScreen {
   private passphraseSection() {
     const busy = this.store.busy
     const change = () => void this.changePassphrase()
-    return html`<dp-page-header eyebrow=${strings.devices} heading=${strings.changePassphrase} description=${strings.changePassphraseLead}></dp-page-header>
+    return html`<dp-page-header heading=${strings.changePassphrase} description=${strings.changePassphraseLead}></dp-page-header>
       ${this.keyFileLost
         ? html`<dc-callout variant="danger" role="alert" data-role="key-file-lost"><p>${strings.keyFileLost}</p></dc-callout>`
         : this.openedWithKey

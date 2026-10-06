@@ -4,7 +4,7 @@ import { comparable, headCount, layOut, measureOf, sumOf, visitCount, type Compa
 import { labelOfField } from '../fields.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
+import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -128,13 +128,14 @@ export class OcReport extends VaultScreen {
     const chosen = reports.find((r) => `${r.name}@${r.version}` === store.reportKey)
     return listDetail({
       label: strings.reportForms,
-      entries: reports.map((r) => ({ id: `${r.name}@${r.version}`, label: strings.reportFormOption(r.label, r.version) })),
+      head: applyPackButton(store),
+      entries: reports.map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r) })),
       selected: store.reportKey,
       select: (key) => this.pick(key),
       empty: strings.noReports,
       document: chosen
-        ? this.formDocument(strings.reportFormOption(chosen.label, chosen.version))
-        : html`${reports.length > 0 ? html`<p class="muted">${strings.pickReportForm}</p>` : nothing} ${applyPackButton(store)} ${noticeLine(store)}`,
+        ? this.formDocument(formLabel(reports, chosen))
+        : html`${reports.length > 0 ? html`<p class="muted">${strings.pickReportForm}</p>` : nothing} ${raiseFormatCallout(store)} ${noticeLine(store)}`,
       open: this.documentOpen,
       back: () => (this.documentOpen = false),
     })
@@ -144,20 +145,19 @@ export class OcReport extends VaultScreen {
   private formDocument(title: string) {
     const store = this.store
     const busy = store.busy
-    return html`<dp-page-header eyebrow=${strings.report} heading=${title}>
-        <div slot="actions" class="row no-print">
-          ${chosenPeriodFields(store)}
-          ${applyPackButton(store)}
-          <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
-          ${this.result ? html`<dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>` : nothing}
-        </div>
-      </dp-page-header>
+    return html`<dp-page-header heading=${title}></dp-page-header>
+      <div class="toolbar no-print">
+        ${chosenPeriodFields(store)}
+        <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
+        ${this.result ? html`<dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>` : nothing}
+      </div>
+      ${raiseFormatCallout(store)}
       ${formBehind(store.summary?.reports ?? [], store.reportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
-      ${this.result ? this.reportTable(this.result, title) : nothing}`
+      ${this.result ? this.reportTable(this.result) : nothing}`
   }
 
-  private reportTable(result: RunRecord, title: string) {
+  private reportTable(result: RunRecord) {
     const store = this.store
     const form = formOf(store, result)
     const layout = layOut(result, axesOf(store, form, result), strings.allSections)
@@ -179,9 +179,14 @@ export class OcReport extends VaultScreen {
       return parts.length === 0 ? nothing : html`<span class="people" data-role="measures">${strings.measureNote(parts)}</span>`
     }
     const foremost = (records: string[]) => measureOf(result, records, first) ?? records.length
+    // A sum's cell: its number and the others beside it, nought in the quiet text.
+    const sumCell = (records: string[], role?: string) =>
+      html`<td class=${records.length === 0 ? 'num zero' : 'num'} data-role=${role ?? nothing}>${foremost(records)}${note(records)}</td>`
     const metric = (group: 'pending' | 'unmapped' | 'blank' | 'conflicted' | 'total', label: string, g: Group, open: () => void, accent: '' | '1' | '2' = '') => {
       const n = g.records.length === 0 ? null : headCount(result, g.records)
-      return html`<dc-metric data-group=${group} label=${label} value=${String(g.count)} unit=${strings.countUnit} accent=${accent}>
+      // The total always stands out; a count that asks for attention steps back at nought.
+      const quiet = group !== 'total' && g.count === 0
+      return html`<dc-metric data-group=${group} class=${quiet ? 'quiet' : ''} label=${label} value=${String(g.count)} unit=${strings.countUnit} accent=${accent}>
         ${n === null ? nothing : html`<span data-role="people">${strings.headCount(n)}</span>`}
         ${g.count === 0 ? nothing : html`<button class="cell" @click=${open}>${strings.showRecords}</button>`}
         ${group === 'pending' && g.count > 0 ? html`<dc-badge slot="label-extra" variant="warning">${g.count}</dc-badge>` : nothing}
@@ -201,8 +206,8 @@ export class OcReport extends VaultScreen {
       const where = (place: string) => (sectioned ? `${section.label} · ${place}` : place)
       const count = (place: string, group: Group) =>
         group.count === 0
-          ? html`<td class="num">0</td>`
-          : html`<td class="num"><button class="cell" @click=${() => void this.showEvidence(where(place), group)}>${foremost(group.records)}</button>${note(group.records)}</td>`
+          ? html`<td class="num zero">0</td>`
+          : html`<td class="num"><button class="cell" aria-pressed=${this.evidence?.title === where(place) ? 'true' : 'false'} @click=${() => void this.showEvidence(where(place), group)}>${foremost(group.records)}</button>${note(group.records)}</td>`
       return html`<div class="section" data-section=${index} ?hidden=${index !== active}>
         ${sectioned ? html`<p class="print-only section-label">${section.label}</p>` : nothing}
         <table class="report">
@@ -218,15 +223,15 @@ export class OcReport extends VaultScreen {
               (r) => html`<tr data-row=${r.code ?? nothing}>
                 <th>${r.label}</th>
                 ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
-                <td class="num">${foremost(r.records)}${note(r.records)}</td>
+                ${sumCell(r.records)}
               </tr>`,
             )}
           </tbody>
           <tfoot>
             <tr>
               <th>${strings.reportTotal}</th>
-              ${table.columnRecords.map((records) => html`<td class="num">${foremost(records)}${note(records)}</td>`)}
-              <td class="num" data-role="placed">${foremost(table.placedRecords)}${note(table.placedRecords)}</td>
+              ${table.columnRecords.map((records) => sumCell(records))}
+              ${sumCell(table.placedRecords, 'placed')}
             </tr>
           </tfoot>
         </table>
@@ -243,14 +248,15 @@ export class OcReport extends VaultScreen {
         ${layout.blank.count === 0 ? nothing : metric('blank', blank, layout.blank, () => void this.showEvidence(blank, layout.blank))}
         ${layout.conflicted.count === 0 ? nothing : metric('conflicted', strings.conflict, layout.conflicted, () => void this.showEvidence(strings.conflict, layout.conflicted))}
       </div>
-      <dl class="legend">
-        ${layout.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
-        ${layout.unmapped.count > 0 ? html`<div><dt>${unmapped.label}</dt><dd>${unmapped.hint}</dd></div>` : nothing}
-        ${layout.blank.count > 0 ? html`<div><dt>${blank}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
-        ${layout.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
-      </dl>
+      ${layout.pending.count + layout.unmapped.count + layout.blank.count + layout.conflicted.count === 0
+        ? nothing
+        : html`<dl class="legend">
+            ${layout.pending.count > 0 ? html`<div><dt>${strings.pending}</dt><dd>${strings.pendingHint}</dd></div>` : nothing}
+            ${layout.unmapped.count > 0 ? html`<div><dt>${unmapped.label}</dt><dd>${unmapped.hint}</dd></div>` : nothing}
+            ${layout.blank.count > 0 ? html`<div><dt>${blank}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
+            ${layout.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
+          </dl>`}
       <section>
-        <dc-section-heading marker size="lg" heading=${title}></dc-section-heading>
         ${filters.length === 0 ? nothing : html`<p class="muted" data-role="filters">${strings.reportFilters(filters)}</p>`}
         ${sectioned
           ? html`<dc-tab-bar
@@ -263,8 +269,7 @@ export class OcReport extends VaultScreen {
           : nothing}
         <dc-card><div class="scroll">${layout.sections.map(grid)}</div></dc-card>
       </section>
-      ${result.people ? html`<p class="muted" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
-      ${this.compareControls(result)}
+      ${result.people ? html`<p class="detail" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
       ${this.comparison
         ? comparisonView(store, this.comparison)
         : this.pendingChoices
@@ -272,6 +277,7 @@ export class OcReport extends VaultScreen {
           : this.evidence
             ? evidenceList(store, result, this.evidence.title, this.evidence.group)
             : html`<p class="muted no-print">${strings.pickCell}</p>`}
+      ${this.compareControls(result)}
     `
   }
 
@@ -321,11 +327,7 @@ function chosenPeriodFields(store: VaultStore) {
     case 'range':
       return rangeFields(store)
     case 'year': {
-      const label = form.startMonth === 1 ? strings.year : strings.schoolYear
-      return html`<dc-field label=${label}>
-        <dc-input type="number" aria-label=${label} min="2000" max="2100" .value=${String(store.year)} ?disabled=${store.busy}
-          @input=${(e: Event) => store.set({ year: Number((e.target as HTMLInputElement).value) })}></dc-input>
-      </dc-field>`
+      return form.startMonth === 1 ? yearSelect(store, strings.year) : yearSelect(store, strings.schoolYear, strings.schoolYearOption)
     }
     default:
       return periodFields(store)

@@ -58,7 +58,7 @@ export class OcSearch extends VaultScreen {
       const field = store.fieldsOf(s.type).find((f) => f.name === store.datedOf(s.type))
       return field ? valueText(store, field, s.fields[field.name]) : ''
     }
-    return html`<dp-page-header eyebrow=${strings.navGroupRecords} heading=${strings.searchTitle}></dp-page-header>
+    return html`<dp-page-header heading=${strings.searchTitle}></dp-page-header>
       <dc-card>
         <div class="stack">
           <dc-field label=${strings.searchLabel}>

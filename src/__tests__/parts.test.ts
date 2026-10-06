@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { nothing, type TemplateResult } from 'lit'
-import { listEntry, errorCallout, countBy } from '../vault/parts.js'
+import { listEntry, errorCallout, countBy, formLabel, yearsAround } from '../vault/parts.js'
 
 /** A template and the templates in its values, as one markup string. */
 function flat(t: unknown): string {
@@ -41,5 +41,35 @@ describe('countBy', () => {
     expect(counts.get('a')).toBe(2)
     expect(counts.get('b')).toBe(1)
     expect(counts.get('c')).toBeUndefined()
+  })
+})
+
+describe('the years a period is picked from', () => {
+  it('runs from next year back ten, newest first', () => {
+    const years = yearsAround(2026, 2026)
+    expect(years[0]).toBe(2027)
+    expect(years.at(-1)).toBe(2016)
+    expect(years).toHaveLength(12)
+  })
+
+  it('reaches a year chosen outside that span', () => {
+    expect(yearsAround(2005, 2026).at(-1)).toBe(2005)
+    expect(yearsAround(2030, 2026)[0]).toBe(2030)
+  })
+})
+
+describe('a form as a person picks it', () => {
+  const topics = { name: 'topics', label: 'Topics', version: 1 }
+  const grades = { name: 'grades', label: 'Grades', version: 1 }
+
+  it('is its name alone when the vault holds one version of it', () => {
+    expect(formLabel([topics, grades], topics)).toBe('Topics')
+  })
+
+  it('names its version when the vault holds more than one', () => {
+    const topics2 = { ...topics, version: 2 }
+    expect(formLabel([topics, topics2, grades], topics2)).not.toBe('Topics')
+    expect(formLabel([topics, topics2, grades], topics2)).toContain('2')
+    expect(formLabel([topics, topics2, grades], grades)).toBe('Grades')
   })
 })

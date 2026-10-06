@@ -226,41 +226,35 @@ export const vaultStyles = [
       margin: var(--dc-space-3, 12px) 0 var(--dc-space-1, 4px);
       font-weight: var(--dc-font-weight-semibold, 600);
     }
-    /* On paper: the document alone — no way back to the list, no controls — and wide tables wrap instead of scrolling. */
-    @media print {
-      .print-only,
-      .section[hidden] {
-        display: block;
-      }
-      .no-print,
-      .back {
-        display: none;
-      }
-      .scroll {
-        overflow: visible;
-      }
-      table.export td,
-      table.export th {
-        white-space: normal;
-      }
-    }
+    /* What a subject's or practitioner's record holds, under its name: short values run on one line, label then
+       value, and wrap as a line would; written content takes a line of its own. */
     dl.record-fields {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: var(--dc-space-1, 4px) var(--dc-space-4, 16px);
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dc-space-1, 4px) var(--dc-space-5, 20px);
       margin: 0;
     }
     dl.record-fields div {
-      display: contents;
+      display: flex;
+      align-items: baseline;
+      gap: var(--dc-space-2, 8px);
+    }
+    dl.record-fields div:has(dd.narrative) {
+      flex-basis: 100%;
+      flex-direction: column;
+      gap: var(--dc-space-1, 4px);
     }
     dl.record-fields dt {
-      color: var(--dc-color-text-secondary, #55555c);
+      font-size: var(--dc-font-size-sm, 12px);
+      color: var(--dc-color-text-muted, #8a8a92);
     }
     dl.record-fields dd {
       margin: 0;
+      font-weight: var(--dc-font-weight-medium, 500);
     }
     dl.record-fields dd.narrative {
       white-space: pre-wrap;
+      font-weight: inherit;
     }
     dl.legend {
       display: grid;
@@ -280,10 +274,69 @@ export const vaultStyles = [
       margin: 0;
       color: var(--dc-color-text-secondary, #55555c);
     }
+    /* The figures over a report, all on one line at the document's width. */
     .metrics {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: var(--dc-space-3, 12px);
+    }
+    /* A figure that asks for attention only when it is above nought: at nought it steps back to a plain line. */
+    .metrics dc-metric.quiet {
+      --dc-card-bg: transparent;
+      --dc-card-elevation: none;
+      --dc-card-border: 1px dashed var(--dc-color-rule, #e2e2e4);
+      --dc-metric-size: var(--dc-font-size-xl, 18px);
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
+    /* A document's controls under its heading, on one line: bottom-aligned, so a labelled date field and a button share it. */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: var(--dc-space-2, 8px) var(--dc-space-3, 12px);
+    }
+    .toolbar > dc-field {
+      flex: 0 1 180px;
+    }
+    /* A month: a step back, its year and month, a step on. */
+    .period {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--dc-space-1, 4px);
+    }
+    .period > dc-select {
+      width: 9em;
+    }
+    .period > dc-select + dc-select {
+      width: 6.5em;
+    }
+    /* A count of nought is a fact, not a finding: it reads in the quiet text, away from the counts that lead somewhere. */
+    td.num.zero {
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
+    /* The count whose records are listed below the table. */
+    button.cell[aria-pressed='true'] {
+      background: var(--dc-selection-bg, var(--dc-color-accent-subtle, #e0e7ff));
+      outline: 2px solid var(--dc-color-accent, #2563eb);
+      outline-offset: -1px;
+    }
+    /* On paper, and last so it outranks the rules above: the document alone — no way back to the list, no controls — and wide tables wrap instead of scrolling. */
+    @media print {
+      .print-only,
+      .section[hidden] {
+        display: block;
+      }
+      .no-print,
+      .back {
+        display: none;
+      }
+      .scroll {
+        overflow: visible;
+      }
+      table.export td,
+      table.export th {
+        white-space: normal;
+      }
     }
   `,
 ]

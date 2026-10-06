@@ -6,6 +6,17 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- Statistics and the list of records pick a month on one line: a step back, the year, the month, a step on. A year is now picked from a list instead of typed.
+- "Apply classification revision" moved from beside "Run" to the top of the list of forms: it changes the folder's forms and categories, not one report.
+- In a report, a count of nought reads in quieter text, so the counts that lead to records stand out. The count whose records are listed is marked in the table, and the list comes right under the table.
+- Figures that ask for attention — awaiting reclassification, outside the crosswalk — step back to a plain outline while they are nought.
+- A form's version shows in its name only when the folder holds more than one version of that form.
+- A page no longer repeats where you are above its heading; the bar at the top already says it.
+- A person's details read on one line under their name instead of a row each.
+- A suggested category shows the category first and why it is suggested after it, smaller. "Why these are suggested" opens and closes under the same name, and lists each similar record on its own.
+- The selected entry in the menu and in a list sits on a ground that stands apart from the menu and the page.
+
 ## [0.13.1] - 2026-10-06
 
 ### Fixed

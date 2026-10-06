@@ -126,7 +126,7 @@ export class OcSubjects extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const addSubject = () => void this.addSubject()
-    return html`<dp-page-header eyebrow=${strings.subjects} heading=${strings.addSubject}></dp-page-header>
+    return html`<dp-page-header heading=${strings.addSubject}></dp-page-header>
       <dc-card>
         <div class="stack">
           ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
@@ -161,7 +161,7 @@ export class OcSubjects extends VaultScreen {
           ? text(this.store.subjects.find((s) => s.id === r.subject) ?? ({ fields: {} } as Entity), 'name')
           : ''
     return html`<section data-role="import">
-      <dp-page-header eyebrow=${strings.subjects} heading=${strings.importTitle}></dp-page-header>
+      <dp-page-header heading=${strings.importTitle}></dp-page-header>
       <p class="muted" data-role="import-tally">${strings.importTally(counts.create, counts.update, counts.same, counts.problem)}</p>
       ${plan.missingName ? html`<dc-callout variant="danger"><p>${strings.importMissingName}</p></dc-callout>` : nothing}
       ${plan.unknownHeadings.length > 0 ? html`<p class="muted">${strings.importUnknown(plan.unknownHeadings)}</p>` : nothing}
@@ -196,7 +196,6 @@ export class OcSubjects extends VaultScreen {
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
       <dp-page-header
-        eyebrow=${strings.subjects}
         heading=${text(subject, 'name')}
         description=${strings.sessionCount(sessions.length)}
       >

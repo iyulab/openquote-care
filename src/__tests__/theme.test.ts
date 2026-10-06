@@ -17,7 +17,9 @@ const contrast = (a: string, b: string) => { const [x, y] = [lum(a), lum(b)].sor
 /** Text on ground: every pair the screens put together. */
 const PAIRS: [string, string][] = [
   ['--dc-color-text', '--dc-color-bg'], ['--dc-color-text-secondary', '--dc-color-bg'], ['--dc-color-text-muted', '--dc-color-bg'],
-  ['--dc-color-text-muted', '--oq-sidebar'], ['--dc-color-text-muted', '--dc-color-surface-raised'], ['--dc-color-text-muted', '--oq-cream'],
+  ['--dc-color-text-muted', '--oq-sidebar'], ['--dc-color-text-muted', '--dc-color-surface-raised'], ['--dc-color-text-muted', '--oq-selection'],
+  // The selected entry of a list or the menu: its name in the accent, its details muted.
+  ['--dc-color-accent-text', '--oq-selection'], ['--dc-color-text', '--oq-selection'],
   ['--dc-color-accent-text', '--dc-color-bg'], ['--dc-color-accent-contrast', '--dc-color-accent'],
   ['--dc-color-secondary-text', '--dc-color-surface-raised'], ['--dc-color-secondary-text', '--oq-secondary-subtle'],
   ['--dc-color-accent-text', '--oq-accent-subtle'], ['--dc-color-success-text', '--oq-success-subtle'],
@@ -51,6 +53,15 @@ describe('the app theme', () => {
       const t = get(body, text)!, g = get(body, ground)!
       expect(t, `${text}`).toBeTruthy(); expect(g, `${ground}`).toBeTruthy()
       expect(contrast(t, g), `${t} on ${g}`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  it('lays the selected entry on a ground that stands apart from the menu and the list it sits on', () => {
+    for (const body of palettes()) {
+      const selection = get(body, '--oq-selection')!
+      for (const ground of ['--oq-sidebar', '--dc-color-surface', '--dc-color-bg']) {
+        expect(contrast(selection, get(body, ground)!), `${selection} on ${ground}`).toBeGreaterThanOrEqual(1.1)
+      }
     }
   })
 

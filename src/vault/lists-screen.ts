@@ -95,7 +95,7 @@ export class OcLists extends VaultScreen {
     const added = extensionsOf(store.schemes, scheme).flatMap((s) => s.items)
     const add = () => void this.add()
     const devices = formatDevices(store.summary)
-    return html`<dp-page-header eyebrow=${strings.lists} heading=${label} description=${strings.listsIntro}></dp-page-header>
+    return html`<dp-page-header heading=${label} description=${strings.listsIntro}></dp-page-header>
       <section data-list=${scheme}>
         <dc-section-heading marker size="lg" heading=${strings.listOurs}></dc-section-heading>
         ${added.length === 0

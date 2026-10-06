@@ -61,8 +61,34 @@ export class OcRecordForm extends StoreElement {
         font-size: var(--dc-font-size-sm, 12px);
       }
       .why ul {
-        margin: var(--dc-space-1, 4px) 0 0;
-        padding-left: var(--dc-space-4, 16px);
+        display: grid;
+        gap: var(--dc-space-2, 8px);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      /* A suggestion's code, then what its records share with this one, then the records, each a token of its own. */
+      .why li {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: var(--dc-space-1, 4px) var(--dc-space-2, 8px);
+      }
+      .why .lead {
+        color: var(--dc-color-text-secondary, #55555c);
+      }
+      .why .record {
+        padding: 0 var(--dc-space-2, 8px);
+        border-radius: var(--dc-radius-sm, 4px);
+        background: var(--dc-color-surface-raised, #ffffff);
+        white-space: nowrap;
+      }
+      /* On a suggestion, the code leads; why it is offered follows, quieter. */
+      .suggestions .reason {
+        margin-left: var(--dc-space-2, 8px);
+        font-size: var(--dc-font-size-sm, 12px);
+        font-weight: var(--dc-font-weight-normal, 400);
+        color: var(--dc-color-text-muted, #8a8a92);
       }
     `,
   ]
@@ -345,16 +371,16 @@ export class OcRecordForm extends StoreElement {
     return c.similar.length > 0 ? strings.similarRecords(c.similar.length) : ''
   }
 
-  /** Why a code is suggested, in full: the records it rests on, or that it is simply chosen often. */
-  private whyOf(c: SuggestedCode): string {
-    const records = c.similar.map((id) => this.similarRecord(id)).filter(Boolean).join(', ')
-    if (c.basis === 'frequent') return strings.whyFrequent
+  /** Why a code is suggested, in full: what the records it rests on share with this one, and those records — or that it is simply chosen often. */
+  private whyOf(c: SuggestedCode): { lead: string; records: string[] } {
+    const records = c.similar.map((id) => this.similarRecord(id)).filter(Boolean)
+    if (c.basis === 'frequent') return { lead: strings.whyFrequent, records: [] }
     if (c.basis === 'sameValue' && c.field) {
       const field = labelOfField(this.fields, c.field)
       const value = this.sharedValue(c.field)
-      return `${value ? strings.whySameValue(field, value) : strings.whySameField(field)} ${records}`
+      return { lead: value ? strings.whySameValue(field, value) : strings.whySameField(field), records }
     }
-    return records
+    return { lead: '', records }
   }
 
 
@@ -386,8 +412,8 @@ export class OcRecordForm extends StoreElement {
                 ?disabled=${store.busy}
                 @click=${() => this.take(f, c.code)}
                 >${c.confirm ? html`<strong>${strings.confirmFirst}</strong> · ` : nothing}${label(c.code)}${this.reasonOf(c)
-                  ? ` · ${this.reasonOf(c)}`
-                  : ''}</dc-button
+                  ? html`<span class="reason">${this.reasonOf(c)}</span>`
+                  : nothing}</dc-button
               >`,
           )}
           ${explained.length > 0
@@ -397,21 +423,21 @@ export class OcRecordForm extends StoreElement {
                 data-role="why-suggested"
                 aria-expanded=${open ? 'true' : 'false'}
                 @click=${() => (this.whyOpen = open ? '' : f.name)}
-                >${open ? strings.hideWhySuggested : strings.showWhySuggested}</dc-button
+                >${strings.suggestedBecause} ${open ? '▴' : '▾'}</dc-button
               >`
             : nothing}
         </div>
         ${open
           ? html`<div class="why" data-why=${f.name}>
-              <span class="muted">${strings.suggestedBecause}</span>
               <ul aria-label=${`${f.label} · ${strings.suggestedBecause}`}>
-                ${explained.map(
-                  (c) =>
-                    html`<li data-basis=${c.basis}>
-                      <strong>${label(c.code)}</strong>
-                      ${this.whyOf(c)}
-                    </li>`,
-                )}
+                ${explained.map((c) => {
+                  const why = this.whyOf(c)
+                  return html`<li data-basis=${c.basis}>
+                    <strong>${label(c.code)}</strong>
+                    ${why.lead ? html`<span class="lead">${why.lead}</span>` : nothing}
+                    ${why.records.map((r) => html`<span class="record">${r}</span>`)}
+                  </li>`
+                })}
               </ul>
             </div>`
           : nothing}

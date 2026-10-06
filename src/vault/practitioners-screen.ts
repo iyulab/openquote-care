@@ -74,7 +74,7 @@ export class OcPractitioners extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const add = () => void this.addPractitioner()
-    return html`<dp-page-header eyebrow=${strings.practitioners} heading=${strings.addPractitioner}></dp-page-header>
+    return html`<dp-page-header heading=${strings.addPractitioner}></dp-page-header>
       <dc-card>
         ${nameField(busy, strings.practitionerName, this.practitionerName, (v) => (this.practitionerName = v), add)}
         <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${add}>${strings.addPractitioner}</dc-button>
@@ -87,7 +87,6 @@ export class OcPractitioners extends VaultScreen {
     const refs = store.sessionFields.filter((f) => f.kind === 'reference' && f.refType === 'practitioner').map((f) => f.name)
     const sessions = newestFirst(store.sessions.filter((s) => refs.some((r) => s.fields[r] === practitioner.id)), store.dayOf)
     return html`<dp-page-header
-        eyebrow=${strings.practitioners}
         heading=${text(practitioner, 'name')}
         description=${strings.sessionCount(sessions.length)}
       >

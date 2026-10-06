@@ -104,7 +104,7 @@ export class OcGroups extends VaultScreen {
   private addForm() {
     const busy = this.store.busy
     const addGroup = () => void this.addGroup()
-    return html`<dp-page-header eyebrow=${strings.groups} heading=${strings.addGroup}></dp-page-header>
+    return html`<dp-page-header heading=${strings.addGroup}></dp-page-header>
       <dc-card>
         ${nameField(busy, strings.groupName, this.groupName, (v) => (this.groupName = v), addGroup)}
         <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${addGroup}>${strings.addGroup}</dc-button>
@@ -117,7 +117,6 @@ export class OcGroups extends VaultScreen {
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
       <dp-page-header
-        eyebrow=${strings.groups}
         heading=${text(group, 'name')}
         description=${strings.sessionCount(sessions.length)}
       ></dp-page-header>

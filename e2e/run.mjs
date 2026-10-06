@@ -282,7 +282,7 @@ const scenarios = {
   async 'produces the monthly report and shows what each count is made of'(app, work) {
     await app.click('button', '통계')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="monthly-topic@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=period]')`, 'the report')
@@ -769,7 +769,7 @@ const scenarios = {
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
 
     await app.click('button', '통계')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`(() => { const m = __e2e.one('dc-metric[data-group=total]'); return m && (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() === '3 (2명)' })()`, 'one more session, one more person')
@@ -860,7 +860,7 @@ const scenarios = {
     await app.click('button', '기록 목록')
     await app.cdp.waitFor(`!!__e2e.one('nav[aria-label="목록 양식"] button[aria-current=true]')`, 'the export form offered, and picked')
     await app.click('nav[aria-label="목록 양식"] button[data-entry="session-list@2"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
     await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 4`, 'four sessions listed')
@@ -903,7 +903,7 @@ const scenarios = {
 
     // The NEIS upload form: its columns in the upload's order, the session filed under a NEIS category filled to its three levels.
     await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
     await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 4 && __e2e.all('tr[data-export-row]')[0].children.length === 17`, 'four sessions in seventeen columns')
@@ -1307,7 +1307,7 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.one('[data-role=record-fields] [data-field=affiliation] dd')?.textContent.trim() === '전문상담교사'`, 'the practitioner shows it')
     await app.click('button', '기록 목록')
     await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '목록 만들기')
     await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the upload list')
@@ -1504,7 +1504,7 @@ const scenarios = {
       `the sessions, the intake and the closing under their case: ${JSON.stringify(caseHeads)}`,
     )
     await app.click('button', 'Statistics')
-    await app.type('Year', '2026')
+    await app.choose('Year', '2026')
     await app.choose('Month', '4')
     await app.click('dc-button', 'Run')
     await app.cdp.waitFor(`(() => { const m = __e2e.one('dc-metric[data-group=total]'); return m && (m.value + (m.querySelector('[data-role=people]')?.textContent ?? '')).trim() === '2 (1 person)' })()`, 'both sessions in the total')
@@ -1517,7 +1517,7 @@ const scenarios = {
     const entries = await app.cdp.evaluate(`__e2e.all('nav[aria-label="Report forms"] button[data-entry]').map((b) => b.dataset.entry)`)
     assert.ok(entries.indexOf('care.monthly-concern@1') < entries.indexOf('care.monthly-closing@1'), `forms counting sessions first: ${entries.join(', ')}`)
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-closing@1"]')
-    await app.type('Year', '2026')
+    await app.choose('Year', '2026')
     await app.choose('Month', '4')
     await app.click('dc-button', 'Run')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="lost-contact"]')`, 'the month by closing reason')
@@ -1525,7 +1525,7 @@ const scenarios = {
     const closed = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="lost-contact"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([closed[0], closed.at(-1)], ['Lost contact', '1 (1 person)'], 'the closing counted once, by its reason')
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-intake@1"]')
-    await app.type('Year', '2026')
+    await app.choose('Year', '2026')
     await app.choose('Month', '4')
     await app.click('dc-button', 'Run')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="school"]')`, 'the month by who brought them')
@@ -1655,7 +1655,7 @@ const scenarios = {
 
     // The school year from March: grade down, class across, a tab for each topic sessions fell into.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="test.format1.year-grade-class@1"]')
-    await app.type('학년도', '2026')
+    await app.choose('학년도', '2026')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="2"]')`, 'the school year laid out')
     await app.noAlert()
@@ -1684,7 +1684,7 @@ const scenarios = {
 
     // The school pack's own school year by who sessions were with: every session so far was with the student.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="year-client-type@1"]')
-    await app.type('학년도', '2026')
+    await app.choose('학년도', '2026')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="student"]')`, 'the school year by who sessions were with')
     await app.noAlert()
@@ -1732,7 +1732,7 @@ const scenarios = {
 
     await app.click('button', '통계')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="sct"]')`, 'the month by assessment')
@@ -1744,7 +1744,7 @@ const scenarios = {
 
     // The month's minutes by practitioner: the session's length added up, and the sessions holding none said.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="month-practitioner-minutes@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row]')`, 'the month by practitioner')
@@ -1779,7 +1779,7 @@ const scenarios = {
     // The month by assessment counts it as the item it was given.
     await app.click('button', '통계')
     await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="other"]')`, 'the month by assessment')
@@ -1789,7 +1789,7 @@ const scenarios = {
 
     // The form that came with the list counts the added item itself; the list's own items fall outside it.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="local.assessment-tool.month-assessment-tool@1"]')
-    await app.type('연도', '2026')
+    await app.choose('연도', '2026')
     await app.choose('월', '4')
     await app.click('dc-button', '산출')
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="local-1"]')`, 'the month by added assessment')

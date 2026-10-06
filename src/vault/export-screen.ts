@@ -9,7 +9,7 @@ import { plainCopy } from '../plain-copy.js'
 import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, deviceLabel, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
+import { applyPackButton, deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -158,8 +158,9 @@ export class OcExport extends VaultScreen {
     const chosen = forms.find((f) => `${f.name}@${f.version}` === store.exportKey)
     return listDetail({
       label: strings.exportForms,
+      head: applyPackButton(store),
       entries: [
-        ...forms.map((f) => ({ id: `${f.name}@${f.version}`, label: strings.reportFormOption(f.label, f.version) })),
+        ...forms.map((f) => ({ id: `${f.name}@${f.version}`, label: formLabel(forms, f) })),
         { id: PLAIN_COPY, label: strings.plainCopyEntry },
       ],
       selected: this.plainPicked ? PLAIN_COPY : store.exportKey,
@@ -168,8 +169,8 @@ export class OcExport extends VaultScreen {
       document: this.plainPicked
         ? this.plainCopyDocument()
         : chosen
-        ? this.formDocument(strings.reportFormOption(chosen.label, chosen.version))
-        : html`${forms.length > 0 ? html`<p class="muted">${strings.pickExportForm}</p>` : nothing} ${applyPackButton(store)} ${noticeLine(store)}`,
+        ? this.formDocument(formLabel(forms, chosen))
+        : html`${forms.length > 0 ? html`<p class="muted">${strings.pickExportForm}</p>` : nothing} ${raiseFormatCallout(store)} ${noticeLine(store)}`,
       open: this.documentOpen,
       back: () => (this.documentOpen = false),
     })
@@ -181,7 +182,7 @@ export class OcExport extends VaultScreen {
    */
   private plainCopyDocument() {
     const busy = this.store.busy
-    return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${strings.plainCopyEntry} description=${strings.plainCopyLead}></dp-page-header>
+    return html`<dp-page-header heading=${strings.plainCopyEntry} description=${strings.plainCopyLead}></dp-page-header>
       <dc-callout variant="warning" data-role="plain-copy-warning"><p>${strings.plainCopyWarning}</p></dc-callout>
       <div class="row">
         <dc-segmented-control
@@ -228,39 +229,39 @@ export class OcExport extends VaultScreen {
     const store = this.store
     const busy = store.busy
     const table = this.exportTable && maskNames(this.exportTable, this.exportTable.names, this.nameMask)
-    return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${title} description=${strings.exportLead}>
-        <div slot="actions" class="row no-print">
-          <dc-segmented-control
-            size="sm"
-            aria-label=${strings.periodKind}
-            .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
-            .value=${this.byRange ? 'range' : 'month'}
-            ?disabled=${busy}
-            @change=${(e: Event) => (this.byRange = (e.target as HTMLInputElement).value === 'range')}
-          ></dc-segmented-control>
-          ${this.byRange ? rangeFields(store) : periodFields(store)}
-          <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
-          ${table && table.rows.length > 0 && table.names.length > 0
-            ? html`<dc-segmented-control
-                size="sm"
-                data-role="name-mask"
-                aria-label=${strings.nameMask}
-                .options=${[
-                  { value: 'none', label: strings.nameMaskNone },
-                  { value: 'initial', label: strings.nameMaskInitial },
-                  { value: 'number', label: strings.nameMaskNumber },
-                ]}
-                .value=${this.nameMask}
-                ?disabled=${busy}
-                @change=${(e: Event) => (this.nameMask = (e.target as HTMLInputElement).value as NameMask)}
-              ></dc-segmented-control>`
-            : nothing}
-          ${table && table.rows.length > 0
-            ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>
-                <dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>`
-            : nothing}
-        </div>
-      </dp-page-header>
+    return html`<dp-page-header heading=${title} description=${strings.exportLead}></dp-page-header>
+      <div class="toolbar no-print">
+        <dc-segmented-control
+          size="sm"
+          aria-label=${strings.periodKind}
+          .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
+          .value=${this.byRange ? 'range' : 'month'}
+          ?disabled=${busy}
+          @change=${(e: Event) => (this.byRange = (e.target as HTMLInputElement).value === 'range')}
+        ></dc-segmented-control>
+        ${this.byRange ? rangeFields(store) : periodFields(store)}
+        <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
+        ${table && table.rows.length > 0 && table.names.length > 0
+          ? html`<dc-segmented-control
+              size="sm"
+              data-role="name-mask"
+              aria-label=${strings.nameMask}
+              .options=${[
+                { value: 'none', label: strings.nameMaskNone },
+                { value: 'initial', label: strings.nameMaskInitial },
+                { value: 'number', label: strings.nameMaskNumber },
+              ]}
+              .value=${this.nameMask}
+              ?disabled=${busy}
+              @change=${(e: Event) => (this.nameMask = (e.target as HTMLInputElement).value as NameMask)}
+            ></dc-segmented-control>`
+          : nothing}
+        ${table && table.rows.length > 0
+          ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>
+              <dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>`
+          : nothing}
+      </div>
+      ${raiseFormatCallout(store)}
       ${formBehind(store.summary?.exports ?? [], store.exportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
       ${table ? this.tableView(table) : nothing}`

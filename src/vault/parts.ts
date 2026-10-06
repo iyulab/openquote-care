@@ -74,28 +74,42 @@ export function listDetail(o: {
   </dp-list-detail>`
 }
 
-/** The year and month the report and export screens work on. */
+/** The years a period is picked from: ten back from this one to the next, and the one chosen wherever it lies. */
+export function yearsAround(chosen: number, now = Number(today().slice(0, 4))): number[] {
+  const from = Math.min(chosen, now - 10)
+  const to = Math.max(chosen, now + 1)
+  return Array.from({ length: to - from + 1 }, (_, i) => to - i)
+}
+
+/** The year a period is in, named by `label` (the year, or the school year a form counts by). */
+export function yearSelect(store: VaultStore, label: string, option: (year: number) => string = strings.yearOption) {
+  return html`<dc-select
+    aria-label=${label}
+    .options=${yearsAround(store.year).map((y) => ({ value: String(y), label: option(y) }))}
+    .value=${String(store.year)}
+    ?disabled=${store.busy}
+    @change=${(e: Event) => store.set({ year: Number((e.target as HTMLSelectElement).value) })}
+  ></dc-select>`
+}
+
+/** The month the report and export screens work on: its year and month on one line, a step back or on beside them. */
 export function periodFields(store: VaultStore) {
-  return html`<dc-field label=${strings.year}>
-      <dc-input
-        type="number"
-        aria-label=${strings.year}
-        min="2000"
-        max="2100"
-        .value=${String(store.year)}
-        ?disabled=${store.busy}
-        @input=${(e: Event) => store.set({ year: Number((e.target as HTMLInputElement).value) })}
-      ></dc-input>
-    </dc-field>
-    <dc-field label=${strings.month}>
-      <dc-select
-        aria-label=${strings.month}
-        .options=${Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: strings.monthOption(i + 1) }))}
-        .value=${String(store.month)}
-        ?disabled=${store.busy}
-        @change=${(e: Event) => store.set({ month: Number((e.target as HTMLSelectElement).value) })}
-      ></dc-select>
-    </dc-field>`
+  const step = (by: number) => {
+    const at = store.year * 12 + (store.month - 1) + by
+    store.set({ year: Math.floor(at / 12), month: (at % 12) + 1 })
+  }
+  return html`<div class="period" role="group" aria-label=${strings.periodMonth}>
+    <dc-button variant="ghost" size="sm" aria-label=${strings.previousMonth} ?disabled=${store.busy} @click=${() => step(-1)}>‹</dc-button>
+    ${yearSelect(store, strings.year)}
+    <dc-select
+      aria-label=${strings.month}
+      .options=${Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: strings.monthOption(i + 1) }))}
+      .value=${String(store.month)}
+      ?disabled=${store.busy}
+      @change=${(e: Event) => store.set({ month: Number((e.target as HTMLSelectElement).value) })}
+    ></dc-select>
+    <dc-button variant="ghost" size="sm" aria-label=${strings.nextMonth} ?disabled=${store.busy} @click=${() => step(1)}>›</dc-button>
+  </div>`
 }
 
 /**
@@ -145,23 +159,29 @@ export function formBehind(forms: FormEntry[], key: string, schemeName: (scheme:
   return html`<p class="muted" data-form-behind>${strings.formBehind(lags)}</p>`
 }
 
-/** Offers a folder picker and applies the data pack in the folder chosen. */
+/**
+ * Offers a folder picker and applies the data pack in the folder chosen. It changes the vault's forms and
+ * categories, not one report: it sits with the list of forms, away from the button that counts.
+ */
 export function applyPackButton(store: VaultStore) {
   const pick = async () => {
     const folder = await open({ directory: true, title: strings.applyPackTitle })
     if (typeof folder === 'string') await store.applyPack(folder)
   }
+  return html`<dc-button variant="secondary" size="sm" data-role="apply-pack" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>`
+}
+
+/** Asks, when the pack just picked needs the vault in a newer format, whether to raise it. */
+export function raiseFormatCallout(store: VaultStore) {
   const folder = store.raiseFormatFor
+  if (folder === undefined) return nothing
   const devices = formatDevices(store.summary)
-  return html`<dc-button variant="secondary" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>
-    ${folder === undefined
-      ? nothing
-      : html`<dc-callout variant="warning" data-role="raise-format">
-          <p>${strings.raiseFormatAsk}</p>
-          ${devices.length === 0 ? nothing : html`<p data-role="raise-format-devices">${strings.raiseFormatDevices(devices)}</p>`}
-          <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="raise-format-confirm" @click=${() => void store.applyPack(folder, true)}>${strings.raiseFormatConfirm}</dc-button>
-          <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ raiseFormatFor: undefined })}>${strings.cancel}</dc-button>
-        </dc-callout>`}`
+  return html`<dc-callout variant="warning" data-role="raise-format">
+    <p>${strings.raiseFormatAsk}</p>
+    ${devices.length === 0 ? nothing : html`<p data-role="raise-format-devices">${strings.raiseFormatDevices(devices)}</p>`}
+    <dc-button slot="actions" variant="primary" ?disabled=${store.busy} data-role="raise-format-confirm" @click=${() => void store.applyPack(folder, true)}>${strings.raiseFormatConfirm}</dc-button>
+    <dc-button slot="actions" variant="secondary" ?disabled=${store.busy} @click=${() => store.set({ raiseFormatFor: undefined })}>${strings.cancel}</dc-button>
+  </dc-callout>`
 }
 
 /**
@@ -190,4 +210,10 @@ export function deviceLabel(summary: VaultSummary | undefined, device: string) {
   const name = summary?.devices[device]
   if (device === summary?.device) return name ? strings.thisDeviceNamed(name) : strings.thisDevice
   return name ?? strings.unnamedDevice(device)
+}
+
+/** A form as a person picks it: its name, and its version only when the vault holds more than one of that form. */
+export function formLabel(forms: readonly { name: string; label: string; version: number }[], form: { name: string; label: string; version: number }): string {
+  const versions = forms.filter((f) => f.name === form.name).length
+  return versions > 1 ? strings.reportFormOption(form.label, form.version) : form.label
 }
