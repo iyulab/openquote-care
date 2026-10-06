@@ -216,7 +216,7 @@ export function pendingList(
 }
 
 /** The records a count is made of: when, about whom, and the value the form's rows count by. */
-export function evidenceList(store: VaultStore, run: RunRecord, title: string, group: Group) {
+export function evidenceList(store: VaultStore, run: RunRecord, title: string, group: Group, open: (record: Entity) => void) {
   const byId = new Map(store.sessions.map((s) => [s.id, s]))
   const subjectNames = subjectNamesOf(store)
   const form = formOf(store, run)
@@ -238,7 +238,7 @@ export function evidenceList(store: VaultStore, run: RunRecord, title: string, g
       <tbody>
         ${rows.map(
           (s) => html`<tr data-evidence=${s.id}>
-            <td>${period.of(s)}</td>
+            <td><button class="cell" data-open-record=${s.id} title=${strings.openRecord} @click=${() => open(s)}>${period.of(s)}</button></td>
             <td>${namesOf(s, subjectNames)}</td>
             <td>${valueText(store, row, s.fields[rowField])}</td>
           </tr>`,

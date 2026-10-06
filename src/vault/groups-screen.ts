@@ -81,6 +81,7 @@ export class OcGroups extends VaultScreen {
     const group = this.adding ? undefined : groups.find((g) => g.id === this.selectedGroup)
     const counts = countBy(this.store.sessions, (s) => (s.group ? [s.group] : []))
     return listDetail({
+      store: this.store,
       label: strings.groups,
       head: html`<dc-button
         variant="secondary"

@@ -4,6 +4,7 @@ import {
   copiedFromSubject,
   firstMissingRequired,
   fixedDefaults,
+  formSections,
   headingIndex,
   inputFields,
   labelOfField,
@@ -119,5 +120,27 @@ describe('fields', () => {
     const defs = [field('topic', 'coded', { scheme: 'topic', label: '주제', hidden: true }), field('date', 'date')]
     expect(schemeLabel(defs, 'topic')).toBe('주제')
     expect(schemeLabel(defs, 'method')).toBe('method')
+  })
+})
+
+describe('a form in its parts', () => {
+  it('puts classified fields in the middle and written content last, each part in the order given', () => {
+    const parts = formSections([
+      field('date', 'date'),
+      field('topic', 'coded'),
+      field('note', 'text', { tier: 'narrative' }),
+      field('practitioner', 'reference'),
+      field('method', 'coded'),
+      field('minutes', 'number'),
+    ])
+    expect(parts.map((p) => [p.section, p.fields.map((f) => f.name)])).toEqual([
+      ['basic', ['date', 'practitioner', 'minutes']],
+      ['categories', ['topic', 'method']],
+      ['content', ['note']],
+    ])
+  })
+
+  it('leaves out a part with no field', () => {
+    expect(formSections([field('date', 'date')]).map((p) => p.section)).toEqual(['basic'])
   })
 })

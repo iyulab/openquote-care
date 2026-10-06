@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toTsv, type ExportTable } from '../export.js'
+import { pinnedColumns, toTsv, type ExportTable } from '../export.js'
 
 const table: ExportTable = {
   export: 'session-list',
@@ -25,5 +25,23 @@ describe('toTsv', () => {
   it('keeps a tab or a line break inside a cell from starting a new cell or row', () => {
     const odd = { ...table, rows: [{ record: 'a', cells: ['x\ty', 'first\r\nsecond', ''] }] }
     expect(toTsv(odd).split('\r\n')[1]).toBe('x y\tfirst second\t')
+  })
+})
+
+describe('the columns kept in view', () => {
+  const columns = ['Date', 'Year', 'Name', 'Topic', 'Notes']
+
+  it('run through the first name column when it is among the first three', () => {
+    expect(pinnedColumns({ columns, names: [2] })).toBe(3)
+    expect(pinnedColumns({ columns, names: [0, 4] })).toBe(1)
+  })
+
+  it('are the first column alone when no name comes early', () => {
+    expect(pinnedColumns({ columns, names: [] })).toBe(1)
+    expect(pinnedColumns({ columns, names: [3] })).toBe(1)
+  })
+
+  it('are none in a table without columns', () => {
+    expect(pinnedColumns({ columns: [], names: [] })).toBe(0)
   })
 })

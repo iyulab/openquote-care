@@ -27,7 +27,7 @@ export type SessionDraft = Record<string, string>
 type Draft = { values: SessionDraft; suggested: ReadonlySet<string> }
 
 /** What the screens may set directly; everything else changes through the store's actions. */
-type Settable = Pick<VaultStore, 'notice' | 'raiseFormatFor' | 'packsWaiting' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
+type Settable = Pick<VaultStore, 'listFolded' | 'notice' | 'raiseFormatFor' | 'packsWaiting' | 'error' | 'reportKey' | 'exportKey' | 'year' | 'month' | 'day' | 'rangeFrom' | 'rangeTo'>
 
 /**
  * An open vault as the screens see it: what was read from it, the action in progress and its
@@ -56,6 +56,8 @@ export class VaultStore extends EventTarget {
   /** How names are ordered in this vault: by the locales its packs label things in. */
   names = nameCollator()
   busy = false
+  /** Every screen's list folded away while wide, for the document to take the whole width; while the folder is open. */
+  listFolded = false
   error?: ErrorText
   notice = ''
   /** A data pack folder that needs the vault raised to a newer format: applied only once a person chooses to. */

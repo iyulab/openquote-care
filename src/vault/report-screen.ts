@@ -1,10 +1,11 @@
+import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { comparable, headCount, layOut, measureOf, sumOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
 import { labelOfField } from '../fields.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
+import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -26,6 +27,8 @@ export class OcReport extends VaultScreen {
   @state() private documentOpen = false
   /** The section of the report on screen, when a third dimension splits it: all of them together first. */
   @state() private section = 0
+  /** Rows counting nothing are left off the screen; paper keeps the form whole. */
+  @state() private hideEmpty = false
 
   private async runReport() {
     const store = this.store
@@ -111,6 +114,14 @@ export class OcReport extends VaultScreen {
     await this.reveal('evidence')
   }
 
+  /** Steps the month by `by` when the chosen form counts a month; false when it counts another span. */
+  stepPeriod(by: number): boolean {
+    const form = this.store.summary?.reports.find((r) => `${r.name}@${r.version}` === this.store.reportKey)
+    if (!form || this.store.busy || (form.unit !== undefined && form.unit !== 'month')) return false
+    stepMonth(this.store, by)
+    return true
+  }
+
   /** Picks the form to report on; a report of another form leaves the document with what goes with it. */
   private pick(key: string) {
     this.documentOpen = true
@@ -127,9 +138,10 @@ export class OcReport extends VaultScreen {
     const reports = store.summary?.reports ?? []
     const chosen = reports.find((r) => `${r.name}@${r.version}` === store.reportKey)
     return listDetail({
+      store: this.store,
       label: strings.reportForms,
       head: applyPackButton(store),
-      entries: reports.map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r) })),
+      entries: byUnit(reports).map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r), group: unitGroup(r) })),
       selected: store.reportKey,
       select: (key) => this.pick(key),
       empty: strings.noReports,
@@ -220,7 +232,7 @@ export class OcReport extends VaultScreen {
           </thead>
           <tbody>
             ${table.rows.map(
-              (r) => html`<tr data-row=${r.code ?? nothing}>
+              (r) => html`<tr data-row=${r.code ?? nothing} class=${r.records.length === 0 ? 'empty' : ''} ?hidden=${this.hideEmpty && r.records.length === 0}>
                 <th>${r.label}</th>
                 ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
                 ${sumCell(r.records)}
@@ -256,28 +268,39 @@ export class OcReport extends VaultScreen {
             ${layout.blank.count > 0 ? html`<div><dt>${blank}</dt><dd>${strings.blankHint}</dd></div>` : nothing}
             ${layout.conflicted.count > 0 ? html`<div><dt>${strings.conflict}</dt><dd>${strings.conflictedHint}</dd></div>` : nothing}
           </dl>`}
-      <section>
-        ${filters.length === 0 ? nothing : html`<p class="muted" data-role="filters">${strings.reportFilters(filters)}</p>`}
-        ${sectioned
-          ? html`<dc-tab-bar
-              class="no-print"
-              aria-label=${titles[2] ?? ''}
-              .items=${layout.sections.map((s, i) => ({ id: String(i), label: s.label }))}
-              activeId=${String(active)}
-              @dc-tab-change=${(e: Event) => (this.section = Number((e as Event & { tabId: string }).tabId))}
-            ></dc-tab-bar>`
-          : nothing}
-        <dc-card><div class="scroll">${layout.sections.map(grid)}</div></dc-card>
-      </section>
-      ${result.people ? html`<p class="detail" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
-      ${this.comparison
-        ? comparisonView(store, this.comparison)
-        : this.pendingChoices
-          ? pendingList(store, result, this.pendingChoices, this.reclassified, (c, code) => void this.reclassify(c, code))
-          : this.evidence
-            ? evidenceList(store, result, this.evidence.title, this.evidence.group)
-            : html`<p class="muted no-print">${strings.pickCell}</p>`}
-      ${this.compareControls(result)}
+      <div class="report-body">
+        <section>
+          ${filters.length === 0 ? nothing : html`<p class="muted" data-role="filters">${strings.reportFilters(filters)}</p>`}
+          <dc-checkbox
+            class="no-print"
+            data-role="hide-empty"
+            .checked=${this.hideEmpty}
+            @change=${(e: Event) => (this.hideEmpty = (e.target as DcCheckbox).checked)}
+            >${strings.hideEmptyRows}</dc-checkbox
+          >
+          ${sectioned
+            ? html`<dc-tab-bar
+                class="no-print"
+                aria-label=${titles[2] ?? ''}
+                .items=${layout.sections.map((s, i) => ({ id: String(i), label: s.label }))}
+                activeId=${String(active)}
+                @dc-tab-change=${(e: Event) => (this.section = Number((e as Event & { tabId: string }).tabId))}
+              ></dc-tab-bar>`
+            : nothing}
+          <dc-card><div class="scroll bounded">${layout.sections.map(grid)}</div></dc-card>
+          ${result.people ? html`<p class="detail" data-role="head-count-hint">${strings.headCountHint}</p>` : nothing}
+        </section>
+        <aside class="report-aside">
+          ${this.comparison
+            ? comparisonView(store, this.comparison)
+            : this.pendingChoices
+              ? pendingList(store, result, this.pendingChoices, this.reclassified, (c, code) => void this.reclassify(c, code))
+              : this.evidence
+                ? evidenceList(store, result, this.evidence.title, this.evidence.group, (record) => this.dispatchEvent(openSessionEvent(record)))
+                : html`<p class="muted no-print">${strings.pickCell}</p>`}
+          ${this.compareControls(result)}
+        </aside>
+      </div>
     `
   }
 
@@ -300,6 +323,21 @@ export class OcReport extends VaultScreen {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
+
+/** The heading a form is listed under: the span it counts — a month, a year (or one from another month), a day, a range. */
+function unitGroup(form: ReportEntry): string {
+  if (form.unit === 'year') return form.startMonth === 1 ? strings.formsBy.year : strings.formsBy.schoolYear
+  return strings.formsBy[form.unit ?? 'month']
+}
+
+/** The forms by the span they count — months first, then years (from January, then from another month), days and ranges — each span's in the order given. */
+function byUnit(forms: readonly ReportEntry[]): ReportEntry[] {
+  const order = [strings.formsBy.month, strings.formsBy.year, strings.formsBy.schoolYear, strings.formsBy.day, strings.formsBy.range]
+  return forms
+    .map((form, i) => ({ form, i, at: order.indexOf(unitGroup(form)) }))
+    .sort((a, b) => a.at - b.at || a.i - b.i)
+    .map(({ form }) => form)
+}
 
 /** The period to run a form over, by its unit: a day in it, or the first and last day of a range — undefined while a range is not picked. */
 function periodOf(store: VaultStore, form: ReportEntry): { from: string; to?: string } | undefined {

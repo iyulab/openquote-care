@@ -2,6 +2,8 @@ import { LitElement, css, html, nothing } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { desktopMinWidth } from '@iyulab/desktop-patterns/breakpoints'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
+import { ICONS, menuIcon } from './icons.js'
+import { shortcutOf, typingIn } from './shortcuts.js'
 import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import type { FeedbackStatus, VaultFileKind } from './shell.js'
@@ -12,8 +14,10 @@ import { vaultStyles } from './vault/styles.js'
 import type { OcSubjects } from './vault/subjects-screen.js'
 import './vault/subjects-screen.js'
 import type { OcGroups } from './vault/groups-screen.js'
+import type { OcReport } from './vault/report-screen.js'
+import type { OcExport } from './vault/export-screen.js'
 import './vault/groups-screen.js'
-import type { OpenSession } from './vault/search-screen.js'
+import type { OpenSession } from './vault/parts.js'
 import './vault/search-screen.js'
 import './vault/report-screen.js'
 import './vault/export-screen.js'
@@ -78,6 +82,10 @@ export class OcVault extends LitElement {
   /** The sidebar folded to its icon rail, while the window is wide; kept on this computer. */
   @state() private rail = sidebarRail()
   @state() private wide = false
+  /** Where the folder's menu opens, while it is open: under its button. */
+  @state() private folderMenu?: { x: number; y: number }
+  /** The list of keys the vault answers to is on screen. */
+  @state() private shortcutsOpen = false
 
   private readonly wideQuery = matchMedia(`(min-width: ${desktopMinWidth}px)`)
   private readonly onWidth = () => (this.wide = this.wideQuery.matches)
@@ -98,15 +106,47 @@ export class OcVault extends LitElement {
     else if (this.packsUpdated) this.store.notice = strings.packsUpdated
     this.store.packsWaiting = this.packsWaiting
     window.addEventListener('focus', this.onFocus)
+    window.addEventListener('keydown', this.onKey)
     this.wideQuery.addEventListener('change', this.onWidth)
     this.onWidth()
   }
 
   disconnectedCallback() {
     window.removeEventListener('focus', this.onFocus)
+    window.removeEventListener('keydown', this.onKey)
     this.wideQuery.removeEventListener('change', this.onWidth)
     this.store.disconnect()
     super.disconnectedCallback()
+  }
+
+  /** The keys the vault answers to; each is left to the page where it means nothing here. */
+  private onKey = (e: KeyboardEvent) => {
+    if (e.defaultPrevented || this.shortcutsOpen) return
+    const shortcut = shortcutOf(e, typingIn(e.composedPath()[0]))
+    if (!shortcut) return
+    const screen = <T extends Element>(tag: string) => this.renderRoot.querySelector<T>(tag)
+    switch (shortcut) {
+      case 'find':
+        e.preventDefault()
+        this.view = 'subjects'
+        void this.updateComplete.then(() => screen<OcSubjects>('oc-subjects')?.focusFind())
+        return
+      case 'new-record':
+        e.preventDefault()
+        this.view = 'subjects'
+        void this.updateComplete.then(() => screen<OcSubjects>('oc-subjects')?.focusNewSession())
+        return
+      case 'previous-month':
+      case 'next-month': {
+        const by = shortcut === 'next-month' ? 1 : -1
+        const stepped = this.view === 'report' ? screen<OcReport>('oc-report')?.stepPeriod(by) : this.view === 'export' ? screen<OcExport>('oc-export')?.stepPeriod(by) : false
+        if (stepped) e.preventDefault()
+        return
+      }
+      case 'help':
+        e.preventDefault()
+        this.shortcutsOpen = true
+    }
   }
 
   /** Coming back to the window is when another device's records are most likely waiting. */
@@ -178,19 +218,19 @@ export class OcVault extends LitElement {
           active-id=${view}
           .items=${[
             { id: 'records', label: strings.navGroupRecords, items: [
-              { id: 'subjects', icon: '◉', label: strings.navSubjects },
-              { id: 'groups', icon: '◈', label: strings.navGroups },
-              { id: 'practitioners', icon: '◎', label: strings.navPractitioners },
-              { id: 'search', icon: '⌕', label: strings.navSearch },
+              { id: 'subjects', icon: '', label: strings.navSubjects },
+              { id: 'groups', icon: '', label: strings.navGroups },
+              { id: 'practitioners', icon: '', label: strings.navPractitioners },
+              { id: 'search', icon: '', label: strings.navSearch },
             ] },
             { id: 'reports', label: strings.navGroupReports, items: [
-              { id: 'report', icon: '▦', label: strings.navReport },
-              { id: 'export', icon: '▤', label: strings.navExport },
+              { id: 'report', icon: '', label: strings.navReport },
+              { id: 'export', icon: '', label: strings.navExport },
             ] },
             { id: 'settings', label: strings.navGroupSettings, items: [
-              { id: 'lists', icon: '☰', label: strings.navLists },
-              { id: 'devices', icon: '▣', label: strings.navDevices },
-              ...(this.feedback ? [{ id: 'feedback', icon: '✎', label: strings.feedbackOpen }] : []),
+              { id: 'lists', icon: '', label: strings.navLists },
+              { id: 'devices', icon: '', label: strings.navDevices },
+              ...(this.feedback ? [{ id: 'feedback', icon: '', label: strings.feedbackOpen }] : []),
             ] },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
@@ -198,7 +238,8 @@ export class OcVault extends LitElement {
             store.set({ error: undefined, notice: '' })
           }}
           @dp-sidebar-activate=${() => (this.sidebarOpen = false)}
-        ></dp-sidebar>
+          >${ICONS.map(menuIcon)}</dp-sidebar
+        >
         <dp-toolbar
           slot="toolbar"
           heading=${heading}
@@ -207,15 +248,26 @@ export class OcVault extends LitElement {
           ?expanded=${this.wide ? !this.rail : this.sidebarOpen}
           @dp-toolbar-toggle=${() => this.toggleSidebar()}
         >
-          <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${store.busy} @click=${() => void this.refresh()}>${strings.refresh}</dc-button>
           <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${store.busy} @click=${() => this.lockNow()}>${strings.lockNow}</dc-button>
-          <dc-button slot="actions" variant="secondary" size="sm" @click=${this.close}>${strings.closeVault}</dc-button>
+          <dc-button
+            slot="actions"
+            variant="secondary"
+            size="sm"
+            data-role="folder-menu"
+            aria-haspopup="menu"
+            aria-expanded=${this.folderMenu ? 'true' : 'false'}
+            @click=${(e: Event) => {
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+              this.folderMenu = this.folderMenu ? undefined : { x: Math.max(0, r.right - 200), y: r.bottom + 4 }
+            }}
+            >${strings.folderMenu} ▾</dc-button
+          >
         </dp-toolbar>
         <dp-page fill max-width="full">
           ${this.unreadableView()} ${this.backupCopyHint()} ${packsWaitingCallout(store)} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           <oc-subjects .store=${store} ?active=${view === 'subjects'}></oc-subjects>
           <oc-groups .store=${store} ?active=${view === 'groups'}></oc-groups>
-          <oc-report .store=${store} ?active=${view === 'report'}></oc-report>
+          <oc-report .store=${store} ?active=${view === 'report'} @oc-open-session=${(e: CustomEvent<OpenSession>) => void this.openSession(e.detail)}></oc-report>
           <oc-export .store=${store} ?active=${view === 'export'}></oc-export>
           <oc-practitioners .store=${store} ?active=${view === 'practitioners'}></oc-practitioners>
           <oc-lists .store=${store} ?active=${view === 'lists'}></oc-lists>
@@ -230,7 +282,44 @@ export class OcVault extends LitElement {
           ${this.feedback ? html`<oc-feedback .status=${this.feedback} ?hidden=${view !== 'feedback'}></oc-feedback>` : nothing}
         </dp-page>
       </dp-shell>
+      ${this.folderMenuView()}
+      <dp-shortcut-overlay
+        ?open=${this.shortcutsOpen}
+        heading=${strings.shortcutsTitle}
+        close-label=${strings.closeShortcuts}
+        .shortcuts=${[
+          { combo: 'Ctrl+K', description: strings.shortcutFind },
+          { combo: 'Ctrl+N', description: strings.shortcutNewSession },
+          { combo: 'Ctrl+Enter', description: strings.shortcutSave },
+          { combo: '← →', description: strings.shortcutMonth },
+          { combo: '?', description: strings.shortcutHelp },
+        ]}
+        @dp-shortcut-overlay-dismiss=${() => (this.shortcutsOpen = false)}
+      ></dp-shortcut-overlay>
     `
+  }
+
+  /** The folder's rarer actions, apart from the page: read it again, close it. Locking stays one press away. */
+  private folderMenuView() {
+    const at = this.folderMenu
+    if (!at) return nothing
+    return html`<dc-context-menu
+      data-role="folder-menu-items"
+      open
+      .x=${at.x}
+      .y=${at.y}
+      .items=${[
+        { value: 'refresh', label: strings.refresh, disabled: this.store.busy },
+        { separator: true },
+        { value: 'close', label: strings.closeVault },
+      ]}
+      @close=${() => (this.folderMenu = undefined)}
+      @select=${(e: CustomEvent<{ item: { value?: string } }>) => {
+        this.folderMenu = undefined
+        if (e.detail.item.value === 'refresh') void this.refresh()
+        else if (e.detail.item.value === 'close') this.close()
+      }}
+    ></dc-context-menu>`
   }
 
   /** A backup opened in place of the vault it copies: what is written here stays here. */

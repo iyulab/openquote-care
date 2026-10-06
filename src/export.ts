@@ -29,3 +29,14 @@ export function toTsv(table: ExportTable): string {
   const line = (cells: string[]) => cells.map((c) => c.replace(/[\t\r\n]+/g, ' ')).join('\t')
   return [line(table.columns), ...table.rows.map((r) => line(r.cells))].join('\r\n') + '\r\n'
 }
+
+/**
+ * How many columns from the start stay in view while the table scrolls across: through the first column that
+ * names who a row is about, when it is among the first three — the row then reads as when and who — or the
+ * first column alone.
+ */
+export function pinnedColumns(table: Pick<ExportTable, 'columns' | 'names'>): number {
+  if (table.columns.length === 0) return 0
+  const who = Math.min(...table.names, Infinity)
+  return who < 3 ? who + 1 : 1
+}

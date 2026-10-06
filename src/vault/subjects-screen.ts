@@ -5,7 +5,11 @@ import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../record
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
-import { latestCase } from '../cases.js'
+import { latestCaseState } from '../cases.js'
+import { recordFields } from '../fields.js'
+import { today } from '../records.js'
+import { narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
+import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
@@ -14,6 +18,8 @@ import './record-form.js'
 import './record-kinds.js'
 import './entity-form.js'
 import { conflictPanel, recordTable, toggled } from './session-parts.js'
+import type { VaultStore } from './store.js'
+import type { OcRecordForm } from './record-form.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
 @customElement('oc-subjects')
@@ -34,6 +40,24 @@ export class OcSubjects extends VaultScreen {
   @state() private correcting?: string
   /** The subject's own record is open for correcting. */
   @state() private correctingSubject = false
+  /** What narrows the list: words typed, the cases kept in view, the order. */
+  @state() private query = ''
+  @state() private caseFilter: CaseFilter = 'all'
+  @state() private order: SubjectOrder = 'name'
+
+  /** Brings the new session's form for the subject on screen into focus; with none on screen, finding one. */
+  async focusNewSession() {
+    await this.updateComplete
+    const form = [...this.renderRoot.querySelectorAll<OcRecordForm>('oc-record-form')].find((f) => !f.edit && f.type === 'session')
+    if (!this.adding && this.selected && form) await form.focusFirst()
+    else await this.focusFind()
+  }
+
+  /** Brings the place to type words for finding a subject into focus. */
+  async focusFind() {
+    await this.updateComplete
+    ;(this.renderRoot.querySelector('dc-input[data-role=find-subjects]') as HTMLElement | null)?.focus()
+  }
 
   private async addSubject() {
     const name = this.subjectName.trim()
@@ -90,6 +114,45 @@ export class OcSubjects extends VaultScreen {
     row?.scrollIntoView({ block: 'center' })
   }
 
+  /** Words to find a subject by, the cases kept in view — when some subject's cases are shown — and the order. */
+  private listTools(withCases: boolean) {
+    return html`<div class="list-tools">
+      <dc-input
+        type="search"
+        data-role="find-subjects"
+        aria-label=${strings.findSubjects}
+        placeholder=${strings.findSubjects}
+        .value=${this.query}
+        @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
+      ></dc-input>
+      <div class="list-filters">
+        ${withCases
+          ? html`<dc-select
+              aria-label=${strings.subjectCases}
+              data-role="subject-cases"
+              .options=${[
+                { value: 'all', label: strings.casesAll },
+                { value: 'open', label: strings.caseOpen },
+                { value: 'closed', label: strings.caseClosed },
+              ]}
+              .value=${this.caseFilter}
+              @change=${(e: Event) => (this.caseFilter = (e.target as HTMLSelectElement).value as CaseFilter)}
+            ></dc-select>`
+          : nothing}
+        <dc-select
+          aria-label=${strings.subjectOrder}
+          data-role="subject-order"
+          .options=${[
+            { value: 'name', label: strings.orderByName },
+            { value: 'recent', label: strings.orderByRecent },
+          ]}
+          .value=${this.order}
+          @change=${(e: Event) => (this.order = (e.target as HTMLSelectElement).value as SubjectOrder)}
+        ></dc-select>
+      </div>
+    </div>`
+  }
+
   private startAdding() {
     this.adding = true
     this.documentOpen = true
@@ -99,17 +162,24 @@ export class OcSubjects extends VaultScreen {
     const { subjects } = this.store
     const subject = this.adding ? undefined : subjects.find((s) => s.id === this.selected)
     const counts = countBy(this.store.sessions, (s) => s.people)
+    const all = subjectRows(this.store)
+    const rows = narrowSubjects(all, { query: this.query, cases: this.caseFilter, order: this.order }, this.store.names)
+    const year = today().slice(0, 4)
     return listDetail({
+      store: this.store,
       label: strings.subjects,
-      head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>`,
-      entries: subjects.map((s) => ({
-        id: s.id,
-        label: text(s, 'name'),
-        meta: [strings.sessionCount(counts.get(s.id) ?? 0), latestCase(this.store.cases.get(s.id))].filter(Boolean).join(' · '),
+      head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>
+        ${all.length === 0 ? nothing : this.listTools(all.some((r) => r.state !== null))}`,
+      entries: rows.map((r) => ({
+        id: r.id,
+        label: r.name,
+        meta: [strings.sessionCount(counts.get(r.id) ?? 0), r.last ? strings.lastOn(shortDay(r.last, year)) : '', r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '']
+          .filter(Boolean)
+          .join(' · '),
       })),
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),
-      empty: strings.noSubjects,
+      empty: all.length === 0 ? strings.noSubjects : strings.noSubjectsFound,
       document: this.adding
         ? this.importPlan
           ? this.importPreview(this.importPlan)
@@ -256,4 +326,26 @@ declare global {
   interface HTMLElementTagNameMap {
     'oc-subjects': OcSubjects
   }
+}
+
+/** Each subject as the list finds and shows it: its name and short values to find it by, its latest record, its latest case. */
+function subjectRows(store: VaultStore): SubjectRow[] {
+  const fields = recordFields(store.fieldsOf('subject')).filter((f) => f.tier !== 'narrative')
+  const last = new Map<string, string>()
+  for (const kind of store.kinds)
+    for (const r of store.recordsOf(kind.type)) {
+      const day = store.dayOf(r)
+      if (!day) continue
+      for (const id of r.people) if ((last.get(id) ?? '') < day) last.set(id, day)
+    }
+  return store.subjects.map((s) => {
+    const name = text(s, 'name')
+    return {
+      id: s.id,
+      name,
+      words: [name, ...fields.map((f) => valueText(store, f, s.fields[f.name]))].join(' '),
+      last: last.get(s.id) ?? null,
+      state: latestCaseState(store.cases.get(s.id)),
+    }
+  })
 }

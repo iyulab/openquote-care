@@ -31,6 +31,8 @@ export interface ListEntry {
   id: string
   label: string
   meta?: string
+  /** The heading the entry is listed under; entries under one heading come together, in the order given. */
+  group?: string
 }
 
 /** One entry of a list: its name, and a line about it under the name when there is one. */
@@ -48,6 +50,7 @@ export function listEntry(e: ListEntry, selected: string | undefined, select: (i
  * its own. While the window is narrow one side shows at a time, and the document has a way back.
  */
 export function listDetail(o: {
+  store: VaultStore
   label: string
   head?: unknown
   entries: ListEntry[]
@@ -58,17 +61,29 @@ export function listDetail(o: {
   open: boolean
   back: () => void
 }) {
-  return html`<dp-list-detail ?detail-open=${o.open}>
+  // While wide, the list folds away for a wide document and comes back from the document's top.
+  const fold = (folded: boolean) => o.store.set({ listFolded: folded })
+  return html`<dp-list-detail ?detail-open=${o.open} ?list-collapsed=${o.store.listFolded}>
     <nav slot="list" class="pane list" aria-label=${o.label}>
-      ${o.head ? html`<div class="list-head">${o.head}</div>` : nothing}
+      <div class="list-head">
+        ${o.head ?? nothing}
+        <dc-button class="fold no-print" variant="ghost" size="sm" data-role="fold-list" @click=${() => fold(true)}>« ${strings.foldList}</dc-button>
+      </div>
       ${o.entries.length === 0
         ? html`<dc-empty-state description=${o.empty}></dc-empty-state>`
         : html`<ul>
-            ${o.entries.map((e) => listEntry(e, o.selected, o.select))}
+            ${o.entries.map((e, i) => html`${e.group && e.group !== o.entries[i - 1]?.group
+              ? html`<li class="list-group" role="presentation">${e.group}</li>`
+              : nothing}${listEntry(e, o.selected, o.select)}`)}
           </ul>`}
     </nav>
     <section class="pane document">
       <div class="back"><dc-button variant="ghost" size="sm" @click=${o.back}>${strings.backToList}</dc-button></div>
+      ${o.store.listFolded
+        ? html`<div class="unfold no-print">
+            <dc-button variant="ghost" size="sm" data-role="unfold-list" @click=${() => fold(false)}>${strings.unfoldList} »</dc-button>
+          </div>`
+        : nothing}
       ${o.document}
     </section>
   </dp-list-detail>`
@@ -104,12 +119,15 @@ export function yearSelect(store: VaultStore, label: string, option: (year: numb
   ></dc-select>`
 }
 
+/** Moves the month the report and export screens work on by `by` months, across years. */
+export function stepMonth(store: VaultStore, by: number) {
+  const at = store.year * 12 + (store.month - 1) + by
+  store.set({ year: Math.floor(at / 12), month: (at % 12) + 1 })
+}
+
 /** The month the report and export screens work on: its year and month on one line, a step back or on beside them. */
 export function periodFields(store: VaultStore) {
-  const step = (by: number) => {
-    const at = store.year * 12 + (store.month - 1) + by
-    store.set({ year: Math.floor(at / 12), month: (at % 12) + 1 })
-  }
+  const step = (by: number) => stepMonth(store, by)
   return html`<div class="period" role="group" aria-label=${strings.periodMonth}>
     <dc-button variant="ghost" size="sm" aria-label=${strings.previousMonth} ?disabled=${store.busy} @click=${() => step(-1)}>‹</dc-button>
     ${yearSelect(store, strings.year)}
@@ -228,4 +246,17 @@ export function deviceLabel(summary: VaultSummary | undefined, device: string) {
 export function formLabel(forms: readonly { name: string; label: string; version: number }[], form: { name: string; label: string; version: number }): string {
   const versions = forms.filter((f) => f.name === form.name).length
   return versions > 1 ? strings.reportFormOption(form.label, form.version) : form.label
+}
+
+/** Where a record opens: the subject or the group whose records hold it, with the record brought into view. */
+export interface OpenSession {
+  holder: 'subject' | 'group'
+  id: string
+  session: string
+}
+
+/** Asks the vault's window to open a record where it is kept: its group's records, or its subject's. */
+export function openSessionEvent(s: Entity): CustomEvent<OpenSession> {
+  const detail: OpenSession = s.group ? { holder: 'group', id: s.group, session: s.id } : { holder: 'subject', id: s.subject ?? s.people[0], session: s.id }
+  return new CustomEvent<OpenSession>('oc-open-session', { detail, bubbles: true, composed: true })
 }

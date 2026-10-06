@@ -90,6 +90,12 @@ export class App {
     return this.cdp.evaluate(`(() => { document.querySelector('oc-app').folder = ${q(path)}; return true })()`)
   }
 
+  /** Opens the folder's menu in the top bar and picks the action named `label` from it. */
+  async folderAction(label) {
+    await this.click('dc-button[data-role=folder-menu]')
+    await this.click('[role=menuitem]', label)
+  }
+
   /** Picks an option in the dropdown labelled `label`, the way a person's choice reports it. */
   async choose(label, value) {
     await this.cdp.waitFor(

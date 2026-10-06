@@ -3,18 +3,12 @@ import { customElement, state } from 'lit/decorators.js'
 import { newestFirst, text, type Entity } from '../records.js'
 import { searchRecords, searchWords, type RecordText } from '../search.js'
 import { strings } from '../strings.js'
+import { openSessionEvent } from './parts.js'
 import { VaultScreen } from './screen.js'
 import { valueText } from './session-parts.js'
 
 /** How many sessions found are listed; a narrower query lists the rest. */
 const SHOWN = 200
-
-/** Where a session found opens: the subject or the group whose record holds it. */
-export interface OpenSession {
-  holder: 'subject' | 'group'
-  id: string
-  session: string
-}
 
 /** Finding sessions and other records by what they say, newest first; each one found opens where it is kept. */
 @customElement('oc-search')
@@ -43,8 +37,7 @@ export class OcSearch extends VaultScreen {
   }
 
   private open(s: Entity) {
-    const detail: OpenSession = s.group ? { holder: 'group', id: s.group, session: s.id } : { holder: 'subject', id: s.subject ?? s.people[0], session: s.id }
-    this.dispatchEvent(new CustomEvent<OpenSession>('oc-open-session', { detail, bubbles: true, composed: true }))
+    this.dispatchEvent(openSessionEvent(s))
   }
 
   protected screen() {

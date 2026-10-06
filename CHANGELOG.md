@@ -6,7 +6,21 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- The list of subjects can be searched by name or by what their record holds, kept to open or ended cases, and ordered by name or by the latest record. Each row says the subject's latest record day.
+- In a report, rows that count nothing can be hidden on screen ("Hide empty rows"); a printed report keeps every row of the form.
+- A record listed under a count opens where it is kept: its date takes you to the subject's or group's records with it in view.
+- When the page is wide enough (the list folded, the menu at its icons), the records a count is made of stay beside the table instead of under it.
+- Every list can be folded away for a wide page ("Hide the list"), and brought back from the top of the page.
+- Keyboard shortcuts: Ctrl+K finds a subject, Ctrl+N starts a new session for the subject on screen, Ctrl+Enter saves the record being written, ← and → step the month in statistics and record lists, and ? lists them.
+- A wide record list keeps its first columns — through the column naming who a row is about — in view while it scrolls across, and shades the edge that has more beyond it. Long tables keep their header row in view.
+
 ### Changed
+- The menu has one set of drawn icons, and its group names read as small headings over their places.
+- "Reload" and "Close vault" moved into the "Vault" menu at the top; "Lock now" stays one press away.
+- A session's form is in three parts — basics, categories, written — each under its name.
+- Report forms are listed under the span they count: monthly, yearly, by school year, one day, over a period.
+- Fields to type and pick in sit on white, like the cards around them, instead of the page's paper color.
 - Statistics and the list of records pick a month on one line: a step back, the year, the month, a step on. A year is now picked from a list instead of typed.
 - "Apply classification revision" moved from beside "Run" to the top of the list of forms: it changes the folder's forms and categories, not one report.
 - In a report, a count of nought reads in quieter text, so the counts that lead to records stand out. The count whose records are listed is marked in the table, and the list comes right under the table.

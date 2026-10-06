@@ -17,9 +17,11 @@ export const vaultStyles = [
       min-width: 0;
       padding-block: var(--dc-space-5, 20px) var(--dc-space-6, 24px);
     }
+    /* Above a list: what adds to it at the start, the way to fold it away at the end (while wide only). */
     .list-head {
       display: flex;
-      flex-direction: column;
+      flex-wrap: wrap;
+      align-items: center;
       gap: var(--dc-space-2, 8px);
       padding: var(--dc-space-3, 12px);
       border-bottom: 1px solid var(--dc-color-rule, #e2e2e4);
@@ -27,12 +29,43 @@ export const vaultStyles = [
     .pane.list {
       gap: 0;
     }
+    /* Finding in a list: the words on a line of their own under the add and fold buttons, then what narrows it. */
+    .list-tools {
+      order: 1;
+      flex-basis: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-2, 8px);
+    }
+    .list-filters {
+      display: flex;
+      gap: var(--dc-space-2, 8px);
+    }
+    .list-filters > dc-select {
+      flex: 1 1 0;
+      min-width: 0;
+    }
     .pane.list ul {
       padding: var(--dc-space-2, 8px);
+    }
+    /* Folding the list is for a wide window, where list and document stand side by side. */
+    .list-head .fold,
+    .unfold {
+      display: none;
+    }
+    .list-head .fold {
+      margin-left: auto;
     }
     @media ${desktopMedia} {
       .back {
         display: none;
+      }
+      .list-head .fold {
+        display: inline-block;
+      }
+      .unfold {
+        display: block;
+        margin-bottom: calc(-1 * var(--dc-space-3, 12px));
       }
       .pane.document {
         padding-inline: var(--dc-space-6, 24px);
@@ -151,6 +184,16 @@ export const vaultStyles = [
       border-radius: 3px;
       background: var(--dc-indicator-color, var(--dc-color-accent, #2563eb));
     }
+    /* A heading among a list's entries, quieter than they are: the entries under it go together. */
+    li.list-group {
+      padding: var(--dc-space-3, 12px) var(--dc-space-3, 12px) var(--dc-space-1, 4px);
+      font-size: var(--dc-font-size-xs, 11px);
+      font-weight: var(--dc-font-weight-semibold, 600);
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
+    li.list-group:first-child {
+      padding-top: var(--dc-space-1, 4px);
+    }
     .plain li {
       padding: var(--dc-space-2, 8px) var(--dc-space-3, 12px);
     }
@@ -159,6 +202,22 @@ export const vaultStyles = [
     }
     dc-card > .scroll {
       margin: calc(-1 * var(--dc-space-4, 16px));
+    }
+    /*
+     * A long table scrolls in a box of its own, so its header row stays in view (the header is sticky to the box
+     * that scrolls). An edge that has more beyond it shades: the shade sits under the cells and a cover the
+     * width of the shade travels with the content, hiding it at either end.
+     */
+    .scroll.bounded {
+      max-height: max(320px, calc(100vh - 260px));
+      overflow: auto;
+      background:
+        linear-gradient(to right, var(--dc-card-bg, #ffffff) 40%, transparent) left / 32px 100%,
+        linear-gradient(to left, var(--dc-card-bg, #ffffff) 40%, transparent) right / 32px 100%,
+        radial-gradient(farthest-side at 0 50%, rgba(60, 45, 30, 0.16), transparent) left / 12px 100%,
+        radial-gradient(farthest-side at 100% 50%, rgba(60, 45, 30, 0.16), transparent) right / 12px 100%;
+      background-repeat: no-repeat;
+      background-attachment: local, local, scroll, scroll;
     }
     table.export td,
     table.export th {
@@ -314,7 +373,38 @@ export const vaultStyles = [
     td.num.zero {
       color: var(--dc-color-text-muted, #8a8a92);
     }
-    /* The count whose records are listed below the table. */
+    /*
+     * A report's table and what a count is made of: one under the other, and side by side once the document is
+     * wide enough for both (the list folded, the menu at its icons) — the records stay in view beside the table.
+     */
+    .pane.document {
+      container-type: inline-size;
+    }
+    /* A switch above a table is as wide as its words: a press beside them is not a press on it. */
+    section > dc-checkbox {
+      align-self: flex-start;
+    }
+    .report-body,
+    .report-aside {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-6, 24px);
+      min-width: 0;
+    }
+    @container (min-width: 960px) {
+      .report-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(320px, 36%);
+        align-items: start;
+      }
+      .report-aside {
+        position: sticky;
+        top: 0;
+        max-height: calc(100vh - 140px);
+        overflow: auto;
+      }
+    }
+    /* The count whose records are listed beside or below the table. */
     button.cell[aria-pressed='true'] {
       background: var(--dc-selection-bg, var(--dc-color-accent-subtle, #e0e7ff));
       outline: 2px solid var(--dc-color-accent, #2563eb);
@@ -330,8 +420,23 @@ export const vaultStyles = [
       .back {
         display: none;
       }
-      .scroll {
+      /* Paper keeps the form whole: rows counting nothing come back, and the records follow the table. */
+      tr.empty[hidden] {
+        display: table-row;
+      }
+      .report-body {
+        display: block;
+      }
+      .report-aside {
+        position: static;
+        max-height: none;
         overflow: visible;
+      }
+      .scroll,
+      .scroll.bounded {
+        overflow: visible;
+        max-height: none;
+        background: none;
       }
       table.export td,
       table.export th {

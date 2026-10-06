@@ -1,6 +1,6 @@
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
-import { copiedFromSubject, firstMissingRequired, inputFields, labelOfField, type FieldView } from '../fields.js'
+import { copiedFromSubject, firstMissingRequired, formSections, inputFields, labelOfField, type FieldView } from '../fields.js'
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
 import { extensionsOf, latest, offeredChoices, ownerOf, text, type Entity, type FieldSuggestions, type Offered, type Scheme, type SuggestedCode } from '../records.js'
@@ -59,6 +59,30 @@ export class OcRecordForm extends StoreElement {
         border-radius: var(--dc-radius-md, 6px);
         background: var(--dc-color-surface, #f7f7f8);
         font-size: var(--dc-font-size-sm, 12px);
+      }
+      /* A form's parts, each under a quiet name, a rule between them. */
+      fieldset.form-part {
+        margin: 0;
+        padding: var(--dc-space-3, 12px) 0 0;
+        border: none;
+        border-top: 1px solid var(--dc-color-rule, #e2e2e4);
+      }
+      fieldset.form-part:first-of-type {
+        padding-top: 0;
+        border-top: none;
+      }
+      /* Floated, a legend leaves the border it would sit on and takes a line of its own. */
+      fieldset.form-part legend {
+        float: left;
+        width: 100%;
+        padding: 0;
+        margin-bottom: var(--dc-space-2, 8px);
+        font-size: var(--dc-font-size-sm, 12px);
+        font-weight: var(--dc-font-weight-semibold, 600);
+        color: var(--dc-color-text-muted, #8a8a92);
+      }
+      fieldset.form-part > .fields {
+        clear: both;
       }
       .why ul {
         display: grid;
@@ -384,6 +408,26 @@ export class OcRecordForm extends StoreElement {
   }
 
 
+  /** Brings the form into view with its first field in focus. */
+  async focusFirst() {
+    await this.updateComplete
+    const first = this.renderRoot.querySelector<HTMLElement>('.fields dc-input, .fields dc-select, .fields dc-textarea')
+    first?.scrollIntoView({ block: 'center' })
+    first?.focus()
+  }
+
+  /** The form's fields in their parts — what and when, how it is classified, what was written — each named when there are several. */
+  private fieldsView(inputs: FieldView[]) {
+    const parts = formSections(inputs)
+    if (parts.length < 2) return html`<div class="fields">${inputs.map((f) => this.input(f))}</div>`
+    return parts.map(
+      (p) => html`<fieldset class="form-part" data-part=${p.section}>
+        <legend>${strings.formSection[p.section]}</legend>
+        <div class="fields">${p.fields.map((f) => this.input(f))}</div>
+      </fieldset>`,
+    )
+  }
+
   /**
    * What a classification of a new session offers besides its dropdown: the codes suggested for it and —
    * when asked — why, as a row of the form's grid below the field's row (`below`).
@@ -559,20 +603,24 @@ export class OcRecordForm extends StoreElement {
     if (unmet) return html`<p class="muted">${strings.addFirst(unmet.label)}</p>`
     const session = this.edit
     if (session)
-      return html`<dc-card data-role=${this.isSession ? 'correct-session' : 'correct-record'} data-kind=${this.type}>
+      return html`<dc-card
+        data-role=${this.isSession ? 'correct-session' : 'correct-record'}
+        data-kind=${this.type}
+        @keydown=${(e: KeyboardEvent) => saveKey(e) && !store.busy && void this.saveCorrection(session)}
+      >
         <h3 slot="header">${this.isSession ? strings.correctSession : strings.correctRecordOf(this.kindName)}</h3>
         <div class="stack">
           <dc-callout><p>${this.isSession ? strings.correctSessionLead : strings.correctRecordLead}</p></dc-callout>
-          <div class="fields">${inputs.map((f) => this.input(f))}</div>
+          ${this.fieldsView(inputs)}
         </div>
         <dc-button slot="footer" variant="secondary" ?disabled=${store.busy} @click=${() => this.leave()}>${strings.cancel}</dc-button>
         <dc-button slot="footer" variant="primary" ?disabled=${store.busy} @click=${() => void this.saveCorrection(session)}>${strings.saveCorrection}</dc-button>
       </dc-card>`
     return html`<section>
       <dc-section-heading marker size="lg" heading=${this.isSession ? strings.newSession : strings.newRecordOf(this.kindName)}></dc-section-heading>
-      <dc-card>
+      <dc-card @keydown=${(e: KeyboardEvent) => saveKey(e) && !store.busy && void this.recordSession()}>
         <div class="stack">
-          <div class="fields">${inputs.map((f) => this.input(f))}</div>
+          ${this.fieldsView(inputs)}
           ${this.staleView()}
           <slot></slot>
         </div>
@@ -586,4 +634,11 @@ declare global {
   interface HTMLElementTagNameMap {
     'oc-record-form': OcRecordForm
   }
+}
+
+/** Ctrl+Enter (⌘+Enter on a Mac) saves the form the keys are pressed in. */
+function saveKey(e: KeyboardEvent): boolean {
+  if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey)) return false
+  e.preventDefault()
+  return true
 }

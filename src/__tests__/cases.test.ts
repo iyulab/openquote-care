@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, latestCase, showsCases } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseState, latestCaseState, showsCases } from '../cases.js'
 import type { CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -17,9 +17,9 @@ describe('cases', () => {
   })
 
   it('say a subject’s latest case in the list', () => {
-    expect(latestCase(of(aCase({ open: false, closing: 'c1', end: '2026-04-20' }), aCase({ opening: 'i2' })))).toBe(strings.caseOpen)
-    expect(latestCase(of(aCase({ open: false, closing: 'c1', end: '2026-04-20' })))).toBe(strings.caseClosed)
-    expect(latestCase(of(aCase({ opening: null })))).toBeUndefined()
+    expect(latestCaseState(of(aCase({ open: false, closing: 'c1', end: '2026-04-20' }), aCase({ opening: 'i2' })))).toBe('open')
+    expect(latestCaseState(of(aCase({ open: false, closing: 'c1', end: '2026-04-20' })))).toBe('closed')
+    expect(latestCaseState(of(aCase({ opening: null })))).toBeNull()
   })
 
   it('tell an ended case from one the next opening followed', () => {

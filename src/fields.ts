@@ -107,3 +107,17 @@ export function labelOfField(defs: readonly FieldView[], name: string): string {
 export function schemeLabel(defs: readonly FieldView[], scheme: string): string {
   return defs.find((f) => f.kind === 'coded' && f.scheme === scheme)?.label ?? scheme
 }
+
+/** The part of a record's form a field sits in: what and when, how it is classified, what was written. */
+export type FormSection = 'basic' | 'categories' | 'content'
+
+/**
+ * A form's fields in its three parts, each in the order given, leaving out a part with no field: written content
+ * last, the fields a scheme classifies in the middle, everything else — dates, people, numbers, short text — first.
+ */
+export function formSections(fields: readonly FieldView[]): { section: FormSection; fields: FieldView[] }[] {
+  const of = (f: FieldView): FormSection => (f.tier === 'narrative' ? 'content' : f.kind === 'coded' ? 'categories' : 'basic')
+  return (['basic', 'categories', 'content'] as const)
+    .map((section) => ({ section, fields: fields.filter((f) => of(f) === section) }))
+    .filter((s) => s.fields.length > 0)
+}

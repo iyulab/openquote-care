@@ -174,6 +174,7 @@ export class OcDevices extends VaultScreen {
     ]
     const document = { name: () => this.nameSection(), idle: () => this.idleSection(), backup: () => this.backupSection(), passphrase: () => this.passphraseSection() }
     return listDetail({
+      store: this.store,
       label: strings.settingsList,
       entries: sections,
       selected: this.section,

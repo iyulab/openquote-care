@@ -168,7 +168,7 @@ const scenarios = {
   },
 
   async 'closes the vault and refuses the wrong passphrase'(app, work) {
-    await app.click('dc-button', '기록 폴더 닫기')
+    await app.folderAction('기록 폴더 닫기')
     await app.heading('Openquote Care')
     await app.click('dc-button', '기록 폴더 열기')
     await app.heading('기록 폴더 열기')
@@ -202,7 +202,7 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=key-hint]')`), false, 'the offer is gone once taken')
 
     const reopen = async (passphrase) => {
-      await app.click('dc-button', '기록 폴더 닫기')
+      await app.folderAction('기록 폴더 닫기')
       await app.heading('Openquote Care')
       await app.click('dc-button', '기록 폴더 열기')
       await app.heading('기록 폴더 열기')
@@ -300,6 +300,26 @@ const scenarios = {
     await app.cdp.waitFor(`__e2e.all('tr[data-evidence]').length === 1`, 'the evidence')
     const evidence = await app.cdp.evaluate(`[...__e2e.one('tr[data-evidence]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual(evidence, ['2026-04-02', '가상 학생 1', '학습'])
+    assert.equal(await app.cdp.evaluate(`__e2e.one('tr[data-row=learning] button.cell').getAttribute('aria-pressed')`), 'true', 'the count picked is marked')
+
+    // Rows counting nothing leave the screen when asked, and come back on paper.
+    const rowsShown = () => app.cdp.evaluate(`__e2e.all('tr[data-row]').filter((tr) => tr.getBoundingClientRect().height > 0).length`)
+    const every = await rowsShown()
+    await app.click('dc-checkbox[data-role=hide-empty]')
+    await app.cdp.waitFor(`__e2e.all('tr[data-row]').filter((tr) => tr.getBoundingClientRect().height > 0).length < ${every}`, 'empty rows hidden')
+    assert.ok((await rowsShown()) >= 1, 'the rows that count something stay')
+    await app.cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
+    try {
+      assert.equal(await rowsShown(), every, 'paper keeps every row of the form')
+    } finally {
+      await app.cdp.send('Emulation.setEmulatedMedia', { media: '' })
+    }
+    await app.click('dc-checkbox[data-role=hide-empty]')
+
+    // A record a count is made of opens where it is kept.
+    await app.click('button[data-open-record]')
+    await app.cdp.waitFor(`__e2e.one('dp-toolbar')?.getAttribute('heading') === '대상자' && __e2e.all('h2').some((h) => h.textContent.includes('가상 학생 1'))`, 'the record where it is kept')
+    await app.click('button', '통계')
 
     const years = await readdir(join(work.vault, 'runs'))
     assert.deepEqual(years, ['2026'], 'the run record is kept in the vault')
@@ -518,7 +538,7 @@ const scenarios = {
     await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
     assert.equal((await app.sessionRows())[1][3], '특별 › 학교폭력')
-    await app.click('dc-button', '다시 읽기')
+    await app.folderAction('다시 읽기')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
 
     // A sync client's copy of every record file, under the names sync clients give one, is the
@@ -823,6 +843,52 @@ const scenarios = {
     assert.ok(folded.document > open.document, 'the document takes the room given up')
     await app.click('button[aria-label="메뉴 접기/펼치기"]')
     await app.cdp.waitFor(`!__e2e.one('dp-sidebar').hasAttribute('collapsed')`, 'the menu unfolded')
+
+    // The list folds away for a wide document, on every screen, and comes back from the document's top.
+    await app.click('dc-button[data-role=fold-list]')
+    await app.cdp.waitFor(`__e2e.one('nav[aria-label="대상자"]').closest('dp-list-detail').hasAttribute('list-collapsed')`, 'the list folded')
+    const listless = await widths()
+    assert.equal(listless.list, 0, 'no list beside the document')
+    assert.ok(listless.document > open.document + open.list / 2, `the document takes the list's room (${JSON.stringify(listless)})`)
+    await app.click('button', '통계')
+    await app.cdp.waitFor(`__e2e.one('nav[aria-label="보고 양식"]')?.closest('dp-list-detail').hasAttribute('list-collapsed')`, 'folded on another screen too')
+    await app.click('dc-button[data-role=unfold-list]')
+    await app.cdp.waitFor(`!__e2e.one('nav[aria-label="보고 양식"]').closest('dp-list-detail').hasAttribute('list-collapsed')`, 'the list back')
+    await app.click('button', '대상자')
+    await app.noAlert()
+  },
+  async 'finds a subject by words, and orders the list by the latest record'(app) {
+    await app.click('button', '대상자')
+    const names = () => app.cdp.evaluate(`__e2e.all('nav[aria-label="대상자"] li button .label').map((l) => l.textContent.trim())`)
+    const all = await names()
+    assert.ok(all.length >= 2, `several subjects to find among (${all})`)
+    await app.type('이름이나 대상자 정보로 찾기', '학생 3')
+    await app.cdp.waitFor(`__e2e.all('nav[aria-label="대상자"] li button .label').length === 1`, 'one subject found')
+    assert.deepEqual(await names(), ['가상 학생 3'])
+    await app.type('이름이나 대상자 정보로 찾기', '없는 이름')
+    await app.cdp.waitFor(`(__e2e.one('nav[aria-label="대상자"] dc-empty-state')?.getAttribute('description') ?? '').includes('찾는 대상자가 없습니다')`, 'none found, and said so')
+    await app.type('이름이나 대상자 정보로 찾기', ' ')
+    await app.cdp.waitFor(`__e2e.all('nav[aria-label="대상자"] li button .label').length === ${all.length}`, 'every subject again')
+
+    // The latest record first: each row's day is no later than the one above it.
+    await app.choose('정렬', 'recent')
+    const days = await app.cdp.evaluate(`__e2e.all('nav[aria-label="대상자"] li button .meta').map((m) => (m.textContent.match(/마지막 ([0-9-]+)/) ?? [])[1] ?? '')`)
+    assert.ok(days.every((d, i) => i === 0 || d === '' || days[i - 1] === '' || days[i - 1] >= d) && days[0] !== '', `newest first (${days})`)
+    await app.choose('정렬', 'name')
+
+    // From anywhere, Ctrl+K is where a subject is found; with one on screen, Ctrl+N is its new session's form.
+    const focused = `(() => { let el = document.activeElement; while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement; return el })()`
+    await app.click('button', '통계')
+    await app.cdp.press('k', { code: 'KeyK', modifiers: 2, keyCode: 75 })
+    await app.cdp.waitFor(`${focused}?.matches?.('input[type=search]')`, 'Ctrl+K at the search')
+    await app.click('li button .label', '가상 학생 3')
+    await app.cdp.press('n', { code: 'KeyN', modifiers: 2, keyCode: 78 })
+    await app.cdp.waitFor(`${focused}?.getAttribute?.('aria-label') === '날짜'`, 'Ctrl+N at the new session\'s first field')
+    await app.click('h2', '가상 학생 3')
+    await app.cdp.press('?', { code: 'Slash', modifiers: 8, keyCode: 191 })
+    await app.cdp.waitFor(`__e2e.one('dp-shortcut-overlay')?.hasAttribute('open')`, 'the list of keys')
+    await app.cdp.press('Escape', { keyCode: 27 })
+    await app.cdp.waitFor(`!__e2e.one('dp-shortcut-overlay').hasAttribute('open')`, 'the list closed')
     await app.noAlert()
   },
   async 'in a narrow window shows the list or the document picked, with a way back, and the menu as a drawer'(app) {
@@ -1224,7 +1290,7 @@ const scenarios = {
 
     await app.setDate('날짜', '2026-06-16')
     // Read again while the correction is open: the date chosen stays.
-    await app.click('dc-button', '다시 읽기')
+    await app.folderAction('다시 읽기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-session]')`, 'the correction still open after the vault is read again')
     await new Promise((r) => setTimeout(r, 1500))
     assert.equal(await app.cdp.evaluate(`__e2e.all('input[aria-label="날짜"]')[0].value`), '2026-06-16', 'what was chosen stays when the vault is read again')
@@ -1287,7 +1353,7 @@ const scenarios = {
     await app.click('dc-button', '담당자 정보 고치기')
     await app.cdp.waitFor(`__e2e.one('input[aria-label="이름"]')?.value === '상담자 가'`, 'the form starts from the record')
     await app.type('이름', '상담자 을')
-    await app.click('dc-button', '다시 읽기')
+    await app.folderAction('다시 읽기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-practitioner]')`, 'the form still open after the vault is read again')
     await new Promise((r) => setTimeout(r, 1500))
     assert.equal(await app.cdp.evaluate(`__e2e.one('input[aria-label="이름"]')?.value`), '상담자 을', 'what was typed stays when the vault is read again')
@@ -1317,7 +1383,7 @@ const scenarios = {
   },
 
   async 'says the key file is damaged, opens with the recovery key, and a new passphrase mends it'(app, work) {
-    await app.click('dc-button', '기록 폴더 닫기')
+    await app.folderAction('기록 폴더 닫기')
     const keyFile = join(work.vault, 'keys', 'vault-key.age')
     await writeFile(keyFile, '-----BEGIN AGE ENCRYPTED FILE-----\ncut off')
     await app.click('dc-button', '기록 폴더 열기')
@@ -1341,7 +1407,7 @@ const scenarios = {
     await app.click('dc-button', '암호 바꾸기')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase set')
 
-    await app.click('dc-button', '기록 폴더 닫기')
+    await app.folderAction('기록 폴더 닫기')
     await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.vault)
     await app.type('암호', PASSPHRASE)
@@ -1351,7 +1417,7 @@ const scenarios = {
   },
 
   async 'says so when a folder is not a vault'(app, work) {
-    await app.click('dc-button', '기록 폴더 닫기')
+    await app.folderAction('기록 폴더 닫기')
     await app.click('dc-button', '기록 폴더 열기')
     await app.pickFolder(work.empty)
     await app.type('암호', PASSPHRASE)

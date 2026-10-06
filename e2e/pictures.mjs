@@ -273,7 +273,7 @@ try {
       n++
     }
   }
-  await app.click('dc-button', ui.refresh)
+  await app.folderAction(ui.refresh)
   await sleep(1500)
 
   // A new session: the suggestions under the empty classification, and why.
@@ -289,7 +289,7 @@ try {
   await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[1], type: 'session', fields: {
     date: '2026-05-14', practitioner: practitioners[1], [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, L.crisis.topic), note: L.crisis.note,
     ...L.sessionFields(L.crisis.topic, 0, 1) } } })
-  await app.click('dc-button', ui.refresh)
+  await app.folderAction(ui.refresh)
   await app.cdp.waitFor(`!!__e2e.one(${q(`textarea[aria-label="${ui.note}"]`)})`, 'the form again')
   await app.write(ui.note, L.draft.crisisNote)
   await app.cdp.waitFor(`!!__e2e.one('[data-suggestions] dc-button[data-confirm]')`, 'a suggestion to be confirmed')
@@ -341,7 +341,7 @@ try {
       date: r.date, practitioner: practitioners[0], to: coded('care.service', r.to), organisation: r.organisation,
       outcome: coded('care.referral-outcome', r.outcome) } } })
   }
-  await app.click('dc-button', ui.refresh)
+  await app.folderAction(ui.refresh)
   await sleep(1500)
   await app.click('button', ui.subjects)
   await app.click('li button .label', L.subjects[L.referrals[0].subject])
@@ -384,7 +384,7 @@ try {
       [locale === 'ko' ? 'method' : 'mode']: coded(L.method, L.methods[0]),
       note: L.notes[topic][0], ...L.sessionFields(topic, i, i), ...L.extend.fields(added) } } })
   }
-  await app.click('dc-button', ui.refresh)
+  await app.folderAction(ui.refresh)
   await sleep(1500)
   await app.click('button', ui.report)
   await app.click(`nav[aria-label] button[data-entry="${L.extend.form}"]`)

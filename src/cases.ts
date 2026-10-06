@@ -17,11 +17,10 @@ export function caseState(c: CaseView, opening: string): string {
   return strings.caseUnended(opening)
 }
 
-/** What the subject list says of a subject's latest case, when its cases are worth showing. */
-export function latestCase(cases: SubjectCases | undefined): string | undefined {
-  if (!showsCases(cases)) return undefined
-  const latest = cases.cases.at(-1)!
-  return latest.open ? strings.caseOpen : strings.caseClosed
+/** Whether a subject's latest case is open or ended, when its cases are worth showing; null when they are not. */
+export function latestCaseState(cases: SubjectCases | undefined): 'open' | 'closed' | null {
+  if (!showsCases(cases)) return null
+  return cases.cases.at(-1)!.open ? 'open' : 'closed'
 }
 
 /**

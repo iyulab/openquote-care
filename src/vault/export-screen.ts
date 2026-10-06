@@ -2,14 +2,14 @@ import { open } from '@tauri-apps/plugin-dialog'
 import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
-import { toTsv, type ExportTable } from '../export.js'
+import { pinnedColumns, toTsv, type ExportTable } from '../export.js'
 import { maskNames, type NameMask } from '../masking.js'
 import { storeCopy, storedCopy, type LastCopy } from '../last-copy.js'
 import { plainCopy } from '../plain-copy.js'
 import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields } from './parts.js'
+import { applyPackButton, deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -139,6 +139,13 @@ export class OcExport extends VaultScreen {
     if (typeof folder === 'string') await this.makePlainCopy(folder)
   }
 
+  /** Steps the month by `by` while the list is of a month; false while it is of a range or of every record. */
+  stepPeriod(by: number): boolean {
+    if (this.plainPicked || this.byRange || this.store.busy || !this.store.exportKey) return false
+    stepMonth(this.store, by)
+    return true
+  }
+
   /** Picks the form to list by; a list made by another form goes. */
   private pick(key: string) {
     this.documentOpen = true
@@ -157,6 +164,7 @@ export class OcExport extends VaultScreen {
     const forms = store.summary?.exports ?? []
     const chosen = forms.find((f) => `${f.name}@${f.version}` === store.exportKey)
     return listDetail({
+      store: this.store,
       label: strings.exportForms,
       head: applyPackButton(store),
       entries: [
@@ -267,8 +275,23 @@ export class OcExport extends VaultScreen {
       ${table ? this.tableView(table) : nothing}`
   }
 
+  /** Keeps the pinned columns' offsets — the widths of the columns before each — as the table lays them out. */
+  protected updated() {
+    const table = this.renderRoot.querySelector<HTMLTableElement>('table.export')
+    if (!table) return
+    let left = 0
+    table.querySelectorAll<HTMLElement>('thead th.pin').forEach((th, i) => {
+      table.style.setProperty(`--pin-${i}`, `${left}px`)
+      left += th.getBoundingClientRect().width
+    })
+  }
+
   private tableView(table: ExportTable) {
     const gaps = table.pending.length + table.unmapped.length + table.conflicted.length
+    // The first columns stay in view while a wide list scrolls across, so each row still says when and who.
+    const pins = pinnedColumns(table)
+    const pinned = (i: number) => (i < pins ? 'pin' : '')
+    const pinAt = (i: number) => (i < pins ? `--dc-table-pin-left: var(--pin-${i}, 0px)` : '')
     return html`
       <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
       ${gaps > 0 ? html`<dc-callout variant="warning" data-role="export-gaps"><p>${strings.exportGaps(table.pending.length, table.unmapped.length, table.conflicted.length)}</p></dc-callout>` : nothing}
@@ -276,15 +299,17 @@ export class OcExport extends VaultScreen {
       ${this.nameMask !== 'none' && table.names.length > 0 ? html`<p class="muted" data-role="names-hidden">${strings.namesHidden}</p>` : nothing}
       ${table.rows.length === 0
         ? html`<p class="muted">${strings.exportEmpty}</p>`
-        : html`<dc-card><div class="scroll">
+        : html`<dc-card><div class="scroll bounded">
             <table class="export">
               <thead>
                 <tr>
-                  ${table.columns.map((c) => html`<th>${c}</th>`)}
+                  ${table.columns.map((c, i) => html`<th class=${pinned(i)} style=${pinAt(i)}>${c}</th>`)}
                 </tr>
               </thead>
               <tbody>
-                ${table.rows.map((r) => html`<tr data-export-row=${r.record}>${r.cells.map((c) => html`<td>${c}</td>`)}</tr>`)}
+                ${table.rows.map(
+                  (r) => html`<tr data-export-row=${r.record}>${r.cells.map((c, i) => html`<td class=${pinned(i)} style=${pinAt(i)}>${c}</td>`)}</tr>`,
+                )}
               </tbody>
             </table>
           </div></dc-card>`}

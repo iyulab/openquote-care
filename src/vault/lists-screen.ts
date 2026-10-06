@@ -75,6 +75,7 @@ export class OcLists extends VaultScreen {
     const ours = (scheme: string) => extensionsOf(this.store.schemes, scheme).reduce((n, s) => n + s.items.length, 0)
     const chosen = lists.find((l) => l.scheme === this.selected)
     return listDetail({
+      store: this.store,
       label: strings.lists,
       entries: lists.map((l) => ({ id: l.scheme, label: l.label, meta: ours(l.scheme) > 0 ? strings.listOursCount(ours(l.scheme)) : '' })),
       selected: this.selected,
