@@ -1,0 +1,39 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "intake",
+  "version": 2,
+  "label": "Intake",
+  "under": [
+    "subject"
+  ],
+  "order": 10,
+  "role": "opens",
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Taken on"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "label": "Practitioner"
+    },
+    {
+      "name": "source",
+      "kind": "coded",
+      "scheme": "care.intake-source",
+      "required": true,
+      "label": "Who brought them"
+    },
+    {
+      "name": "presenting",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "What they came with"
+    }
+  ]
+}

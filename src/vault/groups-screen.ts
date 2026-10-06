@@ -113,7 +113,7 @@ export class OcGroups extends VaultScreen {
 
   private groupDetail(group: Entity) {
     const store = this.store
-    const sessions = newestFirst(store.sessions.filter((s) => s.group === group.id))
+    const sessions = newestFirst(store.sessions.filter((s) => s.group === group.id), store.dayOf)
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`
       <dp-page-header

@@ -3,7 +3,7 @@
 // shell only decides where it may be written.
 
 import { listColumns, recordFields, type FieldView } from './fields.js'
-import { inOrderOfFirstRecord, text, type ChangeEntry, type Classified, type Entity } from './records.js'
+import { dayByDate, inOrderOfFirstRecord, text, type ChangeEntry, type Classified, type DayOf, type Entity } from './records.js'
 
 /** What the copy is made from. */
 export interface PlainCopySource {
@@ -27,6 +27,8 @@ export interface PlainCopySource {
   deviceName?(device: string): string
   /** How names are put in order: the vault's, as everywhere in the app. */
   names: Intl.Collator
+  /** When a record happened, by the field its kind is dated by; the field called `date` when absent. */
+  dayOf?: DayOf
   /**
    * The days the copy covers (`YYYY-MM-DD`, both included): only the records on them, and the
    * clients and groups those records are about. Every record when absent.
@@ -120,7 +122,7 @@ function within(source: PlainCopySource): PlainCopySource {
   const kinds = source.kinds.map((k) => ({
     ...k,
     records: k.records.filter((r) => {
-      const day = text(r, 'date')
+      const day = (source.dayOf ?? dayByDate)(r)
       return day >= from && day <= to
     }),
   }))
@@ -141,7 +143,7 @@ function within(source: PlainCopySource): PlainCopySource {
  */
 function kindsOf(source: PlainCopySource): PlainKind[] {
   const held = source.kinds.filter((k) => k.records.length > 0).map((k) => ({ ...k, fields: recordColumns(k.fields, source.withNarrative) }))
-  return inOrderOfFirstRecord(held, (k) => k.records)
+  return inOrderOfFirstRecord(held, (k) => k.records, source.dayOf)
 }
 
 /** How many records of each kind, leaving out the kinds with none. */
@@ -173,8 +175,8 @@ function cell(source: PlainCopySource, field: FieldView, value: unknown): string
 }
 
 /** Oldest first: a copy is read as a history. */
-function oldestFirst(records: Entity[]): Entity[] {
-  return [...records].sort((a, b) => text(a, 'date').localeCompare(text(b, 'date')) || a.id.localeCompare(b.id))
+function oldestFirst(records: Entity[], dayOf: DayOf = dayByDate): Entity[] {
+  return [...records].sort((a, b) => dayOf(a).localeCompare(dayOf(b)) || a.id.localeCompare(b.id))
 }
 
 function names(entities: Entity[], ids: string[]): string {
@@ -191,8 +193,8 @@ function byName(entities: Entity[], names: Intl.Collator): Entity[] {
 }
 
 /** The first and last date the records were on, as one stretch; empty when none has a date. */
-function days(records: Entity[]): string {
-  const dates = records.map((s) => text(s, 'date')).filter(Boolean).sort()
+function days(records: Entity[], dayOf: DayOf = dayByDate): string {
+  const dates = records.map(dayOf).filter(Boolean).sort()
   if (dates.length === 0) return ''
   return dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ~ ${dates.at(-1)}`
 }
@@ -215,7 +217,7 @@ th{color:#555}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1r
 
 function recordTable(source: PlainCopySource, words: PlainCopyWords, columns: FieldView[], records: Entity[], people: boolean): string {
   const heads = [...(people ? [words.people] : []), ...columns.map((f) => f.label)]
-  const rows = oldestFirst(records).map((s) => {
+  const rows = oldestFirst(records, source.dayOf).map((s) => {
     const cells = [...(people ? [names(source.subjects, s.people)] : []), ...columns.map((f) => cell(source, f, s.fields[f.name]))]
     return `<tr>${cells.map((c, i) => `<td${columns[people ? i - 1 : i]?.tier === 'narrative' ? ' class="note"' : ''}>${escape(c)}</td>`).join('')}</tr>`
   })
@@ -250,12 +252,12 @@ function changesTable(source: PlainCopySource, words: PlainCopyWords, entries: {
 function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: FieldView[], kinds: PlainKind[]): string {
   const subjects = byName(source.subjects, source.names)
   const anchor = (e: Entity) => `s-${e.id}`
-  const span = days(kinds.flatMap((k) => k.records))
+  const span = days(kinds.flatMap((k) => k.records), source.dayOf)
   // The records of a kind a subject or a group holds, and those a subject took part in with a group.
   const own = (k: PlainKind, s: Entity) => k.records.filter((r) => r.people.includes(s.id) && r.group === null)
   const withGroups = (k: PlainKind, s: Entity) => k.records.filter((r) => r.people.includes(s.id) && r.group !== null)
   const ofGroup = (k: PlainKind, g: Entity) => k.records.filter((r) => r.group === g.id)
-  const changesOf = (k: PlainKind, records: Entity[]) => records.map((r) => ({ entity: r, what: words.recordOn(k.label, text(r, 'date')), fields: k.fields }))
+  const changesOf = (k: PlainKind, records: Entity[]) => records.map((r) => ({ entity: r, what: words.recordOn(k.label, (source.dayOf ?? dayByDate)(r)), fields: k.fields }))
   // The first page says what the copy holds; on paper the numbered list after it finds each subject's pages.
   const parts: string[] = [
     `<h1>${escape(words.title)}</h1>`,
@@ -269,14 +271,14 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
     `<ol>${subjects
       .map((s) => {
         const about = (k: PlainKind) => k.records.filter((r) => r.people.includes(s.id))
-        return `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a> — ${escape(words.entry(countsOf(kinds, about), days(kinds.flatMap(about))))}</li>`
+        return `<li><a href="#${anchor(s)}">${escape(text(s, 'name'))}</a> — ${escape(words.entry(countsOf(kinds, about), days(kinds.flatMap(about), source.dayOf)))}</li>`
       })
       .join('')}</ol>`,
   ]
   for (const [i, s] of subjects.entries()) {
     const fields = subjectFields.map((f) => [f.label, cell(source, f, s.fields[f.name])]).filter(([, v]) => v)
     // The subject's kinds in the order their work took, as on the subject's page in the app.
-    const held = inOrderOfFirstRecord(kinds, (k) => own(k, s)).filter((k) => own(k, s).length > 0)
+    const held = inOrderOfFirstRecord(kinds, (k) => own(k, s), source.dayOf).filter((k) => own(k, s).length > 0)
     const together = kinds.filter((k) => withGroups(k, s).length > 0)
     parts.push(
       `<h2 id="${anchor(s)}">${i + 1}. ${escape(text(s, 'name'))}</h2>`,
@@ -293,7 +295,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
   if (source.groups.length) {
     parts.push(`<h2>${escape(words.groups)}</h2>`)
     for (const g of byName(source.groups, source.names)) {
-      const held = inOrderOfFirstRecord(kinds, (k) => ofGroup(k, g)).filter((k) => ofGroup(k, g).length > 0)
+      const held = inOrderOfFirstRecord(kinds, (k) => ofGroup(k, g), source.dayOf).filter((k) => ofGroup(k, g).length > 0)
       parts.push(
         `<h3>${escape(text(g, 'name'))}</h3>`,
         `<p>${escape(words.members)}: ${escape(names(source.subjects, membersOf(g)))}</p>`,
@@ -326,6 +328,6 @@ function recordsCsv(source: PlainCopySource, words: PlainCopyWords, fields: Fiel
   const groupName = (id: string | null) => (id ? text(source.groups.find((g) => g.id === id) ?? ({ fields: {} } as Entity), 'name') : '')
   return csv([
     [words.people, words.group, ...fields.map((f) => f.label)],
-    ...oldestFirst(records).map((s) => [names(source.subjects, s.people), groupName(s.group), ...fields.map((f) => cell(source, f, s.fields[f.name]))]),
+    ...oldestFirst(records, source.dayOf).map((s) => [names(source.subjects, s.people), groupName(s.group), ...fields.map((f) => cell(source, f, s.fields[f.name]))]),
   ])
 }

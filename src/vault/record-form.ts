@@ -158,9 +158,9 @@ export class OcRecordForm extends StoreElement {
     else this.store.editDraft({ [name]: value }, 'person', this.type)
   }
 
-  // The date that decides which version of a classification is offered: the form's first date field.
+  // The date that decides which version of a classification is offered: the field that dates the record.
   private dateOf(): string {
-    const date = inputFields(this.fields).find((f) => f.kind === 'date')
+    const date = inputFields(this.fields).find((f) => f.name === this.store.datedOf(this.type))
     return date ? (this.draft[date.name] ?? '') : ''
   }
 
@@ -323,7 +323,7 @@ export class OcRecordForm extends StoreElement {
     const group = session.group ? store.groups.find((g) => g.id === session.group) : undefined
     const subject = session.subject ? store.subjects.find((s) => s.id === session.subject) : undefined
     const who = group ? text(group, 'name') : subject ? text(subject, 'name') : ''
-    return [text(session, 'date'), who].filter(Boolean).join(' ')
+    return [store.dayOf(session), who].filter(Boolean).join(' ')
   }
 
   /**

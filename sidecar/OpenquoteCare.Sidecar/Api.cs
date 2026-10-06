@@ -88,7 +88,8 @@ public sealed record SummaryView(
 /// A kind of record the vault's packs declare fields for and keep under a subject, a group or both (<c>Under</c>):
 /// what people read for it in the vault's locale, or null when no pack names it.
 /// </summary>
-public sealed record RecordKindView(string Type, string? Label, IReadOnlyList<string> Under);
+/// <summary>A kind of record kept under subjects or groups: its name, where it is kept, its place among the others and the field that dates it.</summary>
+public sealed record RecordKindView(string Type, string? Label, IReadOnlyList<string> Under, int? Order, string Dated);
 
 /// <summary>A data pack the vault holds (its latest version).</summary>
 public sealed record PackView(string Id, int Version, string Label, IReadOnlyDictionary<string, int> Depends);
@@ -564,7 +565,7 @@ internal static class Api
             [.. s.Labels.Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
             s.Locales,
             [.. s.Fields.Types.Where(t => s.Fields.KeptUnder(t).Count > 0)
-                .Select(t => new RecordKindView(t, s.Labels.TypeLabel(t, s.Locales) ?? s.Fields.TypeLabel(t), s.Fields.KeptUnder(t)))]);
+                .Select(t => new RecordKindView(t, s.Labels.TypeLabel(t, s.Locales) ?? s.Fields.TypeLabel(t), s.Fields.KeptUnder(t), s.Fields.TypeOrder(t), s.Fields.DatedField(t)))]);
     }
 
     // A form standing on a field the packs hide is not offered: hiding a field hides what is built on it.

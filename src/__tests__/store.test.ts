@@ -196,6 +196,27 @@ describe('VaultStore', () => {
     expect(store.draftOf('intake')).toEqual({ date: today(), practitioner: 'p1' })
   })
 
+  it('lists the kinds in the order the packs place them, and dates a record by the field its kind names', async () => {
+    vi.mocked(shell.summary).mockResolvedValue({
+      ...summary,
+      kinds: [
+        { type: 'closing', label: 'Closing', under: ['subject'], order: 40, dated: 'closed' },
+        { type: 'intake', label: 'Intake', under: ['subject'], order: 10, dated: 'date' },
+        { type: 'note', label: 'Note', under: ['subject'], order: null, dated: 'date' },
+        { type: 'session', label: null, under: ['subject', 'group'], order: 20, dated: 'date' },
+      ],
+    })
+    const store = new VaultStore()
+
+    await store.load()
+
+    expect(store.kinds.map((k) => k.type)).toEqual(['intake', 'session', 'closing', 'note']) // a kind placed nowhere comes last
+    expect(store.datedOf('closing')).toBe('closed')
+    expect(store.datedOf('unknown')).toBe('date')
+    const closing: Entity = { type: 'closing', id: 'c1', subject: 's1', group: null, people: ['s1'], fields: { date: '2026-01-01', closed: '2026-04-02' }, conflicts: {} }
+    expect(store.dayOf(closing)).toBe('2026-04-02')
+  })
+
   it('keeps a draft of its own for each kind of record', () => {
     const store = new VaultStore()
 

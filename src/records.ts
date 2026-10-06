@@ -186,9 +186,15 @@ export function text(entity: Entity, field: string): string {
   return typeof v === 'string' ? v : ''
 }
 
-/** Sessions newest first by the date the counsellor wrote; ties by id, so the order is stable. */
-export function newestFirst(sessions: Entity[]): Entity[] {
-  return [...sessions].sort((a, b) => text(b, 'date').localeCompare(text(a, 'date')) || b.id.localeCompare(a.id))
+/** When a record happened, as `YYYY-MM-DD`: the date field its kind is dated by. */
+export type DayOf = (record: Entity) => string
+
+/** The field called `date`: what dates a record when nothing says otherwise. */
+export const dayByDate: DayOf = (record) => text(record, 'date')
+
+/** Records newest first by when they happened; ties by id, so the order is stable. */
+export function newestFirst(records: Entity[], dayOf: DayOf = dayByDate): Entity[] {
+  return [...records].sort((a, b) => dayOf(b).localeCompare(dayOf(a)) || b.id.localeCompare(a.id))
 }
 
 /**
@@ -196,8 +202,8 @@ export function newestFirst(sessions: Entity[]): Entity[] {
  * a referral before a closing, whatever the packs call them. Kinds with no dated record yet keep their
  * order after those.
  */
-export function inOrderOfFirstRecord<K>(kinds: K[], recordsOf: (kind: K) => Entity[]): K[] {
-  const first = new Map(kinds.map((k) => [k, recordsOf(k).map((r) => text(r, 'date')).filter(Boolean).sort()[0]]))
+export function inOrderOfFirstRecord<K>(kinds: K[], recordsOf: (kind: K) => Entity[], dayOf: DayOf = dayByDate): K[] {
+  const first = new Map(kinds.map((k) => [k, recordsOf(k).map(dayOf).filter(Boolean).sort()[0]]))
   return [...kinds].sort((a, b) => {
     const [x, y] = [first.get(a), first.get(b)]
     return x && y ? x.localeCompare(y) : Number(!x) - Number(!y)

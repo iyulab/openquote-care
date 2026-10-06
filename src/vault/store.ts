@@ -138,6 +138,14 @@ export class VaultStore extends EventTarget {
     return kind.label ?? (kind.type === 'session' ? strings.sessionKind : kind.type)
   }
 
+  /** The date field that says when a record of `type` happened: the one its packs name, or `date`. */
+  datedOf(type: string): string {
+    return this.kinds.find((k) => k.type === type)?.dated ?? 'date'
+  }
+
+  /** When a record happened, by the date field its kind is dated by. */
+  readonly dayOf = (record: Entity): string => text(record, this.datedOf(record.type))
+
   /** The kinds of record kept under a subject's folder, or a group's. */
   kindsUnder(holder: 'subject' | 'group'): RecordKind[] {
     return this.kinds.filter((k) => k.under.includes(holder))
@@ -263,7 +271,11 @@ export class VaultStore extends EventTarget {
     this.corrected = new Set(
       [...sessionHistory, ...others.flatMap((o) => o.history)].filter((h) => h.changes.some((c) => c.op === 'update')).map((h) => h.id),
     )
+    // In the order the packs place them, the kinds they place none for after, as the packs list them.
     this.kinds = kinds
+      .map((k, i) => ({ k, i }))
+      .sort((a, b) => (a.k.order ?? Infinity) - (b.k.order ?? Infinity) || a.i - b.i)
+      .map(({ k }) => k)
     this.others = new Map(others.map((o) => [o.type, o.records]))
     this.otherFields = new Map(others.map((o) => [o.type, o.fields]))
     // A form standing on a hidden field is never shown; the sidecar decides which those are. Forms counting

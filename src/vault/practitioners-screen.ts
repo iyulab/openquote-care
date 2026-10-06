@@ -85,7 +85,7 @@ export class OcPractitioners extends VaultScreen {
   private practitionerDetail(practitioner: Entity) {
     const store = this.store
     const refs = store.sessionFields.filter((f) => f.kind === 'reference' && f.refType === 'practitioner').map((f) => f.name)
-    const sessions = newestFirst(store.sessions.filter((s) => refs.some((r) => s.fields[r] === practitioner.id)))
+    const sessions = newestFirst(store.sessions.filter((s) => refs.some((r) => s.fields[r] === practitioner.id)), store.dayOf)
     return html`<dp-page-header
         eyebrow=${strings.practitioners}
         heading=${text(practitioner, 'name')}

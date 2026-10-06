@@ -102,6 +102,10 @@ export interface RecordKind {
   type: string
   label: string | null
   under: ('subject' | 'group')[]
+  /** Its place among the kinds, a smaller number first; null when the packs give none. */
+  order?: number | null
+  /** The date field that says when a record of the kind happened (`date` unless the packs say). */
+  dated?: string
 }
 
 export interface VaultSummary {

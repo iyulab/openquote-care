@@ -53,9 +53,9 @@ export class OcSearch extends VaultScreen {
     const names = new Map(store.subjects.map((p) => [p.id, text(p, 'name')]))
     const asked = searchWords(this.query).length > 0
     const records = store.kinds.length > 0 ? store.kinds.flatMap((k) => store.recordsOf(k.type)) : store.sessions
-    const hits = asked ? searchRecords(newestFirst(records), this.query, (s) => this.describe(s)) : []
+    const hits = asked ? searchRecords(newestFirst(records, store.dayOf), this.query, (s) => this.describe(s)) : []
     const dateOf = (s: Entity) => {
-      const field = store.fieldsOf(s.type).find((f) => f.kind === 'date')
+      const field = store.fieldsOf(s.type).find((f) => f.name === store.datedOf(s.type))
       return field ? valueText(store, field, s.fields[field.name]) : ''
     }
     return html`<dp-page-header eyebrow=${strings.navGroupRecords} heading=${strings.searchTitle}></dp-page-header>

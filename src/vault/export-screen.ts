@@ -107,6 +107,7 @@ export class OcExport extends VaultScreen {
           history,
           deviceName: (device) => (summary ? deviceLabel(summary, device) : device),
           names: store.names,
+          dayOf: store.dayOf,
           period,
         },
         words,

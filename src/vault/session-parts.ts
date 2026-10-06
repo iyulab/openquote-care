@@ -135,7 +135,7 @@ export function recordTable(store: VaultStore, t: RecordTable) {
 /** A record's concurrent changes, each field with every device's value to keep; `fields` are sessions' when not given. */
 export function conflictPanel(store: VaultStore, session: Entity, settle: (field: string, value: unknown) => void, fields?: FieldView[]) {
   const defs = fields ?? store.sessionFields
-  const date = defs.find((f) => f.kind === 'date')
+  const date = defs.find((f) => f.name === store.datedOf(session.type))
   return html`<dc-callout variant="warning" data-role="settle"><div class="stack">
     <h3>${strings.conflictTitle}${date ? ` · ${valueText(store, date, session.fields[date.name])}` : ''}</h3>
     <p>${strings.conflictLead}</p>

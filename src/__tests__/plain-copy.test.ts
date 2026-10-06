@@ -237,6 +237,21 @@ describe('plain copy', () => {
     expect(file(files, 'read-me.txt')).toContain('clients.csv, intakes.csv, sessions.csv, closings.csv: open them in a spreadsheet')
   })
 
+  it('dates each record by the field its kind is dated by: the period, the order and the days', () => {
+    const closings = [entity('closing', 'c1', { date: '2026-01-01', closed: '2026-04-25' }, { subject: 's1', people: ['s1'] })]
+    const dayOf = (r: Entity) => (r.type === 'closing' ? (r.fields.closed as string) : (r.fields.date as string) ?? '')
+    const whole: PlainCopySource = {
+      ...source(false),
+      kinds: [...source(false).kinds, { label: 'Closing', fields: [field('closed', 'date')], records: closings }],
+      dayOf,
+    }
+
+    const page = file(plainCopy(whole, en.plainCopy), 'records.html')
+    expect(page).toContain('<p>Records on 2026-04-02 ~ 2026-04-25</p>') // not 2026-01-01, the field the kind is not dated by
+    const april = file(plainCopy({ ...whole, period: { from: '2026-04-20', to: '2026-04-30' } }, en.plainCopy), 'records.html')
+    expect(april).toContain('Closings 1')
+  })
+
   it('says a client has no records only when none of any kind is about them, in Korean too', () => {
     const intakes = [entity('intake', 'i1', { date: '2026-04-01' }, { subject: 's2', people: ['s2'] })]
     const words = ko.plainCopy

@@ -185,7 +185,7 @@ export class OcSubjects extends VaultScreen {
 
   private subjectDetail(subject: Entity) {
     const store = this.store
-    const sessions = newestFirst(store.sessions.filter((s) => s.people.includes(subject.id)))
+    const sessions = newestFirst(store.sessions.filter((s) => s.people.includes(subject.id)), store.dayOf)
     const open = sessions.find((s) => s.id === this.settling && conflictsOf(s).length > 0)
     const correcting = sessions.find((s) => s.id === this.correcting)
     return html`

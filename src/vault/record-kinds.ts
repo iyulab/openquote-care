@@ -32,7 +32,7 @@ export class OcRecordKinds extends StoreElement {
 
   private recordsHere(kind: RecordKind): Entity[] {
     const { kind: holds, id } = this.holder
-    return newestFirst(this.store.recordsOf(kind.type).filter((r) => (holds === 'subject' ? r.subject === id && !r.group : r.group === id)))
+    return newestFirst(this.store.recordsOf(kind.type).filter((r) => (holds === 'subject' ? r.subject === id && !r.group : r.group === id)), this.store.dayOf)
   }
 
   private async settle(record: Entity, field: string, value: unknown) {
@@ -50,7 +50,7 @@ export class OcRecordKinds extends StoreElement {
 
   render() {
     const kinds = this.store.kindsUnder(this.holder.kind).filter((k) => k.type !== 'session')
-    return inOrderOfFirstRecord(kinds, (kind) => this.recordsHere(kind)).map((kind) => this.section(kind))
+    return inOrderOfFirstRecord(kinds, (kind) => this.recordsHere(kind), this.store.dayOf).map((kind) => this.section(kind))
   }
 
   private section(kind: RecordKind) {
