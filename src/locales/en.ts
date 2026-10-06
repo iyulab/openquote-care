@@ -488,6 +488,10 @@ export const en: Strings = {
   caseUnended: (opening: string) => `nothing ended it before the next ${lower(opening)}`,
   caseWithoutOpening: (opening: string) => `began without ${aOrAn(opening)}`,
   caseAfterClosing: (n: number) => `${plural(n, 'record')} after it ended`,
+  caseScale: (scale: string, from: number, fromDay: string, to: number, toDay: string, change: string) =>
+    `${scale} ${from} (${fromDay}) → ${to} (${toDay}) · change ${change}`,
+  caseScaleOnce: (scale: string, score: number, day: string) => `${scale} ${score} (${day}) · no score on another day`,
+  caseScaleUnusable: (n: number) => `${plural(n, 'record')} with no score to read`,
   caseLoose: 'Records with no date, in no case',
   caseUndated: (n: number) => `${plural(n, 'record')} without a date, in no case`,
   conflict: 'Edited on two devices',

@@ -1,5 +1,6 @@
 import { html, nothing } from 'lit'
-import { byCase, caseCounts, caseDays, caseHead, caseStateBesideDays, followUpWords, showsCases, type CaseGroup } from '../cases.js'
+import { byCase, caseCounts, caseDays, caseHead, caseStateBesideDays, followUpWords, scaleLine, showsCases, type CaseGroup } from '../cases.js'
+import { labelOf } from '../records.js'
 import type { PlainCase } from '../plain-copy.js'
 import type { Entity } from '../records.js'
 import { strings } from '../strings.js'
@@ -31,6 +32,7 @@ export function caseSection(store: VaultStore, subject: string) {
             ${followUpWords(c) ? html`<span data-role="follow-up" data-follow-up=${c.followUp}>${followUpWords(c)}</span>` : nothing}
             ${c.opening === null ? html`<span class="muted">${strings.caseWithoutOpening(opening)}</span>` : nothing}
             <div class="muted">${caseCounts(c, kinds, typeOf)}${c.afterClosing.length > 0 ? html` · <span data-role="after-closing">${strings.caseAfterClosing(c.afterClosing.length)}</span>` : nothing}</div>
+            ${scaleRows(store, subject, n - 1)}
           </li>`,
         )}
       </ul>
@@ -71,4 +73,23 @@ export function plainCases(store: VaultStore, subject: string): PlainCase[] {
         .join(' · '),
     }))
     .reverse()
+}
+
+/**
+ * A case's scale scores, a line to a scale — the first score and the last, with the change between them — and the
+ * responses whose score could not be read. Nothing when the case has none.
+ */
+function scaleRows(store: VaultStore, subject: string, index: number) {
+  const caseScales = store.scaleCases.get(subject)?.[index]
+  if (!caseScales || caseScales.scales.length + caseScales.unusable.length === 0) return nothing
+  // A scale reads as the label of the code its responses name, in the version they were written in.
+  const labelFor = (record: string, code: string) => {
+    const entity = store.recordById(record)
+    const value = entity && Object.values(entity.fields).find((v) => typeof v === 'object' && v !== null && (v as { code?: unknown }).code === code)
+    return (value !== undefined && labelOf(store.schemes, value)) || code
+  }
+  return html`<ul class="scales" data-role="case-scales">
+    ${caseScales.scales.map((s) => html`<li data-scale=${s.scale} data-paired=${s.paired ? 'yes' : 'no'}>${scaleLine(s, labelFor(s.baseline.record, s.scale))}</li>`)}
+    ${caseScales.unusable.length > 0 ? html`<li class="muted" data-role="unusable">${strings.caseScaleUnusable(caseScales.unusable.length)}</li>` : nothing}
+  </ul>`
 }

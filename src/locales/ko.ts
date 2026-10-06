@@ -479,6 +479,10 @@ export const ko = {
   caseUnended: (opening: string) => `끝맺는 기록 없이 다음 ${opening}까지`,
   caseWithoutOpening: (opening: string) => `${opening} 없이 시작`,
   caseAfterClosing: (n: number) => `끝난 뒤 기록 ${n}건`,
+  caseScale: (scale: string, from: number, fromDay: string, to: number, toDay: string, change: string) =>
+    `${scale} ${from}점(${fromDay}) → ${to}점(${toDay}) · 차이 ${change}`,
+  caseScaleOnce: (scale: string, score: number, day: string) => `${scale} ${score}점(${day}) · 다른 날 점수 없음`,
+  caseScaleUnusable: (n: number) => `점수를 읽지 못한 기록 ${n}건`,
   caseLoose: '날짜가 없어 어느 사례에도 넣지 못한 기록',
   caseUndated: (n: number) => `날짜가 없어 어느 사례에도 넣지 못한 기록 ${n}건`,
   conflict: '동시 수정',

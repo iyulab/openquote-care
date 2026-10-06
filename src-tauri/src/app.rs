@@ -654,6 +654,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.cases()?))
     }
 
+    /// What each subject's scale scores say over each of its cases, as the engine reads them.
+    pub fn scales(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.scales()?))
+    }
+
     /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. A pack that needs
@@ -845,9 +850,9 @@ pub fn device_id(config_dir: &Path) -> io::Result<String> {
 }
 
 /// The vault folders a data pack adds to: classification schemes and crosswalks, report and export
-/// forms, and the pack's manifest, labels, field definitions and what it says about suggesting
-/// items. Anything else in a pack folder stays out of the vault.
-const DEFINITION_FOLDERS: [&str; 7] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/", "suggestions/"];
+/// forms, and the pack's manifest, labels, field definitions, what it says about suggesting items
+/// and the scales its responses score. Anything else in a pack folder stays out of the vault.
+const DEFINITION_FOLDERS: [&str; 8] = ["schemes/", "reports/", "exports/", "packs/", "labels/", "fields/", "suggestions/", "scales/"];
 
 /// The definition files of a data pack, with their paths inside the pack as vault paths.
 pub(crate) fn pack_files(pack: &Path) -> io::Result<Vec<PlainFile>> {
@@ -1916,7 +1921,7 @@ cut off").unwrap();
 
         let mut packs: Vec<String> = fs::read_dir(dir.path().join("packs")).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
         packs.sort();
-        assert_eq!(packs, ["care", "care.school", "care.school.kr", "kr"]);
+        assert_eq!(packs, ["care", "care.scale", "care.scale.kr", "care.school", "care.school.kr", "kr"]);
         let summary = app.summary().unwrap();
         assert_eq!(summary["locales"], json!(["ko"]));
         for clean in ["unreadable", "packIssues", "fieldIssues", "labelConflicts"] {
@@ -1971,7 +1976,7 @@ cut off").unwrap();
         assert!(summary.get("adopted").is_none());
         assert_eq!(summary["waitingPacks"]["format"], 1);
         assert_eq!(files_under(dir.path()), held, "nothing is written until a person chooses");
-        assert_eq!(app.update_bundled_packs().unwrap(), ["care.school.kr"]);
+        assert_eq!(app.update_bundled_packs().unwrap(), ["care.school.kr", "care.scale.kr"]);
         assert_eq!(declared_format(dir.path()), "openquote.vault/1");
         assert_eq!(app.summary().unwrap()["unreadable"], json!([]));
         let now = files_under(dir.path());

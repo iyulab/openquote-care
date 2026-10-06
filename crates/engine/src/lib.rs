@@ -146,6 +146,12 @@ impl Engine {
         self.call("GET", "/cases", None)
     }
 
+    /// Every subject's scale scores over each of its cases — the baseline, the last available score
+    /// and whether they fall on two days — and the scales the vault's packs give.
+    pub fn scales(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/scales", None)
+    }
+
     /// What the engine holds: counts, report forms, and files it could not read.
     pub fn summary(&self) -> Result<Value, EngineError> {
         self.call("GET", "/summary", None)

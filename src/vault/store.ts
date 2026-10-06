@@ -8,7 +8,7 @@ import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
-import { shell, type BackupStatus, type RecordKind, type SubjectCases, type VaultSummary } from '../shell.js'
+import { shell, type BackupStatus, type CaseScales, type RecordKind, type SubjectCases, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import { pickLocale, tables } from '../locales/index.js'
 
@@ -47,6 +47,8 @@ export class VaultStore extends EventTarget {
   kinds: RecordKind[] = []
   /** Each subject's cases, as the engine reads them from its records, by subject id. */
   cases = new Map<string, SubjectCases>()
+  /** Each subject's scale scores over each of its cases, in the order of its cases, by subject id. */
+  scaleCases = new Map<string, CaseScales[]>()
   /** Records of every kind but sessions, and the fields declared for them, by kind. */
   private others = new Map<string, Entity[]>()
   private otherFields = new Map<string, FieldView[]>()
@@ -255,7 +257,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory, cases] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory, cases, scales] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -269,6 +271,7 @@ export class VaultStore extends EventTarget {
       shell.backupStatus(),
       shell.history('session'),
       shell.cases(),
+      shell.scales(),
     ])
     if (!current()) return
     // The kinds of record besides sessions come from the packs: what the summary names is read next.
@@ -314,6 +317,7 @@ export class VaultStore extends EventTarget {
     this.subjects = [...subjects].sort(byName)
     this.sessions = sessions
     this.cases = new Map(cases.map((c) => [c.subject, c]))
+    this.scaleCases = new Map((scales?.subjects ?? []).map((s) => [s.subject, s.cases]))
     this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes

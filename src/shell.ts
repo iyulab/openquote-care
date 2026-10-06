@@ -150,6 +150,45 @@ export interface SubjectCases {
   undated: string[]
 }
 
+/** A scale the vault's packs give: which way a better score moves (a fact of the scale), its range, its terms of use. */
+export interface ScaleView {
+  code: string
+  direction: 'lower-is-better' | 'higher-is-better'
+  min: number
+  max: number
+  licence: { terms: string; source: string | null; retrieved: string | null } | null
+}
+
+/** A score a response gives: the record, its day (`YYYY-MM-DD`) and the score. */
+export interface ScaleScore {
+  record: string
+  day: string
+  score: number
+}
+
+/** One scale over one case: its first and last available scores up to the closing, and the change when they fall on two days. */
+export interface CaseScale {
+  scale: string
+  baseline: ScaleScore
+  last: ScaleScore
+  responses: number
+  paired: boolean
+  change: number | null
+}
+
+/** What one case's responses say, scale by scale, and the responses that give no score. */
+export interface CaseScales {
+  scales: CaseScale[]
+  unusable: { record: string; reason: string }[]
+}
+
+/** The scales the packs give, and what each subject's responses say over its cases, in the order of its cases. */
+export interface ScalesRead {
+  scales: ScaleView[]
+  subjects: { subject: string; cases: CaseScales[] }[]
+  issues: string[]
+}
+
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
   unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
@@ -249,6 +288,8 @@ export const shell = {
   history: (entityType: string) => invoke<EntityHistory[]>('history', { entityType }),
   /** Every subject's cases, read from its records by the roles the packs give its kinds of record. */
   cases: () => invoke<SubjectCases[]>('cases'),
+  /** What each subject's scale scores say over each of its cases; nothing is stored. */
+  scales: () => invoke<ScalesRead>('scales'),
   schemes: () => invoke<Scheme[]>('schemes'),
   /** The fields the vault's packs declare for an entity type, labelled in the vault's locale; none without field definitions. */
   fields: (entityType: string) => invoke<FieldView[]>('fields', { entityType }),

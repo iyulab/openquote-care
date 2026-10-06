@@ -12,6 +12,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - The toolbar of an open vault says "Saving" and, for a moment, "Saved" for every record written, with the app's quote mark: dots while it saves, the two quotes facing each other once saved. Opening a vault says it is opening, and sent feedback shows the same "done" mark.
 ### Added
 - After a closing, a school vault expects a follow-up within 28 days. A case shows the date the follow-up is due, whether it is overdue, or that it took place. The list of subjects can be narrowed to "Follow-up overdue". Any later record of the student counts as the follow-up. The app makes no judgement about the student and sends no reminders.
+### Added
+- Scale scores: a new kind of record under a person — the day, the scale (PHQ-9 or GAD-7), the total score and notes. On the person's page each case shows, for each scale, its first score and its last up to the closing, and the difference between them when they fall on two different days; a score outside the scale's range is not read, and the case says how many. The app does not say whether a score or a change is good or bad, and asks nothing by the score.
 
 ### Changed
 - A case's heading names the day it ended once, in its days, and a case that began and ended on one day shows that day once.

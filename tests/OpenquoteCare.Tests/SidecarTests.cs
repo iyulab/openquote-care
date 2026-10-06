@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
+using Openquote.Vault;
 using OpenquoteCare.Sidecar;
 
 namespace OpenquoteCare.Tests;
@@ -614,6 +615,37 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.True(cases[1]!["open"]!.GetValue<bool>());
         Assert.Null(cases[1]!["end"]);
         Assert.Empty(mine["undated"]!.AsArray());
+    }
+
+    [Fact]
+    public async Task Reads_each_cases_first_and_last_scale_score_and_the_change_between_them()
+    {
+        var scalePack = Path.GetFullPath(Path.Combine(GoldenVault.Neutral.Root, "..", "..", "packs", "care.scale"));
+        await Post("/vault/load", Files([.. GoldenVault.Neutral.Through(1), .. VaultFiles.FromDirectory(scalePack)]));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { subjectFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        async Task Add(string type, object fields)
+        {
+            var file = await Post("/changes/in-subject", new { subjectId, type, fields });
+            await Post("/vault/add", new { files = new[] { file } });
+        }
+        object Score(string date, int score) => new { date, scale = new { scheme = "care.scale", version = 1, code = "phq9" }, score };
+        await Add("intake", new { date = "2026-03-02" });
+        await Add("scale-score", Score("2026-03-02", 18));
+        await Add("scale-score", Score("2026-04-06", 9));
+        await Add("scale-score", Score("2026-04-07", 40)); // past the scale's range
+        await Add("closing", new { date = "2026-04-20" });
+
+        var read = await Get("/scales");
+
+        var phq9 = read["scales"]!.AsArray().Single(s => s!["code"]!.GetValue<string>() == "phq9")!;
+        Assert.Equal(("lower-is-better", 0, 27), (phq9["direction"]!.GetValue<string>(), phq9["min"]!.GetValue<int>(), phq9["max"]!.GetValue<int>()));
+        Assert.Empty(read["issues"]!.AsArray());
+        var only = read["subjects"]!.AsArray().Single(s => s!["subject"]!.GetValue<string>() == subjectId)!["cases"]!.AsArray().Single()!;
+        var scale = only["scales"]!.AsArray().Single()!;
+        Assert.Equal((18, 9, -9, true), (scale["baseline"]!["score"]!.GetValue<int>(), scale["last"]!["score"]!.GetValue<int>(), scale["change"]!.GetValue<int>(), scale["paired"]!.GetValue<bool>()));
+        Assert.Equal("out-of-range", only["unusable"]!.AsArray().Single()!["reason"]!.GetValue<string>());
     }
 
     [Fact]

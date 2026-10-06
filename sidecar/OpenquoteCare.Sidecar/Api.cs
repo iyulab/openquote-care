@@ -8,6 +8,7 @@ using Openquote.Fields;
 using Openquote.Packs;
 using Openquote.Records;
 using Openquote.Reports;
+using Openquote.Scales;
 using Openquote.Vault;
 
 namespace OpenquoteCare.Sidecar;
@@ -226,6 +227,28 @@ public sealed record CaseView(
 /// <summary>A subject's cases, oldest first, and its records that have no date to place them by.</summary>
 public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Cases, IReadOnlyList<string> Undated);
 
+/// <summary>A scale the vault's packs give: its code, which way a better score moves, its range and its terms of use.</summary>
+public sealed record ScaleView(string Code, string Direction, decimal Min, decimal Max, ScaleLicenceView? Licence);
+
+public sealed record ScaleLicenceView(string Terms, string? Source, DateOnly? Retrieved);
+
+/// <summary>A score a response gives: the record, its day and the score.</summary>
+public sealed record ScaleScoreView(string Record, DateOnly Day, decimal Score);
+
+/// <summary>One scale over one case: its first and last available scores, whether they fall on two days, and the change between them.</summary>
+public sealed record CaseScaleView(string Scale, ScaleScoreView Baseline, ScaleScoreView Last, int Responses, bool Paired, decimal? Change);
+
+/// <summary>A response that gives no score to read, and why (no-scale, unknown-scale, no-score, out-of-range, conflicted).</summary>
+public sealed record UnusableResponseView(string Record, string Reason);
+
+/// <summary>What one case's responses say, scale by scale, in the order of the subject's cases.</summary>
+public sealed record CaseScalesView(IReadOnlyList<CaseScaleView> Scales, IReadOnlyList<UnusableResponseView> Unusable);
+
+public sealed record SubjectScalesView(string Subject, IReadOnlyList<CaseScalesView> Cases);
+
+/// <summary>The scales the packs give, what each subject's responses say over its cases, and what does not fit.</summary>
+public sealed record ScalesView(IReadOnlyList<ScaleView> Scales, IReadOnlyList<SubjectScalesView> Subjects, IReadOnlyList<string> Issues);
+
 /// <summary>The changes an entity was built from, oldest first.</summary>
 public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Changes);
 
@@ -321,6 +344,9 @@ internal static class Api
 
         // Every subject's cases, read from its records each time: nothing records which case a record is in.
         app.MapGet("/cases", (VaultSession session) => CasesOf(session.Current, DateOnly.FromDateTime(clock.GetLocalNow().DateTime)));
+
+        // What each subject's scale scores say over each of its cases, read like the cases: nothing is stored.
+        app.MapGet("/scales", (VaultSession session) => ScalesOf(session.Current));
 
         // Items are named in the vault's locale: a label a pack gives, else the item's own.
         app.MapGet("/schemes", (VaultSession session) =>
@@ -651,7 +677,44 @@ internal static class Api
         _ => null,
     };
 
-    private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s, DateOnly today)
+    private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s, DateOnly today) =>
+        [.. CasesBySubject(s).Select(x => new SubjectCasesView(
+            x.Subject,
+            [.. x.Cases.Cases.Select(c => new CaseView(
+                c.Opening is { } opening ? opening.Reference.Id : null,
+                c.Closing is { } closing ? closing.Reference.Id : null,
+                c.Start,
+                c.End,
+                [.. c.Records.Select(r => r.Reference.Id)],
+                [.. c.AfterClosing.Select(r => r.Reference.Id)],
+                c.FollowedByOpening,
+                c.IsOpen,
+                c.FollowUpDue,
+                FollowUpWord(c.FollowUpOn(today))))],
+            [.. x.Cases.Undated.Select(r => r.Reference.Id)]))];
+
+    private static ScalesView ScalesOf(VaultSession.Snapshot s)
+    {
+        var scales = s.Content.ScaleCatalog();
+        static string Kebab(string name) => string.Concat(name.Select((c, i) => char.IsUpper(c) ? (i > 0 ? "-" : "") + char.ToLowerInvariant(c) : c.ToString()));
+        static ScaleScoreView Score(ScaleScore score) => new(score.Record.Reference.Id, score.Day, score.Score);
+        return new ScalesView(
+            [.. scales.Scales.Select(m => new ScaleView(
+                m.Code,
+                Kebab(m.Direction.ToString()),
+                m.Min,
+                m.Max,
+                m.Licence is { } l ? new ScaleLicenceView(l.Terms, l.Source, l.Retrieved) : null))],
+            [.. CasesBySubject(s).Select(x => new SubjectScalesView(
+                x.Subject,
+                [.. ScaleReader.Read(x.Cases, s.Fields, scales).Select(c => new CaseScalesView(
+                    [.. c.Scales.Select(m => new CaseScaleView(m.Scale.Code, Score(m.Baseline), Score(m.Last), m.Responses, m.Paired, m.Change))],
+                    [.. c.Unusable.Select(u => new UnusableResponseView(u.Record.Reference.Id, Kebab(u.Reason.ToString())))]))]))],
+            [.. scales.Check(s.Fields).Select(i => $"{i.Kind}: {i.Pack} {i.Detail}")]);
+    }
+
+    // Every subject's cases, by subject id.
+    private static IEnumerable<(string Subject, SubjectCases Cases)> CasesBySubject(VaultSession.Snapshot s)
     {
         // Each record by the subjects it is about, so a subject's cases read only its own records.
         var bySubject = new Dictionary<string, List<Entity>>(StringComparer.Ordinal);
@@ -664,28 +727,11 @@ internal static class Api
                 records.Add(e);
             }
         }
-        string Id(Entity e) => e.Reference.Id;
-        return [.. s.Entities.Values
+        return s.Entities.Values
             .Where(e => e.Reference.Type == "subject" && !e.Destroyed)
-            .OrderBy(Id, StringComparer.Ordinal)
-            .Select(subject =>
-            {
-                var read = CaseReader.Read(Id(subject), bySubject.GetValueOrDefault(Id(subject)) ?? [], s.Fields);
-                return new SubjectCasesView(
-                    Id(subject),
-                    [.. read.Cases.Select(c => new CaseView(
-                        c.Opening is { } opening ? Id(opening) : null,
-                        c.Closing is { } closing ? Id(closing) : null,
-                        c.Start,
-                        c.End,
-                        [.. c.Records.Select(Id)],
-                        [.. c.AfterClosing.Select(Id)],
-                        c.FollowedByOpening,
-                        c.IsOpen,
-                        c.FollowUpDue,
-                        FollowUpWord(c.FollowUpOn(today))))],
-                    [.. read.Undated.Select(Id)]);
-            })];
+            .Select(e => e.Reference.Id)
+            .Order(StringComparer.Ordinal)
+            .Select(id => (id, CaseReader.Read(id, bySubject.GetValueOrDefault(id) ?? [], s.Fields)));
     }
 
     private static string FollowUpWord(FollowUp f) => f switch
@@ -738,6 +784,7 @@ internal static class Api
 [JsonSerializable(typeof(EntityView[]))]
 [JsonSerializable(typeof(EntityHistoryView[]))]
 [JsonSerializable(typeof(SubjectCasesView[]))]
+[JsonSerializable(typeof(ScalesView))]
 [JsonSerializable(typeof(SchemeView[]))]
 [JsonSerializable(typeof(PendingView[]))]
 [JsonSerializable(typeof(RunListItem[]))]

@@ -1,0 +1,15 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.scale",
+  "version": 1,
+  "items": [
+    {
+      "code": "phq9",
+      "label": "PHQ-9"
+    },
+    {
+      "code": "gad7",
+      "label": "GAD-7"
+    }
+  ]
+}

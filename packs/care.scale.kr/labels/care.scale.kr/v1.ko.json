@@ -1,0 +1,26 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care.scale.kr",
+  "version": 1,
+  "locale": "ko",
+  "types": {
+    "scale-score": "척도 점수"
+  },
+  "schemes": {
+    "care.scale": {
+      "1": {
+        "phq9": "PHQ-9",
+        "gad7": "GAD-7"
+      }
+    }
+  },
+  "fields": {
+    "scale-score": {
+      "date": "검사일",
+      "practitioner": "담당자",
+      "scale": "척도",
+      "score": "총점",
+      "note": "메모"
+    }
+  }
+}

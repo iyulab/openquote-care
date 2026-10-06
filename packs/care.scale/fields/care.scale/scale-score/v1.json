@@ -1,0 +1,44 @@
+{
+  "format": "openquote.fields/1",
+  "pack": "care.scale",
+  "type": "scale-score",
+  "version": 1,
+  "label": "Scale score",
+  "under": [
+    "subject"
+  ],
+  "order": 25,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Given on"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "label": "Practitioner"
+    },
+    {
+      "name": "scale",
+      "kind": "coded",
+      "scheme": "care.scale",
+      "required": true,
+      "label": "Scale"
+    },
+    {
+      "name": "score",
+      "kind": "number",
+      "required": true,
+      "label": "Total score"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

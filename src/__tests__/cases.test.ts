@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, followUpWords, latestCaseState, latestFollowUp, showsCases } from '../cases.js'
-import type { CaseView, SubjectCases } from '../shell.js'
+import { byCase, caseCounts, caseHead, caseState, followUpWords, latestCaseState, latestFollowUp, scaleLine, showsCases, signed } from '../cases.js'
+import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
 const aCase = (patch: Partial<CaseView>): CaseView => ({
@@ -88,4 +88,18 @@ describe('cases', () => {
     expect(latestFollowUp(of(overdue, aCase({ opening: 'i2' })))).toBeNull() // a new case opened since
     expect(latestFollowUp(of(aCase({ opening: null })))).toBeNull()
   })
+
+  it('say a scale over a case by its first and last scores and the change, its sign only arithmetic', () => {
+    const scale = (patch: Partial<CaseScale>): CaseScale => ({
+      scale: 'phq9', baseline: { record: 'r1', day: '2026-03-02', score: 18 }, last: { record: 'r3', day: '2026-04-06', score: 9 },
+      responses: 3, paired: true, change: -9, ...patch,
+    })
+
+    expect(scaleLine(scale({}), 'PHQ-9')).toBe(strings.caseScale('PHQ-9', 18, '2026-03-02', 9, '2026-04-06', '−9'))
+    expect(scaleLine(scale({ paired: false, change: null, last: { record: 'r1', day: '2026-03-02', score: 18 } }), 'PHQ-9')).toBe(
+      strings.caseScaleOnce('PHQ-9', 18, '2026-03-02'),
+    )
+    expect([signed(3), signed(-9), signed(0)]).toEqual(['+3', '−9', '0'])
+  })
 })
+

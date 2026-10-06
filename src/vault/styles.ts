@@ -129,7 +129,8 @@ export const vaultStyles = [
       align-items: baseline;
       gap: var(--dc-space-1, 4px) var(--dc-space-3, 12px);
     }
-    ul.cases li > div {
+    ul.cases li > div,
+    ul.cases li > ul.scales {
       flex-basis: 100%;
     }
     /* A subject's list split by case: the case's heading as a row over its records, quieter than the column heads. */

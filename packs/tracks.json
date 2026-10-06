@@ -3,7 +3,8 @@
     {
       "id": "school-kr",
       "packs": [
-        "care.school.kr"
+        "care.school.kr",
+        "care.scale.kr"
       ],
       "locale": "ko",
       "label": {
@@ -14,7 +15,8 @@
     {
       "id": "care-en",
       "packs": [
-        "en"
+        "en",
+        "care.scale.en"
       ],
       "locale": "en",
       "label": {

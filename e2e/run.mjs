@@ -174,7 +174,7 @@ const scenarios = {
     await app.vaultOpen()
     await app.noAlert()
     assert.ok((await readdir(work.vault)).length > 0, 'the vault is on disk once confirmed')
-    assert.deepEqual((await readdir(join(work.vault, 'packs'))).sort(), ['care', 'care.school', 'care.school.kr', 'kr'], 'the school track and what it builds on')
+    assert.deepEqual((await readdir(join(work.vault, 'packs'))).sort(), ['care', 'care.scale', 'care.scale.kr', 'care.school', 'care.school.kr', 'kr'], 'the school track and what it builds on')
     const keyStillShown = await app.cdp.evaluate(`__e2e.all('*').some((el) => el.textContent?.includes(${q(work.key.slice(16, 28))}))`)
     assert.equal(keyStillShown, false, 'the key is gone from the window')
   },
@@ -1476,7 +1476,7 @@ const scenarios = {
     await app.type('To confirm you kept it, type the last group of the recovery key (6 characters)', key.slice(-6))
     await app.click('dc-button', 'Confirm')
     await app.vaultOpen()
-    assert.deepEqual((await readdir(join(vault, 'packs'))).sort(), ['care', 'en'], 'only the core and the English labels')
+    assert.deepEqual((await readdir(join(vault, 'packs'))).sort(), ['care', 'care.scale', 'care.scale.en', 'en'], 'the core, its scales and the English labels')
 
     await app.click('button', 'Practitioners')
     await app.click('dc-button', '+ New practitioner')
@@ -1588,6 +1588,28 @@ const scenarios = {
     assert.ok(
       caseHeads.length >= 3 && caseHeads.every((h) => h === 'Case 1 · 2026-04-01 ~ 2026-04-20 · ended'),
       `the sessions, the intake and the closing under their case: ${JSON.stringify(caseHeads)}`,
+    )
+
+    // Scale scores are another kind of record: the case shows the first and the last, and the change — nothing more.
+    const inScoreForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'scale-score'; n = host } })`
+    for (const [day, score] of [['2026-04-02', '18'], ['2026-04-15', '9']]) {
+      await app.click('dc-button', 'Add a scale score')
+      await app.cdp.waitFor(
+        `(() => { const el = ${inScoreForm('input[aria-label="Given on"]')}; if (!el) return false; el.value = '${day}'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+        'the day the scale was given',
+      )
+      await app.choose('Scale', 'phq9')
+      await app.type('Total score', score)
+      await app.click('dc-button', 'Record scale score')
+      await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === ${score === '18' ? 1 : 2}`, 'the score listed')
+      await app.noAlert()
+    }
+    await app.cdp.waitFor(`!!__e2e.one('section[data-role="cases"] li[data-scale="phq9"]')`, 'the scale over the case')
+    assert.equal(
+      await app.cdp.evaluate(`__e2e.one('section[data-role="cases"] li[data-scale="phq9"]').textContent.replace(/\\s+/g, ' ').trim()`),
+      'PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',
+      'the first score, the last and the change between them',
     )
     await app.click('button', 'Statistics')
     await app.choose('Year', '2026')

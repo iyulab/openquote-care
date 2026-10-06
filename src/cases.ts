@@ -1,4 +1,4 @@
-import type { CaseView, FollowUp, SubjectCases } from './shell.js'
+import type { CaseScale, CaseView, FollowUp, SubjectCases } from './shell.js'
 import { strings } from './strings.js'
 
 /**
@@ -110,4 +110,19 @@ export function byCase<T extends { id: string }>(records: readonly T[], subjectC
   }
   const held = groups.filter((g) => g.records.length > 0).reverse()
   return loose.length > 0 ? [...held, { n: null, head: strings.caseLoose, records: loose }] : held
+}
+
+/** A change in words, its sign only arithmetic: +3, −9, 0. */
+export function signed(change: number): string {
+  return change > 0 ? `+${change}` : change < 0 ? `−${-change}` : '0'
+}
+
+/**
+ * One scale over a case in words: the first score and the last, with their days and the change between them — or the
+ * one day's score when there is no other. Nothing says whether the change is better or worse.
+ */
+export function scaleLine(s: CaseScale, label: string): string {
+  return s.paired && s.change !== null
+    ? strings.caseScale(label, s.baseline.score, s.baseline.day, s.last.score, s.last.day, signed(s.change))
+    : strings.caseScaleOnce(label, s.last.score, s.last.day)
 }
