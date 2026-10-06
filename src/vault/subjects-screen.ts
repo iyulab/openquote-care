@@ -6,7 +6,7 @@ import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
 import { latestCase } from '../cases.js'
-import { caseSection } from './case-parts.js'
+import { caseSection, recordsByCase } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
@@ -235,6 +235,7 @@ export class OcSubjects extends VaultScreen {
               ><div class="scroll">
                 ${recordTable(store, {
                   records: sessions,
+                  byCase: recordsByCase(store, subject.id),
                   openNotes: this.openNotes,
                   toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
                   settle: (id) => (this.settling = id),

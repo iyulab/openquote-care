@@ -99,6 +99,13 @@ export const vaultStyles = [
     ul.cases li > div {
       flex-basis: 100%;
     }
+    /* A subject's list split by case: the case's heading as a row over its records, quieter than the column heads. */
+    tr.case-head > th {
+      font-size: var(--dc-font-size-sm, 12px);
+      font-weight: var(--dc-font-weight-semibold, 600);
+      color: var(--dc-color-text-muted, #8a8a92);
+      padding-top: var(--dc-space-3, 12px);
+    }
     ul {
       list-style: none;
       margin: 0;

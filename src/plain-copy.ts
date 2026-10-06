@@ -34,6 +34,18 @@ export interface PlainCopySource {
    * clients and groups those records are about. Every record when absent.
    */
   period?: { from: string; to: string }
+  /**
+   * A subject's cases as its page in the app lists them, newest first. The copy lists, under the subject, the cases
+   * that reach into its days (every one, without a period); none when absent.
+   */
+  casesOf?(subject: string): PlainCase[]
+}
+
+/** One of a subject's cases: its first day, the day it ended (null while open), and its line in words. */
+export interface PlainCase {
+  start: string
+  end: string | null
+  line: string
 }
 
 /** One kind of record: what people call it, its fields and its records. */
@@ -59,6 +71,8 @@ export interface PlainCopyWords {
   unprotected: string
   narrativeLeftOut: string
   subjects: string
+  /** The heading over a subject's cases. */
+  cases: string
   groups: string
   practitioners: string
   name: string
@@ -199,6 +213,13 @@ function days(records: Entity[], dayOf: DayOf = dayByDate): string {
   return dates[0] === dates.at(-1) ? dates[0] : `${dates[0]} ~ ${dates.at(-1)}`
 }
 
+/** The subject's cases that reach into the copy's days, under a heading; nothing without any. */
+function casesList(source: PlainCopySource, words: PlainCopyWords, subject: Entity): string {
+  const { period } = source
+  const cases = (source.casesOf?.(subject.id) ?? []).filter((c) => !period || (c.start <= period.to && (c.end === null || c.end >= period.from)))
+  return cases.length ? `<h3>${escape(words.cases)}</h3><ul data-cases>${cases.map((c) => `<li>${escape(c.line)}</li>`).join('')}</ul>` : ''
+}
+
 function escape(s: string): string {
   return s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
@@ -283,6 +304,7 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
     parts.push(
       `<h2 id="${anchor(s)}">${i + 1}. ${escape(text(s, 'name'))}</h2>`,
       fields.length ? `<dl>${fields.map(([k, v]) => `<dt>${escape(k)}</dt><dd>${escape(v)}</dd>`).join('')}</dl>` : '',
+      casesList(source, words, s),
       held.length + together.length === 0 ? `<p>${escape(words.noRecords)}</p>` : '',
       ...held.map((k) => `<h3>${escape(k.label)}</h3>${recordTable(source, words, k.fields, own(k, s), false)}`),
       ...together.map((k) => `<h3>${escape(words.inGroups(k.label))}</h3>${recordTable(source, words, k.fields, withGroups(k, s), true)}`),

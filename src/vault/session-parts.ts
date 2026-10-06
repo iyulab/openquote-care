@@ -3,6 +3,7 @@ import { primaryAndOthers } from '../several.js'
 import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { attendeesAt, labelOfField, listColumns, narrativeFields, type FieldView } from '../fields.js'
 import { conflictsOf, labelOf, namesOf, text, type Entity } from '../records.js'
+import type { CaseGroup } from '../cases.js'
 import { strings } from '../strings.js'
 import { deviceLabel } from './parts.js'
 import type { VaultStore } from './store.js'
@@ -73,6 +74,8 @@ export interface RecordTable {
   settle?(id: string): void
   /** Opens a session to correct; without it, correcting is not offered. */
   correct?(id: string): void
+  /** A subject's list: its records split by case, each case under a heading row; one run of rows without it. */
+  byCase?(records: Entity[]): CaseGroup<Entity>[]
 }
 
 /**
@@ -95,41 +98,47 @@ export function recordTable(store: VaultStore, t: RecordTable) {
       </tr>
     </thead>
     <tbody>
-      ${t.records.map((s) => {
-        const cells = columns.map((f) => valueText(store, f, s.fields[f.name]))
-        if (at >= 0) cells.splice(at, 0, namesOf(s, subjectNames))
-        const written = notes.filter((f) => typeof s.fields[f.name] === 'string' && (s.fields[f.name] as string).trim() !== '')
-        const open = t.openNotes.has(s.id)
-        return html`<tr data-session=${s.type === 'session' ? s.id : nothing} data-record=${s.id}>
-            ${cells.map(
-              (c, i) =>
-                html`<td class=${i === at ? 'wrap' : nothing}>
-                  ${c}
-                  ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
-                  ${i === 0 && t.correct
-                    ? html`<button class="cell" data-role="correct" ?disabled=${store.busy} @click=${() => t.correct!(s.id)}>${strings.correct}</button>`
-                    : nothing}
-                  ${i === 0 && t.settle && conflictsOf(s).length > 0
-                    ? html`<button class="cell conflict" data-role="conflict" @click=${() => t.settle!(s.id)}>${strings.conflict}</button>`
-                    : nothing}
-                  ${i === 0 && written.length > 0
-                    ? html`<button class="cell" data-role="note" aria-expanded=${open ? 'true' : 'false'} @click=${() => t.toggleNote(s.id)}>
-                        ${open ? strings.hideNote(written[0].label) : strings.showNote(written[0].label)}
-                      </button>`
-                    : nothing}
-                </td>`,
-            )}
-          </tr>
-          ${open && written.length > 0
-            ? html`<tr data-note=${s.id}>
-                <td colspan=${span}>
-                  ${written.map((f) => html`<div class="note"><strong>${f.label}</strong><p>${s.fields[f.name] as string}</p></div>`)}
-                </td>
-              </tr>`
-            : nothing}`
-      })}
+      ${(t.byCase?.(t.records) ?? [{ n: null, head: '', records: t.records }]).map(
+        (g) => html`${g.head
+          ? html`<tr class="case-head" data-case-head=${g.n ?? 'none'}><th colspan=${span} scope="colgroup">${g.head}</th></tr>`
+          : nothing}${g.records.map((s) => row(s))}`,
+      )}
     </tbody>
   </table>`
+
+  function row(s: Entity) {
+    const cells = columns.map((f) => valueText(store, f, s.fields[f.name]))
+    if (at >= 0) cells.splice(at, 0, namesOf(s, subjectNames))
+    const written = notes.filter((f) => typeof s.fields[f.name] === 'string' && (s.fields[f.name] as string).trim() !== '')
+    const open = t.openNotes.has(s.id)
+    return html`<tr data-session=${s.type === 'session' ? s.id : nothing} data-record=${s.id}>
+        ${cells.map(
+          (c, i) =>
+            html`<td class=${i === at ? 'wrap' : nothing}>
+              ${c}
+              ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
+              ${i === 0 && t.correct
+                ? html`<button class="cell" data-role="correct" ?disabled=${store.busy} @click=${() => t.correct!(s.id)}>${strings.correct}</button>`
+                : nothing}
+              ${i === 0 && t.settle && conflictsOf(s).length > 0
+                ? html`<button class="cell conflict" data-role="conflict" @click=${() => t.settle!(s.id)}>${strings.conflict}</button>`
+                : nothing}
+              ${i === 0 && written.length > 0
+                ? html`<button class="cell" data-role="note" aria-expanded=${open ? 'true' : 'false'} @click=${() => t.toggleNote(s.id)}>
+                    ${open ? strings.hideNote(written[0].label) : strings.showNote(written[0].label)}
+                  </button>`
+                : nothing}
+            </td>`,
+        )}
+      </tr>
+      ${open && written.length > 0
+        ? html`<tr data-note=${s.id}>
+            <td colspan=${span}>
+              ${written.map((f) => html`<div class="note"><strong>${f.label}</strong><p>${s.fields[f.name] as string}</p></div>`)}
+            </td>
+          </tr>`
+        : nothing}`
+  }
 }
 
 /** A record's concurrent changes, each field with every device's value to keep; `fields` are sessions' when not given. */

@@ -1497,6 +1497,12 @@ const scenarios = {
     await app.click('dc-button', 'Record session')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the session without a concern listed')
     await app.noAlert()
+    // The client's lists go case by case: each table heads the case's records with its days and state.
+    const caseHeads = await app.cdp.evaluate(`__e2e.all('tr.case-head').map((tr) => tr.textContent.replace(/\\s+/g, ' ').trim())`)
+    assert.ok(
+      caseHeads.length >= 3 && caseHeads.every((h) => h === 'Case 1 · 2026-04-01 ~ 2026-04-20 · ended 2026-04-20'),
+      `the sessions, the intake and the closing under their case: ${JSON.stringify(caseHeads)}`,
+    )
     await app.click('button', 'Statistics')
     await app.type('Year', '2026')
     await app.choose('Month', '4')

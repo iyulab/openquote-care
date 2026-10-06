@@ -6,6 +6,7 @@ import { toTsv, type ExportTable } from '../export.js'
 import { maskNames, type NameMask } from '../masking.js'
 import { storeCopy, storedCopy, type LastCopy } from '../last-copy.js'
 import { plainCopy } from '../plain-copy.js'
+import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { applyPackButton, deviceLabel, formBehind, listDetail, noticeLine, periodFields, rangeFields } from './parts.js'
@@ -112,6 +113,7 @@ export class OcExport extends VaultScreen {
           names: store.names,
           dayOf: store.dayOf,
           period,
+          casesOf: (subject) => plainCases(store, subject),
         },
         words,
       )

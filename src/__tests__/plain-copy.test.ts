@@ -263,4 +263,24 @@ describe('plain copy', () => {
     const empty = file(plainCopy({ ...source(false), kinds: [] }, words), '기록.html')
     expect(empty).toContain('<p>대상자 2명 · 집단 1개 · 기록 0건</p>')
   })
+
+  it('lists a client’s cases under them, newest first, those reaching into a period only', () => {
+    const casesOf = (id: string) =>
+      id === 's1'
+        ? [
+            { start: '2026-05-04', end: null, line: 'Case 2 · 2026-05-04 ~ · open' },
+            { start: '2026-03-02', end: '2026-04-20', line: 'Case 1 · 2026-03-02 ~ 2026-04-20 · ended 2026-04-20' },
+          ]
+        : []
+    const page = file(plainCopy({ ...source(false), casesOf }, en.plainCopy), 'records.html')
+    const ann = page.slice(page.indexOf('Ann &lt;b&gt;</h2>'), page.indexOf('Zed</h2>'))
+
+    expect(ann).toContain('<h3>Cases</h3><ul data-cases><li>Case 2 · 2026-05-04 ~ · open</li><li>Case 1 · 2026-03-02 ~ 2026-04-20 · ended 2026-04-20</li></ul>')
+    expect(page.slice(page.indexOf('Zed</h2>'))).not.toContain('<h3>Cases</h3>')
+
+    const april = file(plainCopy({ ...source(false), casesOf, period: { from: '2026-04-01', to: '2026-04-30' } }, en.plainCopy), 'records.html')
+    expect(april).toContain('<li>Case 1 · 2026-03-02 ~ 2026-04-20 · ended 2026-04-20</li>')
+    expect(april).not.toContain('Case 2')
+  })
 })
+

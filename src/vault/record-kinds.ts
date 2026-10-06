@@ -6,6 +6,7 @@ import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import './record-form.js'
 import { StoreElement } from './screen.js'
+import { recordsByCase } from './case-parts.js'
 import { conflictPanel, recordTable, subjectPicker, toggled, type Holder } from './session-parts.js'
 
 /**
@@ -108,6 +109,7 @@ export class OcRecordKinds extends StoreElement {
                 records,
                 fields,
                 attendees: this.holder.kind === 'group',
+                byCase: this.holder.kind === 'subject' ? recordsByCase(store, this.holder.id) : undefined,
                 openNotes: this.openNotes,
                 toggleNote: (id) => (this.openNotes = toggled(this.openNotes, id)),
                 settle: (id) => (this.settling = id),
