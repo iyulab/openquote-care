@@ -25,8 +25,8 @@ export function latestCase(cases: SubjectCases | undefined): string | undefined 
 }
 
 /**
- * A case's records counted by kind, in the order of the kinds, with what came after it ended:
- * "접수 1건 · 회기 4건 · 종결 1건".
+ * A case's records counted by kind, in the order of the kinds — "Intake: 1 · Session: 4 · Closing: 1" in an
+ * English vault.
  */
 export function caseCounts(c: CaseView, kinds: { type: string; label: string }[], typeOf: (id: string) => string | undefined): string {
   const counts = new Map<string, number>()
