@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-06
+
 ### Added
 - The list of records can hide names in what it shows, prints and copies: as written, the first letter only, or a number for each person (the same number wherever the same name appears). The records themselves are unchanged, and the copy that reads without the app keeps the names.
 - On a person's page, each list of records — sessions, intakes, referrals, closings — goes case by case, the latest case first, each under a line with its days and whether it is open or ended. Records with no date come last, apart.
@@ -35,6 +37,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/iyulab/openquote-care/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/iyulab/openquote-care/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/iyulab/openquote-care/compare/v0.11.0...v0.11.1
