@@ -1701,6 +1701,25 @@ cut off").unwrap();
         "exports/session-list/v3.json.age",
     ];
 
+    /// The core pack's sixth version: a crosswalk from closing reasons into how a closing ended, and the
+    /// form counting by it. A crosswalk into another scheme needs format 1.
+    const CORE_PACK_6: [&str; 4] = [
+        "packs/care/v6.json.age",
+        "schemes/care.closing-type/v1.json.age",
+        "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
+        "reports/care.monthly-closing-type/v1.json.age",
+    ];
+
+    const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
+
+    /// Makes the closed vault in `dir` as one made before the given bundled files were: without them, and in format 0.
+    fn as_format_0_without(dir: &Path, files: &[&str]) {
+        for file in files {
+            fs::remove_file(dir.join(file)).unwrap();
+        }
+        fs::write(dir.join(openquote_care_vault::VAULT_FILE), FORMAT_0_DECLARATION).unwrap();
+    }
+
     fn declared_format(dir: &Path) -> String {
         let text = fs::read_to_string(dir.join(openquote_care_vault::VAULT_FILE)).unwrap();
         serde_json::from_str::<Value>(&text).unwrap()["format"].as_str().unwrap().to_owned()
@@ -1723,22 +1742,20 @@ cut off").unwrap();
         let key = app.create_vault(dir.path(), "pass".to_owned(), TRACK).unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
         app.close_vault();
-        // As a vault made before the school pack's eighth version holds it: in format 0.
-        for file in SCHOOL_PACK_8 {
-            fs::remove_file(dir.path().join(file)).unwrap();
-        }
-        fs::write(dir.path().join(openquote_care_vault::VAULT_FILE), "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n").unwrap();
+        // As a vault made before the school pack's eighth version and the core pack's sixth hold it: in format 0.
+        let missing: Vec<&str> = SCHOOL_PACK_8.iter().chain(CORE_PACK_6.iter()).copied().collect();
+        as_format_0_without(dir.path(), &missing);
 
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
-        assert_eq!(summary["waitingPacks"], json!({ "packs": ["care.school.kr"], "format": 1 }));
+        assert_eq!(summary["waitingPacks"], json!({ "packs": ["care", "care.school.kr"], "format": 1 }));
         assert!(summary.get("updatedPacks").is_none());
         assert_eq!(declared_format(dir.path()), "openquote.vault/0", "opening alone never raises it");
-        assert!(SCHOOL_PACK_8.iter().all(|f| !dir.path().join(f).exists()));
+        assert!(missing.iter().all(|f| !dir.path().join(f).exists()));
 
-        assert_eq!(app.update_bundled_packs().unwrap(), ["care.school.kr"]);
+        assert_eq!(app.update_bundled_packs().unwrap(), ["care", "care.school.kr"]);
         assert_eq!(declared_format(dir.path()), "openquote.vault/1");
-        for file in SCHOOL_PACK_8 {
+        for file in &missing {
             assert!(dir.path().join(file).is_file(), "{file} is added");
         }
         assert!(app.update_bundled_packs().unwrap().is_empty(), "nothing is left waiting");
@@ -1819,9 +1836,13 @@ cut off").unwrap();
     fn a_pack_needing_a_newer_vault_format_is_applied_only_once_a_person_chooses_to_raise_it() {
         let Some(app) = app() else { return };
         let dir = tempfile::tempdir().unwrap();
-        // A track whose packs an engine reading only format 0 counts right: its vault is declared in format 0.
+        // A vault made before the core pack's sixth version holds only what an engine reading format 0 counts
+        // right: it is declared in format 0.
         let key = app.create_vault(dir.path(), "pass".to_owned(), "care-en").unwrap();
         app.confirm_recovery_kit(&key[key.len() - 6..]).unwrap();
+        app.close_vault();
+        as_format_0_without(dir.path(), &CORE_PACK_6);
+        app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         let declaration = fs::read_to_string(dir.path().join("vault.json")).unwrap();
         assert!(declaration.contains("openquote.vault/0"));
         let pack = tempfile::tempdir().unwrap();
@@ -1899,7 +1920,7 @@ cut off").unwrap();
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
         assert_eq!(
             offered,
-            ["care.monthly-closing", "care.monthly-intake", "month-assessment-tool", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
+            ["care.monthly-closing-type", "care.monthly-closing", "care.monthly-intake", "month-assessment-tool", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
         );
     }
 
