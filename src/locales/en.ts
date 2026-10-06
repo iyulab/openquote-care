@@ -442,9 +442,9 @@ export const en: Strings = {
   sessionKind: 'Session',
   sessionCount: (n: number) => plural(n, 'session'),
   nameMask: 'Names',
-  nameMaskNone: 'As written',
-  nameMaskInitial: 'First letter only',
-  nameMaskNumber: 'Numbers only',
+  nameMaskNone: 'Names as written',
+  nameMaskInitial: 'First letters only',
+  nameMaskNumber: 'Numbers for names',
   namesHidden: 'Names are hidden in the list shown, printed and copied. The records are unchanged.',
   cases: 'Cases',
   caseLead: (opening: string, closing: string) =>

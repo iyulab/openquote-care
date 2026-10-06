@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Fixed
+- The choice that hides names in the list of records now says on each option that it is about names ("Names as written", "First letters only", "Numbers for names"). Before, the options read without saying what they changed.
+
 ## [0.13.0] - 2026-10-06
 
 ### Added

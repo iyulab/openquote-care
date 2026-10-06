@@ -880,13 +880,13 @@ const scenarios = {
     const maskNames = (label) =>
       app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control[data-role=name-mask]').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === ${JSON.stringify(label)}).click(); return true })()`)
     const names = () => app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.children[2].textContent.trim())`)
-    await maskNames('첫 글자만')
+    await maskNames('이름 첫 글자만')
     await app.cdp.waitFor(`!!__e2e.one('[data-role=names-hidden]')`, 'the names said hidden')
     assert.deepEqual(await names(), ['가○ ○○ ○', '가○ ○○ ○', '가○ ○○ ○, 가○ ○○ ○', '가○ ○○ ○'], 'each name to its first letter')
-    await maskNames('번호만')
+    await maskNames('이름 대신 번호')
     await app.cdp.waitFor(`__e2e.all('tr[data-export-row]')[0]?.children[2].textContent.trim() === '1'`, 'the names as numbers')
     assert.deepEqual(await names(), ['1', '1', '1, 2', '3'], 'the same person the same number')
-    await maskNames('그대로')
+    await maskNames('이름 그대로')
     await app.cdp.waitFor(`!__e2e.one('[data-role=names-hidden]')`, 'the names as written again')
     assert.equal((await names())[0], '가상 학생 1')
 
