@@ -876,6 +876,20 @@ const scenarios = {
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /^이 양식은 예전 분류로 셉니다 — 주제 분류 1판\(지금은 2판\)\./, 'the form says which scheme version it lags, by the field it classifies')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
 
+    // A list that passes through other hands: its names hidden — the first letter only, or numbers — and the records unchanged.
+    const maskNames = (label) =>
+      app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control[data-role=name-mask]').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === ${JSON.stringify(label)}).click(); return true })()`)
+    const names = () => app.cdp.evaluate(`__e2e.all('tr[data-export-row]').map((tr) => tr.children[2].textContent.trim())`)
+    await maskNames('첫 글자만')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=names-hidden]')`, 'the names said hidden')
+    assert.deepEqual(await names(), ['가○ ○○ ○', '가○ ○○ ○', '가○ ○○ ○, 가○ ○○ ○', '가○ ○○ ○'], 'each name to its first letter')
+    await maskNames('번호만')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]')[0]?.children[2].textContent.trim() === '1'`, 'the names as numbers')
+    assert.deepEqual(await names(), ['1', '1', '1, 2', '3'], 'the same person the same number')
+    await maskNames('그대로')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=names-hidden]')`, 'the names as written again')
+    assert.equal((await names())[0], '가상 학생 1')
+
     // Any days a person picks — a school year, a week — instead of a month.
     await app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === '기간').click(); return true })()`)
     await app.setDate('시작일', '2026-04-09')

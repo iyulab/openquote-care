@@ -440,6 +440,11 @@ export const en: Strings = {
   sessionHistory: 'Sessions',
   sessionKind: 'Session',
   sessionCount: (n: number) => plural(n, 'session'),
+  nameMask: 'Names',
+  nameMaskNone: 'As written',
+  nameMaskInitial: 'First letter only',
+  nameMaskNumber: 'Numbers only',
+  namesHidden: 'Names are hidden in the list shown, printed and copied. The records are unchanged.',
   cases: 'Cases',
   caseLead: (opening: string, closing: string) =>
     `From ${aOrAn(opening)} to ${aOrAn(closing)} is one case. Records after it ended — a follow-up, say — stay with it.`,

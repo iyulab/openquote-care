@@ -712,6 +712,23 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Names_the_columns_that_show_who_a_record_is_about()
+    {
+        const string form = """
+            {"format":"openquote.export/0","export":"list","version":1,"label":"List","rows":"session","period":{"field":"date"},
+             "columns":[{"label":"date","field":"date"},{"label":"client","person":"name"},{"label":"grade","person":"grade"},
+                        {"label":"clients","person":"name","all":true},{"label":"practitioner","field":"practitioner","ref":"name"}]}
+            """;
+        var exportFile = new Openquote.Vault.VaultFile("exports/list/v1.json", System.Text.Encoding.UTF8.GetBytes(form));
+        await Post("/vault/load", Files(GoldenVault.School.Through(1).Append(exportFile)));
+
+        var table = await Post("/exports/run", new { export = "list", version = 1, from = "2026-04-01", to = "2026-04-30" });
+
+        // A subject's name, alone or every attendee's — not another of their fields, nor the practitioner's name.
+        Assert.Equal([1, 3], table["names"]!.AsArray().Select(i => i!.GetValue<int>()));
+    }
+
+    [Fact]
     public async Task Answers_an_unexpected_failure_with_its_type_and_place_but_not_its_message()
     {
         var answer = await Post("/vault/load", new { files = new[] { new { path = "subjects/s1/x.json", content = "not base64 — 가상 학생" } } },

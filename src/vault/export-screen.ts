@@ -3,6 +3,7 @@ import type { DcCheckbox } from '@iyulab/desktop-compact/checkbox'
 import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { toTsv, type ExportTable } from '../export.js'
+import { maskNames, type NameMask } from '../masking.js'
 import { storeCopy, storedCopy, type LastCopy } from '../last-copy.js'
 import { plainCopy } from '../plain-copy.js'
 import { shell } from '../shell.js'
@@ -31,6 +32,8 @@ export class OcExport extends VaultScreen {
   @state() private byRange = false
   /** The copy that reads without the app covers the days the range picks rather than every record. */
   @state() private copyByRange = false
+  /** How names are hidden in the list shown, printed and copied: as written until a person picks. */
+  @state() private nameMask: NameMask = 'none'
 
   /** Every change the records a copy holds were built from: subjects, groups, practitioners and every kind of record. */
   private async changes() {
@@ -222,7 +225,7 @@ export class OcExport extends VaultScreen {
   private formDocument(title: string) {
     const store = this.store
     const busy = store.busy
-    const table = this.exportTable
+    const table = this.exportTable && maskNames(this.exportTable, this.exportTable.names, this.nameMask)
     return html`<dp-page-header eyebrow=${strings.exportTitle} heading=${title} description=${strings.exportLead}>
         <div slot="actions" class="row no-print">
           <dc-segmented-control
@@ -235,6 +238,21 @@ export class OcExport extends VaultScreen {
           ></dc-segmented-control>
           ${this.byRange ? rangeFields(store) : periodFields(store)}
           <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
+          ${table && table.rows.length > 0 && table.names.length > 0
+            ? html`<dc-segmented-control
+                size="sm"
+                data-role="name-mask"
+                aria-label=${strings.nameMask}
+                .options=${[
+                  { value: 'none', label: strings.nameMaskNone },
+                  { value: 'initial', label: strings.nameMaskInitial },
+                  { value: 'number', label: strings.nameMaskNumber },
+                ]}
+                .value=${this.nameMask}
+                ?disabled=${busy}
+                @change=${(e: Event) => (this.nameMask = (e.target as HTMLInputElement).value as NameMask)}
+              ></dc-segmented-control>`
+            : nothing}
           ${table && table.rows.length > 0
             ? html`<dc-button variant="secondary" ?disabled=${busy} @click=${() => void this.copyExport(table)}>${strings.copyExport}</dc-button>
                 <dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>`
@@ -252,6 +270,7 @@ export class OcExport extends VaultScreen {
       <p class="muted" data-role="export-period">${strings.exportPeriod(table.from, table.to, table.rows.length)}</p>
       ${gaps > 0 ? html`<dc-callout variant="warning" data-role="export-gaps"><p>${strings.exportGaps(table.pending.length, table.unmapped.length, table.conflicted.length)}</p></dc-callout>` : nothing}
       ${table.withheld.length > 0 ? html`<p class="muted" data-role="export-withheld">${strings.exportWithheld(table.withheld)}</p>` : nothing}
+      ${this.nameMask !== 'none' && table.names.length > 0 ? html`<p class="muted" data-role="names-hidden">${strings.namesHidden}</p>` : nothing}
       ${table.rows.length === 0
         ? html`<p class="muted">${strings.exportEmpty}</p>`
         : html`<dc-card><div class="scroll">

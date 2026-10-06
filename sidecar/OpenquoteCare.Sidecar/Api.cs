@@ -125,7 +125,8 @@ public sealed record ExportTableView(
     IReadOnlyList<string> Pending,
     IReadOnlyList<string> Unmapped,
     IReadOnlyList<string> Conflicted,
-    IReadOnlyList<string> Withheld);
+    IReadOnlyList<string> Withheld,
+    IReadOnlyList<int> Names);
 
 /// <summary>
 /// One way a report form places what it counts. <c>Scheme</c> and <c>Version</c> are set for a
@@ -541,9 +542,18 @@ internal static class Api
                 table.Pending,
                 table.Unmapped,
                 table.Conflicted,
-                table.Withheld));
+                table.Withheld,
+                NameColumns(export)));
         });
     }
+
+    // The columns that show who a record is about by name — the subject's name, or every attendee's — which a
+    // person may ask to have hidden in what is printed or copied.
+    private static int[] NameColumns(ExportDefinition export) =>
+        [.. export.Columns
+            .Select((c, i) => (c, i))
+            .Where(x => x.c is PersonColumn { Field: "name" } || (x.c is FieldColumn { Field: "name" } && export.Rows == "subject"))
+            .Select(x => x.i)];
 
     private static Entity? Find(VaultSession session, string type, string id) =>
         session.Current.Entities.GetValueOrDefault(new EntityRef(type, id));

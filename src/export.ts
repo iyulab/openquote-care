@@ -17,6 +17,8 @@ export interface ExportTable {
   conflicted: string[]
   /** Columns left empty in every row because they would carry written content (the record's narrative fields). */
   withheld: string[]
+  /** Columns that show who a record is about by name, which a person may hide in what is printed or copied. */
+  names: number[]
 }
 
 /**

@@ -15,6 +15,7 @@ const table: ExportTable = {
   unmapped: [],
   conflicted: [],
   withheld: [],
+  names: [],
 }
 
 describe('toTsv', () => {
