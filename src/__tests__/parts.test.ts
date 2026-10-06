@@ -52,6 +52,11 @@ describe('the years a period is picked from', () => {
     expect(years).toHaveLength(12)
   })
 
+  it('reaches back to the folder\'s earliest record when that is older', () => {
+    expect(yearsAround(2026, 2026, 2001).at(-1)).toBe(2001)
+    expect(yearsAround(2026, 2026, 2020).at(-1)).toBe(2016)
+  })
+
   it('reaches a year chosen outside that span', () => {
     expect(yearsAround(2005, 2026).at(-1)).toBe(2005)
     expect(yearsAround(2030, 2026)[0]).toBe(2030)

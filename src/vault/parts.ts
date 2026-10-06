@@ -74,18 +74,30 @@ export function listDetail(o: {
   </dp-list-detail>`
 }
 
-/** The years a period is picked from: ten back from this one to the next, and the one chosen wherever it lies. */
-export function yearsAround(chosen: number, now = Number(today().slice(0, 4))): number[] {
-  const from = Math.min(chosen, now - 10)
+/**
+ * The years a period is picked from, newest first: from the next year back to the folder's earliest record — ten
+ * years back at least — and the one chosen wherever it lies.
+ */
+export function yearsAround(chosen: number, now = Number(today().slice(0, 4)), earliest = now): number[] {
+  const from = Math.min(chosen, now - 10, earliest)
   const to = Math.max(chosen, now + 1)
   return Array.from({ length: to - from + 1 }, (_, i) => to - i)
 }
 
-/** The year a period is in, named by `label` (the year, or the school year a form counts by). */
+/** The year of the folder's earliest dated record of any kind; none while it holds no dated record. */
+function earliestYear(store: VaultStore): number | undefined {
+  const years = store.kinds
+    .flatMap((k) => store.recordsOf(k.type))
+    .map((r) => Number(store.dayOf(r).slice(0, 4)))
+    .filter((y) => y > 0)
+  return years.length === 0 ? undefined : Math.min(...years)
+}
+
+/** The year a period is in, named by `label`: the calendar year, or the year a form counts from another month than January. */
 export function yearSelect(store: VaultStore, label: string, option: (year: number) => string = strings.yearOption) {
   return html`<dc-select
     aria-label=${label}
-    .options=${yearsAround(store.year).map((y) => ({ value: String(y), label: option(y) }))}
+    .options=${yearsAround(store.year, undefined, earliestYear(store)).map((y) => ({ value: String(y), label: option(y) }))}
     .value=${String(store.year)}
     ?disabled=${store.busy}
     @change=${(e: Event) => store.set({ year: Number((e.target as HTMLSelectElement).value) })}
