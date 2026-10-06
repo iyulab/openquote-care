@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Fixed
+- A category a person has to confirm (such as a crisis) is offered whenever the most similar saved record holds it. A category saved rarely could be left out of the few suggestions, behind the categories chosen often.
+
 ## [0.14.0] - 2026-10-06
 
 ### Added
