@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- A case's heading names the day it ended once, in its days, and a case that began and ended on one day shows that day once.
+
 ## [0.14.1] - 2026-10-06
 
 ### Fixed

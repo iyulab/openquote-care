@@ -1554,7 +1554,7 @@ const scenarios = {
     // The intake opened a case and the closing ended it: the client's page and the list say so.
     await app.cdp.waitFor(`__e2e.one('section[data-role="cases"] li[data-case="1"]')?.dataset.open === 'no'`, 'the case, ended')
     const theCase = await app.cdp.evaluate(`__e2e.one('section[data-role="cases"] li[data-case="1"]').textContent.replace(/\\s+/g, ' ').trim()`)
-    assert.ok(theCase.includes('2026-04-01 ~ 2026-04-20') && theCase.includes('ended 2026-04-20'), `its days and its end: ${theCase}`)
+    assert.ok(theCase.includes('2026-04-01 ~ 2026-04-20 ended') && !theCase.includes('ended 2026'), `its days and its end, the day once: ${theCase}`)
     assert.ok(theCase.includes('Intake: 1') && theCase.includes('Closing: 1'), `what it holds, by kind: ${theCase}`)
     assert.ok(
       await app.cdp.evaluate(`__e2e.all('.pane.list li').some((li) => /· ended$/.test(li.textContent.replace(/\\s+/g, ' ').trim()))`),
@@ -1570,7 +1570,7 @@ const scenarios = {
     // The client's lists go case by case: each table heads the case's records with its days and state.
     const caseHeads = await app.cdp.evaluate(`__e2e.all('tr.case-head').map((tr) => tr.textContent.replace(/\\s+/g, ' ').trim())`)
     assert.ok(
-      caseHeads.length >= 3 && caseHeads.every((h) => h === 'Case 1 · 2026-04-01 ~ 2026-04-20 · ended 2026-04-20'),
+      caseHeads.length >= 3 && caseHeads.every((h) => h === 'Case 1 · 2026-04-01 ~ 2026-04-20 · ended'),
       `the sessions, the intake and the closing under their case: ${JSON.stringify(caseHeads)}`,
     )
     await app.click('button', 'Statistics')

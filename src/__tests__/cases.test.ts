@@ -40,7 +40,11 @@ describe('cases', () => {
   it('head a case with its number, its days and its state', () => {
     expect(caseHead(aCase({}), 2, '접수')).toBe(`${strings.caseTitle(2)} · 2026-03-02 ~ · ${strings.caseOpen}`)
     expect(caseHead(aCase({ open: false, closing: 'c1', end: '2026-04-20' }), 1, '접수')).toBe(
-      `${strings.caseTitle(1)} · 2026-03-02 ~ 2026-04-20 · ${strings.caseEnded('2026-04-20')}`,
+      `${strings.caseTitle(1)} · 2026-03-02 ~ 2026-04-20 · ${strings.caseClosed}`,
+    )
+    // A closing with nothing before it began and ended on one day: the day once.
+    expect(caseHead(aCase({ opening: null, start: '2026-04-20', open: false, closing: 'c1', end: '2026-04-20' }), 1, '접수')).toBe(
+      `${strings.caseTitle(1)} · 2026-04-20 · ${strings.caseClosed}`,
     )
   })
 

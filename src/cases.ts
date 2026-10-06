@@ -39,9 +39,19 @@ export function caseCounts(c: CaseView, kinds: { type: string; label: string }[]
     .join(' · ')
 }
 
+/** A case's days: from its first day on while open, the one day when it began and ended on it, else both. */
+export function caseDays(c: CaseView): string {
+  return c.end === null ? `${c.start} ~` : c.end === c.start ? c.start : `${c.start} ~ ${c.end}`
+}
+
+/** A case's state beside its days, which already hold the day it ended: open, ended, or followed by another opening. */
+export function caseStateBesideDays(c: CaseView, opening: string): string {
+  return c.closing !== null && c.end !== null ? strings.caseClosed : caseState(c, opening)
+}
+
 /** A case's heading over its records in a list: its number, its days and its state. */
 export function caseHead(c: CaseView, n: number, opening: string): string {
-  return [strings.caseTitle(n), c.end === null ? `${c.start} ~` : `${c.start} ~ ${c.end}`, caseState(c, opening)].join(' · ')
+  return [strings.caseTitle(n), caseDays(c), caseStateBesideDays(c, opening)].join(' · ')
 }
 
 /** Records of one case in a list, under its heading; `n` is null for the records no case holds. */

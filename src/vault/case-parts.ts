@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit'
-import { byCase, caseCounts, caseHead, caseState, showsCases, type CaseGroup } from '../cases.js'
+import { byCase, caseCounts, caseDays, caseHead, caseStateBesideDays, showsCases, type CaseGroup } from '../cases.js'
 import type { PlainCase } from '../plain-copy.js'
 import type { Entity } from '../records.js'
 import { strings } from '../strings.js'
@@ -26,8 +26,8 @@ export function caseSection(store: VaultStore, subject: string) {
         ${numbered.map(
           ({ c, n }) => html`<li data-case=${n} data-open=${c.open ? 'yes' : 'no'}>
             <strong>${strings.caseTitle(n)}</strong>
-            <span>${c.start} ~ ${c.end ?? ''}</span>
-            <span>${caseState(c, opening)}</span>
+            <span>${caseDays(c)}</span>
+            <span>${caseStateBesideDays(c, opening)}</span>
             ${c.opening === null ? html`<span class="muted">${strings.caseWithoutOpening(opening)}</span>` : nothing}
             <div class="muted">${caseCounts(c, kinds, typeOf)}${c.afterClosing.length > 0 ? html` · <span data-role="after-closing">${strings.caseAfterClosing(c.afterClosing.length)}</span>` : nothing}</div>
           </li>`,
