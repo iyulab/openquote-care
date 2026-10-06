@@ -1,0 +1,43 @@
+{
+  "ko": {
+    "kinds": [
+      "closing",
+      "intake",
+      "referral",
+      "session"
+    ],
+    "forms": [
+      "care.monthly-closing",
+      "care.monthly-closing-type",
+      "care.monthly-intake",
+      "local.assessment-tool.month-assessment-tool",
+      "local.assessment-tool.year-assessment-level",
+      "month-assessment-tool",
+      "month-practitioner-minutes",
+      "monthly-topic",
+      "neis-upload",
+      "session-list",
+      "year-assessment-level",
+      "year-client-type",
+      "year-grade-class",
+      "year-grade-gender",
+      "year-practitioner-minutes"
+    ]
+  },
+  "en": {
+    "kinds": [
+      "closing",
+      "intake",
+      "referral",
+      "session"
+    ],
+    "forms": [
+      "care.monthly-closing",
+      "care.monthly-closing-type",
+      "care.monthly-concern",
+      "care.monthly-intake",
+      "care.session-list",
+      "local.care.concern.care.monthly-concern"
+    ]
+  }
+}

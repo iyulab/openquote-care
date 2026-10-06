@@ -3,7 +3,13 @@
 // is synthetic.
 //
 //   npm run build:sidecar && npm run build:e2e
-//   node e2e/pictures.mjs <folder> [--locale ko|en] [--root <folder>]
+//   node e2e/pictures.mjs <folder> [--locale ko|en] [--root <folder>] [--compare <earlier folder>]
+//
+// Beside each picture goes the text it shows (<scene>.txt). With --compare, the scenes whose text
+// differs from an earlier run's are listed — with the lines added and gone — in <folder>/changes.txt,
+// so a person looks first at the pictures that changed. The run also says which kinds of record and
+// which forms the vault holds that are not in e2e/pictures-known.json — new since the scenes were
+// last decided: give one a scene, or add it to that file (--update-known writes what the vault holds).
 //
 // The vault and its backup are made under --root (default: the system's temporary folder) and its
 // path shows on the recovery kit and the backup screen: for pictures to publish, give a root that
@@ -13,7 +19,7 @@
 // Date fields show in Windows' regional format, which neither a browser argument nor the devtools
 // locale override changes: take the Korean pictures where that format is Korean.
 
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -171,10 +177,42 @@ async function frame() {
   await app.cdp.send('Emulation.setDeviceMetricsOverride', { width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: false })
 }
 
+// The words the window shows, one run of text to a line, read through every shadow root: only what is
+// in view, as in the picture.
+const SHOWN = `(() => {
+  const lines = []
+  const inView = (el) => {
+    const r = el.getBoundingClientRect()
+    if (r.width === 0 || r.height === 0 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return false
+    const s = getComputedStyle(el)
+    return s.visibility !== 'hidden' && s.display !== 'none'
+  }
+  const walk = (node) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 3) {
+        const t = child.textContent.replace(/\\s+/g, ' ').trim()
+        if (t && child.parentElement && inView(child.parentElement)) lines.push(t)
+      } else if (child.nodeType === 1 && child.localName !== 'style' && child.localName !== 'script') {
+        if (child.shadowRoot) walk(child.shadowRoot)
+        walk(child)
+      }
+    }
+  }
+  walk(document.body)
+  return lines.join('\\n')
+})()`
+
 async function shoot(name) {
   await sleep(600) // transitions and fonts settle
   const { data } = await app.cdp.send('Page.captureScreenshot', { format: 'png' })
   await writeFile(join(shots, `${name}.png`), Buffer.from(data, 'base64'))
+  // The recovery key and the moments the app shows in the system's format (the last backup, say) are new on
+  // every run: they would read as a change each time. The records' own dates are YYYY-MM-DD and stay.
+  const shown = (await app.cdp.evaluate(SHOWN))
+    .replaceAll(/AGE-SECRET-KEY-1[0-9A-Z ]+/g, 'AGE-SECRET-KEY-1 …')
+    .replaceAll(/\d{4}\. \d{1,2}\. \d{1,2}\.|\d{1,2}\/\d{1,2}\/\d{4}/g, '(day)')
+    .replaceAll(/\d{1,2}:\d{2}(:\d{2})?/g, '(time)')
+  await writeFile(join(shots, `${name}.txt`), `${shown}\n`)
   console.log(`  ✓ ${name}`)
 }
 
@@ -402,8 +440,60 @@ try {
   await app.cdp.waitFor(`!!__e2e.one('[data-role=backup-status]')`, 'the backup')
   await sleep(1500)
   await shoot('backup')
+
+  // What the vault holds that the scenes were not decided over: a kind of record or a form new since.
+  const held = await app.cdp.evaluate(
+    `(() => { const s = __e2e.one('oc-vault').store; return { kinds: s.kinds.map((k) => k.type), forms: [...s.summary.reports, ...s.summary.exports].map((f) => f.name) } })()`,
+  )
+  const knownFile = join(root, 'e2e', 'pictures-known.json')
+  const known = existsSync(knownFile) ? JSON.parse(readFileSync(knownFile, 'utf8')) : {}
+  if (args.includes('--update-known')) {
+    known[locale] = { kinds: [...new Set(held.kinds)].sort(), forms: [...new Set(held.forms)].sort() }
+    await writeFile(knownFile, `${JSON.stringify(known, null, 2)}\n`)
+    console.log(`wrote what the ${locale} vault holds to ${knownFile}`)
+  } else {
+    const was = known[locale] ?? { kinds: [], forms: [] }
+    const newKinds = held.kinds.filter((k) => !was.kinds.includes(k))
+    const newForms = held.forms.filter((f) => !was.forms.includes(f))
+    if (newKinds.length + newForms.length > 0)
+      console.log(
+        `note: new since the scenes were decided — ${[...newKinds.map((k) => `kind ${k}`), ...newForms.map((f) => `form ${f}`)].join(', ')}.` +
+          ' Give each a scene, or add it to e2e/pictures-known.json (--update-known).',
+      )
+  }
 } finally {
   await app.quit()
   await rm(work, { recursive: true, force: true }).catch(() => {})
 }
 console.log(`pictures in ${shots}`)
+
+// The scenes whose text differs from an earlier run's: a line counts once for each time it shows.
+const before = option('--compare')
+if (before) {
+  const read = (dir, name) => (existsSync(join(dir, name)) ? readFileSync(join(dir, name), 'utf8').split('\n').filter(Boolean) : null)
+  const minus = (a, b) => {
+    const left = [...b]
+    return a.filter((line) => {
+      const i = left.indexOf(line)
+      if (i < 0) return true
+      left.splice(i, 1)
+      return false
+    })
+  }
+  const scenes = [...new Set([...readdirSync(shots), ...readdirSync(resolve(before))].filter((f) => f.endsWith('.txt') && f !== 'changes.txt'))].sort()
+  const report = []
+  for (const file of scenes) {
+    const scene = file.slice(0, -'.txt'.length)
+    const [was, now] = [read(resolve(before), file), read(shots, file)]
+    if (!was) report.push(`${scene}: new scene`)
+    else if (!now) report.push(`${scene}: no longer taken`)
+    else {
+      const [added, gone] = [minus(now, was), minus(was, now)]
+      if (added.length + gone.length === 0) continue
+      report.push(`${scene}: +${added.length} -${gone.length}`, ...added.map((l) => `  + ${l}`), ...gone.map((l) => `  - ${l}`))
+    }
+  }
+  await writeFile(join(shots, 'changes.txt'), report.length ? `${report.join('\n')}\n` : 'no scene changed\n')
+  const changed = report.filter((l) => !l.startsWith('  '))
+  console.log(changed.length ? `changed since ${before}:\n${changed.map((l) => `  ${l}`).join('\n')}` : `no scene changed since ${before}`)
+}
