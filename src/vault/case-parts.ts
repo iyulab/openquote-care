@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit'
-import { byCase, caseCounts, caseDays, caseHead, caseStateBesideDays, showsCases, type CaseGroup } from '../cases.js'
+import { byCase, caseCounts, caseDays, caseHead, caseStateBesideDays, followUpWords, showsCases, type CaseGroup } from '../cases.js'
 import type { PlainCase } from '../plain-copy.js'
 import type { Entity } from '../records.js'
 import { strings } from '../strings.js'
@@ -28,6 +28,7 @@ export function caseSection(store: VaultStore, subject: string) {
             <strong>${strings.caseTitle(n)}</strong>
             <span>${caseDays(c)}</span>
             <span>${caseStateBesideDays(c, opening)}</span>
+            ${followUpWords(c) ? html`<span data-role="follow-up" data-follow-up=${c.followUp}>${followUpWords(c)}</span>` : nothing}
             ${c.opening === null ? html`<span class="muted">${strings.caseWithoutOpening(opening)}</span>` : nothing}
             <div class="muted">${caseCounts(c, kinds, typeOf)}${c.afterClosing.length > 0 ? html` · <span data-role="after-closing">${strings.caseAfterClosing(c.afterClosing.length)}</span>` : nothing}</div>
           </li>`,
