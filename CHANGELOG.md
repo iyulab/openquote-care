@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-10-06
+
 ### Added
 - The list of subjects can be searched by name or by what their record holds, kept to open or ended cases, and ordered by name or by the latest record. Each row says the subject's latest record day.
 - In a report, rows that count nothing can be hidden on screen ("Hide empty rows"); a printed report keeps every row of the form.
@@ -67,7 +69,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/iyulab/openquote-care/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/iyulab/openquote-care/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/iyulab/openquote-care/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/iyulab/openquote-care/compare/v0.11.1...v0.12.0
