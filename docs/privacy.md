@@ -49,6 +49,8 @@ Released installers let you send a message to the publisher — something in the
 
 **Where.** To the publisher's own records service (`api.iyulab.com`, run by iyulab, hosted on Microsoft Azure in Korea Central), over TLS using the operating system's certificate store. The service keeps the time of the message and the network address it came from with it. A message that cannot be sent — offline, or the service busy — is not kept or retried by the app: it stays on the screen for you to send again.
 
+**Use, keeping and deletion.** A message is used only to improve the app and its website and to reply to you, and kept until you ask for it to be deleted. The publisher's notice on personal details ([openquote.me/en/privacy](https://openquote.me/en/privacy), in Korean at [openquote.me/privacy](https://openquote.me/privacy)) covers it, with a form to have everything under an email address deleted and how to ask for anything else. Not sending a message limits nothing in the app.
+
 ## Usage information
 
 The app sends no usage information. If it ever does, it will be off until you turn it on.

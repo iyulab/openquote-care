@@ -44,7 +44,7 @@ export const en: Strings = {
   feedbackMessage: 'Message',
   feedbackEmail: 'Email for a reply (optional)',
   feedbackWhat: (version: string, os: string) => `Sent along with it: app version ${version} · operating system (${os}) · display language. Nothing about your records or vault.`,
-  feedbackWhere: 'It is kept in a records service run by the publisher (iyulab), together with the IP address it came from.',
+  feedbackWhere: 'It is kept in a records service run by the publisher (iyulab) on Microsoft Azure (Korea Central region), together with the IP address it came from. It is used only to improve the app and the site and to reply to you, and kept until you ask for it to be deleted. Not sending limits nothing in the app. The full notice, and how to have it deleted: openquote.me/en/privacy',
   feedbackCount: (n: number, max: number) => `${n} / ${max} characters`,
   feedbackSend: 'Send',
   feedbackSending: 'Sending…',

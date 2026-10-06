@@ -11,6 +11,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - On a person's page, each list of records — sessions, intakes, referrals, closings — goes case by case, the latest case first, each under a line with its days and whether it is open or ended. Records with no date come last, apart.
 - The copy that reads without the app lists each person's cases under their name, newest first, with what each holds. A copy over a period lists the cases that reach into it.
 
+### Changed
+- Sending feedback now says, before you send, what the message is used for, how long it is kept, that not sending limits nothing, and where to read the full notice and have it deleted.
+
 ## [0.12.0] - 2026-10-06
 
 ### Added

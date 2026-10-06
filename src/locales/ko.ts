@@ -45,7 +45,7 @@ export const ko = {
   feedbackMessage: '보낼 글',
   feedbackEmail: '답을 받을 이메일 (비워 두어도 됩니다)',
   feedbackWhat: (version: string, os: string) => `함께 보내는 것: 앱 판 ${version} · 운영체제(${os}) · 화면 언어. 기록이나 기록 폴더에 대한 정보는 보내지 않습니다.`,
-  feedbackWhere: '발행자(iyulab)가 운영하는 저장 서비스에 보관되며, 보낸 곳의 IP 주소가 함께 남습니다.',
+  feedbackWhere: '발행자(iyulab)가 운영하는 저장 서비스(Microsoft Azure 한국 중부 지역)에 보관되며, 보낸 곳의 IP 주소가 함께 남습니다. 앱과 사이트를 고치고 답을 보내는 데에만 쓰고, 지워 달라고 할 때까지 보관합니다. 보내지 않아도 앱을 쓰는 데 아무 제한이 없습니다. 자세한 안내와 지우기 요청: openquote.me/privacy',
   feedbackCount: (n: number, max: number) => `${n} / ${max}자`,
   feedbackSend: '보내기',
   feedbackSending: '보내는 중…',
