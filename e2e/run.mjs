@@ -938,6 +938,10 @@ const scenarios = {
       ['2026-04-16', '2026', '가상 학생 1, 가상 학생 2', '2', '', ''],
       ['2026-04-20', '2026', '가상 학생 3', '1', '1', '4'],
     ], 'in date order, the group session once with both attendees, and the grade and class a session kept')
+    // Through the column naming who a row is about, the columns stay in view as the list scrolls across, each after the last.
+    const pinned = await app.cdp.evaluate(`[...__e2e.one('tr[data-export-row]').children].filter((td) => getComputedStyle(td).position === 'sticky').map((td) => Math.round(parseFloat(getComputedStyle(td).left)))`)
+    assert.equal(pinned.length, 3, `date, year and who stay in view (${pinned})`)
+    assert.ok(pinned[0] === 0 && pinned[1] > 0 && pinned[2] > pinned[1], `each after the one before (${pinned})`)
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
     assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /^이 양식은 예전 분류로 셉니다 — 주제 분류 1판\(지금은 2판\)\./, 'the form says which scheme version it lags, by the field it classifies')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')

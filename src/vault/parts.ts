@@ -129,7 +129,7 @@ export function stepMonth(store: VaultStore, by: number) {
 export function periodFields(store: VaultStore) {
   const step = (by: number) => stepMonth(store, by)
   return html`<div class="period" role="group" aria-label=${strings.periodMonth}>
-    <dc-button variant="ghost" size="sm" aria-label=${strings.previousMonth} ?disabled=${store.busy} @click=${() => step(-1)}>‹</dc-button>
+    <dc-button variant="ghost" aria-label=${strings.previousMonth} ?disabled=${store.busy} @click=${() => step(-1)}>‹</dc-button>
     ${yearSelect(store, strings.year)}
     <dc-select
       aria-label=${strings.month}
@@ -138,7 +138,7 @@ export function periodFields(store: VaultStore) {
       ?disabled=${store.busy}
       @change=${(e: Event) => store.set({ month: Number((e.target as HTMLSelectElement).value) })}
     ></dc-select>
-    <dc-button variant="ghost" size="sm" aria-label=${strings.nextMonth} ?disabled=${store.busy} @click=${() => step(1)}>›</dc-button>
+    <dc-button variant="ghost" aria-label=${strings.nextMonth} ?disabled=${store.busy} @click=${() => step(1)}>›</dc-button>
   </div>`
 }
 

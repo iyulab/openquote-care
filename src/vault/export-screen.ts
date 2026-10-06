@@ -240,7 +240,6 @@ export class OcExport extends VaultScreen {
     return html`<dp-page-header heading=${title} description=${strings.exportLead}></dp-page-header>
       <div class="toolbar no-print">
         <dc-segmented-control
-          size="sm"
           aria-label=${strings.periodKind}
           .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
           .value=${this.byRange ? 'range' : 'month'}
