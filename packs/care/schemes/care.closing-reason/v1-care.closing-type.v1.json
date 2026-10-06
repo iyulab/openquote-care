@@ -1,0 +1,49 @@
+{
+  "format": "openquote.crosswalk/1",
+  "scheme": "care.closing-reason",
+  "from": 1,
+  "into": "care.closing-type",
+  "to": 1,
+  "links": [
+    [
+      "completed",
+      "planned",
+      "narrower"
+    ],
+    [
+      "referred",
+      "planned",
+      "narrower"
+    ],
+    [
+      "lost-contact",
+      "early",
+      "narrower"
+    ],
+    [
+      "declined",
+      "early",
+      "narrower"
+    ],
+    [
+      "declined-family",
+      "early",
+      "narrower"
+    ],
+    [
+      "request-withdrawn",
+      "other",
+      "narrower"
+    ],
+    [
+      "moved-away",
+      "other",
+      "narrower"
+    ],
+    [
+      "other",
+      "other",
+      "narrower"
+    ]
+  ]
+}

@@ -159,6 +159,34 @@ public sealed class PackFilesTests
         Assert.Equal("MMPI-A(다면적 인성 청소년용), SCT(문장완성)", assessments);
     }
 
+    [Theory]
+    [MemberData(nameof(Tracks))]
+    public void Closings_are_counted_by_how_they_ended_as_well_as_by_reason(string track)
+    {
+        var w = new VaultWriter("dev1");
+        var records = new List<VaultFile>();
+        string Add(VaultFile f)
+        {
+            records.Add(f);
+            return VaultReader.Read([f]).Changes[0].Entity.Id;
+        }
+        static JsonObject Reason(string code) => new() { ["scheme"] = "care.closing-reason", ["version"] = 1, ["code"] = code };
+        var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "Client One" }));
+        foreach (var (day, reason) in new[] { ("2026-04-03", "completed"), ("2026-04-10", "lost-contact"), ("2026-04-17", "moved-away"), ("2026-04-24", "referred") })
+            Add(w.CreateInSubject(one, "closing", new Dictionary<string, JsonNode?> { ["date"] = day, ["reason"] = Reason(reason) }));
+        var content = VaultReader.Read(PacksOf(track).SelectMany(VaultFiles.FromDirectory).Concat(records));
+        var entities = Openquote.Records.EntityMerger.Merge(content.Changes).Values;
+
+        var run = Openquote.Reports.ReportRunner.RunContaining(content.Reports.Single(r => r.Name == "care.monthly-closing-type"),
+            new DateOnly(2026, 4, 1), entities, content.Catalog());
+
+        int Ended(string how) => run.Cells.Where(c => c.Key[0] == how).Sum(c => c.Records.Count);
+        Assert.Equal((2, 1, 1), (Ended("planned"), Ended("early"), Ended("other"))); // completed and referred are planned endings
+        Assert.Equal(4, run.Total.Count);
+        Assert.Empty(run.Pending);
+        Assert.Empty(run.Unmapped);
+    }
+
     [Fact]
     public void A_school_session_names_the_assessments_given_and_forms_count_each_one()
     {

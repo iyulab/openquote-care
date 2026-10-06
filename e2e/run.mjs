@@ -613,8 +613,14 @@ const scenarios = {
   async 'brings a vault holding an earlier version of its classification data up to the one this app carries once a person raises its format, and says so'(app, work) {
     await app.restart()
     // As a vault made before the school pack's second to eighth versions (and the base school pack's second) holds it:
-    // in format 0, which the eighth version's field taking several values needs raised.
+    // in format 0, which the eighth version's field taking several values needs raised. Nor does it hold the core
+    // pack's sixth version, whose crosswalk into another scheme needs format 1 too: a folder holding that under a
+    // format 0 declaration has its declaration set right when it opens.
     const added = [
+      ['packs', 'care', 'v6.json.age'],
+      ['schemes', 'care.closing-type', 'v1.json.age'],
+      ['schemes', 'care.closing-reason', 'v1-care.closing-type.v1.json.age'],
+      ['reports', 'care.monthly-closing-type', 'v1.json.age'],
       ['packs', 'care.school.kr', 'v2.json.age'],
       ['suggestions', 'care.school.kr', 'v2.json.age'],
       ['packs', 'care.school.kr', 'v3.json.age'],

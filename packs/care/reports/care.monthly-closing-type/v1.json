@@ -1,0 +1,21 @@
+{
+  "format": "openquote.report/1",
+  "report": "care.monthly-closing-type",
+  "version": 1,
+  "label": "Closings by how they ended",
+  "counts": "closing",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "dimensions": [
+    {
+      "field": "reason",
+      "scheme": "care.closing-type",
+      "version": 1
+    },
+    {
+      "field": "practitioner"
+    }
+  ]
+}

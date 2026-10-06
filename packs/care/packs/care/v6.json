@@ -1,0 +1,11 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 6,
+  "label": "Care",
+  "provides": [
+    "schemes/care.closing-type/v1.json",
+    "schemes/care.closing-reason/v1-care.closing-type.v1.json",
+    "reports/care.monthly-closing-type/v1.json"
+  ]
+}

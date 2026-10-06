@@ -1,0 +1,19 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.closing-type",
+  "version": 1,
+  "items": [
+    {
+      "code": "planned",
+      "label": "Ended as planned"
+    },
+    {
+      "code": "early",
+      "label": "Ended early"
+    },
+    {
+      "code": "other",
+      "label": "Ended for another reason"
+    }
+  ]
+}

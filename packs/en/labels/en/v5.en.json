@@ -1,0 +1,166 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "en",
+  "version": 5,
+  "locale": "en",
+  "types": {
+    "intake": "Intake",
+    "referral": "Referral",
+    "closing": "Closing"
+  },
+  "schemes": {
+    "care.concern": {
+      "1": {
+        "mood": "Mood",
+        "anxiety": "Anxiety and stress",
+        "relationships": "Relationships",
+        "family": "Family",
+        "study-work": "Study or work",
+        "substance": "Substance use",
+        "loss": "Loss and grief",
+        "safety": "Safety and crisis",
+        "other": "Other"
+      }
+    },
+    "care.mode": {
+      "1": {
+        "in-person": "In person",
+        "phone": "Phone",
+        "video": "Video",
+        "message": "Message",
+        "other": "Other"
+      }
+    },
+    "care.service": {
+      "1": {
+        "mental-health": "Mental health service",
+        "medical": "Hospital or clinic",
+        "counseling": "Counseling service",
+        "welfare": "Social or welfare service",
+        "internal": "Within the organisation",
+        "other": "Other"
+      }
+    },
+    "care.referral-outcome": {
+      "1": {
+        "waiting": "Referred, not started yet",
+        "taken-up": "Taken up",
+        "declined": "Declined by the person or family",
+        "not-accepted": "Not accepted by the service",
+        "other": "Other"
+      }
+    },
+    "care.closing-reason": {
+      "1": {
+        "completed": "Completed as planned",
+        "referred": "Moved to another service",
+        "request-withdrawn": "Request withdrawn",
+        "lost-contact": "Lost contact",
+        "declined": "Declined by the person",
+        "declined-family": "Declined by the family",
+        "moved-away": "Moved away",
+        "other": "Other"
+      }
+    },
+    "care.intake-source": {
+      "1": {
+        "self": "The person asked",
+        "family": "Family",
+        "school": "School or teacher",
+        "service": "Another service",
+        "screening": "Screening result",
+        "other": "Other"
+      }
+    },
+    "care.closing-type": {
+      "1": {
+        "planned": "Ended as planned",
+        "early": "Ended early",
+        "other": "Ended for another reason"
+      }
+    }
+  },
+  "fields": {
+    "session": {
+      "date": "Date",
+      "practitioner": "Practitioner",
+      "concern": "Concern",
+      "mode": "Mode",
+      "note": "Notes",
+      "grade": "Grade",
+      "class": "Class"
+    },
+    "subject": {
+      "name": "Name",
+      "mgmt_no": "Case number",
+      "gender": "Gender",
+      "phone": "Phone",
+      "school": "School",
+      "grade": "Grade",
+      "class": "Class",
+      "guardian": "Guardian",
+      "guardian_phone": "Guardian phone"
+    },
+    "practitioner": {
+      "name": "Name"
+    },
+    "referral": {
+      "date": "Date",
+      "practitioner": "Practitioner",
+      "to": "Referred to",
+      "organisation": "Organisation",
+      "outcome": "Outcome",
+      "reason": "Why it was not taken up",
+      "note": "Notes"
+    },
+    "closing": {
+      "date": "Closed on",
+      "practitioner": "Practitioner",
+      "reason": "Why it closed",
+      "summary": "Closing summary"
+    },
+    "intake": {
+      "date": "Taken on",
+      "practitioner": "Practitioner",
+      "source": "Who brought them",
+      "presenting": "What they came with"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "Full name",
+        "Client"
+      ],
+      "mgmt_no": [
+        "Case no",
+        "ID"
+      ],
+      "phone": [
+        "Phone number",
+        "Mobile"
+      ]
+    }
+  },
+  "reports": {
+    "care.monthly-concern": {
+      "1": "Sessions by concern"
+    },
+    "care.monthly-closing": {
+      "1": "Closings by reason"
+    },
+    "care.monthly-intake": {
+      "1": "Intakes by who brought them"
+    },
+    "care.monthly-closing-type": {
+      "1": "Closings by how they ended"
+    }
+  },
+  "exports": {
+    "care.session-list": {
+      "1": {
+        "label": "Session list"
+      }
+    }
+  }
+}
