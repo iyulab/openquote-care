@@ -659,6 +659,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.scales()?))
     }
 
+    /// What the cases closed in a stretch of days hold of each scale (see [`Engine::scale_summary`]).
+    pub fn scale_summary(&self, from: &str, to: &str) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.scale_summary(from, to)?))
+    }
+
     /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. A pack that needs

@@ -246,6 +246,18 @@ public sealed record CaseScalesView(IReadOnlyList<CaseScaleView> Scales, IReadOn
 
 public sealed record SubjectScalesView(string Subject, IReadOnlyList<CaseScalesView> Cases);
 
+/// <summary>The days whose closed cases a scale summary reads, both included (<c>yyyy-MM-dd</c>).</summary>
+public sealed record ScaleSummaryRequest(DateOnly From, DateOnly To);
+
+/// <summary>A closed case's scores of one scale, and whose case it is.</summary>
+public sealed record SummaryCaseView(string Subject, ScaleScoreView Baseline, ScaleScoreView Last, bool Paired, decimal? Change);
+
+/// <summary>One scale over the cases closed in the days: how many have a score of it, how many on two days, and which.</summary>
+public sealed record ScaleTallyView(string Scale, int Scored, int Paired, IReadOnlyList<SummaryCaseView> Cases);
+
+/// <summary>What the cases closed in the days hold of each scale (<see cref="ScaleReader.Summarize"/>): every closed case counted somewhere.</summary>
+public sealed record ScaleSummaryView(int Closed, int Unscored, IReadOnlyList<ScaleTallyView> Scales);
+
 /// <summary>The scales the packs give, what each subject's responses say over its cases, and what does not fit.</summary>
 public sealed record ScalesView(IReadOnlyList<ScaleView> Scales, IReadOnlyList<SubjectScalesView> Subjects, IReadOnlyList<string> Issues);
 
@@ -347,6 +359,7 @@ internal static class Api
 
         // What each subject's scale scores say over each of its cases, read like the cases: nothing is stored.
         app.MapGet("/scales", (VaultSession session) => ScalesOf(session.Current));
+        app.MapPost("/scales/summary", (ScaleSummaryRequest request, VaultSession session) => ScaleSummaryOf(session.Current, request.From, request.To));
 
         // Items are named in the vault's locale: a label a pack gives, else the item's own.
         app.MapGet("/schemes", (VaultSession session) =>
@@ -713,6 +726,30 @@ internal static class Api
             [.. scales.Check(s.Fields).Select(i => $"{i.Kind}: {i.Pack} {i.Detail}")]);
     }
 
+    private static ScaleSummaryView ScaleSummaryOf(VaultSession.Snapshot s, DateOnly from, DateOnly to)
+    {
+        var scales = s.Content.ScaleCatalog();
+        // Whose case each scale's reading is: the summary counts cases, the screen names them.
+        var subjectOf = new Dictionary<CaseScale, string>(ReferenceEqualityComparer.Instance);
+        var read = new List<CaseScales>();
+        foreach (var (subject, cases) in CasesBySubject(s))
+            foreach (var c in ScaleReader.Read(cases, s.Fields, scales))
+            {
+                read.Add(c);
+                foreach (var m in c.Scales) subjectOf[m] = subject;
+            }
+        static ScaleScoreView Score(ScaleScore score) => new(score.Record.Reference.Id, score.Day, score.Score);
+        var summary = ScaleReader.Summarize(read, from, to);
+        return new ScaleSummaryView(
+            summary.Closed,
+            summary.Unscored,
+            [.. summary.Scales.Select(t => new ScaleTallyView(
+                t.Scale.Code,
+                t.Scored,
+                t.Paired,
+                [.. t.Cases.Select(m => new SummaryCaseView(subjectOf[m], Score(m.Baseline), Score(m.Last), m.Paired, m.Change))]))]);
+    }
+
     // Every subject's cases, by subject id.
     private static IEnumerable<(string Subject, SubjectCases Cases)> CasesBySubject(VaultSession.Snapshot s)
     {
@@ -785,6 +822,8 @@ internal static class Api
 [JsonSerializable(typeof(EntityHistoryView[]))]
 [JsonSerializable(typeof(SubjectCasesView[]))]
 [JsonSerializable(typeof(ScalesView))]
+[JsonSerializable(typeof(ScaleSummaryRequest))]
+[JsonSerializable(typeof(ScaleSummaryView))]
 [JsonSerializable(typeof(SchemeView[]))]
 [JsonSerializable(typeof(PendingView[]))]
 [JsonSerializable(typeof(RunListItem[]))]

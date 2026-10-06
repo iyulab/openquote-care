@@ -49,6 +49,8 @@ export class VaultStore extends EventTarget {
   cases = new Map<string, SubjectCases>()
   /** Each subject's scale scores over each of its cases, in the order of its cases, by subject id. */
   scaleCases = new Map<string, CaseScales[]>()
+  /** The scales the vault's packs give, by code; none when they give none. */
+  scaleCodes: string[] = []
   /** Records of every kind but sessions, and the fields declared for them, by kind. */
   private others = new Map<string, Entity[]>()
   private otherFields = new Map<string, FieldView[]>()
@@ -318,6 +320,7 @@ export class VaultStore extends EventTarget {
     this.sessions = sessions
     this.cases = new Map(cases.map((c) => [c.subject, c]))
     this.scaleCases = new Map((scales?.subjects ?? []).map((s) => [s.subject, s.cases]))
+    this.scaleCodes = (scales?.scales ?? []).map((s) => s.code)
     this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes

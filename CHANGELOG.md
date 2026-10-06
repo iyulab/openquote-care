@@ -14,6 +14,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - After a closing, a school vault expects a follow-up within 28 days. A case shows the date the follow-up is due, whether it is overdue, or that it took place. The list of subjects can be narrowed to "Follow-up overdue". Any later record of the student counts as the follow-up. The app makes no judgement about the student and sends no reminders.
 ### Added
 - Scale scores: a new kind of record under a person — the day, the scale (PHQ-9 or GAD-7), the total score and notes. On the person's page each case shows, for each scale, its first score and its last up to the closing, and the difference between them when they fall on two different days; a score outside the scale's range is not read, and the case says how many. The app does not say whether a score or a change is good or bad, and asks nothing by the score.
+- Statistics lists "Scale scores of closed cases": for a period, each scale's closed cases with a score and with scores on two days, each case's first and last score with the difference, and how many closed cases have no score at all. It counts and subtracts only.
 
 ### Changed
 - A case's heading names the day it ended once, in its days, and a case that began and ended on one day shows that day once.

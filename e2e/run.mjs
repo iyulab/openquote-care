@@ -1632,6 +1632,25 @@ const scenarios = {
     await app.noAlert()
     const closed = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="lost-contact"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([closed[0], closed.at(-1)], ['Lost contact', '1 (1 person)'], 'the closing counted once, by its reason')
+
+    // The scale scores of the cases closed in a period: how many have one, how many on two days, and each case's first
+    // and last score with the difference — counts and arithmetic, nothing judged.
+    await app.click('nav[aria-label="Report forms"] button[data-entry="scales:summary"]')
+    await app.setDate('From', '2026-04-01')
+    await app.setDate('To', '2026-04-30')
+    await app.click('dc-button[data-role="run-scale-summary"]')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="scale-summary-closed"]')`, 'the scale summary of the month')
+    await app.noAlert()
+    assert.equal(
+      await app.cdp.evaluate(`__e2e.one('[data-role="scale-summary-closed"]').textContent.trim()`),
+      '1 case closed in this period · 0 of them with no scale score at all',
+    )
+    assert.deepEqual(await app.cdp.evaluate(`[...__e2e.one('tr[data-scale="phq9"]').children].map((c) => c.textContent.trim())`), ['PHQ-9', '1', '1'], 'one closed case with PHQ-9 scores, on two days')
+    assert.equal(
+      await app.cdp.evaluate(`__e2e.one('tr[data-scale-case]').textContent.replace(/\\s+/g, ' ').trim()`),
+      'Client One · PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',
+      'the case named, with its first and last score',
+    )
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-intake@1"]')
     await app.choose('Year', '2026')
     await app.choose('Month', '4')

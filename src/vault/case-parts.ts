@@ -75,6 +75,13 @@ export function plainCases(store: VaultStore, subject: string): PlainCase[] {
     .reverse()
 }
 
+/** A scale as people read it: the label of the code a response names, in the version it was written in. */
+export function scaleLabel(store: VaultStore, record: string, code: string): string {
+  const entity = store.recordById(record)
+  const value = entity && Object.values(entity.fields).find((v) => typeof v === 'object' && v !== null && (v as { code?: unknown }).code === code)
+  return (value !== undefined && labelOf(store.schemes, value)) || code
+}
+
 /**
  * A case's scale scores, a line to a scale — the first score and the last, with the change between them — and the
  * responses whose score could not be read. Nothing when the case has none.
@@ -82,12 +89,7 @@ export function plainCases(store: VaultStore, subject: string): PlainCase[] {
 function scaleRows(store: VaultStore, subject: string, index: number) {
   const caseScales = store.scaleCases.get(subject)?.[index]
   if (!caseScales || caseScales.scales.length + caseScales.unusable.length === 0) return nothing
-  // A scale reads as the label of the code its responses name, in the version they were written in.
-  const labelFor = (record: string, code: string) => {
-    const entity = store.recordById(record)
-    const value = entity && Object.values(entity.fields).find((v) => typeof v === 'object' && v !== null && (v as { code?: unknown }).code === code)
-    return (value !== undefined && labelOf(store.schemes, value)) || code
-  }
+  const labelFor = (record: string, code: string) => scaleLabel(store, record, code)
   return html`<ul class="scales" data-role="case-scales">
     ${caseScales.scales.map((s) => html`<li data-scale=${s.scale} data-paired=${s.paired ? 'yes' : 'no'}>${scaleLine(s, labelFor(s.baseline.record, s.scale))}</li>`)}
     ${caseScales.unusable.length > 0 ? html`<li class="muted" data-role="unusable">${strings.caseScaleUnusable(caseScales.unusable.length)}</li>` : nothing}

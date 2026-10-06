@@ -3,7 +3,9 @@ import { html, nothing } from 'lit'
 import { customElement, state } from 'lit/decorators.js'
 import { comparable, headCount, layOut, measureOf, sumOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
 import { labelOfField } from '../fields.js'
-import { shell } from '../shell.js'
+import { shell, type ScaleSummary } from '../shell.js'
+import { scaleLine } from '../cases.js'
+import { scaleLabel } from './case-parts.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
 import type { ReportEntry } from '../forms.js'
@@ -29,6 +31,8 @@ export class OcReport extends VaultScreen {
   @state() private section = 0
   /** Rows counting nothing are left off the screen; paper keeps the form whole. */
   @state() private hideEmpty = false
+  /** The scale scores of the cases closed in the period last run, while the summary is the one picked. */
+  @state() private scaleSummary?: ScaleSummary
 
   private async runReport() {
     const store = this.store
@@ -141,16 +145,75 @@ export class OcReport extends VaultScreen {
       store: this.store,
       label: strings.reportForms,
       head: applyPackButton(store),
-      entries: byUnit(reports).map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r), group: unitGroup(r) })),
+      entries: [
+        ...byUnit(reports).map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r), group: unitGroup(r) })),
+        // Not a form: the scale scores of the cases closed in a period, where the packs give scales.
+        ...(store.scaleCodes.length > 0 ? [{ id: SCALE_SUMMARY, label: strings.scaleSummary, group: strings.formsBy.scales }] : []),
+      ],
       selected: store.reportKey,
       select: (key) => this.pick(key),
       empty: strings.noReports,
-      document: chosen
+      document: store.reportKey === SCALE_SUMMARY && store.scaleCodes.length > 0
+        ? this.scaleSummaryDocument()
+        : chosen
         ? this.formDocument(formLabel(reports, chosen))
         : html`${reports.length > 0 ? html`<p class="muted">${strings.pickReportForm}</p>` : nothing} ${raiseFormatCallout(store)} ${noticeLine(store)}`,
       open: this.documentOpen,
       back: () => (this.documentOpen = false),
     })
+  }
+
+  private async runScaleSummary() {
+    const store = this.store
+    const { rangeFrom: from, rangeTo: to } = store
+    if (!from || !to || to < from) {
+      store.set({ error: { text: strings.rangeMissing } })
+      return
+    }
+    await store.run(async () => {
+      this.scaleSummary = await shell.scaleSummary(from, to)
+    })
+  }
+
+  /**
+   * The scale scores of the cases closed in a period: for each scale, how many have a score and how many on two days,
+   * and each case's first and last score with the difference — counts and arithmetic, nothing judged.
+   */
+  private scaleSummaryDocument() {
+    const store = this.store
+    const summary = this.scaleSummary
+    const name = (subject: string) => store.subjects.find((s) => s.id === subject)?.fields.name
+    const columns = strings.scaleSummaryColumns
+    return html`<dp-page-header heading=${strings.scaleSummary}></dp-page-header>
+      <p class="muted">${strings.scaleSummaryLead}</p>
+      <div class="toolbar no-print">
+        ${rangeFields(store)}
+        <dc-button variant="primary" data-role="run-scale-summary" ?disabled=${store.busy} @click=${() => void this.runScaleSummary()}>${strings.runReport}</dc-button>
+      </div>
+      ${noticeLine(store)}
+      ${summary === undefined
+        ? html`<p class="muted">${strings.scaleSummaryPick}</p>`
+        : summary.closed === 0
+          ? html`<p class="muted" data-role="scale-summary-none">${strings.scaleSummaryNone}</p>`
+          : html`<p data-role="scale-summary-closed">${strings.scaleSummaryClosed(summary.closed, summary.unscored)}</p>
+              <dc-card>
+                <table data-role="scale-summary">
+                  <thead>
+                    <tr><th>${columns.scale}</th><th class="num">${columns.scored}</th><th class="num">${columns.paired}</th></tr>
+                  </thead>
+                  <tbody>
+                    ${summary.scales.map((t) => {
+                      const label = t.cases.length > 0 ? scaleLabel(store, t.cases[0].baseline.record, t.scale) : t.scale
+                      return html`<tr data-scale=${t.scale}><td>${label}</td><td class="num">${t.scored}</td><td class="num">${t.paired}</td></tr>
+                        ${t.cases.map(
+                          (c) => html`<tr class="muted" data-scale-case=${c.subject}>
+                            <td colspan="3">${typeof name(c.subject) === 'string' ? name(c.subject) : c.subject} · ${scaleLine(c, label)}</td>
+                          </tr>`,
+                        )}`
+                    })}
+                  </tbody>
+                </table>
+              </dc-card>`}`
   }
 
   /** The chosen form's report: the month to count, the counts, and what they are made of. */
@@ -323,6 +386,9 @@ export class OcReport extends VaultScreen {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
+
+/** The statistics list's entry for the scale scores of closed cases. */
+const SCALE_SUMMARY = 'scales:summary'
 
 /** The heading a form is listed under: the span it counts — a month, a year (or one from another month), a day, a range. */
 function unitGroup(form: ReportEntry): string {

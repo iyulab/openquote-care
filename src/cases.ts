@@ -121,7 +121,7 @@ export function signed(change: number): string {
  * One scale over a case in words: the first score and the last, with their days and the change between them — or the
  * one day's score when there is no other. Nothing says whether the change is better or worse.
  */
-export function scaleLine(s: CaseScale, label: string): string {
+export function scaleLine(s: Pick<CaseScale, 'baseline' | 'last' | 'paired' | 'change'>, label: string): string {
   return s.paired && s.change !== null
     ? strings.caseScale(label, s.baseline.score, s.baseline.day, s.last.score, s.last.day, signed(s.change))
     : strings.caseScaleOnce(label, s.last.score, s.last.day)

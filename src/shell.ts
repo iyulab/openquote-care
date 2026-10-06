@@ -189,6 +189,16 @@ export interface ScalesRead {
   issues: string[]
 }
 
+/**
+ * What the cases closed in a stretch of days hold of each scale: how many have a score of it, how many on two days, and
+ * which they are, by subject — and how many closed with no score at all. Counts only; nothing is judged.
+ */
+export interface ScaleSummary {
+  closed: number
+  unscored: number
+  scales: { scale: string; scored: number; paired: number; cases: { subject: string; baseline: ScaleScore; last: ScaleScore; paired: boolean; change: number | null }[] }[]
+}
+
 export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
   unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
@@ -290,6 +300,7 @@ export const shell = {
   cases: () => invoke<SubjectCases[]>('cases'),
   /** What each subject's scale scores say over each of its cases; nothing is stored. */
   scales: () => invoke<ScalesRead>('scales'),
+  scaleSummary: (from: string, to: string) => invoke<ScaleSummary>('scale_summary', { from, to }),
   schemes: () => invoke<Scheme[]>('schemes'),
   /** The fields the vault's packs declare for an entity type, labelled in the vault's locale; none without field definitions. */
   fields: (entityType: string) => invoke<FieldView[]>('fields', { entityType }),

@@ -131,6 +131,11 @@ fn scales(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn scale_summary(from: String, to: String, app: State<App>) -> CommandResult<Value> {
+    text(app.scale_summary(&from, &to))
+}
+
+#[tauri::command]
 fn apply_pack(folder: String, raise_format: Option<bool>, app: State<App>) -> CommandResult<Vec<String>> {
     text(app.apply_pack(&PathBuf::from(folder), raise_format.unwrap_or(false)))
 }
@@ -456,6 +461,7 @@ pub fn run() {
             history,
             cases,
             scales,
+            scale_summary,
             compare_runs,
             run_report,
             run_export,

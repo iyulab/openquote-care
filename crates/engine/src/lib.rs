@@ -152,6 +152,12 @@ impl Engine {
         self.call("GET", "/scales", None)
     }
 
+    /// What the cases closed from `from` to `to` (both included) hold of each scale: how many have a
+    /// score of it, how many on two days, which they are, and how many closed with no score at all.
+    pub fn scale_summary(&self, from: &str, to: &str) -> Result<Value, EngineError> {
+        self.call("POST", "/scales/summary", Some(json!({ "from": from, "to": to })))
+    }
+
     /// What the engine holds: counts, report forms, and files it could not read.
     pub fn summary(&self) -> Result<Value, EngineError> {
         self.call("GET", "/summary", None)
