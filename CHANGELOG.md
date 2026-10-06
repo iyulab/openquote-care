@@ -9,6 +9,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Added
 - Closings are counted by how they ended as well as by their reason: ended as planned (completed as planned, or moved to another service), ended early (lost contact, or declined by the person or by the family), or ended for another reason (request withdrawn, moved away, or other). A new monthly form, "Closings by how they ended", counts them by practitioner. A records folder made before this version asks once to raise its format before it takes the new form.
 
+### Changed
+- A person's kinds of record are always in the order the work takes — intake, sessions, referrals, closing — even before any is written. Before, a new person's showed in another order until records came in.
+
 ## [0.11.1] - 2026-10-06
 
 ### Fixed
