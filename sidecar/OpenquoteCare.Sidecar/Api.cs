@@ -89,7 +89,7 @@ public sealed record SummaryView(
 /// what people read for it in the vault's locale, or null when no pack names it.
 /// </summary>
 /// <summary>A kind of record kept under subjects or groups: its name, where it is kept, its place among the others and the field that dates it.</summary>
-public sealed record RecordKindView(string Type, string? Label, IReadOnlyList<string> Under, int? Order, string Dated);
+public sealed record RecordKindView(string Type, string? Label, IReadOnlyList<string> Under, int? Order, string Dated, string? Role);
 
 /// <summary>A data pack the vault holds (its latest version).</summary>
 public sealed record PackView(string Id, int Version, string Label, IReadOnlyDictionary<string, int> Depends);
@@ -206,6 +206,20 @@ public sealed record EntityView(
 
 public sealed record HeadView(string ChangeId, string Device, JsonElement Value);
 
+/// <summary>One of a subject's cases, as <see cref="CaseReader"/> reads it: its records by id, in time order.</summary>
+public sealed record CaseView(
+    string? Opening,
+    string? Closing,
+    DateOnly Start,
+    DateOnly? End,
+    IReadOnlyList<string> Records,
+    IReadOnlyList<string> AfterClosing,
+    bool FollowedByOpening,
+    bool Open);
+
+/// <summary>A subject's cases, oldest first, and its records that have no date to place them by.</summary>
+public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Cases, IReadOnlyList<string> Undated);
+
 /// <summary>The changes an entity was built from, oldest first.</summary>
 public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Changes);
 
@@ -298,6 +312,9 @@ internal static class Api
                 .ToArray());
 
         app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
+
+        // Every subject's cases, read from its records each time: nothing records which case a record is in.
+        app.MapGet("/cases", (VaultSession session) => CasesOf(session.Current));
 
         // Items are named in the vault's locale: a label a pack gives, else the item's own.
         app.MapGet("/schemes", (VaultSession session) =>
@@ -565,7 +582,7 @@ internal static class Api
             [.. s.Labels.Conflicts.Select(c => new LabelConflictView(c.Locale, c.Target, c.Packs))],
             s.Locales,
             [.. s.Fields.Types.Where(t => s.Fields.KeptUnder(t).Count > 0)
-                .Select(t => new RecordKindView(t, s.Labels.TypeLabel(t, s.Locales) ?? s.Fields.TypeLabel(t), s.Fields.KeptUnder(t), s.Fields.TypeOrder(t), s.Fields.DatedField(t)))]);
+                .Select(t => new RecordKindView(t, s.Labels.TypeLabel(t, s.Locales) ?? s.Fields.TypeLabel(t), s.Fields.KeptUnder(t), s.Fields.TypeOrder(t), s.Fields.DatedField(t), RoleOf(s.Fields.TypeRole(t))))]);
     }
 
     // A form standing on a field the packs hide is not offered: hiding a field hides what is built on it.
@@ -612,6 +629,48 @@ internal static class Api
     // A kept run as its record reads: the same shape /reports/run answers with.
     private static JsonNode RunView(KeptRun k) => JsonNode.Parse(ReportRunJson.Write(k.Run, k.Id, k.Device, k.At))!;
 
+    private static string? RoleOf(CaseRole? role) => role switch
+    {
+        CaseRole.Opens => "opens",
+        CaseRole.Closes => "closes",
+        _ => null,
+    };
+
+    private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s)
+    {
+        // Each record by the subjects it is about, so a subject's cases read only its own records.
+        var bySubject = new Dictionary<string, List<Entity>>(StringComparer.Ordinal);
+        foreach (var e in s.Entities.Values)
+        {
+            if (e.Destroyed || FieldCatalog.IsKeptOnItsOwn(e.Reference.Type)) continue;
+            foreach (var person in e.People)
+            {
+                if (!bySubject.TryGetValue(person, out var records)) bySubject[person] = records = [];
+                records.Add(e);
+            }
+        }
+        string Id(Entity e) => e.Reference.Id;
+        return [.. s.Entities.Values
+            .Where(e => e.Reference.Type == "subject" && !e.Destroyed)
+            .OrderBy(Id, StringComparer.Ordinal)
+            .Select(subject =>
+            {
+                var read = CaseReader.Read(Id(subject), bySubject.GetValueOrDefault(Id(subject)) ?? [], s.Fields);
+                return new SubjectCasesView(
+                    Id(subject),
+                    [.. read.Cases.Select(c => new CaseView(
+                        c.Opening is { } opening ? Id(opening) : null,
+                        c.Closing is { } closing ? Id(closing) : null,
+                        c.Start,
+                        c.End,
+                        [.. c.Records.Select(Id)],
+                        [.. c.AfterClosing.Select(Id)],
+                        c.FollowedByOpening,
+                        c.IsOpen))],
+                    [.. read.Undated.Select(Id)]);
+            })];
+    }
+
     private static EntityView ViewOf(Entity e) => new(
         e.Reference.Type,
         e.Reference.Id,
@@ -652,6 +711,7 @@ internal static class Api
 [JsonSerializable(typeof(SummaryView))]
 [JsonSerializable(typeof(EntityView[]))]
 [JsonSerializable(typeof(EntityHistoryView[]))]
+[JsonSerializable(typeof(SubjectCasesView[]))]
 [JsonSerializable(typeof(SchemeView[]))]
 [JsonSerializable(typeof(PendingView[]))]
 [JsonSerializable(typeof(RunListItem[]))]

@@ -141,6 +141,11 @@ impl Engine {
         self.call("GET", &format!("/entities/{entity_type}/history"), None)
     }
 
+    /// Every subject's cases, read from its records: oldest first, each record by id.
+    pub fn cases(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/cases", None)
+    }
+
     /// What the engine holds: counts, report forms, and files it could not read.
     pub fn summary(&self) -> Result<Value, EngineError> {
         self.call("GET", "/summary", None)

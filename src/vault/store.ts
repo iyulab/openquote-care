@@ -8,7 +8,7 @@ import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
-import { shell, type BackupStatus, type RecordKind, type VaultSummary } from '../shell.js'
+import { shell, type BackupStatus, type RecordKind, type SubjectCases, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import { pickLocale, tables } from '../locales/index.js'
 
@@ -45,6 +45,8 @@ export class VaultStore extends EventTarget {
   practitionerFields: FieldView[] = []
   /** The kinds of record the vault's packs declare under subjects and groups, sessions among them. */
   kinds: RecordKind[] = []
+  /** Each subject's cases, as the engine reads them from its records, by subject id. */
+  cases = new Map<string, SubjectCases>()
   /** Records of every kind but sessions, and the fields declared for them, by kind. */
   private others = new Map<string, Entity[]>()
   private otherFields = new Map<string, FieldView[]>()
@@ -131,6 +133,16 @@ export class VaultStore extends EventTarget {
   /** The records of a kind kept under subjects or groups. */
   recordsOf(type: string): Entity[] {
     return type === 'session' ? this.sessions : (this.others.get(type) ?? [])
+  }
+
+  /** A record kept under subjects or groups, of any kind, by id. */
+  recordById(id: string): Entity | undefined {
+    return this.sessions.find((r) => r.id === id) ?? [...this.others.values()].flat().find((r) => r.id === id)
+  }
+
+  /** The kind whose records open a case, and the kind whose records close it, when the packs give those roles. */
+  caseKinds(): { opens?: RecordKind; closes?: RecordKind } {
+    return { opens: this.kinds.find((k) => k.role === 'opens'), closes: this.kinds.find((k) => k.role === 'closes') }
   }
 
   /** What people call a kind of record: the packs' name for it, sessions by the app's own word when the packs give none. */
@@ -241,7 +253,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory, cases] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -254,6 +266,7 @@ export class VaultStore extends EventTarget {
       // Every write is followed by a backup: its outcome is read with the rest.
       shell.backupStatus(),
       shell.history('session'),
+      shell.cases(),
     ])
     if (!current()) return
     // The kinds of record besides sessions come from the packs: what the summary names is read next.
@@ -298,6 +311,7 @@ export class VaultStore extends EventTarget {
     const byName = (a: Entity, b: Entity) => this.names.compare(text(a, 'name'), text(b, 'name'))
     this.subjects = [...subjects].sort(byName)
     this.sessions = sessions
+    this.cases = new Map(cases.map((c) => [c.subject, c]))
     this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes

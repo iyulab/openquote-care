@@ -1467,6 +1467,16 @@ const scenarios = {
     const kinds = await app.cdp.evaluate(`__e2e.all('section[data-kind]').map((s) => s.dataset.kind).filter((k) => k === 'intake' || k === 'closing')`)
     assert.deepEqual(kinds, ['intake', 'closing'], 'the intake listed above the closing, in the order the work took')
 
+    // The intake opened a case and the closing ended it: the client's page and the list say so.
+    await app.cdp.waitFor(`__e2e.one('section[data-role="cases"] li[data-case="1"]')?.dataset.open === 'no'`, 'the case, ended')
+    const theCase = await app.cdp.evaluate(`__e2e.one('section[data-role="cases"] li[data-case="1"]').textContent.replace(/\\s+/g, ' ').trim()`)
+    assert.ok(theCase.includes('2026-04-01 ~ 2026-04-20') && theCase.includes('ended 2026-04-20'), `its days and its end: ${theCase}`)
+    assert.ok(theCase.includes('Intake: 1') && theCase.includes('Closing: 1'), `what it holds, by kind: ${theCase}`)
+    assert.ok(
+      await app.cdp.evaluate(`__e2e.all('.pane.list li').some((li) => /· ended$/.test(li.textContent.replace(/\\s+/g, ' ').trim()))`),
+      'the list says the client’s latest case ended',
+    )
+
     // The concern is optional on this track: a session without one is counted, in no row, and said so.
     await app.setDate('Date', '2026-04-09')
     await app.choose('Mode', 'phone')

@@ -106,6 +106,32 @@ export interface RecordKind {
   order?: number | null
   /** The date field that says when a record of the kind happened (`date` unless the packs say). */
   dated?: string
+  /** Whether a record of the kind opens or closes a subject's case; null when the packs give it no role. */
+  role?: 'opens' | 'closes' | null
+}
+
+/** One of a subject's cases, as the engine reads it from the records: records by id, in time order. */
+export interface CaseView {
+  /** The record that opened it, or null when it began without one. */
+  opening: string | null
+  /** The record that closed it, or null when none has. */
+  closing: string | null
+  /** `YYYY-MM-DD` of its first record, and of the record that closed it. */
+  start: string
+  end: string | null
+  records: string[]
+  /** Records dated after the closing and before the next opening — a follow-up, say. */
+  afterClosing: string[]
+  /** Another opening came before any record closed it. */
+  followedByOpening: boolean
+  open: boolean
+}
+
+/** A subject's cases, oldest first, and its records with no date to place them by. */
+export interface SubjectCases {
+  subject: string
+  cases: CaseView[]
+  undated: string[]
 }
 
 export interface VaultSummary {
@@ -204,6 +230,8 @@ export const shell = {
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
   /** Every change each entity of a type was built from, oldest first. */
   history: (entityType: string) => invoke<EntityHistory[]>('history', { entityType }),
+  /** Every subject's cases, read from its records by the roles the packs give its kinds of record. */
+  cases: () => invoke<SubjectCases[]>('cases'),
   schemes: () => invoke<Scheme[]>('schemes'),
   /** The fields the vault's packs declare for an entity type, labelled in the vault's locale; none without field definitions. */
   fields: (entityType: string) => invoke<FieldView[]>('fields', { entityType }),

@@ -5,6 +5,8 @@ import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../record
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
+import { latestCase } from '../cases.js'
+import { caseSection } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
@@ -100,7 +102,11 @@ export class OcSubjects extends VaultScreen {
     return listDetail({
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>`,
-      entries: subjects.map((s) => ({ id: s.id, label: text(s, 'name'), meta: strings.sessionCount(counts.get(s.id) ?? 0) })),
+      entries: subjects.map((s) => ({
+        id: s.id,
+        label: text(s, 'name'),
+        meta: [strings.sessionCount(counts.get(s.id) ?? 0), latestCase(this.store.cases.get(s.id))].filter(Boolean).join(' · '),
+      })),
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),
       empty: strings.noSubjects,
@@ -209,6 +215,7 @@ export class OcSubjects extends VaultScreen {
             @oc-edit-cancelled=${() => (this.correctingSubject = false)}
           ></oc-entity-form>`
         : recordFieldList(store, subject)}
+      ${caseSection(store, subject.id)}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
         ? html`<oc-record-form

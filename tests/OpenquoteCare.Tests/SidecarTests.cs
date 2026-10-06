@@ -583,6 +583,40 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Reads_each_subjects_cases_from_its_intakes_and_closings()
+    {
+        var loaded = await Post("/vault/load", Files(GoldenVault.Neutral.Through(1)));
+        var roles = loaded["kinds"]!.AsArray().ToDictionary(k => k!["type"]!.GetValue<string>(), k => k!["role"]?.GetValue<string>());
+        Assert.Equal(("opens", "closes", null), (roles["intake"], roles["closing"], roles["session"]));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { subjectFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        async Task<string> Add(string type, string date)
+        {
+            var file = await Post("/changes/in-subject", new { subjectId, type, fields = new { date } });
+            await Post("/vault/add", new { files = new[] { file } });
+            return file["path"]!.GetValue<string>();
+        }
+        await Add("intake", "2026-03-02");
+        await Add("session", "2026-03-09");
+        await Add("closing", "2026-04-20");
+        await Add("session", "2026-05-11"); // a follow-up
+        await Add("intake", "2026-09-01");
+
+        var mine = (await Get("/cases")).AsArray().Single(c => c!["subject"]!.GetValue<string>() == subjectId)!;
+
+        var cases = mine["cases"]!.AsArray();
+        Assert.Equal(2, cases.Count);
+        Assert.Equal(("2026-03-02", "2026-04-20", false), (cases[0]!["start"]!.GetValue<string>(), cases[0]!["end"]!.GetValue<string>(), cases[0]!["open"]!.GetValue<bool>()));
+        Assert.Equal(3, cases[0]!["records"]!.AsArray().Count);
+        Assert.Single(cases[0]!["afterClosing"]!.AsArray());
+        Assert.NotNull(cases[0]!["opening"]);
+        Assert.True(cases[1]!["open"]!.GetValue<bool>());
+        Assert.Null(cases[1]!["end"]);
+        Assert.Empty(mine["undated"]!.AsArray());
+    }
+
+    [Fact]
     public async Task A_group_session_names_its_group_and_everyone_who_took_part()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(1)));

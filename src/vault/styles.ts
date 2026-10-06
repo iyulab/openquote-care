@@ -86,6 +86,19 @@ export const vaultStyles = [
       margin: 0;
       font-size: var(--dc-font-size-md, 14px);
     }
+    /* A subject's cases, one to an item: its name, days and state on a line, and under them what it holds. */
+    ul.cases {
+      gap: var(--dc-space-3, 12px);
+    }
+    ul.cases li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: var(--dc-space-1, 4px) var(--dc-space-3, 12px);
+    }
+    ul.cases li > div {
+      flex-basis: 100%;
+    }
     ul {
       list-style: none;
       margin: 0;

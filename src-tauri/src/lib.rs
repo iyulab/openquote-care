@@ -121,6 +121,11 @@ fn history(entity_type: String, app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn cases(app: State<App>) -> CommandResult<Value> {
+    text(app.cases())
+}
+
+#[tauri::command]
 fn apply_pack(folder: String, raise_format: Option<bool>, app: State<App>) -> CommandResult<Vec<String>> {
     text(app.apply_pack(&PathBuf::from(folder), raise_format.unwrap_or(false)))
 }
@@ -431,6 +436,7 @@ pub fn run() {
             replace_damaged_from_backup,
             write_plain_copy,
             history,
+            cases,
             compare_runs,
             run_report,
             run_export,

@@ -649,6 +649,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.history(entity_type)?))
     }
 
+    /// Every subject's cases, as the engine reads them from the records.
+    pub fn cases(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.cases()?))
+    }
+
     /// Adds a data pack's definitions (see [`DEFINITION_FOLDERS`]) to the open vault: the files it
     /// does not have yet. A file it already has with the same content is left alone; one with
     /// other content stops the whole pack, since definitions are never rewritten. A pack that needs
