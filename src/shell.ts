@@ -134,7 +134,14 @@ export interface CaseView {
   /** Another opening came before any record closed it. */
   followedByOpening: boolean
   open: boolean
+  /** `YYYY-MM-DD` by which a follow-up is expected after the closing, when the closing's kind expects one. */
+  followUpDue: string | null
+  /** Where that follow-up stands today — any record of the subject after the closing counts. */
+  followUp: FollowUp
 }
+
+/** Where a case's follow-up stands: came in time, came late, still awaited, overdue, or none expected. */
+export type FollowUp = 'done' | 'late' | 'waiting' | 'overdue' | 'notExpected'
 
 /** A subject's cases, oldest first, and its records with no date to place them by. */
 export interface SubjectCases {

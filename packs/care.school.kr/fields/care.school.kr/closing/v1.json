@@ -1,0 +1,8 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "closing",
+  "version": 1,
+  "followUpDays": 28,
+  "fields": []
+}

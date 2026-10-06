@@ -5,7 +5,7 @@ import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../record
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
-import { latestCaseState } from '../cases.js'
+import { followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
 import { recordFields } from '../fields.js'
 import { today } from '../records.js'
 import { narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
@@ -115,7 +115,7 @@ export class OcSubjects extends VaultScreen {
   }
 
   /** Words to find a subject by, the cases kept in view — when some subject's cases are shown — and the order. */
-  private listTools(withCases: boolean) {
+  private listTools(withCases: boolean, withFollowUps: boolean) {
     return html`<div class="list-tools">
       <dc-input
         type="search"
@@ -134,6 +134,7 @@ export class OcSubjects extends VaultScreen {
                 { value: 'all', label: strings.casesAll },
                 { value: 'open', label: strings.caseOpen },
                 { value: 'closed', label: strings.caseClosed },
+                ...(withFollowUps ? [{ value: 'overdue', label: strings.casesFollowUpOverdue }] : []),
               ]}
               .value=${this.caseFilter}
               @change=${(e: Event) => (this.caseFilter = (e.target as HTMLSelectElement).value as CaseFilter)}
@@ -169,11 +170,17 @@ export class OcSubjects extends VaultScreen {
       store: this.store,
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>
-        ${all.length === 0 ? nothing : this.listTools(all.some((r) => r.state !== null))}`,
+        ${all.length === 0 ? nothing : this.listTools(all.some((r) => r.state !== null), all.some((r) => r.followUp !== null))}`,
       entries: rows.map((r) => ({
         id: r.id,
         label: r.name,
-        meta: [strings.sessionCount(counts.get(r.id) ?? 0), r.last ? strings.lastOn(shortDay(r.last, year)) : '', r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '']
+        meta: [
+          strings.sessionCount(counts.get(r.id) ?? 0),
+          r.last ? strings.lastOn(shortDay(r.last, year)) : '',
+          r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '',
+          // Only what still asks for something: a follow-up awaited or past its day.
+          r.followUp && (r.followUp.followUp === 'waiting' || r.followUp.followUp === 'overdue') ? (followUpWords(r.followUp, (d) => shortDay(d, year)) ?? '') : '',
+        ]
           .filter(Boolean)
           .join(' · '),
       })),
@@ -346,6 +353,7 @@ function subjectRows(store: VaultStore): SubjectRow[] {
       words: [name, ...fields.map((f) => valueText(store, f, s.fields[f.name]))].join(' '),
       last: last.get(s.id) ?? null,
       state: latestCaseState(store.cases.get(s.id)),
+      followUp: latestFollowUp(store.cases.get(s.id)),
     }
   })
 }

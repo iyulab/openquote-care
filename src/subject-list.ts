@@ -1,5 +1,7 @@
 // The list of subjects as a person narrows it: found by words, kept to open or ended cases, in an order.
 
+import type { FollowUp } from './shell.js'
+
 /** A subject as the list shows it and finds it. */
 export interface SubjectRow {
   id: string
@@ -10,10 +12,12 @@ export interface SubjectRow {
   last: string | null
   /** Its latest case: open, ended, or null when its cases are not worth showing. */
   state: 'open' | 'closed' | null
+  /** The follow-up its latest case expects after the closing, or null when it expects none. */
+  followUp: { followUp: FollowUp; followUpDue: string } | null
 }
 
-/** Which cases a person keeps in view. */
-export type CaseFilter = 'all' | 'open' | 'closed'
+/** Which cases a person keeps in view; `overdue`, those whose latest case's follow-up is past its day. */
+export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue'
 
 /** How the list is ordered: by name, or the latest record first. */
 export type SubjectOrder = 'name' | 'recent'
@@ -33,7 +37,7 @@ export function matches(row: Pick<SubjectRow, 'words'>, query: string): boolean 
 /**
  * The rows a person sees: those whose name holds what was typed, as typed — or, when no name does, those holding
  * every word typed anywhere in their name and values — and whose latest case is in the state kept (any, when all
- * are), in the order chosen. By the latest record, the newest first and those with none last, each tie by name.
+ * are; past the day its follow-up was due, for `overdue`), in the order chosen. By the latest record, the newest first and those with none last, each tie by name.
  */
 export function narrowSubjects(
   rows: readonly SubjectRow[],
@@ -46,7 +50,7 @@ export function narrowSubjects(
   const named = typed === '' ? [] : rows.filter((r) => fold(r.name).includes(typed))
   const found = named.length > 0 ? named : rows.filter((r) => matches(r, o.query))
   return found
-    .filter((r) => o.cases === 'all' || r.state === o.cases)
+    .filter((r) => o.cases === 'all' || (o.cases === 'overdue' ? r.followUp?.followUp === 'overdue' : r.state === o.cases))
     .sort(o.order === 'recent' ? byRecent : byName)
 }
 

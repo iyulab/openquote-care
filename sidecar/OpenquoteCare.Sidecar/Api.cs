@@ -207,7 +207,10 @@ public sealed record EntityView(
 
 public sealed record HeadView(string ChangeId, string Device, JsonElement Value);
 
-/// <summary>One of a subject's cases, as <see cref="CaseReader"/> reads it: its records by id, in time order.</summary>
+/// <summary>
+/// One of a subject's cases, as <see cref="CaseReader"/> reads it: its records by id, in time order — and, when its
+/// closing expects a follow-up, the day it is due and where it stands today (<see cref="FollowUp"/>, camel-cased).
+/// </summary>
 public sealed record CaseView(
     string? Opening,
     string? Closing,
@@ -216,7 +219,9 @@ public sealed record CaseView(
     IReadOnlyList<string> Records,
     IReadOnlyList<string> AfterClosing,
     bool FollowedByOpening,
-    bool Open);
+    bool Open,
+    DateOnly? FollowUpDue,
+    string FollowUp);
 
 /// <summary>A subject's cases, oldest first, and its records that have no date to place them by.</summary>
 public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Cases, IReadOnlyList<string> Undated);
@@ -315,7 +320,7 @@ internal static class Api
         app.MapGet("/summary", (VaultSession session) => Summary(device, session.Current));
 
         // Every subject's cases, read from its records each time: nothing records which case a record is in.
-        app.MapGet("/cases", (VaultSession session) => CasesOf(session.Current));
+        app.MapGet("/cases", (VaultSession session) => CasesOf(session.Current, DateOnly.FromDateTime(clock.GetLocalNow().DateTime)));
 
         // Items are named in the vault's locale: a label a pack gives, else the item's own.
         app.MapGet("/schemes", (VaultSession session) =>
@@ -646,7 +651,7 @@ internal static class Api
         _ => null,
     };
 
-    private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s)
+    private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s, DateOnly today)
     {
         // Each record by the subjects it is about, so a subject's cases read only its own records.
         var bySubject = new Dictionary<string, List<Entity>>(StringComparer.Ordinal);
@@ -676,10 +681,21 @@ internal static class Api
                         [.. c.Records.Select(Id)],
                         [.. c.AfterClosing.Select(Id)],
                         c.FollowedByOpening,
-                        c.IsOpen))],
+                        c.IsOpen,
+                        c.FollowUpDue,
+                        FollowUpWord(c.FollowUpOn(today))))],
                     [.. read.Undated.Select(Id)]);
             })];
     }
+
+    private static string FollowUpWord(FollowUp f) => f switch
+    {
+        FollowUp.Done => "done",
+        FollowUp.Late => "late",
+        FollowUp.Waiting => "waiting",
+        FollowUp.Overdue => "overdue",
+        _ => "notExpected",
+    };
 
     private static EntityView ViewOf(Entity e) => new(
         e.Reference.Type,

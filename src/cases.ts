@@ -1,4 +1,4 @@
-import type { CaseView, SubjectCases } from './shell.js'
+import type { CaseView, FollowUp, SubjectCases } from './shell.js'
 import { strings } from './strings.js'
 
 /**
@@ -15,6 +15,34 @@ export function caseState(c: CaseView, opening: string): string {
   if (c.open) return strings.caseOpen
   if (c.closing !== null && c.end !== null) return strings.caseEnded(c.end)
   return strings.caseUnended(opening)
+}
+
+/**
+ * Where a closed case's follow-up stands, in words — by when it is due, that the day passed, or that it came — or
+ * null when the closing expects none. `day` shortens the due day as the place it is shown does.
+ */
+export function followUpWords(c: Pick<CaseView, 'followUp' | 'followUpDue'>, day: (d: string) => string = (d) => d): string | null {
+  const due = c.followUpDue
+  if (due === null) return null
+  switch (c.followUp) {
+    case 'waiting':
+      return strings.followUpWaiting(day(due))
+    case 'overdue':
+      return strings.followUpOverdue(day(due))
+    case 'done':
+      return strings.followUpDone
+    case 'late':
+      return strings.followUpLate
+    default:
+      return null
+  }
+}
+
+/** The follow-up of a subject's latest case, when its cases are worth showing and that case expects one. */
+export function latestFollowUp(cases: SubjectCases | undefined): { followUp: FollowUp; followUpDue: string } | null {
+  if (!showsCases(cases)) return null
+  const last = cases.cases.at(-1)!
+  return last.followUpDue === null || last.followUp === 'notExpected' ? null : { followUp: last.followUp, followUpDue: last.followUpDue }
 }
 
 /** Whether a subject's latest case is open or ended, when its cases are worth showing; null when they are not. */
@@ -51,7 +79,9 @@ export function caseStateBesideDays(c: CaseView, opening: string): string {
 
 /** A case's heading over its records in a list: its number, its days and its state. */
 export function caseHead(c: CaseView, n: number, opening: string): string {
-  return [strings.caseTitle(n), caseDays(c), caseStateBesideDays(c, opening)].join(' · ')
+  return [strings.caseTitle(n), caseDays(c), caseStateBesideDays(c, opening), followUpWords(c)]
+    .filter((part) => part !== null)
+    .join(' · ')
 }
 
 /** Records of one case in a list, under its heading; `n` is null for the records no case holds. */

@@ -10,6 +10,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Added
 - The toolbar of an open vault says "Saving" and, for a moment, "Saved" for every record written, with the app's quote mark: dots while it saves, the two quotes facing each other once saved. Opening a vault says it is opening, and sent feedback shows the same "done" mark.
+### Added
+- After a closing, a school vault expects a follow-up within 28 days. A case shows the date the follow-up is due, whether it is overdue, or that it took place. The list of subjects can be narrowed to "Follow-up overdue". Any later record of the student counts as the follow-up. The app makes no judgement about the student and sends no reminders.
 
 ### Changed
 - A case's heading names the day it ended once, in its days, and a case that began and ended on one day shows that day once.

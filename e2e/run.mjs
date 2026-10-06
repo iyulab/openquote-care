@@ -694,6 +694,8 @@ const scenarios = {
       ['reports', 'month-practitioner-minutes', 'v1.json.age'],
       ['reports', 'year-practitioner-minutes', 'v1.json.age'],
       ['exports', 'session-list', 'v3.json.age'],
+      ['packs', 'care.school.kr', 'v10.json.age'],
+      ['fields', 'care.school.kr', 'closing', 'v1.json.age'],
     ].map((path) => join(work.vault, ...path))
     for (const file of added) await rm(file)
     const declaration = join(work.vault, 'vault.json')
@@ -1885,6 +1887,42 @@ const scenarios = {
     assert.notEqual(outside[1], '0')
     const formLabel = await app.cdp.evaluate(`__e2e.one('nav[aria-label="보고 양식"] button[data-entry="local.assessment-tool.month-assessment-tool@1"]').textContent.trim()`)
     assert.ok(formLabel.includes('— 더한 항목별'), formLabel)
+  },
+
+  async 'lists a student whose follow-up after a closing is past its day, and says by when it was due'(app) {
+    // The Korean school pack expects a follow-up within 28 days of a closing: a closing in April with nothing after it
+    // is past its day now, and the list keeps such students apart — a list, never a judgement.
+    await app.click('button', '대상자')
+    await app.click('dc-button', '＋ 새 대상자')
+    await app.type('대상자 이름', '가상 학생 11')
+    await app.click('dc-button', '대상자 추가')
+    await app.click('li button .label', '가상 학생 11')
+    const inClosingForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'closing'; n = host } })`
+    await app.click('dc-button', '종결 기록하기')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inClosingForm('input[aria-label="종결일"]')}; if (!el) return false; el.value = '2026-04-20'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the closing date',
+    )
+    await app.choose('종결 사유', 'lost-contact')
+    await app.click('dc-button', '종결 기록')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="closing"] tr[data-record]').length === 1`, 'the closing listed')
+    await app.noAlert()
+
+    // A closing with nothing before it is a case of its own; its records are headed by it.
+    await app.cdp.waitFor(
+      `__e2e.all('section[data-kind="closing"] tr.case-head').some((tr) => tr.textContent.replace(/\\s+/g, ' ').includes('추수 기한 2026-05-18 지남'))`,
+      'the case says its follow-up was due on 05-18',
+    )
+
+    await app.choose('사례', 'overdue')
+    const listed = () => app.cdp.evaluate(`__e2e.all('nav[aria-label="대상자"] li button').map((b) => [b.querySelector('.label').textContent.trim(), b.querySelector('.meta')?.textContent.trim() ?? ''])`)
+    await app.cdp.waitFor(`__e2e.all('nav[aria-label="대상자"] li button .label').some((l) => l.textContent.trim() === '가상 학생 11')`, 'the student kept by the filter')
+    const rows = await listed()
+    assert.ok(rows.every(([, meta]) => meta.includes('추수 기한')), `only students past a follow-up's day: ${JSON.stringify(rows)}`)
+    assert.ok(rows.find(([name]) => name === '가상 학생 11')[1].includes('추수 기한 05-18 지남'), 'the row says by when it was due')
+    await app.choose('사례', 'all')
+    await app.noAlert()
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

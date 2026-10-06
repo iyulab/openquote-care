@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, latestCaseState, showsCases } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseState, followUpWords, latestCaseState, latestFollowUp, showsCases } from '../cases.js'
 import type { CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
 const aCase = (patch: Partial<CaseView>): CaseView => ({
-  opening: 'i1', closing: null, start: '2026-03-02', end: null, records: ['i1'], afterClosing: [], followedByOpening: false, open: true, ...patch,
+  opening: 'i1', closing: null, start: '2026-03-02', end: null, records: ['i1'], afterClosing: [], followedByOpening: false, open: true,
+  followUpDue: null, followUp: 'notExpected', ...patch,
 })
 const of = (...cases: CaseView[]): SubjectCases => ({ subject: 's1', cases, undated: [] })
 
@@ -68,5 +69,23 @@ describe('cases', () => {
     const groups = byCase([{ id: 's1' }], of(aCase({ records: ['i1', 's1'] }), aCase({ opening: 'i2', records: ['i2'] })), '접수')
 
     expect(groups.map((g) => g.n)).toEqual([1])
+  })
+
+  it('say where the follow-up after a closing stands, and only when the closing expects one', () => {
+    const ended = { open: false, closing: 'c1', end: '2026-04-20', followUpDue: '2026-05-18' } as const
+    expect(followUpWords(aCase({ ...ended, followUp: 'waiting' }))).toBe(strings.followUpWaiting('2026-05-18'))
+    expect(followUpWords(aCase({ ...ended, followUp: 'overdue' }), (d) => d.slice(5))).toBe(strings.followUpOverdue('05-18'))
+    expect(followUpWords(aCase({ ...ended, followUp: 'done' }))).toBe(strings.followUpDone)
+    expect(followUpWords(aCase({ ...ended, followUp: 'late' }))).toBe(strings.followUpLate)
+    expect(followUpWords(aCase({ open: false, closing: 'c1', end: '2026-04-20' }))).toBeNull()
+    expect(caseHead(aCase({ ...ended, followUp: 'overdue' }), 1, '접수')).toContain(strings.followUpOverdue('2026-05-18'))
+    expect(caseHead(aCase({}), 1, '접수')).not.toContain(' ·  · ')
+  })
+
+  it('give the follow-up of a subject’s latest case only', () => {
+    const overdue = aCase({ open: false, closing: 'c1', end: '2026-04-20', followUpDue: '2026-05-18', followUp: 'overdue' })
+    expect(latestFollowUp(of(overdue))).toEqual({ followUp: 'overdue', followUpDue: '2026-05-18' })
+    expect(latestFollowUp(of(overdue, aCase({ opening: 'i2' })))).toBeNull() // a new case opened since
+    expect(latestFollowUp(of(aCase({ opening: null })))).toBeNull()
   })
 })

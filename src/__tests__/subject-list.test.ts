@@ -2,10 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { matches, narrowSubjects, shortDay, type SubjectRow } from '../subject-list.js'
 
 const names = new Intl.Collator('en')
-const row = (id: string, name: string, words: string, last: string | null, state: SubjectRow['state']): SubjectRow => ({ id, name, words, last, state })
+const row = (id: string, name: string, words: string, last: string | null, state: SubjectRow['state'], followUp: SubjectRow['followUp'] = null): SubjectRow => ({
+  id,
+  name,
+  words,
+  last,
+  state,
+  followUp,
+})
 const rows = [
   row('a', 'Ana', 'Ana North School 3 2', '2026-05-21', 'open'),
-  row('b', 'Ben', 'Ben South School 1 4', '2026-04-02', 'closed'),
+  row('b', 'Ben', 'Ben South School 1 4', '2026-04-02', 'closed', { followUp: 'overdue', followUpDue: '2026-04-30' }),
   row('c', 'Cal', 'Cal North School 3 1', null, null),
 ]
 
@@ -30,6 +37,7 @@ describe('the list a person narrows', () => {
   it('keeps open or ended cases only when asked, leaving out subjects whose cases are not shown', () => {
     expect(narrowSubjects(rows, { query: '', cases: 'open', order: 'name' }, names).map((r) => r.id)).toEqual(['a'])
     expect(narrowSubjects(rows, { query: '', cases: 'closed', order: 'name' }, names).map((r) => r.id)).toEqual(['b'])
+    expect(narrowSubjects(rows, { query: '', cases: 'overdue', order: 'name' }, names).map((r) => r.id)).toEqual(['b'])
     expect(narrowSubjects(rows, { query: '', cases: 'all', order: 'name' }, names)).toHaveLength(3)
   })
 
