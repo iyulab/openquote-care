@@ -39,6 +39,8 @@ npm run build:sidecar && npm run build:e2e && npm run test:e2e   # the real wind
 
 The installer ships `LICENSES/THIRD-PARTY-NOTICES.txt`, generated from what ships: the npm lockfile, the shell's crates and the sidecar's restored NuGet packages with the .NET runtime packs (`notices.config.js`). After a dependency change, or a .NET SDK update (the runtime packs follow its patch), run `npm run notices` and commit the file. The release build writes the file again from what it ships, since it compiles the sidecar with the newest .NET patch. A package published without its license text is pinned in `notices/pins.json`: `npx tauri-kit-dev notice-pins --config notices.config.js` finds its license file at the commit or tag it was published from, adds the pin and fetches the text — read it before committing; it names any package it found nothing for, to pin by hand.
 
+A change people using the app would notice goes under `[Unreleased]` in `CHANGELOG.md`, in their words, with the commit that makes it. Raising the version moves those entries under a section for it, and that section is the release's notes: the release workflow writes them with `scripts/release-notes.mjs`, and a scripts test fails while the app's version has no section.
+
 Before the checks, `verify` checks the machine: Rust on the MSVC toolchain, a `dotnet` on PATH, and — when `DOTNET_ROOT` is unset and .NET is a per-user install — it points `DOTNET_ROOT` at that `dotnet` for the sidecar. The first check is that every file naming the app version names the same one (`node scripts/check-versions.mjs`).
 
 A window scenario that fails only sometimes: `npm run test:e2e -- --through <part of its name> --repeat <n>` runs the scenarios up to it n times, each in a fresh folder and window.

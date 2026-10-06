@@ -210,5 +210,9 @@ jobs:
           }
           $json = Join-Path $latest 'latest.json'
           $description | ConvertTo-Json -Depth 5 | Set-Content -Path $json -Encoding utf8NoBOM
+          # The notes are this version's section of CHANGELOG.md.
+          $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
+          node scripts/release-notes.mjs $version "${{ steps.versions.outputs.engine }}" > $notes
+          if ($LASTEXITCODE -ne 0) { throw "CHANGELOG.md has no notes for $version" }
           gh release create $tag $installer.FullName $offline.FullName $stable.FullName $stableOffline.FullName $json --draft --target $env:GITHUB_SHA `
-            --title "Openquote Care $tag" --notes "Engine ${{ steps.versions.outputs.engine }}."
+            --title "Openquote Care $tag" --notes-file $notes
