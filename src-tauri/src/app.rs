@@ -1701,13 +1701,19 @@ cut off").unwrap();
         "exports/session-list/v3.json.age",
     ];
 
-    /// The core pack's sixth version: a crosswalk from closing reasons into how a closing ended, and the
-    /// form counting by it. A crosswalk into another scheme needs format 1.
-    const CORE_PACK_6: [&str; 4] = [
+    /// The core pack's sixth version — a crosswalk from closing reasons into how a closing ended, and the
+    /// form counting by it; a crosswalk into another scheme needs format 1 — and its seventh, which places,
+    /// dates and gives a role to each kind of record. A vault made before the sixth holds neither.
+    const CORE_PACK_6: [&str; 9] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
         "reports/care.monthly-closing-type/v1.json.age",
+        "packs/care/v7.json.age",
+        "fields/care/intake/v2.json.age",
+        "fields/care/session/v2.json.age",
+        "fields/care/referral/v2.json.age",
+        "fields/care/closing/v2.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
