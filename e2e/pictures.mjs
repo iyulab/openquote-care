@@ -17,8 +17,9 @@
 //
 // Korean pictures are of the Korean school track, English ones of the neutral English track.
 // Date fields show in Windows' regional format, which neither a browser argument nor the devtools
-// locale override changes: take the Korean pictures where that format is Korean.
+// locale override changes: the script takes Korean pictures only where that format is the Korean one.
 
+import { execFileSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -32,6 +33,16 @@ const locale = option('--locale') ?? 'ko'
 if (!out || !['ko', 'en'].includes(locale)) {
   console.error('usage: node e2e/pictures.mjs <folder> [--locale ko|en]')
   process.exit(2)
+}
+// Date fields show in Windows' short date format, which the pictures cannot change: a Korean picture
+// taken under another format shows dates no Korean installation shows. Take them where it is Korean.
+const SHORT_DATE = { ko: 'yyyy-MM-dd' }
+if (process.platform === 'win32' && SHORT_DATE[locale]) {
+  const set = execFileSync('reg', ['query', 'HKCU\\Control Panel\\International', '/v', 'sShortDate'], { encoding: 'utf8' }).match(/sShortDate\s+REG_SZ\s+(\S+)/)?.[1]
+  if (set !== SHORT_DATE[locale]) {
+    console.error(`Windows shows short dates as ${set ?? 'unknown'} here; ${locale} pictures need ${SHORT_DATE[locale]} (Region settings).`)
+    process.exit(2)
+  }
 }
 const PASSPHRASE = 'picture vault 2026'
 const WIDTH = 1280
@@ -289,7 +300,7 @@ try {
   // The monthly report, and what one count is made of.
   await app.click('button', ui.report)
   await app.click(`nav[aria-label] button[data-entry="${locale === 'ko' ? 'monthly-topic@1' : 'care.monthly-concern@1'}"]`)
-  await app.type(ui.year, '2026')
+  await app.choose(ui.year, '2026')
   await app.choose(ui.month, '4')
   await app.click('dc-button', ui.run)
   await app.cdp.waitFor(`!!__e2e.one('[data-role=period]')`, 'the report')
@@ -303,7 +314,7 @@ try {
   // The month's sessions in the export form, ready to paste, before any revision of the topics.
   await app.click('button', ui.lists)
   await app.cdp.evaluate(`(__e2e.all('nav[aria-label] button[data-entry^="session-list@"]').at(-1)?.click(), true)`)
-  await app.type(ui.year, '2026')
+  await app.choose(ui.year, '2026')
   await app.choose(ui.month, '4')
   await app.click('dc-button', ui.makeList)
   await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0`, 'the list')
@@ -344,7 +355,7 @@ try {
   // The month's closings by reason, per practitioner.
   await app.click('button', ui.report)
   await app.click('nav[aria-label] button[data-entry="care.monthly-closing@1"]')
-  await app.type(ui.year, '2026')
+  await app.choose(ui.year, '2026')
   await app.choose(ui.month, '4')
   await app.click('dc-button', ui.run)
   await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="completed"]')`, 'the month by closing reason')
@@ -377,7 +388,7 @@ try {
   await sleep(1500)
   await app.click('button', ui.report)
   await app.click(`nav[aria-label] button[data-entry="${L.extend.form}"]`)
-  await app.type(ui.year, '2026')
+  await app.choose(ui.year, '2026')
   await app.choose(ui.month, '4')
   await app.click('dc-button', ui.run)
   await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="local-1"]')`, 'the month by added item')
@@ -387,14 +398,14 @@ try {
     // A school-year form: the sessions of the year by grade and class.
     await app.click('button', ui.report)
     await app.click('nav[aria-label="보고 양식"] button[data-entry="year-grade-class@1"]')
-    await app.type('학년도', '2026')
+    await app.choose('학년도', '2026')
     await app.click('dc-button', ui.run)
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row]')`, 'the school year by grade and class')
     await shoot('year')
 
     // Each assessment given in a month, by practitioner: a battery counts each of its assessments.
     await app.click('nav[aria-label="보고 양식"] button[data-entry="month-assessment-tool@1"]')
-    await app.type(ui.year, '2026')
+    await app.choose(ui.year, '2026')
     await app.choose(ui.month, '4')
     await app.click('dc-button', ui.run)
     await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="sct"]')`, 'the month by assessment')
@@ -404,7 +415,7 @@ try {
     // The NEIS upload list: the month's sessions in the upload's seventeen columns.
     await app.click('button', ui.lists)
     await app.click('nav[aria-label="목록 양식"] button[data-entry="neis-upload@1"]')
-    await app.type(ui.year, '2026')
+    await app.choose(ui.year, '2026')
     await app.choose(ui.month, '4')
     await app.click('dc-button', ui.makeList)
     await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length > 0 && __e2e.all('tr[data-export-row]')[0].children.length === 17`, 'the upload list')
