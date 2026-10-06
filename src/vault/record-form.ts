@@ -104,7 +104,8 @@ export class OcRecordForm extends StoreElement {
 
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
-    if (changed.has('edit') && this.edit) this.corrected = asDraft(inputFields(this.fields), this.edit)
+    // The record being corrected comes down anew when the vault is read again: what the person has typed stays.
+    if (changed.has('edit') && this.edit && changed.get('edit')?.id !== this.edit.id) this.corrected = asDraft(inputFields(this.fields), this.edit)
     const key = this.versionKey()
     if (key !== this.versionsFor) {
       this.versionsFor = key

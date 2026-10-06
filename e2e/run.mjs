@@ -1198,6 +1198,11 @@ const scenarios = {
     assert.deepEqual(await recordFiles(), filesBefore)
 
     await app.setDate('날짜', '2026-06-16')
+    // Read again while the correction is open: the date chosen stays.
+    await app.click('dc-button', '다시 읽기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-session]')`, 'the correction still open after the vault is read again')
+    await new Promise((r) => setTimeout(r, 1500))
+    assert.equal(await app.cdp.evaluate(`__e2e.all('input[aria-label="날짜"]')[0].value`), '2026-06-16', 'what was chosen stays when the vault is read again')
     await app.click('dc-button', '고친 내용 저장')
     await app.cdp.waitFor(`!__e2e.one('[data-role=correct-session]') && ${said('회기를 고쳤습니다.')}`, 'the session corrected')
     await app.noAlert()
@@ -1252,6 +1257,17 @@ const scenarios = {
     }
     await app.click('button', '담당자')
     await app.click('li button .label', '상담자 가')
+    // The vault read again while a person types — on returning to the window, or a change synced from
+    // another device — hands the form the same record anew: what was typed stays.
+    await app.click('dc-button', '담당자 정보 고치기')
+    await app.cdp.waitFor(`__e2e.one('input[aria-label="이름"]')?.value === '상담자 가'`, 'the form starts from the record')
+    await app.type('이름', '상담자 을')
+    await app.click('dc-button', '다시 읽기')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=correct-practitioner]')`, 'the form still open after the vault is read again')
+    await new Promise((r) => setTimeout(r, 1500))
+    assert.equal(await app.cdp.evaluate(`__e2e.one('input[aria-label="이름"]')?.value`), '상담자 을', 'what was typed stays when the vault is read again')
+    await app.click('dc-button', '취소')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=correct-practitioner]')`, 'the form closed')
     await rename('상담자 가', '상담자 갑')
     await app.noAlert()
     assert.equal(await recordFiles(), filesBefore + 1, 'the correction is a file of its own')

@@ -33,7 +33,9 @@ export class OcEntityForm extends StoreElement {
 
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
-    if (changed.has('entity')) this.values = asDraft(inputFields(this.defs), this.entity)
+    // A vault read again (on returning to the window, or a change synced from another device) hands down
+    // the same record as a new object: what the person has typed stays. Only another record starts the form again.
+    if (changed.has('entity') && changed.get('entity')?.id !== this.entity.id) this.values = asDraft(inputFields(this.defs), this.entity)
   }
 
   // A record of this kind is classified in a scheme's newest version, or in a list the vault keeps beside it.
