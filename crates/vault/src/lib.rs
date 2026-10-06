@@ -17,7 +17,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::Mutex;
+use std::sync::{Condvar, Mutex, PoisonError};
 
 use age::secrecy::{ExposeSecret, SecretString};
 use age::{scrypt, x25519};
@@ -61,6 +61,32 @@ fn declaration(version: u32) -> String {
 const WORK_FACTOR: u8 = 18;
 /// The highest cost a key file may demand before it is refused as suspicious.
 const MAX_WORK_FACTOR: u8 = 20;
+
+/// How many scrypt runs a process lets go at once. Each holds 128 · 8 · 2^cost bytes while it runs —
+/// 256 MiB at [`WORK_FACTOR`], 1 GiB at [`MAX_WORK_FACTOR`] — and an allocation that fails ends the
+/// process outright: a machine with many cores, running many at once (tests do), runs out of memory.
+const KDF_AT_ONCE: usize = 2;
+static KDF_RUNNING: Mutex<usize> = Mutex::new(0);
+static KDF_DONE: Condvar = Condvar::new();
+
+/// Runs `kdf` once fewer than [`KDF_AT_ONCE`] scrypt runs are under way.
+fn with_kdf<T>(kdf: impl FnOnce() -> T) -> T {
+    struct Release;
+    impl Drop for Release {
+        fn drop(&mut self) {
+            *KDF_RUNNING.lock().unwrap_or_else(PoisonError::into_inner) -= 1;
+            KDF_DONE.notify_one();
+        }
+    }
+    let mut running = KDF_RUNNING.lock().unwrap_or_else(PoisonError::into_inner);
+    while *running >= KDF_AT_ONCE {
+        running = KDF_DONE.wait(running).unwrap_or_else(PoisonError::into_inner);
+    }
+    *running += 1;
+    drop(running);
+    let _release = Release;
+    kdf()
+}
 
 /// Why a vault operation failed.
 #[derive(Debug)]
@@ -244,7 +270,7 @@ impl Vault {
 
         let mut unwrap = scrypt::Identity::new(passphrase);
         unwrap.set_max_work_factor(MAX_WORK_FACTOR);
-        let secret = age::decrypt(&unwrap, &key_file).map_err(|e| match e {
+        let secret = with_kdf(|| age::decrypt(&unwrap, &key_file)).map_err(|e| match e {
             age::DecryptError::DecryptionFailed | age::DecryptError::KeyDecryptionFailed => VaultError::WrongPassphrase,
             _ => VaultError::DamagedKeyFile,
         })?;
@@ -461,7 +487,7 @@ fn is_record_file(relative: &Path) -> bool {
 fn wrap_key(identity: &x25519::Identity, passphrase: SecretString) -> Result<String, VaultError> {
     let mut wrap = scrypt::Recipient::new(passphrase);
     wrap.set_work_factor(WORK_FACTOR);
-    age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes()).map_err(|e| VaultError::Io(io::Error::other(e)))
+    with_kdf(|| age::encrypt_and_armor(&wrap, identity.to_string().expose_secret().as_bytes())).map_err(|e| VaultError::Io(io::Error::other(e)))
 }
 
 /// The format the declaration in `root` names, and its bytes, once [`check_declaration`] accepts it.
@@ -567,4 +593,33 @@ fn relative_path(root: &Path, path: &Path) -> String {
         .map(|c| c.as_os_str().to_string_lossy())
         .collect::<Vec<_>>()
         .join("/")
+}
+
+#[cfg(test)]
+mod kdf_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::Duration;
+
+    #[test]
+    fn no_more_scrypt_runs_than_allowed_go_at_once() {
+        static NOW: AtomicUsize = AtomicUsize::new(0);
+        static MOST: AtomicUsize = AtomicUsize::new(0);
+        let threads: Vec<_> = (0..8)
+            .map(|_| {
+                std::thread::spawn(|| {
+                    with_kdf(|| {
+                        let now = NOW.fetch_add(1, Ordering::SeqCst) + 1;
+                        MOST.fetch_max(now, Ordering::SeqCst);
+                        std::thread::sleep(Duration::from_millis(30));
+                        NOW.fetch_sub(1, Ordering::SeqCst);
+                    })
+                })
+            })
+            .collect();
+        for t in threads {
+            t.join().unwrap();
+        }
+        assert_eq!(MOST.load(Ordering::SeqCst), KDF_AT_ONCE);
+    }
 }
