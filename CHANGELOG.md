@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-10-06
+
 ### Fixed
 - A category a person has to confirm (such as a crisis) is offered whenever the most similar saved record holds it. A category saved rarely could be left out of the few suggestions, behind the categories chosen often.
 
@@ -72,7 +74,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/iyulab/openquote-care/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/iyulab/openquote-care/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/iyulab/openquote-care/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/iyulab/openquote-care/compare/v0.12.0...v0.13.0
