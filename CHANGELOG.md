@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-10-08
+
 ### Added
 - School vaults: a session can be with an agency worker ("타기관" — someone from another service, about a student), counted apart from parents, teachers and others; and statistics lists "월별 NEIS 분류별 상담" — sessions, people, visits and minutes by NEIS category for each month.
 - The notice of a new version shows the app's quote mark too: the open quote when it is found, dots while it downloads, the two quotes facing each other once it is ready to install.
@@ -92,7 +94,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/iyulab/openquote-care/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/iyulab/openquote-care/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/iyulab/openquote-care/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/iyulab/openquote-care/compare/v0.13.1...v0.14.0
