@@ -1,7 +1,7 @@
 Openquote Care — third-party notices
 ====================================
 
-This program includes the following 404 third-party packages.
+This program includes the following 408 third-party packages.
 
 ------------------------------------------------------------------------------
 @iyulab/desktop-compact 0.12.0
@@ -14405,35 +14405,35 @@ Same license text as @tauri-apps/api 2.12.1.
 Same license text as @tauri-apps/api 2.12.1.
 
 ------------------------------------------------------------------------------
-tauri-kit-diagnostics 0.12.0
+tauri-kit-diagnostics 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.12.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-fs 0.12.0
+tauri-kit-fs 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.12.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-sidecar 0.12.0
+tauri-kit-sidecar 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.12.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-watch 0.12.0
+tauri-kit-watch 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.12.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-webview 0.12.0
+tauri-kit-webview 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
@@ -16877,6 +16877,15 @@ Apache License
 Same license text as @types/trusted-types 2.0.7.
 
 ------------------------------------------------------------------------------
+windows_x86_64_msvc 0.52.6
+License: MIT OR Apache-2.0
+Upstream: https://github.com/microsoft/windows-rs
+
+Same license text as windows 0.62.2.
+
+Same license text as @types/trusted-types 2.0.7.
+
+------------------------------------------------------------------------------
 windows_x86_64_msvc 0.53.1
 License: MIT OR Apache-2.0
 Upstream: https://github.com/microsoft/windows-rs
@@ -16976,6 +16985,24 @@ Same license text as windows 0.62.2.
 Same license text as @types/trusted-types 2.0.7.
 
 ------------------------------------------------------------------------------
+windows-sys 0.52.0
+License: MIT OR Apache-2.0
+Upstream: https://github.com/microsoft/windows-rs
+
+Same license text as windows 0.62.2.
+
+Same license text as @types/trusted-types 2.0.7.
+
+------------------------------------------------------------------------------
+windows-sys 0.59.0
+License: MIT OR Apache-2.0
+Upstream: https://github.com/microsoft/windows-rs
+
+Same license text as windows 0.62.2.
+
+Same license text as @types/trusted-types 2.0.7.
+
+------------------------------------------------------------------------------
 windows-sys 0.60.2
 License: MIT OR Apache-2.0
 Upstream: https://github.com/microsoft/windows-rs
@@ -16986,6 +17013,15 @@ Same license text as @types/trusted-types 2.0.7.
 
 ------------------------------------------------------------------------------
 windows-sys 0.61.2
+License: MIT OR Apache-2.0
+Upstream: https://github.com/microsoft/windows-rs
+
+Same license text as windows 0.62.2.
+
+Same license text as @types/trusted-types 2.0.7.
+
+------------------------------------------------------------------------------
+windows-targets 0.52.6
 License: MIT OR Apache-2.0
 Upstream: https://github.com/microsoft/windows-rs
 
@@ -20229,7 +20265,7 @@ Upstream: https://github.com/iyulab/openquote
 Same license text as @iyulab/desktop-compact 0.12.0.
 
 ------------------------------------------------------------------------------
-TauriKit.Sidecar.Loopback 0.12.0
+TauriKit.Sidecar.Loopback 0.12.1
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
