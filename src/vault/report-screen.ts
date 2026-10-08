@@ -4,7 +4,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { comparable, headCount, layOut, measureOf, sumOf, visitCount, type Comparison, type Group, type KeptRun, type Measure, type RunRecord, type Section } from '../report.js'
 import { labelOfField } from '../fields.js'
 import { shell, type ScaleSummary } from '../shell.js'
-import { scaleLine } from '../cases.js'
+import { changeSigns, scaleLine } from '../cases.js'
 import { scaleLabel } from './case-parts.js'
 import { strings } from '../strings.js'
 import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
@@ -199,15 +199,22 @@ export class OcReport extends VaultScreen {
               <dc-card>
                 <table data-role="scale-summary">
                   <thead>
-                    <tr><th>${columns.scale}</th><th class="num">${columns.scored}</th><th class="num">${columns.paired}</th></tr>
+                    <tr>
+                      <th>${columns.scale}</th><th class="num">${columns.scored}</th><th class="num">${columns.paired}</th>
+                      <th class="num">${columns.same}</th><th class="num">${columns.higher}</th><th class="num">${columns.lower}</th>
+                    </tr>
                   </thead>
                   <tbody>
                     ${summary.scales.map((t) => {
                       const label = t.cases.length > 0 ? scaleLabel(store, t.cases[0].baseline.record, t.scale) : t.scale
-                      return html`<tr data-scale=${t.scale}><td>${label}</td><td class="num">${t.scored}</td><td class="num">${t.paired}</td></tr>
+                      const signs = changeSigns(t.cases)
+                      return html`<tr data-scale=${t.scale}>
+                          <td>${label}</td><td class="num">${t.scored}</td><td class="num">${t.paired}</td>
+                          <td class="num" data-sign="same">${signs.same}</td><td class="num" data-sign="higher">${signs.higher}</td><td class="num" data-sign="lower">${signs.lower}</td>
+                        </tr>
                         ${t.cases.map(
                           (c) => html`<tr class="muted" data-scale-case=${c.subject}>
-                            <td colspan="3">${typeof name(c.subject) === 'string' ? name(c.subject) : c.subject} · ${scaleLine(c, label)}</td>
+                            <td colspan="6">${typeof name(c.subject) === 'string' ? name(c.subject) : c.subject} · ${scaleLine(c, label)}</td>
                           </tr>`,
                         )}`
                     })}

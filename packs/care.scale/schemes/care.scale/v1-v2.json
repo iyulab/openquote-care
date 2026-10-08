@@ -1,0 +1,16 @@
+{
+  "format": "openquote.crosswalk/0",
+  "scheme": "care.scale",
+  "from": 1,
+  "to": 2,
+  "links": [
+    [
+      "phq9",
+      "phq9"
+    ],
+    [
+      "gad7",
+      "gad7"
+    ]
+  ]
+}

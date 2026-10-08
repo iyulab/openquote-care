@@ -1,0 +1,12 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care.scale.kr",
+  "version": 2,
+  "label": "Scales · Korean",
+  "depends": {
+    "care.scale": 2
+  },
+  "provides": [
+    "labels/care.scale.kr/v2.ko.json"
+  ]
+}

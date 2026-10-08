@@ -6,6 +6,10 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- Scales: "Main problem severity" — the practitioner's own rating of the person's main problem, from 0 (none) to 4 (most severe), kept as a scale score. Rated when a case opens and again when it closes, the case shows the first and last rating and the difference between them, as for any scale. The app does not rate or judge anything itself.
+- "Scale scores of closed cases" counts, for each scale, the closed cases whose last score is the same as the first, above it or below it.
+
 ## [0.16.0] - 2026-10-08
 
 ### Added

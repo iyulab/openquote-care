@@ -1,0 +1,37 @@
+{
+  "format": "openquote.scales/0",
+  "pack": "care.scale",
+  "version": 2,
+  "responses": {
+    "type": "scale-score",
+    "scale": "scale",
+    "score": "score"
+  },
+  "scales": {
+    "phq9": {
+      "direction": "lower-is-better",
+      "min": 0,
+      "max": 27,
+      "licence": {
+        "terms": "No permission is required to reproduce, translate, display or distribute",
+        "source": "https://www.phqscreeners.com/select-screener",
+        "retrieved": "2026-10-05"
+      }
+    },
+    "gad7": {
+      "direction": "lower-is-better",
+      "min": 0,
+      "max": 21,
+      "licence": {
+        "terms": "No permission is required to reproduce, translate, display or distribute",
+        "source": "https://www.phqscreeners.com/select-screener",
+        "retrieved": "2026-10-05"
+      }
+    },
+    "problem-severity": {
+      "direction": "lower-is-better",
+      "min": 0,
+      "max": 4
+    }
+  }
+}

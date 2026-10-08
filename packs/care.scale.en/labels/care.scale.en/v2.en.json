@@ -1,0 +1,31 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care.scale.en",
+  "version": 2,
+  "locale": "en",
+  "types": {
+    "scale-score": "Scale score"
+  },
+  "schemes": {
+    "care.scale": {
+      "1": {
+        "phq9": "PHQ-9",
+        "gad7": "GAD-7"
+      },
+      "2": {
+        "phq9": "PHQ-9",
+        "gad7": "GAD-7",
+        "problem-severity": "Main problem severity (practitioner's rating, 0 none – 4 most severe)"
+      }
+    }
+  },
+  "fields": {
+    "scale-score": {
+      "date": "Given on",
+      "practitioner": "Practitioner",
+      "scale": "Scale",
+      "score": "Total score",
+      "note": "Notes"
+    }
+  }
+}

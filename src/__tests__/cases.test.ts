@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, followUpWords, latestCaseState, latestFollowUp, scaleLine, showsCases, signed } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, latestFollowUp, scaleLine, showsCases, signed } from '../cases.js'
 import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -100,6 +100,12 @@ describe('cases', () => {
       strings.caseScaleOnce('PHQ-9', 18, '2026-03-02'),
     )
     expect([signed(3), signed(-9), signed(0)]).toEqual(['+3', '−9', '0'])
+  })
+
+  it('count the paired cases whose last score is the same as, above or below the first — and leave the unpaired out', () => {
+    const c = (paired: boolean, change: number | null) => ({ paired, change })
+    expect(changeSigns([c(true, -2), c(true, 0), c(true, 1), c(true, -1), c(false, null), c(true, null)])).toEqual({ same: 1, higher: 1, lower: 2 })
+    expect(changeSigns([])).toEqual({ same: 0, higher: 0, lower: 0 })
   })
 })
 

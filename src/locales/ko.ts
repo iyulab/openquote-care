@@ -182,7 +182,7 @@ export const ko = {
   scaleSummaryPick: '기간을 고르고 「산출」을 누르세요.',
   scaleSummaryNone: '이 기간에 종결된 사례가 없습니다.',
   scaleSummaryClosed: (closed: number, unscored: number) => `이 기간 종결 사례 ${closed}건 · 그중 척도 점수가 하나도 없는 사례 ${unscored}건`,
-  scaleSummaryColumns: { scale: '척도', scored: '점수 있는 종결 사례', paired: '두 날짜에 점수' },
+  scaleSummaryColumns: { scale: '척도', scored: '점수 있는 종결 사례', paired: '두 날짜에 점수', same: '마지막 = 처음', higher: '마지막 > 처음', lower: '마지막 < 처음' },
   pickReportForm: '양식을 고르면 그 양식의 통계가 여기에 보입니다.',
   reportForm: '양식',
   reportFormOption: (label: string, version: number) => `${label} (${version}판)`,

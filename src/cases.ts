@@ -121,6 +121,21 @@ export function signed(change: number): string {
  * One scale over a case in words: the first score and the last, with their days and the change between them — or the
  * one day's score when there is no other. Nothing says whether the change is better or worse.
  */
+/**
+ * How the paired cases' last scores stand against their first: the same, higher or lower — the sign of
+ * the difference and nothing more. Which way is better is the scale's own fact, not said here.
+ */
+export function changeSigns(cases: readonly Pick<CaseScale, 'paired' | 'change'>[]): { same: number; higher: number; lower: number } {
+  const signs = { same: 0, higher: 0, lower: 0 }
+  for (const c of cases) {
+    if (!c.paired || c.change === null) continue
+    if (c.change > 0) signs.higher += 1
+    else if (c.change < 0) signs.lower += 1
+    else signs.same += 1
+  }
+  return signs
+}
+
 export function scaleLine(s: Pick<CaseScale, 'baseline' | 'last' | 'paired' | 'change'>, label: string): string {
   return s.paired && s.change !== null
     ? strings.caseScale(label, s.baseline.score, s.baseline.day, s.last.score, s.last.day, signed(s.change))

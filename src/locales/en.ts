@@ -181,7 +181,7 @@ export const en: Strings = {
   scaleSummaryPick: 'Pick the period and press “Run”.',
   scaleSummaryNone: 'No case closed in this period.',
   scaleSummaryClosed: (closed: number, unscored: number) => `${plural(closed, 'case')} closed in this period · ${unscored} of them with no scale score at all`,
-  scaleSummaryColumns: { scale: 'Scale', scored: 'Closed cases with a score', paired: 'Scores on two days' },
+  scaleSummaryColumns: { scale: 'Scale', scored: 'Closed cases with a score', paired: 'Scores on two days', same: 'Last = first', higher: 'Last > first', lower: 'Last < first' },
   pickReportForm: 'Choose a form to see its statistics here.',
   reportForm: 'Form',
   reportFormOption: (label: string, version: number) => `${label} (v${version})`,

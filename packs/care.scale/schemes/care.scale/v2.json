@@ -1,0 +1,19 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.scale",
+  "version": 2,
+  "items": [
+    {
+      "code": "phq9",
+      "label": "PHQ-9"
+    },
+    {
+      "code": "gad7",
+      "label": "GAD-7"
+    },
+    {
+      "code": "problem-severity",
+      "label": "Main problem severity (practitioner's rating, 0 none – 4 most severe)"
+    }
+  ]
+}

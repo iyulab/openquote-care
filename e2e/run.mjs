@@ -1621,7 +1621,11 @@ const scenarios = {
       await app.cdp.evaluate(`__e2e.one('[data-role="scale-summary-closed"]').textContent.trim()`),
       '1 case closed in this period · 0 of them with no scale score at all',
     )
-    assert.deepEqual(await app.cdp.evaluate(`[...__e2e.one('tr[data-scale="phq9"]').children].map((c) => c.textContent.trim())`), ['PHQ-9', '1', '1'], 'one closed case with PHQ-9 scores, on two days')
+    assert.deepEqual(
+      await app.cdp.evaluate(`[...__e2e.one('tr[data-scale="phq9"]').children].map((c) => c.textContent.trim())`),
+      ['PHQ-9', '1', '1', '0', '0', '1'],
+      'one closed case with PHQ-9 scores, on two days — its last score below its first',
+    )
     assert.equal(
       await app.cdp.evaluate(`__e2e.one('tr[data-scale-case]').textContent.replace(/\\s+/g, ' ').trim()`),
       'Client One · PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',

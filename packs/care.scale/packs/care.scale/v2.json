@@ -1,0 +1,14 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care.scale",
+  "version": 2,
+  "label": "Scales",
+  "depends": {
+    "care": 7
+  },
+  "provides": [
+    "schemes/care.scale/v2.json",
+    "schemes/care.scale/v1-v2.json",
+    "scales/care.scale/v2.json"
+  ]
+}
