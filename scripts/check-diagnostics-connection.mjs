@@ -1,12 +1,14 @@
 // Checks that the error diagnostics connection a release embeds is one the collector takes: it reads
-// the connection string the way the app does, sends one check report to it, and fails unless the
-// collector accepts it. The release runs it after building, so a missing, malformed or wrong value
+// the connection string the way the app does, sends one check report and one check session start to
+// it, and fails unless the collector accepts both. The release runs it after building, so a missing, malformed or wrong value
 // fails there instead of leaving every installation silent with nothing to say so.
 //
 //   OPENQUOTE_DIAGNOSTICS_CONNECTION=... node scripts/check-diagnostics-connection.mjs <app version>
 //
 // The report is shaped like the app's own (one exception telemetry item) and carries no content: its
 // version is `<app version>-check` and its kind `ReleaseCheck`, so readers can tell it from a failure.
+// The session start is shaped like the app's own too (an event item, tagged with an installation and
+// a session) — under the same version and an installation of zeros, so readers leave it out of use.
 import { pathToFileURL } from 'node:url'
 
 /**
@@ -46,9 +48,21 @@ export function checkReport(key, version, time = new Date().toISOString()) {
   }
 }
 
-/** Whether the collector's answer says it took the one report sent. */
-export function accepted(status, body) {
-  return status === 200 && body?.itemsReceived === 1 && body?.itemsAccepted === 1
+/** The check session start for `version`, as the app shapes one (tauri-kit-diagnostics `Sink::session_items`). */
+export function checkSession(key, version, time = new Date().toISOString()) {
+  const none = '0'.repeat(32)
+  return {
+    name: 'Microsoft.ApplicationInsights.Event',
+    time,
+    iKey: key,
+    tags: { 'ai.user.id': none, 'ai.session.id': none, 'ai.application.ver': `${version}-check`, 'ai.device.osVersion': `${process.platform} ${process.arch}` },
+    data: { baseType: 'EventData', baseData: { ver: 2, name: 'SessionStart', properties: { locale: 'und', track: 'check' }, measurements: {} } },
+  }
+}
+
+/** Whether the collector's answer says it took every one of the `sent` items. */
+export function accepted(status, body, sent = 2) {
+  return status === 200 && body?.itemsReceived === sent && body?.itemsAccepted === sent
 }
 
 async function main() {
@@ -59,7 +73,7 @@ async function main() {
   const response = await fetch(target.trackUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify([checkReport(target.key, version)]),
+    body: JSON.stringify([checkReport(target.key, version), checkSession(target.key, version)]),
   })
   const text = await response.text()
   let body
@@ -69,8 +83,8 @@ async function main() {
     body = undefined
   }
   // The answer names no key or address; the errors it lists say why an item was refused.
-  if (!accepted(response.status, body)) throw new Error(`the collector did not take the check report: ${response.status} ${text}`)
-  console.log(`the collector took a check report for ${version}`)
+  if (!accepted(response.status, body)) throw new Error(`the collector did not take the check report and session: ${response.status} ${text}`)
+  console.log(`the collector took a check report and session start for ${version}`)
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
