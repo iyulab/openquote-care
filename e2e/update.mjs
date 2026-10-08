@@ -19,7 +19,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
-import { App } from '@iyulab/tauri-kit-dev/app'
+import { App, webviewGone } from '@iyulab/tauri-kit-dev/app'
 import { nsisArgs, run, uninstall } from '@iyulab/tauri-kit-dev/installer'
 import { verifies } from '../scripts/verify-update-signature.mjs'
 
@@ -27,6 +27,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
 const base = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
 const PORT = 9225
+const testIdentifier = `${base.identifier}.update-test`
 const NAME = 'Openquote Care Update Test'
 const exeName = 'openquote-care.exe'
 // Where the test build's installer lands, beside the app's own; removed afterwards, so the other
@@ -56,7 +57,7 @@ try {
     conf,
     JSON.stringify({
       productName: NAME,
-      identifier: `${base.identifier}.update-test`,
+      identifier: testIdentifier,
       app: { windows: [{ ...main, title: NAME, additionalBrowserArgs: `--remote-debugging-port=${PORT}` }] },
       bundle: { createUpdaterArtifacts: true },
       plugins: {
@@ -133,7 +134,8 @@ try {
   // person closes it, it installs that version and is not started again. The copy the installer
   // started does not have this test's address, so it gives way to one started here with it.
   for (const pid of running(exe)) spawnSync('taskkill', ['/F', '/PID', String(pid)])
-  await sleep(1000)
+  // Its web view outlives it by a moment; a launch that joins that browser never opens the port.
+  await webviewGone(testIdentifier)
   await rm(marker)
   const downloads = () => asked.filter((url) => url === '/setup.exe').length
   // Counted before the launch: the download may be done before the window is ready.
@@ -143,8 +145,9 @@ try {
   const ready = Date.now() + 120_000
   while (downloads() === seen && Date.now() < ready) await sleep(500)
   assert.ok(downloads() > seen, 'downloaded in the background, before anyone asked')
-  // The download is checked against the key once it has arrived; give it that moment.
-  await sleep(3000)
+  // Closing installs only a download that has arrived whole and passed the key check: the notice
+  // says so by its mark, the two quotes facing each other. A request seen here is not yet that.
+  await app.cdp.waitFor(`__e2e.one('dc-toast[data-role=update] oq-quote-state')?.getAttribute('state') === 'done'`, 'the downloaded version ready to install', { timeoutMs: 60_000 })
   spawnSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${again}).CloseMainWindow() | Out-Null`])
   const closed = Date.now() + 120_000
   while (!(!running(exe).includes(again) && existsSync(marker)) && Date.now() < closed) await sleep(500)
@@ -158,12 +161,12 @@ try {
 } finally {
   for (const pid of running(exe)) spawnSync('taskkill', ['/F', '/PID', String(pid)])
   server?.close()
-  await sleep(1000)
+  await webviewGone(testIdentifier).catch(() => {})
   await uninstall(target, { exe: exeName }).catch(() => {})
   await rm(temp, { recursive: true, force: true }).catch(() => {})
   await rm(installer, { force: true }).catch(() => {})
   await rm(`${installer}.sig`, { force: true }).catch(() => {})
   // The test build's own data folder (its device id and web view profile), named by its identifier.
-  if (process.env.LOCALAPPDATA) await rm(join(process.env.LOCALAPPDATA, `${base.identifier}.update-test`), { recursive: true, force: true }).catch(() => {})
+  if (process.env.LOCALAPPDATA) await rm(join(process.env.LOCALAPPDATA, testIdentifier), { recursive: true, force: true }).catch(() => {})
 }
 console.log('the installed app updates itself')
