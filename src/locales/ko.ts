@@ -21,11 +21,12 @@ export const ko = {
   diagnosticsNotice:
     '이 설치본은 앱을 켜고 끈 때와 화면별로 쓴 시간, 앱 자체 오류(오류 종류·코드 위치)를 앱 판·운영체제와 함께 발행자에게 보냅니다. 설치본은 이 컴퓨터에서 만든 무작위 번호로만 구별하고, 기록 내용·파일 경로·폴더 이름·대상자는 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
   diagnosticsView: '보내는 내용 보기',
-  updateCheckNotice: '새 판이 나오면 알려 드립니다. 새 판을 확인할 때 기록이나 이 컴퓨터에 대한 정보는 보내지 않습니다.',
+  updateCheckNotice: '새 판이 나오면 받아 두었다가 앱을 닫을 때 설치합니다. 새 판을 확인할 때 기록이나 이 컴퓨터에 대한 정보는 보내지 않습니다.',
   updateCheckOffNotice: '새 판 확인을 꺼 두었습니다. 새 판은 홈페이지에서 받아 설치할 수 있습니다.',
   updateCheckTurnOff: '새 판 확인 끄기',
   updateCheckTurnOn: '새 판 확인 켜기',
   updateAvailable: (version: string) => `새 판(${version})이 나왔습니다. 지금 업데이트하면 기록 폴더를 닫고 앱을 다시 시작합니다.`,
+  updateReady: (version: string) => `새 판(${version})을 받아 두었습니다. 앱을 닫으면 설치됩니다. 지금 업데이트하면 기록 폴더를 닫고 앱을 다시 시작합니다.`,
   updateApply: '지금 업데이트',
   updateLater: '나중에',
   updateDownloading: '새 판을 내려받고 있습니다. 끝나면 앱이 다시 시작됩니다.',

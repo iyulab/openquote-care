@@ -20,11 +20,12 @@ export const en: Strings = {
   diagnosticsNotice:
     'This installation sends the publisher when the app starts and ends, how long each screen was used, and the app\'s own errors (the kind of error and where in the code), with the app version and operating system. The installation is told apart only by a random number made on this computer; record content, file paths, vault names and the people in your records are never sent. Everything is first written to the app\'s own folder on this computer, outside every vault, and with no internet it goes out the next time the app opens.',
   diagnosticsView: 'See what is sent',
-  updateCheckNotice: 'The app tells you when a new version is out. Looking for one sends nothing about your records or this computer.',
+  updateCheckNotice: 'When a new version is out, the app downloads it and installs it when you close the app. Looking for one sends nothing about your records or this computer.',
   updateCheckOffNotice: 'Looking for new versions is turned off. New versions can be downloaded from the website.',
   updateCheckTurnOff: 'Stop looking for new versions',
   updateCheckTurnOn: 'Look for new versions',
   updateAvailable: (version: string) => `A new version (${version}) is out. Updating now closes the vault and starts the app again.`,
+  updateReady: (version: string) => `The new version (${version}) is downloaded and is installed when you close the app. Updating now closes the vault and starts the app again.`,
   updateApply: 'Update now',
   updateLater: 'Later',
   updateDownloading: 'Downloading the new version. The app starts again when it is done.',

@@ -13,6 +13,8 @@ export interface UpdateStatus {
   checking: boolean
   /** The newer version found, if any. */
   available: string | null
+  /** Its installer is downloaded and checked: it is installed when the app closes. */
+  ready: boolean
 }
 
 /**

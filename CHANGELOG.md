@@ -9,6 +9,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - A case's heading names the day it ended once, in its days, and a case that began and ended on one day shows that day once.
 - Released installers now also tell the publisher when the app starts and ends and how long each screen was used, under a random number for the installation — never what a screen showed. "See what is sent" on the first screen shows these lines beside the error reports, exactly as sent.
+- A new version is downloaded in the background and installed when you close the app, without starting it again; "Update now" still installs it at once.
 - Error reports and this usage information can no longer be turned off ("Stop sending" is gone) while the app is young; an option to turn them off is planned once it is stable.
 
 ## [0.14.1] - 2026-10-06

@@ -217,7 +217,7 @@ export class OcApp extends LitElement {
   /** Whether this installation can send feedback; offered on the first screen and in an open vault. */
   @state() private feedback?: FeedbackStatus
   /** Whether this installation looks for new versions, and the newer one found. */
-  @state() private versions: UpdateStatus = { configured: false, checking: false, available: null }
+  @state() private versions: UpdateStatus = { configured: false, checking: false, available: null, ready: false }
   /** The new version's notice: shown, set aside for this run, downloading, or failed to download. */
   @state() private updateNotice: 'shown' | 'later' | 'downloading' | 'failed' = 'shown'
   private unlistenUpdate?: Promise<() => void>
@@ -345,7 +345,7 @@ export class OcApp extends LitElement {
       class="update"
       data-role="update"
       variant=${this.updateNotice === 'failed' ? 'warning' : 'info'}
-      .message=${downloading ? strings.updateDownloading : this.updateNotice === 'failed' ? strings.updateFailed : strings.updateAvailable(version)}
+      .message=${downloading ? strings.updateDownloading : this.updateNotice === 'failed' ? strings.updateFailed : this.versions.ready ? strings.updateReady(version) : strings.updateAvailable(version)}
       .actionLabel=${downloading ? '' : strings.updateApply}
       .dismissLabel=${strings.updateLater}
       @action=${() => void this.applyUpdate()}

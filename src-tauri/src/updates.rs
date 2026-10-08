@@ -5,9 +5,10 @@
 //! every twelve hours while the app stays open, the shell asks that address for the newest
 //! version's description — a plain request carrying nothing about the person, their records or
 //! this computer beyond what any connection does — and, when it names a newer version, tells the
-//! window. Nothing is downloaded or installed until the person chooses to: then the installer is
-//! downloaded, checked against the public key, the vault is closed, and the installer replaces the
-//! app and starts it again.
+//! window and downloads its installer in the background, checked against the public key. A
+//! downloaded installer is installed when the app closes (the vault closed first), without starting
+//! the app again; the person can also update now, which closes the vault, installs and starts the
+//! new version.
 //!
 //! Development and test builds carry no key and never ask. A person can turn the check off; no
 //! network, or one that blocks the address, is not an error — the app works the same.
@@ -39,13 +40,21 @@ pub struct Status {
     pub checking: bool,
     /// The newer version found, if any.
     pub available: Option<String>,
+    /// That version is downloaded and checked against the key: it is installed when the app closes.
+    pub ready: bool,
+}
+
+/// A newer version found, and its installer once downloaded and checked.
+struct Found {
+    update: Update,
+    installer: Option<Vec<u8>>,
 }
 
 /// The shell's state for new versions, managed by Tauri.
 pub struct Updates {
     configured: bool,
     off_marker: PathBuf,
-    found: Mutex<Option<Update>>,
+    found: Mutex<Option<Found>>,
 }
 
 impl Updates {
@@ -59,11 +68,17 @@ impl Updates {
     }
 
     pub fn status(&self) -> Status {
-        let available = self.found.lock().unwrap().as_ref().map(|u| u.version.clone());
-        Status { configured: self.configured, checking: self.checking(), available }
+        let found = self.found.lock().unwrap();
+        Status {
+            configured: self.configured,
+            checking: self.checking(),
+            available: found.as_ref().map(|f| f.update.version.clone()),
+            ready: found.as_ref().is_some_and(|f| f.installer.is_some()),
+        }
     }
 
-    /// Turns the check on or off, for this launch and the next ones. Off forgets a version found.
+    /// Turns the check on or off, for this launch and the next ones. Off forgets a version found,
+    /// and an installer downloaded for it.
     pub fn set_checking(&self, on: bool) -> std::io::Result<()> {
         if on {
             match std::fs::remove_file(&self.off_marker) {
@@ -80,14 +95,42 @@ impl Updates {
         Ok(())
     }
 
-    fn take(&self) -> Option<Update> {
-        self.found.lock().unwrap().take()
+    /// Keeps a version found. The same version found again keeps the installer already
+    /// downloaded for it; another version replaces both. Returns the version when it is new here.
+    fn keep(&self, update: Update) -> Option<String> {
+        let mut found = self.found.lock().unwrap();
+        if found.as_ref().is_some_and(|f| f.update.version == update.version) {
+            return None;
+        }
+        let version = update.version.clone();
+        *found = Some(Found { update, installer: None });
+        Some(version)
     }
 
-    fn keep(&self, update: Option<Update>) -> Option<String> {
-        let version = update.as_ref().map(|u| u.version.clone());
-        *self.found.lock().unwrap() = update;
-        version
+    /// The version found, still to download.
+    fn to_download(&self) -> Option<Update> {
+        self.found.lock().unwrap().as_ref().filter(|f| f.installer.is_none()).map(|f| f.update.clone())
+    }
+
+    /// Keeps the installer downloaded for `version`, unless another version was found meanwhile.
+    fn downloaded(&self, version: &str, installer: Vec<u8>) -> bool {
+        let mut found = self.found.lock().unwrap();
+        match found.as_mut() {
+            Some(f) if f.update.version == version => {
+                f.installer = Some(installer);
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// The version found and its installer, if downloaded; taken, so it is installed once.
+    fn take(&self) -> Option<(Update, Option<Vec<u8>>)> {
+        self.found.lock().unwrap().take().map(|f| (f.update, f.installer))
+    }
+
+    fn put_back(&self, update: Update, installer: Option<Vec<u8>>) {
+        *self.found.lock().unwrap() = Some(Found { update, installer });
     }
 }
 
@@ -111,16 +154,27 @@ pub fn check_now<R: Runtime>(handle: AppHandle<R>) {
     tauri::async_runtime::spawn(async move { check(&handle).await });
 }
 
-/// One look: a newer version found is kept and the window told. Any failure — no network, an
-/// address that does not answer, a description that does not verify — finds nothing.
+/// One look: a newer version found is kept, the window told, and its installer downloaded and
+/// checked against the key in the background, so that it can be installed when the app closes —
+/// the window is told again once it is ready. Any failure — no network, an address that does not
+/// answer, a description or an installer that does not verify — leaves things as they were, and
+/// the next look tries again.
 async fn check<R: Runtime>(handle: &AppHandle<R>) {
     let updates = handle.state::<Updates>();
     if !updates.checking() {
         return;
     }
     let Ok(updater) = builder(handle).and_then(|b| b.build()) else { return };
-    if let Some(version) = updates.keep(updater.check().await.ok().flatten()) {
+    if let Some(update) = updater.check().await.ok().flatten()
+        && let Some(version) = updates.keep(update)
+    {
         let _ = handle.emit(AVAILABLE, version);
+    }
+    let Some(update) = updates.to_download() else { return };
+    if let Ok(installer) = update.download(|_, _| {}, || {}).await
+        && updates.downloaded(&update.version, installer)
+    {
+        let _ = handle.emit(AVAILABLE, update.version.clone());
     }
 }
 
@@ -132,22 +186,35 @@ fn builder<R: Runtime>(handle: &AppHandle<R>) -> tauri_plugin_updater::Result<ta
     }
 }
 
-/// Downloads the version found, checks it against the key, runs `before_install` (the vault is
-/// closed there) and starts the installer, which ends this process and starts the new version.
-/// Returns only when it could not: nothing found, or the download or its check failed — then the
-/// app goes on as it was.
+/// Installs the version found now, as the person asked: its installer (downloaded now if it is not
+/// yet), checked against the key, then `before_install` (the vault is closed there), then the
+/// installer, which ends this process and starts the new version. Returns only when it could not:
+/// nothing found, or the download or its check failed — then the app goes on as it was.
 pub async fn apply<R: Runtime>(handle: &AppHandle<R>, before_install: impl FnOnce()) -> Result<(), String> {
     let updates = handle.state::<Updates>();
-    let Some(update) = updates.take() else { return Err("no newer version found".into()) };
-    let bytes = match update.download(|_, _| {}, || {}).await {
-        Ok(bytes) => bytes,
-        Err(e) => {
-            updates.keep(Some(update));
-            return Err(e.to_string());
-        }
+    let Some((update, installer)) = updates.take() else { return Err("no newer version found".into()) };
+    let installer = match installer {
+        Some(installer) => installer,
+        None => match update.download(|_, _| {}, || {}).await {
+            Ok(installer) => installer,
+            Err(e) => {
+                updates.put_back(update, None);
+                return Err(e.to_string());
+            }
+        },
     };
     before_install();
-    update.install(bytes).map_err(|e| e.to_string())
+    update.install(installer).map_err(|e| e.to_string())
+}
+
+/// As the app closes: when an installer is ready, `before_install` runs (the vault is closed
+/// there) and the new version is installed — without starting it, since the person closed the
+/// app. The installer ends this process. Does nothing when no installer is ready.
+pub fn install_on_close<R: Runtime>(handle: &AppHandle<R>, before_install: impl FnOnce()) {
+    let updates = handle.state::<Updates>();
+    let Some((update, Some(installer))) = updates.take() else { return };
+    before_install();
+    let _ = update.restart_after_install(false).install(installer);
 }
 
 #[cfg(test)]
@@ -189,7 +256,7 @@ mod tests {
         assert!(updates.status().checking);
 
         updates.set_checking(false).unwrap();
-        assert_eq!(Updates::new(true, dir.path()).status(), Status { configured: true, checking: false, available: None });
+        assert_eq!(Updates::new(true, dir.path()).status(), Status { configured: true, checking: false, available: None, ready: false });
 
         updates.set_checking(true).unwrap();
         assert!(Updates::new(true, dir.path()).status().checking);

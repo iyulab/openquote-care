@@ -2,8 +2,9 @@
 // like a release (with an updater signature, made with a key generated for this run), installed for
 // the current user, finds a newer version described at a local address, and — when the person chooses
 // to update — downloads it, checks its signature, closes, lets the installer replace it and starts
-// again. The "newer" installer is the same one under a higher version number: what is checked is the
-// way there, not what arrives.
+// again. Then the copy started again downloads the version in the background and, closed as a person
+// closes it, installs it without starting again. The "newer" installer is the same one under a higher
+// version number: what is checked is the way there, not what arrives.
 //
 //   npm run test:update      builds the test installer (a release build), runs the check, uninstalls
 //
@@ -125,6 +126,33 @@ try {
   assert.equal(running(exe).length, 1, 'and started again after it')
   assert.ok(existsSync(marker), 'the installer ran over the installed app')
   console.log('  ✓ downloaded, signature checked, installed, started again')
+  app.cdp?.close()
+  app.child = undefined
+
+  // Started again, the app finds the version too and downloads it in the background; closed as a
+  // person closes it, it installs that version and is not started again. The copy the installer
+  // started does not have this test's address, so it gives way to one started here with it.
+  for (const pid of running(exe)) spawnSync('taskkill', ['/F', '/PID', String(pid)])
+  await sleep(1000)
+  await rm(marker)
+  const downloads = () => asked.filter((url) => url === '/setup.exe').length
+  // Counted before the launch: the download may be done before the window is ready.
+  const seen = downloads()
+  app = await App.launch({ exe, port: PORT, env, debugPortFromEnv: false, ready: `customElements.get('oc-app') && !!document.querySelector('oc-app')` })
+  const [again] = running(exe)
+  const ready = Date.now() + 120_000
+  while (downloads() === seen && Date.now() < ready) await sleep(500)
+  assert.ok(downloads() > seen, 'downloaded in the background, before anyone asked')
+  // The download is checked against the key once it has arrived; give it that moment.
+  await sleep(3000)
+  spawnSync('powershell', ['-NoProfile', '-Command', `(Get-Process -Id ${again}).CloseMainWindow() | Out-Null`])
+  const closed = Date.now() + 120_000
+  while (!(!running(exe).includes(again) && existsSync(marker)) && Date.now() < closed) await sleep(500)
+  assert.ok(!running(exe).includes(again), 'the app closed')
+  assert.ok(existsSync(marker), 'the update was installed as it closed')
+  await sleep(5000)
+  assert.deepEqual(running(exe), [], 'and the app was not started again')
+  console.log('  ✓ downloaded in the background, installed on close, not started again')
   app.cdp?.close()
   app.child = undefined
 } finally {

@@ -74,8 +74,9 @@ const scenarios = {
   },
 
   async 'says when a new version is out, and stops looking for one when told'(app) {
-    // A version description of the kind the release puts next to its installers, served here: the
-    // app only reads it until a person chooses to update, which this scenario never does.
+    // A version description of the kind the release puts next to its installers, served here. Its
+    // installer address answers nothing, so the download the app starts in the background fails and
+    // the version is offered as found (installing it is `npm run test:update`).
     const asked = []
     const server = createServer((req, res) => {
       asked.push(req.url)

@@ -456,12 +456,14 @@ pub fn run() {
         ])
         .build(context)
         .expect("error while running Openquote Care")
-        .run(|_handle, event| {
+        .run(|handle, event| {
             // The session ends as the app does: before the engine stops, and before an update
             // waiting for the app to close is installed. It gets a moment to go out; what does
-            // not stays for the next launch.
+            // not stays for the next launch. Then a downloaded update is installed, the vault
+            // closed first, and the app is not started again — the person closed it.
             if let tauri::RunEvent::Exit = event {
                 diagnostics::end_session(std::time::Duration::from_millis(1500));
+                updates::install_on_close(handle, || handle.state::<App>().close_vault());
             }
         });
 }
