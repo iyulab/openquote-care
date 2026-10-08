@@ -9,22 +9,49 @@
 //! HTTP status as details, and the app version, operating system and architecture. There is no
 //! field a record value, a file path, a vault name or an error message could travel in.
 //!
-//! Sending is off unless a connection string is configured — through the
+//! Sessions go beside the reports, in a file of their own: when the app starts, when it ends as it
+//! should (how long it ran and the time on each of its screens, by the fixed names in [`SCREENS`]),
+//! and, at the next start, a session that did not end — an installation is told apart only by a
+//! random identifier made on the device. A session line has no field for anything a person wrote
+//! or opened either.
+//!
+//! Sending happens when a connection string is configured — through the
 //! `OPENQUOTE_DIAGNOSTICS_CONNECTION` environment variable, or embedded at build time under the
-//! same name. When it is on, what the file gained since the last send goes out in the background
-//! at launch and after each new report; what cannot go out now (no network, the service busy)
-//! stays in the file for a later launch. Development and test builds, and builds without it,
-//! only keep the file.
+//! same name — and is not something a person turns off for now: what the files gained since the
+//! last send goes out in the background at launch, after each new report and when the app ends;
+//! what cannot go out now (no network, the service busy) stays in the files for a later launch.
+//! Development and test builds, and builds without it, only keep the files.
 
 use std::panic::Location;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use openquote_care_engine::Fault;
-use tauri_kit_diagnostics::{FrameRule, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Sink, WebBundle, trim};
+use tauri_kit_diagnostics::{
+    FrameRule, InstallId, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Screens, Session, SessionEvent, Sink, WebBundle, trim,
+};
+
+/// The app's screens, by the names the window gives them: its own screens before a vault is open,
+/// and the screens of an open vault under `vault:`. Time on any other name is not kept apart.
+pub const SCREENS: &[&str] = &[
+    "welcome",
+    "create",
+    "open",
+    "kit",
+    "reports",
+    "feedback",
+    "vault:subjects",
+    "vault:groups",
+    "vault:practitioners",
+    "vault:search",
+    "vault:report",
+    "vault:export",
+    "vault:lists",
+    "vault:devices",
+    "vault:feedback",
+];
 
 /// The only switch: absent or blank means nothing is sent.
 pub const CONNECTION_VAR: &str = "OPENQUOTE_DIAGNOSTICS_CONNECTION";
@@ -115,104 +142,156 @@ pub fn app_local_data(identifier: &str) -> Option<PathBuf> {
     dirs::data_local_dir().map(|dir| dir.join(identifier))
 }
 
-/// One launch's reports: written to the file, and sent from it when a destination is configured
-/// and the person has not turned reporting off.
+/// One launch's reports and session: written to their files, and sent from them when a destination
+/// is configured.
 pub struct Diagnostics {
+    folder: PathBuf,
     reporter: Reporter,
     sender: Option<Sender>,
-    /// Present while the person has turned reporting off; kept beside the reports.
-    off_marker: PathBuf,
-    off: AtomicBool,
+    session: OnceLock<Session>,
+    shown: Mutex<Shown>,
+}
+
+/// The screen the window last named, and whether the window is minimised now.
+#[derive(Default)]
+struct Shown {
+    name: Option<String>,
+    minimised: bool,
 }
 
 /// What the window shows about reporting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
 pub struct Status {
-    /// This installation has a destination for reports.
+    /// This installation has a destination for reports and sessions, and sends them.
     pub configured: bool,
-    /// Reports are written and sent: configured, and not turned off.
-    pub sending: bool,
 }
 
+/// What the files hold, one JSON object per line — exactly what is sent.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Lines {
+    pub reports: String,
+    pub sessions: String,
+}
+
+/// The marker earlier versions kept while a person had turned reporting off. Reporting is not
+/// something to turn off now, so a launch removes it rather than leave a file that means nothing.
+const RETIRED_OFF_MARKER: &str = "reporting-off";
+
 impl Diagnostics {
-    /// Reports kept in `folder`, sent to `sink` when there is one. Trims the file first: it is
-    /// evidence of recent failures, not an archive.
+    /// Reports and sessions kept in `folder`, sent to `sink` when there is one. Trims the files
+    /// first: they are evidence of the recent past, not an archive.
     pub fn new(folder: &Path, sink: Option<Sink>) -> Diagnostics {
-        let (file, sent) = (folder.join("reports.jsonl"), folder.join("reports.sent"));
-        let _ = trim(&file, &sent, MAX_FILE_BYTES);
-        let sender = sink.map(|sink| Sender::new(sink, file.clone(), sent));
-        let off_marker = folder.join("reporting-off");
-        let off = AtomicBool::new(off_marker.exists());
-        Diagnostics { reporter: Reporter::new(file), sender, off_marker, off }
+        let reports = Files::in_folder(folder, "reports");
+        let sessions = Files::in_folder(folder, "sessions");
+        for files in [&reports, &sessions] {
+            let _ = trim(&files.file, &files.sent, MAX_FILE_BYTES);
+        }
+        let _ = std::fs::remove_file(folder.join(RETIRED_OFF_MARKER));
+        let reporter = Reporter::new(reports.file.clone());
+        let sender = sink.map(|sink| Sender::new(sink, reports, sessions));
+        Diagnostics { folder: folder.to_path_buf(), reporter, sender, session: OnceLock::new(), shown: Mutex::default() }
     }
 
-    /// Whether reports leave this device.
+    /// Whether reports and sessions leave this device.
     pub fn sends(&self) -> bool {
-        self.sender.is_some() && !self.off.load(Ordering::Relaxed)
+        self.sender.is_some()
     }
 
     pub fn status(&self) -> Status {
-        Status { configured: self.sender.is_some(), sending: self.sends() }
+        Status { configured: self.sends() }
     }
 
-    /// Turns reporting on or off, for this launch and the next ones. Off, the app neither writes
-    /// nor sends reports; on again, it sends what the file still holds.
-    pub fn set_sending(&self, on: bool) -> std::io::Result<()> {
-        if on {
-            match std::fs::remove_file(&self.off_marker) {
-                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
-                _ => {}
-            }
-        } else {
-            if let Some(dir) = self.off_marker.parent() {
-                std::fs::create_dir_all(dir)?;
-            }
-            std::fs::write(&self.off_marker, b"")?;
-        }
-        self.off.store(!on, Ordering::Relaxed);
-        if on {
-            self.send_pending();
-        }
-        Ok(())
-    }
-
-    /// The reports as the file holds them, one JSON object per line — exactly what is sent. None
-    /// written yet is an empty text.
-    pub fn reports(&self) -> std::io::Result<String> {
-        match std::fs::read_to_string(self.reporter.file()) {
+    /// What the two files hold; one not written yet is an empty text.
+    pub fn lines(&self) -> std::io::Result<Lines> {
+        let read = |file: &Path| match std::fs::read_to_string(file) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
             read => read,
-        }
+        };
+        Ok(Lines { reports: read(self.reporter.file())?, sessions: read(&Files::in_folder(&self.folder, "sessions").file)? })
     }
 
-    /// Sends what the file holds that has not gone out yet, in the background.
+    /// Sends what the files hold that has not gone out yet, in the background.
     pub fn send_pending(&self) -> Option<mpsc::Receiver<()>> {
-        if self.off.load(Ordering::Relaxed) {
-            return None;
-        }
         self.sender.as_ref().map(Sender::start)
     }
 
     /// Writes the report (once per failure per launch, up to the crate's limit) and, when it was
-    /// new and sending is on, starts sending it. Writes nothing while reporting is off. Never
-    /// panics: the panic hook calls it.
+    /// new and there is a destination, starts sending it. Never panics: the panic hook calls it.
     pub fn record(&self, report: Report) -> Option<mpsc::Receiver<()>> {
-        if self.off.load(Ordering::Relaxed) {
-            return None;
-        }
         match self.reporter.record(report) {
             Ok(true) => self.send_pending(),
             _ => None,
         }
     }
+
+    /// Starts this launch's session, once: the installation's identifier (made the first time),
+    /// the window's language and what the app is set up for (`track`). A session an earlier launch
+    /// left unfinished is written first. What the file gained goes out in the background.
+    pub fn start_session(&self, locale: &str, track: &str) -> std::io::Result<()> {
+        if self.session.get().is_some() {
+            return Ok(());
+        }
+        let install = InstallId::load_or_create(&self.folder.join("install-id"))?;
+        let session = Session::builder(&install, VERSION)
+            .locale(locale)
+            .track(track)
+            .screens(Screens::new(SCREENS.iter().copied()))
+            .start(Files::in_folder(&self.folder, "sessions").file, self.folder.join("session.running"))?;
+        let _ = self.session.set(session);
+        self.send_pending();
+        Ok(())
+    }
+
+    /// The screen open now, by the window's name for it, or `None` while the window is hidden.
+    pub fn screen(&self, name: Option<&str>) {
+        let mut shown = self.shown.lock().unwrap_or_else(|e| e.into_inner());
+        shown.name = name.map(str::to_owned);
+        self.tell(&shown);
+    }
+
+    /// The window was minimised (or brought back): no screen is in view meanwhile. The web view
+    /// does not say so itself, so the shell tells the session from the window's own state.
+    pub fn minimised(&self, minimised: bool) {
+        let mut shown = self.shown.lock().unwrap_or_else(|e| e.into_inner());
+        if shown.minimised != minimised {
+            shown.minimised = minimised;
+            self.tell(&shown);
+        }
+    }
+
+    fn tell(&self, shown: &Shown) {
+        if let Some(session) = self.session.get() {
+            session.screen(if shown.minimised { None } else { shown.name.as_deref() });
+        }
+    }
+
+    /// Ends the session, once, and starts sending it.
+    pub fn end_session(&self) -> Option<mpsc::Receiver<()>> {
+        let session = self.session.get()?;
+        session.end().ok()?;
+        self.send_pending()
+    }
 }
 
-/// Sends the file's new reports, one send at a time: a send asked for while one runs makes that
-/// one go round again rather than racing it over the record of how far has been sent.
-struct Sender {
-    sink: Sink,
+/// A file of lines and the record of how far it has been sent.
+#[derive(Clone)]
+struct Files {
     file: PathBuf,
     sent: PathBuf,
+}
+
+impl Files {
+    fn in_folder(folder: &Path, name: &str) -> Files {
+        Files { file: folder.join(format!("{name}.jsonl")), sent: folder.join(format!("{name}.sent")) }
+    }
+}
+
+/// Sends the files' new lines, one send at a time: a send asked for while one runs makes that one
+/// go round again rather than racing it over the record of how far has been sent.
+struct Sender {
+    sink: Sink,
+    reports: Files,
+    sessions: Files,
     state: Arc<Mutex<SendState>>,
 }
 
@@ -224,12 +303,12 @@ struct SendState {
 }
 
 impl Sender {
-    fn new(sink: Sink, file: PathBuf, sent: PathBuf) -> Sender {
-        Sender { sink, file, sent, state: Arc::default() }
+    fn new(sink: Sink, reports: Files, sessions: Files) -> Sender {
+        Sender { sink, reports, sessions, state: Arc::default() }
     }
 
-    /// Starts a send, or asks the running one to go round again. The receiver hears when the file
-    /// has been sent as far as it then reached (or the send gave up until later).
+    /// Starts a send, or asks the running one to go round again. The receiver hears when the files
+    /// have been sent as far as they then reached (or the send gave up until later).
     fn start(&self) -> mpsc::Receiver<()> {
         let (done, heard) = mpsc::channel();
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
@@ -240,7 +319,7 @@ impl Sender {
         }
         state.running = true;
         drop(state);
-        let (sink, file, sent, state) = (self.sink.clone(), self.file.clone(), self.sent.clone(), self.state.clone());
+        let (sink, reports, sessions, state) = (self.sink.clone(), self.reports.clone(), self.sessions.clone(), self.state.clone());
         let spawned = std::thread::Builder::new().name("diagnostics".into()).spawn(move || {
             let agent = Sink::agent();
             loop {
@@ -249,8 +328,9 @@ impl Sender {
                     s.again = false;
                     std::mem::take(&mut s.waiting)
                 };
-                // What could not go out stays in the file for a later send.
-                let _ = sink.send_pending(&agent, &file, &sent);
+                // What could not go out stays in its file for a later send.
+                let _ = sink.send_pending_of::<Report>(&agent, &reports.file, &reports.sent);
+                let _ = sink.send_pending_of::<SessionEvent>(&agent, &sessions.file, &sessions.sent);
                 for done in waiting {
                     let _ = done.send(());
                 }
@@ -275,20 +355,44 @@ impl Sender {
 
 static DIAGNOSTICS: OnceLock<Diagnostics> = OnceLock::new();
 
-/// Whether this installation has a destination for reports and sends them — so the window can say
-/// so, and offer to turn it off.
+/// Whether this installation has a destination for reports and sessions — so the window can say
+/// so.
 pub fn status() -> Status {
-    DIAGNOSTICS.get().map_or(Status { configured: false, sending: false }, Diagnostics::status)
+    DIAGNOSTICS.get().map_or(Status { configured: false }, Diagnostics::status)
 }
 
-/// Turns reporting on or off (see [`Diagnostics::set_sending`]).
-pub fn set_sending(on: bool) -> std::io::Result<()> {
-    DIAGNOSTICS.get().map_or(Ok(()), |d| d.set_sending(on))
+/// What the files hold (see [`Diagnostics::lines`]).
+pub fn lines() -> std::io::Result<Lines> {
+    DIAGNOSTICS.get().map_or(Ok(Lines { reports: String::new(), sessions: String::new() }), Diagnostics::lines)
 }
 
-/// The reports written so far (see [`Diagnostics::reports`]).
-pub fn reports() -> std::io::Result<String> {
-    DIAGNOSTICS.get().map_or(Ok(String::new()), Diagnostics::reports)
+/// Starts this launch's session (see [`Diagnostics::start_session`]).
+pub fn start_session(locale: &str, track: &str) {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        let _ = diagnostics.start_session(locale, track);
+    }
+}
+
+/// The window was minimised or brought back (see [`Diagnostics::minimised`]).
+pub fn minimised(minimised: bool) {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.minimised(minimised);
+    }
+}
+
+/// The screen open now (see [`Diagnostics::screen`]).
+pub fn screen(name: Option<&str>) {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.screen(name);
+    }
+}
+
+/// Ends the session as the app ends, giving it up to `wait` to go out — what does not stays for
+/// the next launch.
+pub fn end_session(wait: Duration) {
+    if let Some(heard) = DIAGNOSTICS.get().and_then(Diagnostics::end_session) {
+        let _ = heard.recv_timeout(wait);
+    }
 }
 
 /// Reports an error the window did not handle.
@@ -427,33 +531,92 @@ mod tests {
     }
 
     #[test]
-    fn turned_off_nothing_is_written_or_sent_and_it_stays_off_on_the_next_launch() {
+    fn reporting_is_not_turned_off_by_the_marker_earlier_versions_kept() {
         let data = tempfile::tempdir().unwrap();
         let folder = folder(data.path());
-        let sink = || Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/");
-        let diagnostics = Diagnostics::new(&folder, sink());
-        assert_eq!(diagnostics.status(), Status { configured: true, sending: true });
-        assert_eq!(diagnostics.reports().unwrap(), "", "nothing written yet");
-        diagnostics.set_sending(false).unwrap();
-        assert_eq!(diagnostics.status(), Status { configured: true, sending: false });
-        assert!(diagnostics.record(webview_missing_report()).is_none());
-        assert!(diagnostics.send_pending().is_none());
-        assert!(!folder.join("reports.jsonl").exists(), "nothing written while off");
-        // The next launch remembers.
-        let next = Diagnostics::new(&folder, sink());
-        assert_eq!(next.status(), Status { configured: true, sending: false });
-        next.set_sending(true).unwrap();
-        assert_eq!(Diagnostics::new(&folder, sink()).status(), Status { configured: true, sending: true });
-        let heard = next.record(webview_missing_report()).expect("written and being sent");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("reporting-off"), b"").unwrap();
+        let sink = Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/");
+        let diagnostics = Diagnostics::new(&folder, sink);
+        assert_eq!(diagnostics.status(), Status { configured: true });
+        assert!(!folder.join("reporting-off").exists(), "the retired marker is removed");
+        let heard = diagnostics.record(webview_missing_report()).expect("written and being sent");
         heard.recv_timeout(Duration::from_secs(30)).expect("the send finished");
-        assert!(next.reports().unwrap().contains("\"WebviewMissing\""));
+        assert!(diagnostics.lines().unwrap().reports.contains("\"WebviewMissing\""));
     }
 
     #[test]
-    fn without_a_destination_there_is_nothing_to_turn_off() {
+    fn without_a_destination_nothing_is_configured() {
         let data = tempfile::tempdir().unwrap();
         let diagnostics = Diagnostics::new(&folder(data.path()), None);
-        assert_eq!(diagnostics.status(), Status { configured: false, sending: false });
+        assert_eq!(diagnostics.status(), Status { configured: false });
+    }
+
+    #[test]
+    fn a_session_starts_once_keeps_time_under_the_fixed_screen_names_and_ends_in_its_own_file() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        let diagnostics = Diagnostics::new(&folder, None);
+        diagnostics.start_session("ko-KR", "care-school-kr").unwrap();
+        diagnostics.start_session("en", "other").unwrap();
+        diagnostics.screen(Some("vault:report"));
+        diagnostics.screen(Some("가상 학생 — 2026.json"));
+        diagnostics.screen(None);
+        assert!(diagnostics.end_session().is_none(), "no destination: nothing to wait for");
+        assert!(diagnostics.end_session().is_none(), "a second end writes nothing");
+        let lines = line(&folder.join("sessions.jsonl"));
+        assert_eq!(lines.iter().map(|l| l["event"].as_str().unwrap()).collect::<Vec<_>>(), ["start", "end"]);
+        assert_eq!((lines[0]["locale"].as_str(), lines[0]["track"].as_str()), (Some("ko-KR"), Some("care-school-kr")));
+        let screens = lines[1]["screens"].as_object().unwrap();
+        assert!(screens.contains_key("vault:report"));
+        assert!(screens.contains_key(tauri_kit_diagnostics::UNRECOGNIZED_KIND));
+        let text = diagnostics.lines().unwrap().sessions;
+        for leaked in ["가상", "2026.json"] {
+            assert!(!text.contains(leaked), "{leaked} in {text}");
+        }
+        let install = std::fs::read_to_string(folder.join("install-id")).unwrap();
+        assert_eq!(lines[0]["install"].as_str(), Some(install.trim()));
+        assert!(!folder.join("session.running").exists(), "an ended session leaves no marker");
+    }
+
+    #[test]
+    fn a_launch_that_did_not_end_is_written_at_the_next_start_under_the_same_installation() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        Diagnostics::new(&folder, None).start_session("ko-KR", "care-school-kr").unwrap();
+        // The process ended without `end_session` — a crash, or the system ending it.
+        Diagnostics::new(&folder, None).start_session("ko-KR", "care-school-kr").unwrap();
+        let lines = line(&folder.join("sessions.jsonl"));
+        assert_eq!(lines.iter().map(|l| l["event"].as_str().unwrap()).collect::<Vec<_>>(), ["start", "unfinished", "start"]);
+        assert_eq!(lines[0]["install"], lines[2]["install"]);
+        assert_eq!(lines[0]["session"], lines[1]["session"], "the unfinished line names the session that did not end");
+    }
+
+    #[test]
+    fn a_minimised_window_keeps_no_screen_time_and_picks_up_the_same_screen_when_back() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        let diagnostics = Diagnostics::new(&folder, None);
+        diagnostics.start_session("ko", "school-kr").unwrap();
+        diagnostics.screen(Some("vault:subjects"));
+        diagnostics.minimised(true);
+        diagnostics.minimised(true);
+        // Named while minimised (the window can still change screen), counted only once it is back.
+        diagnostics.screen(Some("vault:report"));
+        diagnostics.minimised(false);
+        diagnostics.end_session();
+        let end = line(&folder.join("sessions.jsonl")).pop().unwrap();
+        let screens = end["screens"].as_object().unwrap();
+        assert_eq!(screens.keys().collect::<Vec<_>>(), ["vault:report", "vault:subjects"]);
+        assert_eq!(screens["vault:report"]["opened"], 1, "brought back to the screen named meanwhile");
+    }
+
+    #[test]
+    fn every_screen_the_window_names_is_one_of_the_fixed_list() {
+        let screens = Screens::new(SCREENS.iter().copied());
+        for name in SCREENS {
+            assert_eq!(screens.name(name), *name, "{name} must be a plain identifier");
+        }
     }
 
     #[test]

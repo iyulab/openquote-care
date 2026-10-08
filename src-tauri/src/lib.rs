@@ -219,13 +219,15 @@ fn diagnostics_status() -> diagnostics::Status {
 }
 
 #[tauri::command]
-fn set_diagnostics_sending(on: bool) -> CommandResult<()> {
-    text(diagnostics::set_sending(on).map_err(AppError::from))
+fn diagnostics_reports() -> CommandResult<diagnostics::Lines> {
+    text(diagnostics::lines().map_err(AppError::from))
 }
 
+/// The screen the window shows now, by its fixed name, or none while the window is hidden — so
+/// the session can keep time on each screen (and nothing about what a screen shows).
 #[tauri::command]
-fn diagnostics_reports() -> CommandResult<String> {
-    text(diagnostics::reports().map_err(AppError::from))
+fn screen_shown(name: Option<String>) {
+    diagnostics::screen(name.as_deref());
 }
 
 /// An error the window did not handle: its type name and stack, of which the report keeps only
@@ -379,6 +381,12 @@ pub fn run() {
     let builder = if can_update { builder.plugin(tauri_plugin_updater::Builder::new().build()) } else { builder };
     builder
         .plugin(tauri_plugin_dialog::init())
+        // Minimised, no screen is in view: the session stops keeping time until it is back.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Resized(_) = event {
+                diagnostics::minimised(window.is_minimized().unwrap_or(false));
+            }
+        })
         .setup(move |tauri_app| {
             window::build_main(tauri_app)?;
             let config = tauri_app.path().app_local_data_dir()?;
@@ -393,6 +401,11 @@ pub fn run() {
                 .on_outside_change(move || {
                     let _ = handle.emit(VAULT_CHANGED, ());
                 });
+            // What this installation is set up for: the track a new vault starts from in the
+            // window's language (a vault's own track is not known until one is open).
+            let locale = locale::ui_locale();
+            let track = app.default_track(&locale).map_or("none", |t| t.id.as_str()).to_owned();
+            diagnostics::start_session(&locale, &track);
             tauri_app.manage(app);
             Ok(())
         })
@@ -413,9 +426,9 @@ pub fn run() {
             set_update_checking,
             apply_update,
             diagnostics_status,
-            set_diagnostics_sending,
             diagnostics_reports,
             report_window_error,
+            screen_shown,
             feedback_status,
             send_feedback,
             ui_locale,
@@ -441,8 +454,16 @@ pub fn run() {
             run_report,
             run_export,
         ])
-        .run(context)
-        .expect("error while running Openquote Care");
+        .build(context)
+        .expect("error while running Openquote Care")
+        .run(|_handle, event| {
+            // The session ends as the app does: before the engine stops, and before an update
+            // waiting for the app to close is installed. It gets a moment to go out; what does
+            // not stays for the next launch.
+            if let tauri::RunEvent::Exit = event {
+                diagnostics::end_session(std::time::Duration::from_millis(1500));
+            }
+        });
 }
 
 #[cfg(test)]

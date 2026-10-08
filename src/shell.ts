@@ -40,11 +40,17 @@ export interface FeedbackStatus {
   maxMessage: number
 }
 
-/** Error reporting on this installation: whether it has somewhere to send reports, and whether it does. */
+/** Whether this installation sends its errors, starts and ends and time on each screen (content-free; see docs/privacy.md). */
 export interface DiagnosticsStatus {
   configured: boolean
-  /** Configured and not turned off. */
-  sending: boolean
+}
+
+/** What the app has written to send, one JSON object per line — exactly what is sent; empty when none. */
+export interface DiagnosticsLines {
+  /** The app's own errors. */
+  reports: string
+  /** When the app started and ended, and the time on each screen. */
+  sessions: string
 }
 
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
@@ -205,12 +211,12 @@ export const shell = {
   closeVault: () => invoke<void>('close_vault'),
   /** The app's language as a language tag: the system's display language, or `OPENQUOTE_UI_LOCALE` when set. */
   uiLocale: () => invoke<string>('ui_locale'),
-  /** Whether this installation reports the app's own errors (content-free; see docs/privacy.md), and whether it is turned on. */
+  /** Whether this installation sends what it writes about itself (content-free; see docs/privacy.md). */
   diagnosticsStatus: () => invoke<DiagnosticsStatus>('diagnostics_status'),
-  /** Turns reporting on or off, remembered for the next launches. Off, nothing is written or sent. */
-  setDiagnosticsSending: (on: boolean) => invoke<void>('set_diagnostics_sending', { on }),
-  /** The reports written so far, one JSON object per line — exactly what is sent; empty when none. */
-  diagnosticsReports: () => invoke<string>('diagnostics_reports'),
+  /** What has been written to send so far. */
+  diagnosticsReports: () => invoke<DiagnosticsLines>('diagnostics_reports'),
+  /** The screen shown now by its fixed name, or null while the window is hidden — only the name, for time on each screen. */
+  screenShown: (name: string | null) => invoke<void>('screen_shown', { name }),
   /** Whether this installation can send feedback (see docs/privacy.md), and what goes along with a message. */
   feedbackStatus: () => invoke<FeedbackStatus>('feedback_status'),
   /** Sends what the person wrote, with a reply address when they gave one; resolves once the service took it. */

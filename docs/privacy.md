@@ -27,9 +27,9 @@ A report is built only from what is listed here, never by removing what looks pr
 
 **Kept on the device first.** Each report is written as one line to `diagnostics/reports.jsonl` in the app's own data folder on this computer (on Windows, `%LOCALAPPDATA%\com.iyulab.openquote-care`), outside every vault — exactly what would be sent, readable with any text editor. The same failure is written once per run, at most fifty reports per run, and the file is cut back to its newest reports once it passes 1 MB.
 
-**Seeing and stopping it.** When sending is on, the first screen says so and offers *See what is sent*, which shows the file's lines exactly as written, and there *Stop sending*, which turns reporting off for this installation: until it is turned on again, nothing is written or sent. Lines already written stay in the file, and go out if reporting is turned on again.
+**Seeing it.** The first screen says what a released installer sends and offers *See what is sent*, which shows the lines of both files — these reports and the usage information below — exactly as written. Reporting is not something to turn off in this version; an option to turn it off, with a way to send recent failures by hand, is planned once the app is stable.
 
-**Where.** When sending is on, what the file gained since the last send goes, in the background when the app opens and after each new report, to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and is kept there for 30 days. A report that cannot go out — offline, on a network that blocks it, or while the service is busy — stays in the file and goes the next time; the app works the same either way.
+**Where.** What the file gained since the last send goes, in the background when the app opens, after each new report and when the app ends, to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and is kept there for 30 days. A report that cannot go out — offline, on a network that blocks it, or while the service is busy — stays in the file and goes the next time; the app works the same either way.
 
 ## New versions
 
@@ -53,4 +53,20 @@ Released installers let you send a message to the publisher — something in the
 
 ## Usage information
 
-The app sends no usage information. If it ever does, it will be off until you turn it on.
+Released installers tell the publisher when the app starts and ends and how long each of its screens was used, so that the screens people rely on can be improved first.
+
+**What.** One line when the app starts, one when it ends as it should, and — at the next start — one for a run that did not end (the app crashed, or the system ended it). Each line holds only:
+
+| Field | Example |
+| --- | --- |
+| A random number for this installation, made on this computer the first time the app runs | `f52197a2812feee97bb900f4257ef395` |
+| A random number for this run of the app | `6c0ad7d91f91a74f784a1232eb302dc2` |
+| App version, operating system, architecture, time (UTC) | `0.15.0`, `windows`, `x86_64`, `2026-10-08T05:05:29Z` |
+| At the start: the language of the app's screens, and what the app is set up for (the kind of vault it offers first) | `ko`, `school-kr` |
+| At the end: how long the run lasted, and for each screen how often it was opened and for how long | `welcome`: opened 1 time, 7 seconds |
+
+The installation's number is not made from anything about the computer, the account or the person: it is random, and deleting the file that keeps it makes a new one. Screens are counted under a fixed list of the app's own names (`welcome`, `vault:report`, …), never by what a screen showed — no record, name, search or value a person typed or opened is in any line, and there is no field for one.
+
+**Kept on the device first, and seen.** The lines are written to `diagnostics/sessions.jsonl` beside the error reports, in the same folder outside every vault, and *See what is sent* on the first screen shows them exactly as written. They go to the same place as the error reports, the same way.
+
+**Turning it off.** Not in this version: like error reports, usage information is part of how the app is kept working while it is young. An option to turn both off is planned once the app is stable.

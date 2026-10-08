@@ -4,7 +4,8 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { describeError, isCommandError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
-import { shell, type DiagnosticsStatus, type FeedbackStatus, type TrackView, type UpdateStatus } from './shell.js'
+import { shell, type DiagnosticsLines, type DiagnosticsStatus, type FeedbackStatus, type TrackView, type UpdateStatus } from './shell.js'
+import { showScreen } from './screen-time.js'
 import { inAppLanguage, strings } from './strings.js'
 import { dialogueMark, quoteMark } from './brand-mark.js'
 import { errorCallout } from './vault/parts.js'
@@ -212,7 +213,7 @@ export class OcApp extends LitElement {
   @state() private busy = false
   @state() private error?: { text: string; detail?: string }
   /** Whether this installation reports the app's own errors; the first screen says so. */
-  @state() private diagnostics: DiagnosticsStatus = { configured: false, sending: false }
+  @state() private diagnostics: DiagnosticsStatus = { configured: false }
   /** Whether this installation can send feedback; offered on the first screen and in an open vault. */
   @state() private feedback?: FeedbackStatus
   /** Whether this installation looks for new versions, and the newer one found. */
@@ -221,12 +222,13 @@ export class OcApp extends LitElement {
   @state() private updateNotice: 'shown' | 'later' | 'downloading' | 'failed' = 'shown'
   private unlistenUpdate?: Promise<() => void>
   /** The reports written so far, as the reports screen shows them. */
-  @state() private reports = ''
+  @state() private reports: DiagnosticsLines = { reports: '', sessions: '' }
   private idle?: IdleWatch
   private readonly touch = () => this.idle?.touch()
 
   connectedCallback() {
     super.connectedCallback()
+    showScreen(this.screen.name)
     shell.diagnosticsStatus().then(
       (status) => (this.diagnostics = status),
       () => {},
@@ -271,6 +273,8 @@ export class OcApp extends LitElement {
   private go(screen: Screen) {
     if (screen.name === 'create') void this.loadTracks()
     if (screen.name === 'reports') void this.loadReports()
+    // An open vault tells its own screens apart (vault-view).
+    if (screen.name !== 'vault') showScreen(screen.name)
     this.screen = screen
     this.folder = undefined
     this.passphrase = ''
@@ -305,7 +309,7 @@ export class OcApp extends LitElement {
   }
 
   private async loadReports() {
-    this.reports = ''
+    this.reports = { reports: '', sessions: '' }
     await this.run(async () => {
       this.reports = await shell.diagnosticsReports()
     })
@@ -347,13 +351,6 @@ export class OcApp extends LitElement {
       @action=${() => void this.applyUpdate()}
       @dismiss=${() => (this.updateNotice = 'later')}
     ></dc-toast>`
-  }
-
-  private async setReporting(on: boolean) {
-    await this.run(async () => {
-      await shell.setDiagnosticsSending(on)
-      this.diagnostics = await shell.diagnosticsStatus()
-    })
   }
 
   /** The tracks to offer, the suggested one chosen; a bundle that cannot be read leaves the choice to the shell. */
@@ -491,7 +488,7 @@ export class OcApp extends LitElement {
         <dc-button variant="secondary" @click=${() => this.go({ name: 'create' })}>${strings.createVault}</dc-button>
         ${this.diagnostics.configured
           ? html`<div class="stack-tight" data-role="diagnostics">
-              <p class="muted detail">${this.diagnostics.sending ? strings.diagnosticsNotice : strings.diagnosticsOffNotice}</p>
+              <p class="muted detail">${strings.diagnosticsNotice}</p>
               <div class="row">
                 <dc-button variant="ghost" size="sm" @click=${() => this.go({ name: 'reports' })}>${strings.diagnosticsView}</dc-button>
               </div>
@@ -516,21 +513,22 @@ export class OcApp extends LitElement {
     `
   }
 
-  /** What this installation writes and sends about its own errors, line by line, and the switch to stop it. */
+  /** What this installation writes and sends about itself, line by line, exactly as sent. */
   private reportsView() {
-    const sending = this.diagnostics.sending
+    const part = (role: string, heading: string, lines: string, none: string) => html`<section class="stack-tight">
+      <h3>${heading}</h3>
+      ${lines.trim()
+        ? html`<pre class="reports" data-role=${role} tabindex="0">${lines}</pre>`
+        : html`<p class="muted" data-role=${`no-${role}`}>${none}</p>`}
+    </section>`
     return html`<dc-card data-role="reports">
       <h2 slot="header">${strings.diagnosticsTitle}</h2>
       <div class="stack">
-        <p>${sending ? strings.diagnosticsLead : strings.diagnosticsOffLead}</p>
-        ${this.reports.trim()
-          ? html`<pre class="reports" data-role="report-lines" tabindex="0">${this.reports}</pre>`
-          : html`<p class="muted" data-role="no-reports">${strings.diagnosticsNone}</p>`}
+        <p>${strings.diagnosticsLead}</p>
+        ${part('report-lines', strings.diagnosticsReportsHeading, this.reports.reports, strings.diagnosticsNone)}
+        ${part('session-lines', strings.diagnosticsSessionsHeading, this.reports.sessions, strings.diagnosticsNoSessions)}
       </div>
       <dc-button slot="footer" variant="ghost" ?disabled=${this.busy} @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button>
-      <dc-button slot="footer" variant="secondary" data-role="reporting-switch" ?disabled=${this.busy} @click=${() => void this.setReporting(!sending)}
-        >${sending ? strings.diagnosticsTurnOff : strings.diagnosticsTurnOn}</dc-button
-      >
     </dc-card>`
   }
 

@@ -6,6 +6,7 @@ import { ICONS, menuIcon } from './icons.js'
 import { shortcutOf, typingIn } from './shortcuts.js'
 import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
+import { showScreen } from './screen-time.js'
 import type { FeedbackStatus, VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
 import { errorCallout, packsWaitingCallout } from './vault/parts.js'
@@ -109,6 +110,11 @@ export class OcVault extends LitElement {
     window.addEventListener('keydown', this.onKey)
     this.wideQuery.addEventListener('change', this.onWidth)
     this.onWidth()
+  }
+
+  /** The vault's screen, by its fixed name, for the time kept on each screen. */
+  protected updated(changed: Map<PropertyKey, unknown>) {
+    if (changed.has('view')) showScreen(`vault:${this.view}`)
   }
 
   disconnectedCallback() {

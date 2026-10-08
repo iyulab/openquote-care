@@ -19,8 +19,7 @@ export const ko = {
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.ko.webviewMissing,
   diagnosticsNotice:
-    '이 설치본은 앱 자체 오류가 나면 오류 종류·코드 위치·앱 버전만 발행자에게 보냅니다. 기록 내용·파일 경로·폴더 이름은 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
-  diagnosticsOffNotice: '이 설치본은 앱 자체 오류를 적지도 보내지도 않도록 꺼 두었습니다.',
+    '이 설치본은 앱을 켜고 끈 때와 화면별로 쓴 시간, 앱 자체 오류(오류 종류·코드 위치)를 앱 판·운영체제와 함께 발행자에게 보냅니다. 설치본은 이 컴퓨터에서 만든 무작위 번호로만 구별하고, 기록 내용·파일 경로·폴더 이름·대상자는 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
   diagnosticsView: '보내는 내용 보기',
   updateCheckNotice: '새 판이 나오면 알려 드립니다. 새 판을 확인할 때 기록이나 이 컴퓨터에 대한 정보는 보내지 않습니다.',
   updateCheckOffNotice: '새 판 확인을 꺼 두었습니다. 새 판은 홈페이지에서 받아 설치할 수 있습니다.',
@@ -31,13 +30,13 @@ export const ko = {
   updateLater: '나중에',
   updateDownloading: '새 판을 내려받고 있습니다. 끝나면 앱이 다시 시작됩니다.',
   updateFailed: '새 판을 받지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.',
-  diagnosticsTitle: '오류 보고',
+  diagnosticsTitle: '보내는 내용',
   diagnosticsLead:
-    '앱 자체 오류가 나면 아래와 같은 줄을 이 컴퓨터의 앱 폴더에 적어 두었다가 발행자에게 보냅니다. 한 줄이 보고 하나이고, 여기 보이는 것이 보내는 내용 전부입니다.',
-  diagnosticsOffLead: '꺼 두는 동안에는 오류를 적지도 보내지도 않습니다. 이미 적힌 줄은 아래에 그대로 보입니다.',
+    '아래 줄이 이 컴퓨터의 앱 폴더에 적혔다가 발행자에게 가는 내용 전부입니다. 한 줄이 하나입니다.',
+  diagnosticsReportsHeading: '앱 자체 오류',
+  diagnosticsSessionsHeading: '앱을 켜고 끈 때·화면별로 쓴 시간',
   diagnosticsNone: '아직 적힌 오류 보고가 없습니다.',
-  diagnosticsTurnOff: '보내지 않기',
-  diagnosticsTurnOn: '다시 보내기',
+  diagnosticsNoSessions: '아직 적힌 줄이 없습니다.',
   feedbackOpen: '의견 보내기',
   feedbackTitle: '의견 보내기',
   feedbackLead: '불편한 점, 바라는 기능, 고마운 점 — 무엇이든 발행자에게 보낼 수 있습니다.',

@@ -18,8 +18,7 @@ export const en: Strings = {
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.en.webviewMissing,
   diagnosticsNotice:
-    'When the app itself fails, this installation sends the publisher only the kind of error, where in the code it happened and the app version. It never sends record content, file paths or vault names. Each report is first written to the app\'s own folder on this computer, outside every vault, and with no internet it goes out the next time the app opens.',
-  diagnosticsOffNotice: 'Error reports are turned off on this installation: the app neither writes down nor sends its own errors.',
+    'This installation sends the publisher when the app starts and ends, how long each screen was used, and the app\'s own errors (the kind of error and where in the code), with the app version and operating system. The installation is told apart only by a random number made on this computer; record content, file paths, vault names and the people in your records are never sent. Everything is first written to the app\'s own folder on this computer, outside every vault, and with no internet it goes out the next time the app opens.',
   diagnosticsView: 'See what is sent',
   updateCheckNotice: 'The app tells you when a new version is out. Looking for one sends nothing about your records or this computer.',
   updateCheckOffNotice: 'Looking for new versions is turned off. New versions can be downloaded from the website.',
@@ -30,13 +29,13 @@ export const en: Strings = {
   updateLater: 'Later',
   updateDownloading: 'Downloading the new version. The app starts again when it is done.',
   updateFailed: 'The new version could not be downloaded. Check the internet connection and try again.',
-  diagnosticsTitle: 'Error reports',
+  diagnosticsTitle: 'What is sent',
   diagnosticsLead:
-    'When the app itself fails, it writes a line like the ones below to its own folder on this computer and sends it to the publisher. Each line is one report, and what you see here is everything that is sent.',
-  diagnosticsOffLead: 'While reports are turned off, errors are neither written down nor sent. Lines already written still show below.',
+    'The lines below are written to the app\'s own folder on this computer and are everything that goes to the publisher. Each line is one item.',
+  diagnosticsReportsHeading: 'The app\'s own errors',
+  diagnosticsSessionsHeading: 'When the app started and ended, and time on each screen',
   diagnosticsNone: 'No error has been reported yet.',
-  diagnosticsTurnOff: 'Stop sending',
-  diagnosticsTurnOn: 'Send again',
+  diagnosticsNoSessions: 'Nothing has been written yet.',
   feedbackOpen: 'Send feedback',
   feedbackTitle: 'Send feedback',
   feedbackLead: 'Something in the way, a feature you want, something that works well — tell the people who make the app.',

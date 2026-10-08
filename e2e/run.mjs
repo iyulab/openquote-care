@@ -34,7 +34,7 @@ const SAFETY_NOTE = 'Synthetic notes: said they want to disappear, made a safety
 const appEnv = (env = {}) => ({ ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env })
 
 const scenarios = {
-  async 'says on the first screen when this installation reports errors'(app) {
+  async 'says on the first screen what this installation sends, and shows every line of it'(app) {
     // A collector nothing listens on: the notice depends on the configuration, not on delivery.
     await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
     await app.cdp.waitFor(`!!__e2e.one('[data-role="diagnostics"]')`, 'the diagnostics notice')
@@ -49,14 +49,25 @@ const scenarios = {
     const report = lines.trim().split('\n').map((l) => JSON.parse(l)).find((r) => r.layer === 'webview')
     assert.equal(report.kind, 'TypeError')
     assert.doesNotMatch(lines, /가상/, 'the message stays out of the report')
-    // Turned off, it stays off on the next launch, and the first screen says so.
-    await app.click('dc-button', '보내지 않기')
-    await app.cdp.waitFor(`__e2e.all('dc-button').some((b) => b.textContent.trim() === '다시 보내기')`, 'the switch to send again')
+    // The launch's start is written beside the reports, and there is no switch to stop sending.
+    const sessions = await app.cdp.waitFor(
+      `(() => { const pre = __e2e.one('[data-role="session-lines"]'); return pre && pre.textContent.includes('"start"') ? pre.textContent : false })()`,
+      'the launch among the lines',
+    )
+    const start = sessions.trim().split('\n').map((l) => JSON.parse(l)).findLast((l) => l.event === 'start')
+    assert.equal(start.locale, 'ko')
+    assert.match(start.install, /^[0-9a-f]{32}$/, 'the installation is a random number, nothing of the computer')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('dc-button').some((b) => ['보내지 않기', '다시 보내기'].includes(b.textContent.trim()))`), false, 'no switch')
+    // Ended the hard way (the way a crash or the system ends it), the launch is written as one that
+    // did not end when the next one starts.
     await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
-    await app.cdp.waitFor(`(__e2e.one('[data-role="diagnostics"]')?.textContent ?? '').includes('꺼 두었습니다')`, 'the notice that reports are off')
     await app.click('dc-button', '보내는 내용 보기')
-    await app.click('dc-button', '다시 보내기')
-    await app.cdp.waitFor(`__e2e.all('dc-button').some((b) => b.textContent.trim() === '보내지 않기')`, 'reports on again')
+    const after = await app.cdp.waitFor(
+      `(() => { const pre = __e2e.one('[data-role="session-lines"]'); return pre && pre.textContent.includes('"unfinished"') ? pre.textContent : false })()`,
+      'the earlier launch, unfinished',
+    )
+    const unfinished = after.trim().split('\n').map((l) => JSON.parse(l)).find((l) => l.event === 'unfinished' && l.session === start.session)
+    assert.ok(unfinished, `the hard-ended launch is named: ${after}`)
     await app.restart()
     await app.heading('Openquote Care')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
