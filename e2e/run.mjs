@@ -23,6 +23,25 @@ import assert from 'node:assert/strict'
 import { runScenarios } from '@iyulab/tauri-kit-dev/app'
 import { App, exe, q, root, sidecar } from './window.mjs'
 
+/**
+ * The vault files the bundled packs' versions from `since` on add — each version's manifest and what it
+ * provides — as a vault holds them (encrypted). Read from the manifests, so a pack version added later is
+ * counted without this list changing.
+ */
+async function providedSince(since) {
+  const files = []
+  for (const [id, first] of Object.entries(since)) {
+    const dir = join(root, 'packs', id, 'packs', id)
+    for (const name of await readdir(dir)) {
+      const version = Number(/^v(\d+)\.json$/.exec(name)?.[1])
+      if (!(version >= first)) continue
+      const manifest = JSON.parse(await readFile(join(dir, name), 'utf8'))
+      files.push(`packs/${id}/${name}`, ...manifest.provides)
+    }
+  }
+  return files.map((file) => `${file}.age`)
+}
+
 const PASSPHRASE = '상담 기록 폴더 2026'
 const NEW_PASSPHRASE = '새 기록 암호 2026'
 // What a settled session says: a suggestion learns from it, and it never leaves the vault.
@@ -650,53 +669,7 @@ const scenarios = {
     // in format 0, which the eighth version's field taking several values needs raised. Nor does it hold the core
     // pack's sixth version, whose crosswalk into another scheme needs format 1 too (a folder holding that under a
     // format 0 declaration has its declaration set right when it opens), or its seventh.
-    const added = [
-      ['packs', 'care', 'v6.json.age'],
-      ['schemes', 'care.closing-type', 'v1.json.age'],
-      ['schemes', 'care.closing-reason', 'v1-care.closing-type.v1.json.age'],
-      ['reports', 'care.monthly-closing-type', 'v1.json.age'],
-      ['packs', 'care', 'v7.json.age'],
-      ['fields', 'care', 'intake', 'v2.json.age'],
-      ['fields', 'care', 'session', 'v2.json.age'],
-      ['fields', 'care', 'referral', 'v2.json.age'],
-      ['fields', 'care', 'closing', 'v2.json.age'],
-      ['packs', 'care.school.kr', 'v2.json.age'],
-      ['suggestions', 'care.school.kr', 'v2.json.age'],
-      ['packs', 'care.school.kr', 'v3.json.age'],
-      ['fields', 'care.school.kr', 'session', 'v2.json.age'],
-      ['labels', 'care.school.kr', 'v2.ko.json.age'],
-      ['exports', 'session-list', 'v2.json.age'],
-      ['packs', 'care.school.kr', 'v4.json.age'],
-      ['fields', 'care.school.kr', 'session', 'v3.json.age'],
-      ['reports', 'year-grade-class', 'v1.json.age'],
-      ['reports', 'year-grade-gender', 'v1.json.age'],
-      ['reports', 'year-client-type', 'v1.json.age'],
-      ['packs', 'care.school.kr', 'v5.json.age'],
-      ['schemes', 'neis-counseling', 'v1.json.age'],
-      ['fields', 'care.school.kr', 'session', 'v4.json.age'],
-      ['labels', 'care.school.kr', 'v3.ko.json.age'],
-      ['suggestions', 'care.school.kr', 'v3.json.age'],
-      ['packs', 'care.school.kr', 'v6.json.age'],
-      ['exports', 'neis-upload', 'v1.json.age'],
-      ['packs', 'care.school', 'v2.json.age'],
-      ['fields', 'care.school', 'session', 'v2.json.age'],
-      ['packs', 'care.school.kr', 'v7.json.age'],
-      ['fields', 'care.school.kr', 'session', 'v5.json.age'],
-      ['fields', 'care.school.kr', 'subject', 'v1.json.age'],
-      ['labels', 'care.school.kr', 'v5.ko.json.age'],
-      ['packs', 'care.school.kr', 'v8.json.age'],
-      ['schemes', 'assessment-tool', 'v1.json.age'],
-      ['fields', 'care.school.kr', 'session', 'v6.json.age'],
-      ['labels', 'care.school.kr', 'v6.ko.json.age'],
-      ['reports', 'month-assessment-tool', 'v1.json.age'],
-      ['reports', 'year-assessment-level', 'v1.json.age'],
-      ['packs', 'care.school.kr', 'v9.json.age'],
-      ['reports', 'month-practitioner-minutes', 'v1.json.age'],
-      ['reports', 'year-practitioner-minutes', 'v1.json.age'],
-      ['exports', 'session-list', 'v3.json.age'],
-      ['packs', 'care.school.kr', 'v10.json.age'],
-      ['fields', 'care.school.kr', 'closing', 'v1.json.age'],
-    ].map((path) => join(work.vault, ...path))
+    const added = (await providedSince({ care: 6, 'care.school': 2, 'care.school.kr': 2 })).map((path) => join(work.vault, ...path.split('/')))
     for (const file of added) await rm(file)
     const declaration = join(work.vault, 'vault.json')
     const declared = async () => JSON.parse(await readFile(declaration, 'utf8')).format
@@ -959,7 +932,10 @@ const scenarios = {
     assert.equal(pinned.length, 3, `date, year and who stay in view (${pinned})`)
     assert.ok(pinned[0] === 0 && pinned[1] > 0 && pinned[2] > pinned[1], `each after the one before (${pinned})`)
     assert.ok(await app.cdp.evaluate(`!!__e2e.one('[data-role=export-gaps]')`), 'the v1 form cannot place the reclassified sessions: said, not guessed')
-    assert.match(await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`), /^이 양식은 예전 분류로 셉니다 — 주제 분류 1판\(지금은 2판\)\./, 'the form says which scheme version it lags, by the field it classifies')
+    // Every scheme it lags is named — the topic revision here, and the people a session is with (an agency worker added since).
+    const behind = await app.cdp.evaluate(`__e2e.one('[data-form-behind]')?.textContent ?? ''`)
+    assert.match(behind, /^이 양식은 예전 분류로 셉니다 — /, 'the form says it counts in an earlier version')
+    for (const lag of ['주제 분류 1판(지금은 2판)', '상담 상대 분류 1판(지금은 2판)']) assert.ok(behind.includes(lag), `${lag} in: ${behind}`)
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button', '표 복사')`), true, 'the rows can be copied')
 
     // A list that passes through other hands: its names hidden — the first letter only, or numbers — and the records unchanged.

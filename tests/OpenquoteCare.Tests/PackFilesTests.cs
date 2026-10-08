@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Openquote.Classification;
+using Openquote.Exports;
 using Openquote.Fields;
 using Openquote.Suggestions;
 using Openquote.Vault;
@@ -71,7 +72,9 @@ public sealed class PackFilesTests
         Assert.Equal(FieldKind.Text, fields.Find("session", "title")!.Kind);
         Assert.Equal(FieldKind.Number, fields.Find("session", "minutes")!.Kind);
         var list = content.Exports.Where(e => e.Name == "session-list").MaxBy(e => e.Version)!;
-        Assert.Equal(3, list.Version);
+        Assert.Equal(4, list.Version);
+        // The fourth version counts the people a session is with in the scheme's second version (an agency worker added).
+        Assert.Equal(("client-type", 2), list.Columns.OfType<CodedColumn>().Where(c => c.Field == "client_type").Select(c => (c.Scheme, c.Version)).Single());
         Assert.Equal(["상담 상대", "실시한 검사", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(5));
     }
 

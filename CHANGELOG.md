@@ -7,6 +7,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ## [Unreleased]
 
 ### Added
+- School vaults: a session can be with an agency worker ("타기관" — someone from another service, about a student), counted apart from parents, teachers and others; and statistics lists "월별 NEIS 분류별 상담" — sessions, people, visits and minutes by NEIS category for each month.
 - The notice of a new version shows the app's quote mark too: the open quote when it is found, dots while it downloads, the two quotes facing each other once it is ready to install.
 - After a closing, a school vault expects a follow-up within 28 days. A case shows the date the follow-up is due, whether it is overdue, or that it took place. The list of subjects can be narrowed to "Follow-up overdue". Any later record of the student counts as the follow-up. The app makes no judgement about the student and sends no reminders.
 - Scale scores: a new kind of record under a person — the day, the scale (PHQ-9 or GAD-7), the total score and notes. On the person's page each case shows, for each scale, its first score and its last up to the closing, and the difference between them when they fall on two different days; a score outside the scale's range is not read, and the case says how many. The app does not say whether a score or a change is good or bad, and asks nothing by the score.

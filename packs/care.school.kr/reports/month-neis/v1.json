@@ -1,0 +1,10 @@
+{
+  "format": "openquote.report/1",
+  "report": "month-neis",
+  "version": 1,
+  "label": "월별 NEIS 분류별 상담",
+  "counts": "session",
+  "period": { "unit": "month", "field": "date" },
+  "dimensions": [{ "field": "neis", "scheme": "neis-counseling", "version": "in-force" }],
+  "measures": ["records", "people", "visits", { "sum": "minutes" }]
+}

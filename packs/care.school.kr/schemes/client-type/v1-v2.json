@@ -1,0 +1,7 @@
+{
+  "format": "openquote.crosswalk/0",
+  "scheme": "client-type",
+  "from": 1,
+  "to": 2,
+  "links": [["student", "student"], ["parent", "parent"], ["teacher", "teacher"], ["other", "other"]]
+}

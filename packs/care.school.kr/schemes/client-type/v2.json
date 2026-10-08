@@ -1,0 +1,12 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "client-type",
+  "version": 2,
+  "items": [
+    { "code": "student", "label": "학생" },
+    { "code": "parent", "label": "보호자" },
+    { "code": "teacher", "label": "교사" },
+    { "code": "agency", "label": "타기관" },
+    { "code": "other", "label": "기타" }
+  ]
+}
