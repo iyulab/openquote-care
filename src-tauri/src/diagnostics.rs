@@ -17,7 +17,7 @@
 //!
 //! Sending happens when a connection string is configured — through the
 //! `OPENQUOTE_DIAGNOSTICS_CONNECTION` environment variable, or embedded at build time under the
-//! same name — and is not something a person turns off for now: what the files gained since the
+//! same name (the variable set to `off` sends nothing in any build) — and is not something a person turns off for now: what the files gained since the
 //! last send goes out in the background at launch, after each new report and when the app ends;
 //! what cannot go out now (no network, the service busy) stays in the files for a later launch.
 //! Development and test builds, and builds without it, only keep the files.
@@ -53,19 +53,29 @@ pub const SCREENS: &[&str] = &[
     "vault:feedback",
 ];
 
-/// The only switch: absent or blank means nothing is sent.
+/// The only switch. Absent or blank falls back to the value the build embedded; [`OFF`] sends nothing
+/// whatever the build embedded.
 pub const CONNECTION_VAR: &str = "OPENQUOTE_DIAGNOSTICS_CONNECTION";
+
+/// The value of [`CONNECTION_VAR`] that turns sending off in any build — what a check that starts a
+/// published copy gives it, so the copy under test sends nothing. (Builds before this value existed
+/// read it as a malformed connection string, which sends nothing as well.)
+pub const OFF: &str = "off";
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// The configured destination: the environment variable first, then the build-time value. Anything
 /// partial or malformed gives `None`, which turns sending off rather than sending elsewhere.
 pub fn configured_sink() -> Option<Sink> {
-    std::env::var(CONNECTION_VAR)
-        .ok()
-        .filter(|s| !s.trim().is_empty())
-        .or_else(|| option_env!("OPENQUOTE_DIAGNOSTICS_CONNECTION").map(str::to_owned))
-        .and_then(|raw| Sink::parse(&raw))
+    sink_from(std::env::var(CONNECTION_VAR).ok(), option_env!("OPENQUOTE_DIAGNOSTICS_CONNECTION"))
+}
+
+fn sink_from(variable: Option<String>, built: Option<&str>) -> Option<Sink> {
+    match variable.as_deref().map(str::trim) {
+        Some(value) if value.eq_ignore_ascii_case(OFF) => None,
+        Some(value) if !value.is_empty() => Sink::parse(value),
+        _ => built.and_then(Sink::parse),
+    }
 }
 
 /// The shell's own Rust code. A panic or call site is a path relative to the workspace root, in
@@ -446,6 +456,19 @@ mod tests {
 
     fn line(file: &Path) -> Vec<serde_json::Value> {
         std::fs::read_to_string(file).unwrap().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
+    }
+
+    #[test]
+    fn off_sends_nothing_whatever_the_build_embedded() {
+        let built = Some("InstrumentationKey=k;IngestionEndpoint=https://collector.example/");
+        assert!(sink_from(None, built).is_some(), "no variable: the build's value");
+        assert!(sink_from(Some("  ".into()), built).is_some(), "a blank variable: the build's value");
+        assert!(sink_from(Some("off".into()), built).is_none());
+        assert!(sink_from(Some(" OFF ".into()), built).is_none());
+        let other = sink_from(Some("InstrumentationKey=t;IngestionEndpoint=https://other.example".into()), built).unwrap();
+        assert_eq!(other.track_url, "https://other.example/v2.1/track", "the variable comes before the build");
+        assert!(sink_from(Some("not a connection string".into()), built).is_none(), "malformed: nothing, not the build's");
+        assert!(sink_from(None, None).is_none());
     }
 
     #[test]

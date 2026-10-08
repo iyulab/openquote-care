@@ -15,51 +15,57 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
-import { findInstaller, startsAndStays, withInstalled } from '@iyulab/tauri-kit-dev/installer'
+import { findInstaller, startsAndStays, withAppDataSetAside, withInstalled } from '@iyulab/tauri-kit-dev/installer'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
-const { version } = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
+const { version, identifier } = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
 const exe = 'openquote-care.exe'
 
-/** The environment the installed app starts in: without the variable that would point it away from its own engine. */
-function ownEngineEnv() {
-  const env = { ...process.env }
+/**
+ * The environment the installed app starts in: without the variable that would point it away from
+ * its own engine, and sending nothing — a published copy carries the collector's connection.
+ */
+function checkEnv() {
+  const env = { ...process.env, OPENQUOTE_DIAGNOSTICS_CONNECTION: 'off' }
   delete env.OPENQUOTE_SIDECAR_EXE
   return env
 }
 
 const installer = findInstaller(join(root, 'target', 'release', 'bundle', 'nsis'), { version, hint: 'run `npm run bundle` first' })
-await withInstalled(
-  installer,
-  async (target) => {
-    assert.ok(existsSync(join(target, 'sidecar', 'openquote-care-sidecar.exe')), 'the engine sidecar is bundled')
-    assert.ok(existsSync(join(target, 'packs', 'tracks.json')), 'the tracks are bundled')
-    const notices = join(target, 'licenses', 'THIRD-PARTY-NOTICES.txt')
-    assert.equal(existsSync(notices) && readFileSync(notices, 'utf8'), readFileSync(join(root, 'LICENSES', 'THIRD-PARTY-NOTICES.txt'), 'utf8'), 'the third-party notices are bundled')
-    // Every pack the tracks start from, and every pack they build on, with each file it lists.
-    for (const pack of readdirSync(join(root, 'packs'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
-      for (const name of readdirSync(join(root, 'packs', pack, 'packs', pack))) {
-        const { provides } = JSON.parse(readFileSync(join(target, 'packs', pack, 'packs', pack, name), 'utf8'))
-        for (const path of provides) assert.ok(existsSync(join(target, 'packs', pack, path)), `pack ${pack} brings ${path}`)
+// The installed copy keeps its data where this computer's own copy does: set it aside for the check.
+await withAppDataSetAside(join(process.env.LOCALAPPDATA, identifier), () =>
+  withInstalled(
+    installer,
+    async (target) => {
+      assert.ok(existsSync(join(target, 'sidecar', 'openquote-care-sidecar.exe')), 'the engine sidecar is bundled')
+      assert.ok(existsSync(join(target, 'packs', 'tracks.json')), 'the tracks are bundled')
+      const notices = join(target, 'licenses', 'THIRD-PARTY-NOTICES.txt')
+      assert.equal(existsSync(notices) && readFileSync(notices, 'utf8'), readFileSync(join(root, 'LICENSES', 'THIRD-PARTY-NOTICES.txt'), 'utf8'), 'the third-party notices are bundled')
+      // Every pack the tracks start from, and every pack they build on, with each file it lists.
+      for (const pack of readdirSync(join(root, 'packs'), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
+        for (const name of readdirSync(join(root, 'packs', pack, 'packs', pack))) {
+          const { provides } = JSON.parse(readFileSync(join(target, 'packs', pack, 'packs', pack, name), 'utf8'))
+          for (const path of provides) assert.ok(existsSync(join(target, 'packs', pack, path)), `pack ${pack} brings ${path}`)
+        }
       }
-    }
-    console.log('  ✓ installed for the current user')
+      console.log('  ✓ installed for the current user')
 
-    assert.ok(await startsAndStays(join(target, exe), { env: ownEngineEnv() }), 'the installed app is still running after starting')
-    console.log('  ✓ the installed app starts and stays up')
+      assert.ok(await startsAndStays(join(target, exe), { env: checkEnv() }), 'the installed app is still running after starting')
+      console.log('  ✓ the installed app starts and stays up')
 
-    const tests = spawnSync('cargo', ['test', '--release', '-p', 'openquote-care', '--lib'], {
-      cwd: root,
-      env: { ...process.env, OPENQUOTE_SIDECAR_EXE: join(target, 'sidecar', 'openquote-care-sidecar.exe') },
-      encoding: 'utf8',
-    })
-    const summary = (tests.stdout.match(/test result: .*/g) ?? []).join(' / ')
-    assert.equal(tests.status, 0, `the shell's tests pass against the bundled engine: ${summary}
+      const tests = spawnSync('cargo', ['test', '--release', '-p', 'openquote-care', '--lib'], {
+        cwd: root,
+        env: { ...process.env, OPENQUOTE_SIDECAR_EXE: join(target, 'sidecar', 'openquote-care-sidecar.exe') },
+        encoding: 'utf8',
+      })
+      const summary = (tests.stdout.match(/test result: .*/g) ?? []).join(' / ')
+      assert.equal(tests.status, 0, `the shell's tests pass against the bundled engine: ${summary}
 ${tests.stdout.slice(-2000)}`)
-    assert.ok(!/skipped: no engine sidecar/.test(tests.stderr), 'no test skipped for want of the engine')
-    console.log(`  ✓ the shell's commands work with the bundled engine (${summary})`)
-  },
-  { exe, prefix: 'openquote-care-installed-' },
+      assert.ok(!/skipped: no engine sidecar/.test(tests.stderr), 'no test skipped for want of the engine')
+      console.log(`  ✓ the shell's commands work with the bundled engine (${summary})`)
+    },
+    { exe, prefix: 'openquote-care-installed-' },
+  )
 )
 console.log('  ✓ uninstalled')
