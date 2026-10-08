@@ -58,7 +58,7 @@ describe('VaultStore', () => {
     vi.mocked(shell.backupStatus).mockResolvedValue({ folder: null })
     vi.mocked(shell.history).mockResolvedValue([])
     vi.mocked(shell.cases).mockResolvedValue([])
-    vi.mocked(shell.scales).mockResolvedValue({ scales: [], subjects: [], issues: [] })
+    vi.mocked(shell.scales).mockResolvedValue({ scales: [], subjects: [], issues: [], responses: [] })
   })
 
   it('never shows a form the vault does not offer, nor picks it first', async () => {

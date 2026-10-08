@@ -259,7 +259,10 @@ public sealed record ScaleTallyView(string Scale, int Scored, int Paired, IReadO
 public sealed record ScaleSummaryView(int Closed, int Unscored, IReadOnlyList<ScaleTallyView> Scales);
 
 /// <summary>The scales the packs give, what each subject's responses say over its cases, and what does not fit.</summary>
-public sealed record ScalesView(IReadOnlyList<ScaleView> Scales, IReadOnlyList<SubjectScalesView> Subjects, IReadOnlyList<string> Issues);
+public sealed record ScalesView(IReadOnlyList<ScaleView> Scales, IReadOnlyList<SubjectScalesView> Subjects, IReadOnlyList<string> Issues, IReadOnlyList<ScaleResponsesView> Responses);
+
+/// <summary>A kind of record that is a response to a scale: which of its fields names the scale and which holds the score.</summary>
+public sealed record ScaleResponsesView(string Type, string Scale, string Score);
 
 /// <summary>The changes an entity was built from, oldest first.</summary>
 public sealed record EntityHistoryView(string Id, IReadOnlyList<ChangeView> Changes);
@@ -723,7 +726,8 @@ internal static class Api
                 [.. ScaleReader.Read(x.Cases, s.Fields, scales).Select(c => new CaseScalesView(
                     [.. c.Scales.Select(m => new CaseScaleView(m.Scale.Code, Score(m.Baseline), Score(m.Last), m.Responses, m.Paired, m.Change))],
                     [.. c.Unusable.Select(u => new UnusableResponseView(u.Record.Reference.Id, Kebab(u.Reason.ToString())))]))]))],
-            [.. scales.Check(s.Fields).Select(i => $"{i.Kind}: {i.Pack} {i.Detail}")]);
+            [.. scales.Check(s.Fields).Select(i => $"{i.Kind}: {i.Pack} {i.Detail}")],
+            [.. scales.Sets.Select(x => new ScaleResponsesView(x.Type, x.ScaleField, x.ScoreField)).Distinct()]);
     }
 
     private static ScaleSummaryView ScaleSummaryOf(VaultSession.Snapshot s, DateOnly from, DateOnly to)

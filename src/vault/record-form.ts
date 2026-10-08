@@ -152,6 +152,14 @@ export class OcRecordForm extends StoreElement {
   private carryFor = ''
   private carryFrom?: Entity[]
 
+  /**
+   * A scale score the new record opening or closing a case carries, written beside it as a response of its own on
+   * the same day: the scale picked (a closing starts from the scale its case was rated on) and the score typed.
+   */
+  @state() private scaleCode = ''
+  @state() private scaleChosen = false
+  @state() private scaleScore = ''
+
   protected willUpdate(changed: PropertyValues<this>) {
     super.willUpdate(changed)
     // The record being corrected comes down anew when the vault is read again: what the person has typed stays.
@@ -212,6 +220,88 @@ export class OcRecordForm extends StoreElement {
   private dateOf(): string {
     const date = inputFields(this.fields).find((f) => f.name === this.store.datedOf(this.type))
     return date ? (this.draft[date.name] ?? '') : ''
+  }
+
+  /**
+   * What a scale score beside this record needs: a new record of a kind that opens or closes a case, for a subject,
+   * in a vault whose packs give scales and the kind of record their scores are kept in. Undefined otherwise.
+   */
+  private get caseScale() {
+    const store = this.store
+    const responses = store.scaleResponses
+    if (this.edit || this.holder.kind !== 'subject' || !responses || responses.type === this.type || store.scales.length === 0) return undefined
+    const role = store.kinds.find((k) => k.type === this.type)?.role
+    if (role !== 'opens' && role !== 'closes') return undefined
+    const fields = store.fieldsOf(responses.type)
+    const scaleField = fields.find((f) => f.name === responses.scale && f.kind === 'coded' && f.scheme)
+    const scoreField = fields.find((f) => f.name === responses.score)
+    const scheme = scaleField && latest(store.schemes, scaleField.scheme!)
+    if (!scaleField || !scoreField || !scheme) return undefined
+    const options = store.scales.map((s) => ({ value: s.code, label: scheme.items.find((i) => i.code === s.code)?.label ?? s.code }))
+    // A closing is rated on the scale its case was rated on when it opened, so the two pair.
+    const opened = role === 'closes' ? store.scaleCases.get(this.holder.id)?.at(-1)?.scales[0]?.scale : undefined
+    return { role, responses, fields, scaleField, scoreField, scheme, options, code: this.scaleChosen ? this.scaleCode : (opened ?? '') }
+  }
+
+  /** The scale score beside a record opening or closing a case: a scale to pick and the score, both optional. */
+  private caseScaleView() {
+    const c = this.caseScale
+    if (!c) return nothing
+    const busy = this.store.busy
+    const range = this.store.scales.find((s) => s.code === c.code)
+    return html`<fieldset class="form-part" data-part="scale" data-role="case-scale">
+      <legend>${strings.caseScaleLegend}</legend>
+      <div class="fields">
+        <dc-field label=${c.scaleField.label}>
+          <dc-select
+            aria-label=${c.scaleField.label}
+            data-role="case-scale-pick"
+            placeholder=${strings.caseScaleNone}
+            .options=${c.options}
+            .value=${c.code}
+            ?disabled=${busy}
+            @change=${(e: Event) => {
+              this.scaleChosen = true
+              this.scaleCode = (e.target as HTMLSelectElement).value
+            }}
+          ></dc-select>
+        </dc-field>
+        <dc-field label=${c.scoreField.label} hint=${range ? strings.caseScaleRange(range.min, range.max) : strings.caseScaleHint}>
+          <dc-input
+            type="number"
+            aria-label=${c.scoreField.label}
+            data-role="case-scale-score"
+            .value=${this.scaleScore}
+            ?disabled=${busy || !c.code}
+            @input=${(e: Event) => (this.scaleScore = (e.target as HTMLInputElement).value)}
+          ></dc-input>
+        </dc-field>
+      </div>
+    </fieldset>`
+  }
+
+  /**
+   * The response a scale score beside this record is written as: undefined when there is none to write, null (and the
+   * person told) when the score is not a number within the scale's range.
+   */
+  private caseScaleResponse(record: Record<string, unknown>): Record<string, unknown> | null | undefined {
+    const c = this.caseScale
+    const typed = this.scaleScore.trim()
+    if (!c || !c.code || !typed) return undefined
+    const score = Number(typed)
+    const range = this.store.scales.find((s) => s.code === c.code)
+    if (!Number.isFinite(score) || (range && (score < range.min || score > range.max))) {
+      const label = c.options.find((o) => o.value === c.code)?.label ?? c.code
+      this.store.set({ error: { text: strings.caseScaleOutOfRange(label, range?.min ?? 0, range?.max ?? 0) } })
+      return null
+    }
+    const response: Record<string, unknown> = {
+      [this.store.datedOf(c.responses.type)]: this.dateOf(),
+      [c.responses.scale]: { scheme: c.scheme.scheme, version: c.scheme.version, code: c.code },
+      [c.responses.score]: score,
+    }
+    if (c.fields.some((f) => f.name === 'practitioner') && record.practitioner) response.practitioner = record.practitioner
+    return response
   }
 
   private coded(): FieldView[] {
@@ -531,10 +621,24 @@ export class OcRecordForm extends StoreElement {
       if (this.attendees.length === 0) return store.problem('no-attendees')
       fields.attendees = this.attendees
     }
+    const response = this.caseScaleResponse(fields)
+    if (response === null) return
+    const beside = this.caseScale
+    // The score beside it is a record of its own on the same day, and a day's records are read in the order they
+    // were written: the opening's score after the opening, so it is in the case it opens; the closing's before the
+    // closing, so it is in the case it closes and not taken for a follow-up.
+    const writeScore = async () => {
+      if (response && beside) await shell.record('/changes/in-subject', { subjectId: holder.id, type: beside.responses.type, fields: response, source: {} })
+    }
     await store.run(async () => {
+      if (beside?.role === 'closes') await writeScore()
       await (holder.kind === 'subject'
         ? shell.record('/changes/in-subject', { subjectId: holder.id, type: this.type, fields, source })
         : shell.record('/changes/in-group', { groupId: holder.id, type: this.type, fields, source }))
+      if (beside?.role === 'opens') await writeScore()
+      this.scaleCode = ''
+      this.scaleChosen = false
+      this.scaleScore = ''
       store.clearDraft(this.type)
       this.dispatchEvent(new Event('oc-record-recorded'))
       await store.load()
@@ -621,6 +725,7 @@ export class OcRecordForm extends StoreElement {
       <dc-card @keydown=${(e: KeyboardEvent) => saveKey(e) && !store.busy && void this.recordSession()}>
         <div class="stack">
           ${this.fieldsView(inputs)}
+          ${this.caseScaleView()}
           ${this.staleView()}
           <slot></slot>
         </div>

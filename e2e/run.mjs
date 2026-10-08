@@ -1513,9 +1513,15 @@ const scenarios = {
       'the intake date',
     )
     await app.choose('Who brought them', 'school')
+    // Beside a record that opens a case, a scale score may be given: kept as a scale score of the same day.
+    await app.cdp.waitFor(`!!${inIntakeForm('[data-role="case-scale"]')}`, 'a scale score offered beside the intake')
+    assert.ok(await app.cdp.evaluate(`${inIntakeForm('dc-input[data-role="case-scale-score"]')}.disabled`), 'no score before a scale is picked')
+    await app.choose('Scale', 'problem-severity')
+    await app.type('Total score', '3')
     await app.click('dc-button', 'Record intake')
     const intakeRows = `__e2e.all('section[data-kind="intake"] tr[data-record]')`
     await app.cdp.waitFor(`${intakeRows}.length === 1`, 'the intake listed')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === 1`, 'the score beside it, a record of its own')
     await app.noAlert()
     const intakeRow = await app.cdp.evaluate(
       `${intakeRows}[0] ? [...${intakeRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
@@ -1532,9 +1538,13 @@ const scenarios = {
     )
     await app.choose('Why it closed', 'lost-contact')
     await app.write('Closing summary', 'Synthetic summary: no reply after two calls')
+    // The closing starts from the scale the case was rated on when it opened, so the two pair.
+    await app.cdp.waitFor(`${inClosingForm('dc-select[data-role="case-scale-pick"]')}?.value === 'problem-severity'`, 'the scale the case opened with, picked')
+    await app.type('Total score', '1')
     await app.click('dc-button', 'Record closing')
     const closingRows = `__e2e.all('section[data-kind="closing"] tr[data-record]')`
     await app.cdp.waitFor(`${closingRows}.length === 1`, 'the closing listed')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === 2`, 'the closing score beside it')
     await app.noAlert()
     const closingRow = await app.cdp.evaluate(
       `${closingRows}[0] ? [...${closingRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
@@ -1578,7 +1588,7 @@ const scenarios = {
       await app.choose('Scale', 'phq9')
       await app.type('Total score', score)
       await app.click('dc-button', 'Record scale score')
-      await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === ${score === '18' ? 1 : 2}`, 'the score listed')
+      await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === ${score === '18' ? 3 : 4}`, 'the score listed')
       await app.noAlert()
     }
     await app.cdp.waitFor(`!!__e2e.one('section[data-role="cases"] li[data-scale="phq9"]')`, 'the scale over the case')
@@ -1587,6 +1597,8 @@ const scenarios = {
       'PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',
       'the first score, the last and the change between them',
     )
+    const severity = await app.cdp.evaluate(`__e2e.one('section[data-role="cases"] li[data-scale="problem-severity"]')?.textContent.replace(/\\s+/g, ' ').trim() ?? ''`)
+    assert.ok(severity.endsWith('3 (2026-04-01) → 1 (2026-04-20) · change −2'), `the intake's and the closing's ratings, paired: ${severity}`)
     await app.click('button', 'Statistics')
     await app.choose('Year', '2026')
     await app.choose('Month', '4')
@@ -1626,9 +1638,15 @@ const scenarios = {
       ['PHQ-9', '1', '1', '0', '0', '1'],
       'one closed case with PHQ-9 scores, on two days — its last score below its first',
     )
-    assert.equal(
-      await app.cdp.evaluate(`__e2e.one('tr[data-scale-case]').textContent.replace(/\\s+/g, ' ').trim()`),
-      'Client One · PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',
+    assert.deepEqual(
+      (await app.cdp.evaluate(`[...__e2e.one('tr[data-scale="problem-severity"]').children].map((c) => c.textContent.trim())`)).slice(1),
+      ['1', '1', '0', '0', '1'],
+      'the rating given at the intake and the closing, paired',
+    )
+    assert.ok(
+      (await app.cdp.evaluate(`__e2e.all('tr[data-scale-case]').map((tr) => tr.textContent.replace(/\\s+/g, ' ').trim())`)).includes(
+        'Client One · PHQ-9 18 (2026-04-02) → 9 (2026-04-15) · change −9',
+      ),
       'the case named, with its first and last score',
     )
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-intake@1"]')

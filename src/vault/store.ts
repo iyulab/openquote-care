@@ -8,7 +8,7 @@ import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
-import { shell, type BackupStatus, type CaseScales, type RecordKind, type SubjectCases, type VaultSummary } from '../shell.js'
+import { shell, type BackupStatus, type CaseScales, type RecordKind, type ScaleView, type SubjectCases, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import { pickLocale, tables } from '../locales/index.js'
 
@@ -51,6 +51,10 @@ export class VaultStore extends EventTarget {
   scaleCases = new Map<string, CaseScales[]>()
   /** The scales the vault's packs give, by code; none when they give none. */
   scaleCodes: string[] = []
+  /** The scales the packs give, with their ranges. */
+  scales: ScaleView[] = []
+  /** The kind of record a scale score is kept in, and its scale and score fields; none when the packs give no scale. */
+  scaleResponses?: { type: string; scale: string; score: string }
   /** Records of every kind but sessions, and the fields declared for them, by kind. */
   private others = new Map<string, Entity[]>()
   private otherFields = new Map<string, FieldView[]>()
@@ -321,6 +325,8 @@ export class VaultStore extends EventTarget {
     this.cases = new Map(cases.map((c) => [c.subject, c]))
     this.scaleCases = new Map((scales?.subjects ?? []).map((s) => [s.subject, s.cases]))
     this.scaleCodes = (scales?.scales ?? []).map((s) => s.code)
+    this.scales = scales?.scales ?? []
+    this.scaleResponses = scales?.responses?.[0]
     this.groups = [...groups].sort(byName)
     this.practitioners = practitioners
     this.schemes = schemes

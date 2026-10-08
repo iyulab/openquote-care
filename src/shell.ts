@@ -187,6 +187,8 @@ export interface ScalesRead {
   scales: ScaleView[]
   subjects: { subject: string; cases: CaseScales[] }[]
   issues: string[]
+  /** The kinds of record that are responses to a scale: the field naming the scale and the one holding the score. */
+  responses: { type: string; scale: string; score: string }[]
 }
 
 /**
