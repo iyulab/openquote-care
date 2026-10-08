@@ -351,7 +351,10 @@ export class OcApp extends LitElement {
       .dismissLabel=${strings.updateLater}
       @action=${() => void this.applyUpdate()}
       @dismiss=${() => (this.updateNotice = 'later')}
-    ></dc-toast>`
+      >${this.updateNotice === 'failed'
+        ? nothing
+        : html`<oq-quote-state slot="icon" size="16" state=${downloading ? 'ongoing' : this.versions.ready ? 'done' : 'opening'}></oq-quote-state>`}</dc-toast
+    >`
   }
 
   /** The tracks to offer, the suggested one chosen; a bundle that cannot be read leaves the choice to the shell. */
