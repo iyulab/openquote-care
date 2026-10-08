@@ -6,6 +6,7 @@ import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
 import { shell, type DiagnosticsLines, type DiagnosticsStatus, type FeedbackStatus, type TrackView, type UpdateStatus } from './shell.js'
 import { showScreen } from './screen-time.js'
+import './quote-state.js'
 import { inAppLanguage, strings } from './strings.js'
 import { dialogueMark, quoteMark } from './brand-mark.js'
 import { errorCallout } from './vault/parts.js'
@@ -618,6 +619,7 @@ export class OcApp extends LitElement {
               <dc-button variant="secondary" ?disabled=${this.busy} @click=${() => void this.restoreDeclarationAndOpen()}>${strings.restoreDeclaration}</dc-button>
             </div>`
           : nothing}
+        ${this.busy ? html`<oq-quote-state state="opening" size="18" role="status" data-role="opening">${strings.openingVault}</oq-quote-state>` : nothing}
         <div class="row">
           <dc-button variant="ghost" ?disabled=${this.busy} @click=${() => (this.withKey = !this.withKey)}
             >${this.withKey ? strings.openWithPassphrase : strings.openWithKey}</dc-button

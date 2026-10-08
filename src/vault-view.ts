@@ -7,6 +7,8 @@ import { shortcutOf, typingIn } from './shortcuts.js'
 import { text } from './records.js'
 import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import { showScreen } from './screen-time.js'
+import { writes, type WriteState } from './writes.js'
+import './quote-state.js'
 import type { FeedbackStatus, VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
 import { errorCallout, packsWaitingCallout } from './vault/parts.js'
@@ -54,6 +56,14 @@ export class OcVault extends LitElement {
       oc-feedback[hidden] {
         display: none;
       }
+      /* Saving / saved: a quiet word beside the toolbar's buttons, on their line. */
+      .write-state {
+        display: inline-flex;
+        align-items: center;
+        align-self: center;
+        font-size: var(--dc-font-size-sm, 0.875rem);
+        color: var(--dc-color-text-muted);
+      }
       dp-page > dc-callout {
         margin: var(--dc-space-3, 12px) var(--dc-space-6, 24px) 0;
       }
@@ -78,6 +88,9 @@ export class OcVault extends LitElement {
   @property({ attribute: false }) feedback?: FeedbackStatus
 
   @state() private view: View = 'subjects'
+  /** Saving or saved a moment ago, for the toolbar. */
+  @state() private writeState: WriteState = writes.state
+  private stopWrites?: () => void
   /** The sidebar as a drawer, while the window is narrow: closed until asked for. */
   @state() private sidebarOpen = false
   /** The sidebar folded to its icon rail, while the window is wide; kept on this computer. */
@@ -110,6 +123,7 @@ export class OcVault extends LitElement {
     window.addEventListener('keydown', this.onKey)
     this.wideQuery.addEventListener('change', this.onWidth)
     this.onWidth()
+    this.stopWrites = writes.listen((state) => (this.writeState = state))
   }
 
   /** The vault's screen, by its fixed name, for the time kept on each screen. */
@@ -118,6 +132,7 @@ export class OcVault extends LitElement {
   }
 
   disconnectedCallback() {
+    this.stopWrites?.()
     window.removeEventListener('focus', this.onFocus)
     window.removeEventListener('keydown', this.onKey)
     this.wideQuery.removeEventListener('change', this.onWidth)
@@ -254,6 +269,13 @@ export class OcVault extends LitElement {
           ?expanded=${this.wide ? !this.rail : this.sidebarOpen}
           @dp-toolbar-toggle=${() => this.toggleSidebar()}
         >
+          <span slot="actions" class="write-state" aria-live="polite" aria-atomic="true" data-role="write-state"
+            >${this.writeState === 'saving'
+              ? html`<oq-quote-state state="ongoing" size="18">${strings.saving}</oq-quote-state>`
+              : this.writeState === 'saved'
+                ? html`<oq-quote-state state="done" size="18">${strings.saved}</oq-quote-state>`
+                : nothing}</span
+          >
           <dc-button slot="actions" variant="ghost" size="sm" ?disabled=${store.busy} @click=${() => this.lockNow()}>${strings.lockNow}</dc-button>
           <dc-button
             slot="actions"

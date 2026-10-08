@@ -4,6 +4,7 @@ import { describeError } from './errors.js'
 import { shell, type FeedbackStatus } from './shell.js'
 import { strings } from './strings.js'
 import { errorCallout } from './vault/parts.js'
+import './quote-state.js'
 
 /**
  * A message to the publisher, written and sent by the person: what they write, a reply address if
@@ -102,7 +103,7 @@ export class OcFeedback extends LitElement {
       <p class="muted" data-role="what">${strings.feedbackWhat(version, osName(os))}</p>
       <p class="muted">${strings.feedbackWhere}</p>
       ${errorCallout(this.error)}
-      ${this.sent ? html`<dc-callout role="status" data-role="sent"><p>${strings.feedbackSent}</p></dc-callout>` : nothing}
+      ${this.sent ? html`<dc-callout role="status" data-role="sent"><p><oq-quote-state state="done" size="18">${strings.feedbackSent}</oq-quote-state></p></dc-callout>` : nothing}
       <div class="row">
         <dc-button variant="primary" data-role="send" ?disabled=${this.sending || !this.message.trim() || over} @click=${() => void this.send()}
           >${this.sending ? strings.feedbackSending : strings.feedbackSend}</dc-button

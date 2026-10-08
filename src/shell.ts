@@ -1,3 +1,4 @@
+import { writes } from './writes.js'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { Entity, EntityHistory, PendingChoice, Scheme, Suggestions } from './records.js'
@@ -234,7 +235,8 @@ export const shell = {
   /** Hands an error the window did not handle to the shell, which keeps only its type and the app's own frames. */
   reportWindowError: (kind: string, stack: string) => invoke<void>('report_window_error', { kind, stack }),
   /** Records a change through one of the engine's `/changes/…` routes; returns the file's path. */
-  record: (route: string, request: object) => invoke<string>('record', { route, request }),
+  /** Writes a change; the window's write status follows it (saving, then saved). */
+  record: (route: string, request: object) => writes.track(invoke<string>('record', { route, request })),
   entities: (entityType: string) => invoke<Entity[]>('entities', { entityType }),
   /** Every change each entity of a type was built from, oldest first. */
   history: (entityType: string) => invoke<EntityHistory[]>('history', { entityType }),

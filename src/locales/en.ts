@@ -48,6 +48,9 @@ export const en: Strings = {
   feedbackCount: (n: number, max: number) => `${n} / ${max} characters`,
   feedbackSend: 'Send',
   feedbackSending: 'Sending…',
+  saving: 'Saving',
+  saved: 'Saved',
+  openingVault: 'Opening the vault',
   feedbackSent: 'Sent. Thank you.',
 
   createVault: 'Create a vault',

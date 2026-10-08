@@ -50,6 +50,9 @@ export const ko = {
   feedbackSend: '보내기',
   feedbackSending: '보내는 중…',
   feedbackSent: '보냈습니다. 고맙습니다.',
+  saving: '저장 중',
+  saved: '저장했습니다',
+  openingVault: '기록 폴더를 여는 중',
 
   createVault: '새 기록 폴더 만들기',
   openVault: '기록 폴더 열기',
