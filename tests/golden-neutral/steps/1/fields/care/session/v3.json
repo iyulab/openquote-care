@@ -1,0 +1,45 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "session",
+  "version": 3,
+  "order": 20,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "required": true,
+      "label": "Practitioner"
+    },
+    {
+      "name": "concern",
+      "kind": "coded",
+      "scheme": "care.concern",
+      "label": "Concern"
+    },
+    {
+      "name": "mode",
+      "kind": "coded",
+      "scheme": "care.mode",
+      "label": "Mode"
+    },
+    {
+      "name": "next",
+      "kind": "date",
+      "label": "Next session"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

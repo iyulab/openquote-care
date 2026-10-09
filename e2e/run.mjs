@@ -292,6 +292,9 @@ const scenarios = {
     // The NEIS category is picked at its third level: its top and middle levels are headings, not choices.
     assert.deepEqual(await app.cdp.evaluate(`['counseling', 'counseling/individual'].map((v) => __e2e.one('select[aria-label="NEIS 분류"] option[value="' + v + '"]').disabled)`), [true, true])
     await app.choose('NEIS 분류', 'counseling/individual/academic')
+    // The next step the session form of the guidance asks for: go on, and when the next session is.
+    await app.choose('향후계획', 'continue')
+    await app.setDate('다음 회기 날', '2026-04-09')
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'one session')
     await app.setDate('날짜', '2026-04-09')
@@ -299,7 +302,10 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'two sessions')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [
+    const heads = await app.cdp.evaluate(`[...__e2e.one('tr[data-session]').closest('table').querySelectorAll('thead th')].map((th) => th.textContent.trim())`)
+    const [first] = (await app.sessionRows()).slice(-1)
+    assert.deepEqual([first[heads.indexOf('다음 회기 날')], first[heads.indexOf('향후계획')]], ['2026-04-09', '계속'], `the next step in its columns: ${JSON.stringify(heads)}`)
+    assert.deepEqual((await app.sessionRows()).map((r) => r.filter((_, i) => i !== heads.indexOf('다음 회기 날') && i !== heads.indexOf('향후계획'))), [
       ['2026-04-09', '', '관계', '', '학생', '', '', '', '상담자 가'],
       ['2026-04-02', '', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '', '', '상담자 가'],
     ])
@@ -570,7 +576,7 @@ const scenarios = {
     await app.vaultOpen()
     await app.click('li button .label', '가상 학생 1')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'both sessions back')
-    assert.equal((await app.sessionRows())[1][3], '특별 › 학교폭력')
+    assert.ok((await app.sessionRows())[1].includes('특별 › 학교폭력'), 'the older session, its method as recorded')
     await app.folderAction('다시 읽기')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 2`, 'the same sessions after reading the folder again')
 
@@ -772,7 +778,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '', '또래관계', '', '학생', '', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']])
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '', '또래관계', '', '학생', '', '', '', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']]) // the next session's day and the next step, blank
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')
@@ -1472,7 +1478,7 @@ const scenarios = {
     await app.noAlert()
     const [row] = await app.sessionRows()
     assert.ok(row[0].startsWith('2026-04-02'), 'the date first (its cell also offers to open the notes)')
-    assert.deepEqual(row.slice(1), ['Anxiety and stress', 'Video', 'Counselor A'], 'then the concern, the mode and the practitioner')
+    assert.deepEqual(row.slice(1), ['Anxiety and stress', 'Video', '', 'Counselor A'], 'then the concern, the mode, the next session (none given) and the practitioner')
 
     // A referral is a kind of record of its own, kept under the client beside the sessions and never counted as one.
     const inReferralForm = (selector) =>
@@ -2054,6 +2060,27 @@ const scenarios = {
     await app.click('[data-attention="unseen"]')
     await app.cdp.waitFor(`__e2e.one('select[aria-label="사례"]')?.value === 'all'`, 'pressed again, every case in view')
     await app.noAlert()
+
+    // The goal agreed at the intake: a record of its own, in the case, with the day it was set.
+    const inGoalForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'goal'; n = host } })`
+    await app.click('li button .label', '가상 학생 12')
+    await app.click('dc-button', '상담 목표 기록하기')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inGoalForm('input[aria-label="정한 날"]')}; if (!el) return false; el.value = '2026-05-06'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the day the goal was set',
+    )
+    await app.type('상담 목표', '수업 시간에 교실에 머무르기')
+    await app.choose('합의', 'agreed')
+    await app.click('dc-button', '상담 목표 기록')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="goal"] tr[data-record]').length === 1`, 'the goal listed')
+    await app.noAlert()
+    const goalRow = await app.cdp.evaluate(`[...__e2e.one('section[data-kind="goal"] tr[data-record]').children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() })`)
+    assert.ok(goalRow[0] === '2026-05-06' && goalRow.includes('수업 시간에 교실에 머무르기') && goalRow.includes('내담자와 합의함'), `the goal, its day and that it was agreed: ${JSON.stringify(goalRow)}`)
+    assert.ok(
+      await app.cdp.evaluate(`[...__e2e.one('details[data-role="case-timeline"]').querySelectorAll('li[data-record]')].some((li) => li.dataset.type === 'goal' && li.textContent.includes('수업 시간에 교실에 머무르기'))`),
+      'the goal in the case’s timeline',
+    )
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

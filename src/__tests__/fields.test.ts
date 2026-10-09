@@ -56,6 +56,9 @@ describe('fields', () => {
 
   it('orders list columns date, short texts, coded, numbers, then references, leaving out what the subject holds', () => {
     expect(listColumns(session).map((f) => f.name)).toEqual(['date', 'title', 'topic', 'mode', 'minutes', 'practitioner'])
+    // A second date — the next session's — is an attribute of the record, not what tells it apart: it goes with the numbers, after the classifications.
+    const withNext = [...session, { ...session.find((f) => f.name === 'date')!, name: 'next', required: false }]
+    expect(listColumns(withNext).map((f) => f.name)).toEqual(['date', 'title', 'topic', 'mode', 'minutes', 'next', 'practitioner'])
   })
 
   it('puts the attendees before the references in a group list', () => {

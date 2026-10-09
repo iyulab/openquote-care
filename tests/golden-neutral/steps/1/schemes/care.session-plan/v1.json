@@ -1,0 +1,15 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.session-plan",
+  "version": 1,
+  "items": [
+    {
+      "code": "continue",
+      "label": "Continue"
+    },
+    {
+      "code": "close",
+      "label": "Close the case"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 9,
+  "label": "Care",
+  "provides": [
+    "schemes/care.session-plan/v1.json",
+    "schemes/care.goal-agreement/v1.json",
+    "fields/care/session/v3.json",
+    "fields/care/goal/v1.json"
+  ]
+}

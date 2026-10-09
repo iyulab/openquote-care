@@ -1,0 +1,43 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "goal",
+  "version": 1,
+  "label": "Goal",
+  "under": [
+    "subject"
+  ],
+  "order": 15,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Set on"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "label": "Practitioner"
+    },
+    {
+      "name": "goal",
+      "kind": "text",
+      "required": true,
+      "label": "Goal"
+    },
+    {
+      "name": "agreement",
+      "kind": "coded",
+      "scheme": "care.goal-agreement",
+      "label": "Agreed"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

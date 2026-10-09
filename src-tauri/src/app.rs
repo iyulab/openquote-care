@@ -1692,7 +1692,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school", "care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 11));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 12));
         assert_eq!(summary["packIssues"], json!([]));
         for file in &added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
@@ -1703,8 +1703,8 @@ cut off").unwrap();
 
     /// The files the school pack's eighth to eleventh versions add: a field that takes several values,
     /// and forms reading it, so a vault holding them needs format 1 — a follow-up a closing expects, and an
-    /// agency worker among the people a session is with, with a form counting by NEIS category.
-    const SCHOOL_PACK_8: [&str; 17] = [
+    /// agency worker among the people a session is with, with a form counting by NEIS category — and a session's next step.
+    const SCHOOL_PACK_8: [&str; 19] = [
         "packs/care.school.kr/v8.json.age",
         "schemes/assessment-tool/v1.json.age",
         "fields/care.school.kr/session/v6.json.age",
@@ -1722,13 +1722,16 @@ cut off").unwrap();
         "schemes/client-type/v1-v2.json.age",
         "reports/month-neis/v1.json.age",
         "exports/session-list/v4.json.age",
+        "packs/care.school.kr/v12.json.age",
+        "fields/care.school.kr/session/v7.json.age",
     ];
 
     /// The core pack's sixth version — a crosswalk from closing reasons into how a closing ended, and the
     /// form counting by it; a crosswalk into another scheme needs format 1 — and its seventh, which places,
-    /// dates and gives a role to each kind of record — and its eighth, a form counting closings by the intake of
-    /// their case. A vault made before the sixth holds none of them.
-    const CORE_PACK_6: [&str; 11] = [
+    /// dates and gives a role to each kind of record — its eighth, a form counting closings by the intake of
+    /// their case — and its ninth, a goal as a kind of record and a session's next step. A vault made before the
+    /// sixth holds none of them.
+    const CORE_PACK_6: [&str; 16] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
@@ -1740,6 +1743,11 @@ cut off").unwrap();
         "fields/care/closing/v2.json.age",
         "packs/care/v8.json.age",
         "reports/care.monthly-closing-by-source/v1.json.age",
+        "packs/care/v9.json.age",
+        "schemes/care.session-plan/v1.json.age",
+        "schemes/care.goal-agreement/v1.json.age",
+        "fields/care/session/v3.json.age",
+        "fields/care/goal/v1.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
@@ -1794,7 +1802,7 @@ cut off").unwrap();
         app.close_vault();
         let reopened = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert!(reopened.get("waitingPacks").is_none() && reopened.get("updatedPacks").is_none());
-        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 11));
+        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 12));
     }
 
     #[test]

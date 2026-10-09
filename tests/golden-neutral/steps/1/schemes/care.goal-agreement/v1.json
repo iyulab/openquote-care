@@ -1,0 +1,15 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.goal-agreement",
+  "version": 1,
+  "items": [
+    {
+      "code": "agreed",
+      "label": "Agreed with the person"
+    },
+    {
+      "code": "proposed",
+      "label": "Proposed, not yet agreed"
+    }
+  ]
+}
