@@ -861,7 +861,7 @@ const scenarios = {
 
     // The latest record first: each row's day is no later than the one above it.
     await app.choose('정렬', 'recent')
-    const days = await app.cdp.evaluate(`__e2e.all('nav[aria-label="대상자"] li button .meta').map((m) => (m.textContent.match(/마지막 ([0-9-]+)/) ?? [])[1] ?? '')`)
+    const days = await app.cdp.evaluate(`__e2e.all('nav[aria-label="대상자"] li button .meta').map((m) => (m.textContent.match(/마지막 기록 ([0-9-]+)/) ?? [])[1] ?? '')`)
     assert.ok(days.every((d, i) => i === 0 || d === '' || days[i - 1] === '' || days[i - 1] >= d) && days[0] !== '', `newest first (${days})`)
     await app.choose('정렬', 'name')
 

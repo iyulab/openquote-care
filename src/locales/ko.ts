@@ -405,7 +405,7 @@ export const ko = {
   subjectOrder: '정렬',
   orderByName: '이름순',
   orderByRecent: '최근 기록순',
-  lastOn: (day: string) => `마지막 ${day}`,
+  lastOn: (day: string) => `마지막 기록 ${day}`,
   noSubjectsFound: '찾는 대상자가 없습니다.',
   subjectName: '대상자 이름',
   addSubject: '대상자 추가',

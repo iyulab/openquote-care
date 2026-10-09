@@ -413,7 +413,7 @@ export const en: Strings = {
   subjectOrder: 'Order',
   orderByName: 'By name',
   orderByRecent: 'Latest record first',
-  lastOn: (day: string) => `last ${day}`,
+  lastOn: (day: string) => `last record ${day}`,
   noSubjectsFound: 'No one matches.',
   subjectName: 'Client name',
   addSubject: 'Add client',
