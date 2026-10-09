@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-10
+
 ### Added
 - Scales: "Main problem severity" — the practitioner's own rating of the person's main problem, from 0 (none) to 4 (most severe), kept as a scale score. Rated when a case opens and again when it closes, the case shows the first and last rating and the difference between them, as for any scale. The app does not rate or judge anything itself.
 - "Scale scores of closed cases" counts, for each scale, the closed cases whose last score is the same as the first, above it or below it.
@@ -107,7 +109,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/iyulab/openquote-care/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/iyulab/openquote-care/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/iyulab/openquote-care/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/iyulab/openquote-care/compare/v0.14.0...v0.14.1
