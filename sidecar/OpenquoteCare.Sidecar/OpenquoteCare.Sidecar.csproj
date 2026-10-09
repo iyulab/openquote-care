@@ -12,7 +12,7 @@
   <ItemGroup>
     <PackageReference Include="Openquote" />
     <PackageReference Include="Openquote.Gil" />
-    <PackageReference Include="TauriKit.Sidecar.Loopback" />
+    <PackageReference Include="TauriKit.Sidecar.Loopback.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>

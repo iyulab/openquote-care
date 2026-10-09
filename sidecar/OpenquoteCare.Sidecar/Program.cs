@@ -9,7 +9,7 @@
 using OpenquoteCare.Sidecar;
 using TauriKit.Sidecar.Loopback;
 
-var token = LoopbackHost.ReadToken("OPENQUOTE_SIDECAR_TOKEN");
+var token = LoopbackCredentials.ReadToken("OPENQUOTE_SIDECAR_TOKEN");
 var device = Environment.GetEnvironmentVariable("OPENQUOTE_DEVICE");
 if (token is null || string.IsNullOrEmpty(device))
 {
@@ -29,6 +29,10 @@ namespace OpenquoteCare.Sidecar
         public static WebApplication Build(string[] args, string token, string device, TimeProvider clock, int? port)
         {
             var builder = LoopbackHost.CreateSlimBuilder(args, port);
+            // The shell is the one caller: the token it started the sidecar with is the only credential, and every route needs it.
+            var credentials = new LoopbackCredentials();
+            credentials.Register(token, "shell");
+            builder.Services.AddLoopbackAuthentication(credentials);
             builder.Services.AddSingleton<VaultSession>();
             builder.Services.AddSingleton<Suggestions>();
             builder.Services.ConfigureHttpJsonOptions(o =>
@@ -39,7 +43,8 @@ namespace OpenquoteCare.Sidecar
             });
 
             var app = builder.Build();
-            app.UseBearerToken(token);
+            // Only this computer's names: a page whose own name was pointed at 127.0.0.1 is refused.
+            app.UseLoopbackHostCheck();
             app.UseFaults(new FaultOptions
             {
                 // A failure is placed at the innermost frame in the engine or this sidecar; its message,

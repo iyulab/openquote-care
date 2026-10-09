@@ -1062,7 +1062,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1252,7 +1252,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3971,7 +3971,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4027,7 +4027,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4841,9 +4841,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-diagnostics"
-version = "0.12.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d67694f584e09cf75eb7414342c3aca825f37f0c2af927bcafd6076e733f622"
+checksum = "923cf493c989ceeed1c30ba2d6637300a2ed328d4ee5dee14485705bbe6cc2b7"
 dependencies = [
  "getrandom 0.4.3",
  "serde",
@@ -4854,9 +4854,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-fs"
-version = "0.12.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc91d5ea91198db673c2b3603d8ca523cd5bdaa2a950c2b8d1de4854ee804eac"
+checksum = "db9351d5e860679571533689b645371b853ccee24b4114de59a641876c4ba601"
 dependencies = [
  "dunce",
  "libc",
@@ -4866,9 +4866,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-sidecar"
-version = "0.12.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d934ed315d01f37efba042efac62da467ad441713ed081dda758e36e4b3fad17"
+checksum = "845cdb532b96cf1abc554e458a31371938a2745f023ed87c109ae72e43a93c71"
 dependencies = [
  "getrandom 0.4.3",
  "libc",
@@ -4880,9 +4880,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-watch"
-version = "0.12.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c53bb2ed91e15c636533c2d3f3b3ab1efa3b2b72174de6368f6b466b5ccc4d01"
+checksum = "94d3c0c33444feec627eb1fd3c3bfc10ba0b9d7b76de72544acc97ed219a4a84"
 dependencies = [
  "notify",
  "tauri-kit-fs",
@@ -4890,9 +4890,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-kit-webview"
-version = "0.12.1"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf2e3c915762d6d4856ace0f5f7c3636b15b153170794b9d9018f00297adceaa"
+checksum = "65d7da2cc8254834d691ff2fbdd7ca0292f84485867e9aa736cf511f0a7d88db"
 dependencies = [
  "webview2-com",
  "windows-core",
@@ -5130,7 +5130,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5921,7 +5921,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -6342,7 +6342,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
