@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, latestFollowUp, scaleLine, showsCases, signed } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, latestFollowUp, openingScale, scaleLine, showsCases, signed } from '../cases.js'
 import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -107,5 +107,15 @@ describe('cases', () => {
     expect(changeSigns([c(true, -2), c(true, 0), c(true, 1), c(true, -1), c(false, null), c(true, null)])).toEqual({ same: 1, higher: 1, lower: 2 })
     expect(changeSigns([])).toEqual({ same: 0, higher: 0, lower: 0 })
   })
-})
 
+  it('picks the scale a case opened with: its first score on the case’s first day, else the first scale', () => {
+    const score = (day: string) => ({ record: 'r', day, score: 1 })
+    const phq9 = { scale: 'phq9', baseline: score('2026-09-03') }
+    const severity = { scale: 'problem-severity', baseline: score('2026-09-01') }
+    expect(openingScale({ start: '2026-09-01' }, [phq9, severity])).toBe('problem-severity')
+    expect(openingScale({ start: '2026-08-30' }, [phq9, severity])).toBe('phq9')
+    expect(openingScale(undefined, [phq9])).toBe('phq9')
+    expect(openingScale({ start: '2026-09-01' }, [])).toBeUndefined()
+    expect(openingScale({ start: '2026-09-01' }, undefined)).toBeUndefined()
+  })
+})

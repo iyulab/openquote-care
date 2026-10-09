@@ -141,3 +141,12 @@ export function scaleLine(s: Pick<CaseScale, 'baseline' | 'last' | 'paired' | 'c
     ? strings.caseScale(label, s.baseline.score, s.baseline.day, s.last.score, s.last.day, signed(s.change))
     : strings.caseScaleOnce(label, s.last.score, s.last.day)
 }
+
+/**
+ * The scale a case was rated on when it opened: the one whose first score falls on the case's first day — the score
+ * kept beside the opening record — or, when none does, the first the case has. Undefined when the case has none.
+ */
+export function openingScale(c: Pick<CaseView, 'start'> | undefined, scales: readonly Pick<CaseScale, 'scale' | 'baseline'>[] | undefined): string | undefined {
+  if (!scales || scales.length === 0) return undefined
+  return (c && scales.find((s) => s.baseline.day === c.start)?.scale) ?? scales[0].scale
+}

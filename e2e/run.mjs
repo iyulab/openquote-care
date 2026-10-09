@@ -1676,6 +1676,38 @@ const scenarios = {
     assert.ok(!(await app.cdp.evaluate(`!!__e2e.one('[data-suggestions="mode"]')`)), 'a mode is never suggested')
     assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="Concern"]').value`), '', 'nothing is filled in until a person takes it')
 
+    // A case rated on two scales: the closing starts from the one given beside the intake, whatever order the case lists its scales in.
+    await app.click('button', 'Clients')
+    await app.click('dc-button', '+ New client')
+    await app.type('Client name', 'Client Two')
+    await app.click('dc-button', 'Add client')
+    await app.click('li button .label', 'Client Two')
+    await app.click('dc-button', 'Add an intake')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inIntakeForm('input[aria-label="Taken on"]')}; if (!el) return false; el.value = '2026-06-01'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the second intake date',
+    )
+    await app.choose('Who brought them', 'self')
+    await app.choose('Scale', 'problem-severity')
+    await app.type('Total score', '3')
+    await app.click('dc-button', 'Record intake')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="scale-score"] tr[data-record]').length === 1`, 'the rating beside the intake')
+    await app.click('dc-button', 'Add a scale score')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inScoreForm('input[aria-label="Given on"]')}; if (!el) return false; el.value = '2026-06-03'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the day the questionnaire was given',
+    )
+    await app.choose('Scale', 'phq9')
+    await app.type('Total score', '12')
+    await app.click('dc-button', 'Record scale score')
+    await app.cdp.waitFor(`__e2e.all('section[data-role="cases"] li[data-scale]').length === 2`, 'two scales over the case')
+    await app.click('dc-button', 'Add a closing')
+    await app.cdp.waitFor(
+      `${inClosingForm('dc-select[data-role="case-scale-pick"]')}?.value === 'problem-severity'`,
+      'the scale given beside the intake, picked — not the questionnaire given two days later',
+    )
+    await app.noAlert()
+
     // Every screen, every text node and every name a screen reader or tooltip gives, shadow roots included.
     const words = () => app.cdp.evaluate(`__e2e.all('*').flatMap((el) => [
       ...[...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent),

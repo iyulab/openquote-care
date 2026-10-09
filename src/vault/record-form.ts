@@ -1,5 +1,6 @@
 import { css, html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
+import { openingScale } from '../cases.js'
 import { copiedFromSubject, firstMissingRequired, formSections, inputFields, labelOfField, type FieldView } from '../fields.js'
 import { Latest } from '../latest.js'
 import { asDraft, changedFields } from '../correction.js'
@@ -239,7 +240,7 @@ export class OcRecordForm extends StoreElement {
     if (!scaleField || !scoreField || !scheme) return undefined
     const options = store.scales.map((s) => ({ value: s.code, label: scheme.items.find((i) => i.code === s.code)?.label ?? s.code }))
     // A closing is rated on the scale its case was rated on when it opened, so the two pair.
-    const opened = role === 'closes' ? store.scaleCases.get(this.holder.id)?.at(-1)?.scales[0]?.scale : undefined
+    const opened = role === 'closes' ? openingScale(store.cases.get(this.holder.id)?.cases.at(-1), store.scaleCases.get(this.holder.id)?.at(-1)?.scales) : undefined
     return { role, responses, fields, scaleField, scoreField, scheme, options, code: this.scaleChosen ? this.scaleCode : (opened ?? '') }
   }
 
