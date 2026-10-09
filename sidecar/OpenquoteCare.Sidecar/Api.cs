@@ -550,13 +550,13 @@ internal static class Api
             if (request.To is null)
             {
                 if (report.Period.Unit == PeriodUnit.Range) return Results.BadRequest(); // its days are the ones a person picks
-                run = ReportRunner.RunContaining(report, from, snapshot.Entities.Values, snapshot.Content.Catalog());
+                run = ReportRunner.RunContaining(report, from, snapshot.Entities.Values, snapshot.Content.Catalog(), snapshot.Content.FieldCatalog());
             }
             else
             {
                 if (!DateOnly.TryParseExact(request.To, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var to) || to < from)
                     return Results.BadRequest();
-                run = ReportRunner.Run(report, from, to, snapshot.Entities.Values, snapshot.Content.Catalog());
+                run = ReportRunner.Run(report, from, to, snapshot.Entities.Values, snapshot.Content.Catalog(), snapshot.Content.FieldCatalog());
             }
             var file = writer.RunRecord(run);
             return Results.Ok(new RunResult(JsonNode.Parse(file.Content.Span), WireFile.From(file)));

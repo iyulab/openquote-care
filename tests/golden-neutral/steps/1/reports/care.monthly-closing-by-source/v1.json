@@ -1,0 +1,24 @@
+{
+  "format": "openquote.report/1",
+  "report": "care.monthly-closing-by-source",
+  "version": 1,
+  "label": "Closings by who brought them and how they ended",
+  "counts": "closing",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "dimensions": [
+    {
+      "field": "source",
+      "scheme": "care.intake-source",
+      "version": 1,
+      "of": "intake"
+    },
+    {
+      "field": "reason",
+      "scheme": "care.closing-type",
+      "version": 1
+    }
+  ]
+}

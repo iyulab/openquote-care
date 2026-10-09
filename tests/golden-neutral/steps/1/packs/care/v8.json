@@ -1,0 +1,9 @@
+{
+  "format": "openquote.pack/0",
+  "pack": "care",
+  "version": 8,
+  "label": "Care",
+  "provides": [
+    "reports/care.monthly-closing-by-source/v1.json"
+  ]
+}

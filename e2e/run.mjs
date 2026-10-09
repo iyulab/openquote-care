@@ -1657,6 +1657,15 @@ const scenarios = {
     await app.noAlert()
     const taken = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="school"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([taken[0], taken.at(-1)], ['School or teacher', '1 (1 person)'], 'the intake counted once, by who brought the client')
+    // Closings counted by the intake of the case they close: who brought the person, against how the case ended.
+    await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-closing-by-source@1"]')
+    await app.choose('Year', '2026')
+    await app.choose('Month', '4')
+    await app.click('dc-button', 'Run')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="school"]')`, 'the month by who brought them and how it ended')
+    await app.noAlert()
+    const byIntake = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="school"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual(byIntake.slice(0, 3), ['School or teacher', '0', '1 (1 person)'], `the closing that ended early, under the case's intake by the school: ${JSON.stringify(byIntake)}`)
     await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-concern@1"]')
 
     // The core suggests a concern from the most similar settled session, and sets safety apart, to be confirmed.

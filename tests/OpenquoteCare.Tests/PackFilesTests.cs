@@ -190,6 +190,40 @@ public sealed class PackFilesTests
         Assert.Empty(run.Unmapped);
     }
 
+    [Theory]
+    [MemberData(nameof(Tracks))]
+    public void Closings_are_counted_by_who_brought_the_person_in_the_case_they_close(string track)
+    {
+        var w = new VaultWriter("dev1");
+        var records = new List<VaultFile>();
+        string Add(VaultFile f)
+        {
+            records.Add(f);
+            return VaultReader.Read([f]).Changes[0].Entity.Id;
+        }
+        static JsonObject Code(string scheme, string code) => new() { ["scheme"] = scheme, ["version"] = 1, ["code"] = code };
+        var one = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "Client One" }));
+        var two = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "Client Two" }));
+        var three = Add(w.CreateSubject(new Dictionary<string, JsonNode?> { ["name"] = "Client Three" }));
+        // One brought by the school who finished, one who came alone and stopped coming, and one closed with no intake.
+        Add(w.CreateInSubject(one, "intake", new Dictionary<string, JsonNode?> { ["date"] = "2026-03-02", ["source"] = Code("care.intake-source", "school") }));
+        Add(w.CreateInSubject(one, "closing", new Dictionary<string, JsonNode?> { ["date"] = "2026-04-06", ["reason"] = Code("care.closing-reason", "completed") }));
+        Add(w.CreateInSubject(two, "intake", new Dictionary<string, JsonNode?> { ["date"] = "2026-03-09", ["source"] = Code("care.intake-source", "self") }));
+        Add(w.CreateInSubject(two, "closing", new Dictionary<string, JsonNode?> { ["date"] = "2026-04-13", ["reason"] = Code("care.closing-reason", "lost-contact") }));
+        Add(w.CreateInSubject(three, "closing", new Dictionary<string, JsonNode?> { ["date"] = "2026-04-20", ["reason"] = Code("care.closing-reason", "completed") }));
+        var content = VaultReader.Read(PacksOf(track).SelectMany(VaultFiles.FromDirectory).Concat(records));
+        var entities = Openquote.Records.EntityMerger.Merge(content.Changes).Values;
+        var form = content.Reports.Single(r => r.Name == "care.monthly-closing-by-source");
+
+        var run = Openquote.Reports.ReportRunner.RunContaining(form, new DateOnly(2026, 4, 1), entities, content.Catalog(), content.FieldCatalog());
+
+        int In(string? source, string how) => run.Cells.Where(c => c.Key[0] == source && c.Key[1] == how).Sum(c => c.Records.Count);
+        Assert.Equal((1, 1, 1), (In("school", "planned"), In("self", "early"), In(null, "planned"))); // no intake in the case: no source
+        Assert.Equal(3, run.Total.Count);
+        Assert.Empty(run.Pending);
+        Assert.Throws<ArgumentException>(() => Openquote.Reports.ReportRunner.RunContaining(form, new DateOnly(2026, 4, 1), entities, content.Catalog()));
+    }
+
     [Fact]
     public void A_school_session_names_the_assessments_given_and_forms_count_each_one()
     {
