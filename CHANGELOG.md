@@ -11,6 +11,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - "Scale scores of closed cases" counts, for each scale, the closed cases whose last score is the same as the first, above it or below it.
 - A record that opens or closes a case can carry a scale score: pick the scale and enter the score in the same form, and it is kept as a scale score of the same day. A closing starts from the scale its case was rated on when it opened, so the two pair.
 
+### Changed
+- A record written on the day a case closed — a score or a note taken that day — now stays in that case, and a follow-up is the person's first record on a later day. A new intake on the closing day still starts the next case.
+
 ## [0.16.0] - 2026-10-08
 
 ### Added
