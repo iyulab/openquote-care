@@ -1,6 +1,7 @@
 // The app's window for scripts that drive it: the e2e scenarios and the website pictures. The debug
 // build with the e2e configuration (`npm run build:e2e`) opens a debugging port of its own.
 
+import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
@@ -15,6 +16,8 @@ export const sidecar = resolve(
     join(root, 'sidecar', 'OpenquoteCare.Sidecar', 'bin', 'Release', 'net10.0', process.platform === 'win32' ? 'openquote-care-sidecar.exe' : 'openquote-care-sidecar'),
 )
 export const PORT = 9224
+/** The e2e build's identifier, which names its app data folder and its WebView2 profile. */
+export const E2E_IDENTIFIER = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.e2e.conf.json'), 'utf8')).identifier
 
 // The sidecar finds a per-user .NET only through DOTNET_ROOT; without it the window says only that
 // the app could not get ready to open records. Set it as `npm run verify` does, when the shell has not.
@@ -40,6 +43,9 @@ export class App {
       env: { OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...machine, ...env },
       // The e2e build's window configuration opens the debugging port itself.
       debugPortFromEnv: false,
+      // Its identifier names the WebView2 profile: a restart waits for the browser of the window it ended to be
+      // gone, since a window started while that browser is still shutting down joins it and never opens the port.
+      webviewProfile: E2E_IDENTIFIER,
       ready: `customElements.get('oc-app') && !!document.querySelector('oc-app')`,
     })
     return app

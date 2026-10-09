@@ -21,7 +21,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import { runScenarios } from '@iyulab/tauri-kit-dev/app'
-import { App, exe, q, root, sidecar } from './window.mjs'
+import { App, E2E_IDENTIFIER, exe, q, root, sidecar } from './window.mjs'
 
 /**
  * The vault files the bundled packs' versions from `since` on add — each version's manifest and what it
@@ -1169,7 +1169,7 @@ const scenarios = {
 
   async 'asks a second device sharing the vault to name itself'(app, work) {
     // The same vault opened as another device: this app's device id is swapped between runs.
-    const idFile = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e', 'device-id')
+    const idFile = join(process.env.LOCALAPPDATA, E2E_IDENTIFIER, 'device-id')
     const own = await readFile(idFile, 'utf8')
     await app.quit()
     await writeFile(idFile, 'e2esecond')
@@ -2088,7 +2088,7 @@ const scenarios = {
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
     const needles = [PASSPHRASE, NEW_PASSPHRASE, work.key, work.key.toLowerCase(), typedKey,
       '가상 학생 1', '가상 학생 2', '상담자 가', '또래 집단', '상담실 PC', FAMILY_NOTE, CRISIS_NOTE, SAFETY_NOTE]
-    const appData = join(process.env.LOCALAPPDATA, 'com.iyulab.openquote-care.e2e')
+    const appData = join(process.env.LOCALAPPDATA, E2E_IDENTIFIER)
     assert.ok(existsSync(appData), 'the app data folder the scan covers exists')
     const inAppData = await filesHolding(appData, needles)
     // The app and its engine were given their own temporary folder for this run.
