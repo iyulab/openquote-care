@@ -150,3 +150,44 @@ export function openingScale(c: Pick<CaseView, 'start'> | undefined, scales: rea
   if (!scales || scales.length === 0) return undefined
   return (c && scales.find((s) => s.baseline.day === c.start)?.scale) ?? scales[0].scale
 }
+
+/** A record of a case as its timeline lists it: when, and whether it came after the case ended. */
+export interface TimelineEntry {
+  id: string
+  day: string
+  after: boolean
+}
+
+/** A case's records in the order of their days — those up to its end, then those after it — the same day by id. */
+export function caseTimeline(c: Pick<CaseView, 'records' | 'afterClosing'>, dayOf: (id: string) => string): TimelineEntry[] {
+  return [...c.records.map((id) => ({ id, day: dayOf(id), after: false })), ...c.afterClosing.map((id) => ({ id, day: dayOf(id), after: true }))].sort(
+    (a, b) => Number(a.after) - Number(b.after) || a.day.localeCompare(b.day) || a.id.localeCompare(b.id),
+  )
+}
+
+/** One score of a scale in a case: the record it was kept in, its day and the score. */
+export interface ScalePoint {
+  record: string
+  day: string
+  score: number
+}
+
+/**
+ * Every score each scale has in a case, in the order of their days: what `read` finds in each record — the scale and
+ * the score of a scale score, nothing for another record — kept when the score is within the scale's range.
+ */
+export function scaleSeries(
+  ids: readonly string[],
+  read: (id: string) => { scale: string; day: string; score: number } | undefined,
+  range: (scale: string) => { min: number; max: number } | undefined,
+): Map<string, ScalePoint[]> {
+  const series = new Map<string, ScalePoint[]>()
+  for (const id of ids) {
+    const r = read(id)
+    const bounds = r && range(r.scale)
+    if (!r || !bounds || !Number.isFinite(r.score) || r.score < bounds.min || r.score > bounds.max) continue
+    series.set(r.scale, [...(series.get(r.scale) ?? []), { record: id, day: r.day, score: r.score }])
+  }
+  for (const points of series.values()) points.sort((a, b) => a.day.localeCompare(b.day) || a.record.localeCompare(b.record))
+  return series
+}

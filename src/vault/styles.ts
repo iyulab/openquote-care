@@ -130,8 +130,37 @@ export const vaultStyles = [
       gap: var(--dc-space-1, 4px) var(--dc-space-3, 12px);
     }
     ul.cases li > div,
-    ul.cases li > ul.scales {
+    ul.cases li > ul.scales,
+    ul.cases li > details.timeline {
       flex-basis: 100%;
+    }
+    /* A scale's every score: a small line over the scale's whole range beside the scores in words. */
+    ul.scales li.series {
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-2, 8px);
+    }
+    svg.spark {
+      flex: none;
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
+    /* A case's records by day: a quiet list, each line its day, its kind and its first values. */
+    details.timeline > summary {
+      cursor: pointer;
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
+    details.timeline ol {
+      list-style: none;
+      margin: var(--dc-space-1, 4px) 0 0;
+      padding: 0;
+    }
+    details.timeline li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dc-space-2, 8px);
+    }
+    details.timeline .day {
+      font-variant-numeric: tabular-nums;
     }
     /* A subject's list split by case: the case's heading as a row over its records, quieter than the column heads. */
     tr.case-head > th {

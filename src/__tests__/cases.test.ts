@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, latestFollowUp, openingScale, scaleLine, showsCases, signed } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, caseTimeline, latestFollowUp, openingScale, scaleLine, scaleSeries, showsCases, signed } from '../cases.js'
 import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -117,5 +117,28 @@ describe('cases', () => {
     expect(openingScale(undefined, [phq9])).toBe('phq9')
     expect(openingScale({ start: '2026-09-01' }, [])).toBeUndefined()
     expect(openingScale({ start: '2026-09-01' }, undefined)).toBeUndefined()
+  })
+
+  it('lists a case’s records by day, those after it ended last', () => {
+    const days: Record<string, string> = { a: '2026-09-03', b: '2026-09-01', c: '2026-09-01', z: '2026-09-20' }
+    expect(caseTimeline({ records: ['a', 'c', 'b'], afterClosing: ['z'] }, (id) => days[id])).toEqual([
+      { id: 'b', day: '2026-09-01', after: false },
+      { id: 'c', day: '2026-09-01', after: false },
+      { id: 'a', day: '2026-09-03', after: false },
+      { id: 'z', day: '2026-09-20', after: true },
+    ])
+  })
+
+  it('keeps every score of each scale in a case by day, leaving out other records and scores outside the range', () => {
+    const read: Record<string, { scale: string; day: string; score: number }> = {
+      s1: { scale: 'phq9', day: '2026-09-29', score: 16 },
+      s2: { scale: 'phq9', day: '2026-09-01', score: 18 },
+      s3: { scale: 'phq9', day: '2026-09-15', score: 14 },
+      s4: { scale: 'phq9', day: '2026-09-20', score: 40 },
+      s5: { scale: 'gad7', day: '2026-09-02', score: 9 },
+    }
+    const series = scaleSeries(['s1', 'x', 's2', 's3', 's4', 's5'], (id) => read[id], (scale) => (scale === 'phq9' ? { min: 0, max: 27 } : { min: 0, max: 21 }))
+    expect(series.get('phq9')!.map((p) => p.score)).toEqual([18, 14, 16])
+    expect(series.get('gad7')!.map((p) => p.record)).toEqual(['s5'])
   })
 })

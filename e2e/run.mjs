@@ -1710,6 +1710,30 @@ const scenarios = {
     await app.type('Total score', '12')
     await app.click('dc-button', 'Record scale score')
     await app.cdp.waitFor(`__e2e.all('section[data-role="cases"] li[data-scale]').length === 2`, 'two scales over the case')
+    // A third and a fourth questionnaire: the case shows every score of the scale by day, not only the first and the last.
+    for (const [day, score] of [['2026-06-10', '8'], ['2026-06-17', '10']]) {
+      await app.click('dc-button', 'Add a scale score')
+      await app.cdp.waitFor(
+        `(() => { const el = ${inScoreForm('input[aria-label="Given on"]')}; if (!el) return false; el.value = '${day}'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+        'the day of a later questionnaire',
+      )
+      await app.choose('Scale', 'phq9')
+      await app.type('Total score', score)
+      await app.click('dc-button', 'Record scale score')
+      await app.noAlert()
+    }
+    await app.cdp.waitFor(`!!__e2e.one('li[data-role="scale-series"][data-scale="phq9"]')`, 'every PHQ-9 score of the case')
+    assert.equal(
+      await app.cdp.evaluate(`__e2e.one('li[data-role="scale-series"][data-scale="phq9"]').textContent.replace(/\\s+/g, ' ').trim()`),
+      'PHQ-9, every score: 12 (2026-06-03) → 8 (2026-06-10) → 10 (2026-06-17)',
+      'the scores in the order of their days, the turn back up included',
+    )
+    // The case's records by day, open for the latest case: the intake and its rating first, the questionnaires after.
+    const timeline = await app.cdp.evaluate(`(() => { const d = __e2e.one('details[data-role="case-timeline"]'); return { open: d.open, days: [...d.querySelectorAll('li[data-record]')].map((li) => li.querySelector('.day').textContent), types: [...d.querySelectorAll('li[data-record]')].map((li) => li.dataset.type) } })()`)
+    assert.ok(timeline.open, 'the latest case’s timeline is open')
+    assert.deepEqual(timeline.days, [...timeline.days].sort(), `by day: ${JSON.stringify(timeline.days)}`)
+    assert.equal(timeline.types[0] === 'intake' || timeline.types[1] === 'intake', true, `the intake on the first day: ${JSON.stringify(timeline.types)}`)
+    assert.equal(timeline.types.filter((t) => t === 'scale-score').length, 4, 'the rating beside the intake and three questionnaires')
     await app.click('dc-button', 'Add a closing')
     await app.cdp.waitFor(
       `${inClosingForm('dc-select[data-role="case-scale-pick"]')}?.value === 'problem-severity'`,
