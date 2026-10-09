@@ -162,6 +162,13 @@ export const vaultStyles = [
     details.timeline .day {
       font-variant-numeric: tabular-nums;
     }
+    /* What asks for something across the subjects: a quiet label and a button for each count. */
+    .attention {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--dc-space-2, 8px);
+    }
     /* A subject's list split by case: the case's heading as a row over its records, quieter than the column heads. */
     tr.case-head > th {
       font-size: var(--dc-font-size-sm, 12px);

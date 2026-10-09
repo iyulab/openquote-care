@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matches, narrowSubjects, shortDay, type SubjectRow } from '../subject-list.js'
+import { daysBetween, matches, narrowSubjects, shortDay, type SubjectRow } from '../subject-list.js'
 
 const names = new Intl.Collator('en')
 const row = (id: string, name: string, words: string, last: string | null, state: SubjectRow['state'], followUp: SubjectRow['followUp'] = null): SubjectRow => ({
@@ -68,5 +68,33 @@ describe('a name typed as it is written', () => {
 
   it('falls back to the words anywhere when no name holds what was typed', () => {
     expect(narrowSubjects(two, { query: 'north ana', cases: 'all', order: 'name' }, names).map((r) => r.id)).toEqual(['a'])
+  })
+})
+
+describe('the open cases that ask for a session', () => {
+  const open = (id: string, name: string, start: string, lastSession: string | null): SubjectRow => ({
+    ...row(id, name, name, lastSession ?? start, 'open'),
+    openCase: { start, lastSession },
+  })
+  const given = [
+    open('d', 'Dee', '2026-10-01', null),
+    open('e', 'Eve', '2026-09-01', '2026-09-17'),
+    open('f', 'Fay', '2026-09-20', '2026-09-21'),
+    row('g', 'Gus', 'Gus', '2026-09-05', 'closed'),
+    row('h', 'Hal', 'Hal', null, null),
+  ]
+
+  it('keeps the open cases with no session yet', () => {
+    expect(narrowSubjects(given, { query: '', cases: 'unseen', order: 'name' }, names).map((r) => r.id)).toEqual(['d'])
+  })
+
+  it('puts the open case whose latest session — or, with none, whose start — lies furthest back first, the rest by name', () => {
+    expect(narrowSubjects(given, { query: '', cases: 'all', order: 'quiet' }, names).map((r) => r.id)).toEqual(['e', 'f', 'd', 'g', 'h'])
+  })
+
+  it('counts whole days between two dates', () => {
+    expect(daysBetween('2026-09-17', '2026-10-09')).toBe(22)
+    expect(daysBetween('2026-10-09', '2026-10-09')).toBe(0)
+    expect(daysBetween('2026-02-28', '2026-03-01')).toBe(1)
   })
 })

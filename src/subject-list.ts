@@ -14,13 +14,21 @@ export interface SubjectRow {
   state: 'open' | 'closed' | null
   /** The follow-up its latest case expects after the closing, or null when it expects none. */
   followUp: { followUp: FollowUp; followUpDue: string } | null
+  /** Its latest case while it is open: the day it began, and the day of its latest session — null when it has had none. */
+  openCase?: { start: string; lastSession: string | null } | null
 }
 
-/** Which cases a person keeps in view; `overdue`, those whose latest case's follow-up is past its day. */
-export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue'
+/**
+ * Which cases a person keeps in view; `overdue`, those whose latest case's follow-up is past its day; `unseen`, those
+ * whose latest case is open and has had no session yet.
+ */
+export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue' | 'unseen'
 
-/** How the list is ordered: by name, or the latest record first. */
-export type SubjectOrder = 'name' | 'recent'
+/**
+ * How the list is ordered: by name; the latest record first; or `quiet` — the open cases first, the one whose latest
+ * session (or, with none, whose start) lies furthest back at the top, then the rest by name.
+ */
+export type SubjectOrder = 'name' | 'recent' | 'quiet'
 
 /** Lower-cased and with runs of space as one: how words are compared. */
 const fold = (s: string) => s.toLocaleLowerCase().replace(/\s+/g, ' ').trim()
@@ -46,15 +54,26 @@ export function narrowSubjects(
 ): SubjectRow[] {
   const byName = (a: SubjectRow, b: SubjectRow) => names.compare(a.name, b.name)
   const byRecent = (a: SubjectRow, b: SubjectRow) => (b.last ?? '').localeCompare(a.last ?? '') || byName(a, b)
+  const since = (r: SubjectRow) => (r.openCase ? (r.openCase.lastSession ?? r.openCase.start) : null)
+  const byQuiet = (a: SubjectRow, b: SubjectRow) => {
+    const [x, y] = [since(a), since(b)]
+    if (x !== null && y !== null) return x.localeCompare(y) || byName(a, b)
+    return x !== null ? -1 : y !== null ? 1 : byName(a, b)
+  }
   const typed = fold(o.query)
   const named = typed === '' ? [] : rows.filter((r) => fold(r.name).includes(typed))
   const found = named.length > 0 ? named : rows.filter((r) => matches(r, o.query))
   return found
-    .filter((r) => o.cases === 'all' || (o.cases === 'overdue' ? r.followUp?.followUp === 'overdue' : r.state === o.cases))
-    .sort(o.order === 'recent' ? byRecent : byName)
+    .filter((r) => o.cases === 'all' || (o.cases === 'overdue' ? r.followUp?.followUp === 'overdue' : o.cases === 'unseen' ? !!r.openCase && r.openCase.lastSession === null : r.state === o.cases))
+    .sort(o.order === 'recent' ? byRecent : o.order === 'quiet' ? byQuiet : byName)
 }
 
 /** A record's day as the list says it: month and day within `year`, the whole date otherwise. */
 export function shortDay(day: string, year: string): string {
   return day.startsWith(`${year}-`) ? day.slice(5) : day
+}
+
+/** Whole days from `from` to `to`, both `YYYY-MM-DD` — what a list says as «n days ago». */
+export function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 }

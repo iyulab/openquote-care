@@ -2027,6 +2027,33 @@ const scenarios = {
     assert.ok(rows.find(([name]) => name === '가상 학생 11')[1].includes('추수 기한 05-18 지남'), 'the row says by when it was due')
     await app.choose('사례', 'all')
     await app.noAlert()
+
+    // A student taken in and not yet seen: what asks for something counts them, and keeps them in view at a press.
+    await app.click('dc-button', '＋ 새 대상자')
+    await app.type('대상자 이름', '가상 학생 12')
+    await app.click('dc-button', '대상자 추가')
+    await app.click('li button .label', '가상 학생 12')
+    const inIntakeForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'intake'; n = host } })`
+    await app.click('dc-button', '접수 기록하기')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inIntakeForm('input[aria-label="접수일"]')}; if (!el) return false; el.value = '2026-05-04'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the intake date',
+    )
+    await app.choose('유입 경로', 'screening')
+    await app.click('dc-button', '접수 기록')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="intake"] tr[data-record]').length === 1`, 'the intake listed')
+    await app.noAlert()
+    await app.cdp.waitFor(`/^회기 없는 열린 사례 [0-9]+$/.test(__e2e.one('[data-attention="unseen"]')?.textContent.trim() ?? '')`, 'the open cases with no session yet, counted')
+    await app.click('[data-attention="unseen"]')
+    await app.cdp.waitFor(`__e2e.all('nav[aria-label="대상자"] li button .label').some((l) => l.textContent.trim() === '가상 학생 12')`, 'the student kept in view')
+    const unseen = await listed()
+    assert.ok(unseen.every(([, meta]) => meta.includes('회기 없음')), `only open cases with no session: ${JSON.stringify(unseen)}`)
+    assert.ok(unseen.find(([name]) => name === '가상 학생 12')[1].includes('회기 없음 — 05-04부터'), 'the row says since when')
+    assert.ok(!unseen.some(([name]) => name === '가상 학생 11'), 'an ended case is not among them')
+    await app.click('[data-attention="unseen"]')
+    await app.cdp.waitFor(`__e2e.one('select[aria-label="사례"]')?.value === 'all'`, 'pressed again, every case in view')
+    await app.noAlert()
   },
 
   async 'leaves no record, key or passphrase outside the vault'(app, work) {

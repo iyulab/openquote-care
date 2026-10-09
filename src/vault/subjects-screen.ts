@@ -8,7 +8,7 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
 import { recordFields } from '../fields.js'
 import { today } from '../records.js'
-import { narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
+import { daysBetween, narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
 import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
@@ -114,6 +114,31 @@ export class OcSubjects extends VaultScreen {
     row?.scrollIntoView({ block: 'center' })
   }
 
+  /**
+   * What asks for something across the subjects, counted from their records — follow-ups past their day, open cases
+   * with no session yet — each a button that keeps those in view. Nothing when nothing does; no judgement, only dates.
+   */
+  private attention(all: SubjectRow[]) {
+    const counts: { filter: CaseFilter; n: number; label: (n: number) => string }[] = [
+      { filter: 'overdue', n: all.filter((r) => r.followUp?.followUp === 'overdue').length, label: strings.attentionOverdue },
+      { filter: 'unseen', n: all.filter((r) => r.openCase && r.openCase.lastSession === null).length, label: strings.attentionUnseen },
+    ]
+    const asking = counts.filter((c) => c.n > 0)
+    if (asking.length === 0) return nothing
+    return html`<div class="attention" data-role="attention" role="group" aria-label=${strings.attentionLead}>
+      <span class="muted">${strings.attentionLead}</span>
+      ${asking.map(
+        (c) => html`<dc-button
+          variant=${this.caseFilter === c.filter ? 'primary' : 'secondary'}
+          size="sm"
+          data-attention=${c.filter}
+          @click=${() => (this.caseFilter = this.caseFilter === c.filter ? 'all' : c.filter)}
+          >${c.label(c.n)}</dc-button
+        >`,
+      )}
+    </div>`
+  }
+
   /** Words to find a subject by, the cases kept in view — when some subject's cases are shown — and the order. */
   private listTools(withCases: boolean, withFollowUps: boolean) {
     return html`<div class="list-tools">
@@ -135,6 +160,7 @@ export class OcSubjects extends VaultScreen {
                 { value: 'open', label: strings.caseOpen },
                 { value: 'closed', label: strings.caseClosed },
                 ...(withFollowUps ? [{ value: 'overdue', label: strings.casesFollowUpOverdue }] : []),
+                { value: 'unseen', label: strings.casesUnseen },
               ]}
               .value=${this.caseFilter}
               @change=${(e: Event) => (this.caseFilter = (e.target as HTMLSelectElement).value as CaseFilter)}
@@ -146,6 +172,7 @@ export class OcSubjects extends VaultScreen {
           .options=${[
             { value: 'name', label: strings.orderByName },
             { value: 'recent', label: strings.orderByRecent },
+            ...(withCases ? [{ value: 'quiet', label: strings.orderByQuiet }] : []),
           ]}
           .value=${this.order}
           @change=${(e: Event) => (this.order = (e.target as HTMLSelectElement).value as SubjectOrder)}
@@ -165,18 +192,27 @@ export class OcSubjects extends VaultScreen {
     const counts = countBy(this.store.sessions, (s) => s.people)
     const all = subjectRows(this.store)
     const rows = narrowSubjects(all, { query: this.query, cases: this.caseFilter, order: this.order }, this.store.names)
-    const year = today().slice(0, 4)
+    const day = today()
+    const year = day.slice(0, 4)
+    const bySessions = this.order === 'quiet' || this.caseFilter === 'unseen'
     return listDetail({
       store: this.store,
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>
+        ${all.length === 0 ? nothing : this.attention(all)}
         ${all.length === 0 ? nothing : this.listTools(all.some((r) => r.state !== null), all.some((r) => r.followUp !== null))}`,
       entries: rows.map((r) => ({
         id: r.id,
         label: r.name,
         meta: [
           strings.sessionCount(counts.get(r.id) ?? 0),
-          r.last ? strings.lastOn(shortDay(r.last, year)) : '',
+          // The day the list is about: when it is ordered or narrowed by sessions, an open case's latest session — or
+          // that it has had none, since when — and otherwise the latest record, with an open case not yet seen said so.
+          bySessions && r.openCase
+            ? r.openCase.lastSession
+              ? strings.lastSessionOn(shortDay(r.openCase.lastSession, year), daysBetween(r.openCase.lastSession, day))
+              : strings.noSessionSince(shortDay(r.openCase.start, year), daysBetween(r.openCase.start, day))
+            : [r.last ? strings.lastOn(shortDay(r.last, year)) : '', r.openCase && r.openCase.lastSession === null ? strings.noSession : ''].filter(Boolean).join(' · '),
           r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '',
           // Only what still asks for something: a follow-up awaited or past its day.
           r.followUp && (r.followUp.followUp === 'waiting' || r.followUp.followUp === 'overdue') ? (followUpWords(r.followUp, (d) => shortDay(d, year)) ?? '') : '',
@@ -338,6 +374,7 @@ declare global {
 /** Each subject as the list finds and shows it: its name and short values to find it by, its latest record, its latest case. */
 function subjectRows(store: VaultStore): SubjectRow[] {
   const fields = recordFields(store.fieldsOf('subject')).filter((f) => f.tier !== 'narrative')
+  const sessionDays = new Map(store.sessions.map((r) => [r.id, store.dayOf(r)]))
   const last = new Map<string, string>()
   for (const kind of store.kinds)
     for (const r of store.recordsOf(kind.type)) {
@@ -354,6 +391,15 @@ function subjectRows(store: VaultStore): SubjectRow[] {
       last: last.get(s.id) ?? null,
       state: latestCaseState(store.cases.get(s.id)),
       followUp: latestFollowUp(store.cases.get(s.id)),
+      openCase: openCaseOf(store, s.id, sessionDays),
     }
   })
+}
+
+/** A subject's latest case while it is open: its first day, and the day of its latest session — null when none yet. */
+function openCaseOf(store: VaultStore, subject: string, sessionDays: ReadonlyMap<string, string>): SubjectRow['openCase'] {
+  const c = store.cases.get(subject)?.cases.at(-1)
+  if (!c?.open) return null
+  const days = c.records.map((id) => sessionDays.get(id)).filter((d): d is string => !!d)
+  return { start: c.start, lastSession: days.length > 0 ? days.sort().at(-1)! : null }
 }
