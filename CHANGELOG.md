@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-10-12
+
 ### Added
 - Provisions (제공 기록): a new kind of record under a person or a group for what an outside practitioner or service provided and what it cost — the day, the referral it follows (picked from the person's own referrals, named by its day and where to), the programme (counselling by an outside practitioner, treatment funding, other), the provider, the number of sessions and the amount. Statistics lists "Provision by programme" — a month's provisions, the people they reached, and their sessions and amounts added up — and Record lists has "Provision list". The app keeps no accounts: budgets and payments stay in the systems that hold them.
 - Above the list of people, "Waiting for an answer" (답을 기다리는 기록) counts the people with a referral whose outcome has not come back — none entered yet, or still "referred, not started yet". Pressing it keeps those people in view, each with the day the oldest such referral was made and how many days ago. The list can be narrowed the same way. The app counts dates only and sends no reminders.
@@ -116,7 +118,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/iyulab/openquote-care/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/iyulab/openquote-care/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/iyulab/openquote-care/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/iyulab/openquote-care/compare/v0.14.1...v0.15.0
