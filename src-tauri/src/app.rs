@@ -654,6 +654,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.cases()?))
     }
 
+    /// The records still waiting for an answer, as the engine reads them from the records.
+    pub fn awaiting(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.awaiting()?))
+    }
+
     /// What each subject's scale scores say over each of its cases, as the engine reads them.
     pub fn scales(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.scales()?))

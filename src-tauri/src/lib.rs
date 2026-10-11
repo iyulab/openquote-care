@@ -126,6 +126,11 @@ fn cases(app: State<App>) -> CommandResult<Value> {
 }
 
 #[tauri::command]
+fn awaiting(app: State<App>) -> CommandResult<Value> {
+    text(app.awaiting())
+}
+
+#[tauri::command]
 fn scales(app: State<App>) -> CommandResult<Value> {
     text(app.scales())
 }
@@ -460,6 +465,7 @@ pub fn run() {
             write_plain_copy,
             history,
             cases,
+            awaiting,
             scales,
             scale_summary,
             compare_runs,

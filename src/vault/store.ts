@@ -8,7 +8,7 @@ import { lastMonth } from '../report.js'
 import { fixedDefaults, schemeLabel, type FieldView } from '../fields.js'
 import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
-import { shell, type BackupStatus, type CaseScales, type RecordKind, type ScaleView, type SubjectCases, type VaultSummary } from '../shell.js'
+import { shell, type BackupStatus, type CaseScales, type RecordKind, type ScaleView, type SubjectCases, type VaultSummary, type WaitingRecord } from '../shell.js'
 import { strings } from '../strings.js'
 import { pickLocale, tables } from '../locales/index.js'
 
@@ -47,6 +47,8 @@ export class VaultStore extends EventTarget {
   kinds: RecordKind[] = []
   /** Each subject's cases, as the engine reads them from its records, by subject id. */
   cases = new Map<string, SubjectCases>()
+  /** The records still waiting for an answer, as the packs say their kinds do — the oldest first. */
+  awaiting: WaitingRecord[] = []
   /** Each subject's scale scores over each of its cases, in the order of its cases, by subject id. */
   scaleCases = new Map<string, CaseScales[]>()
   /** The scales the vault's packs give, by code; none when they give none. */
@@ -263,7 +265,7 @@ export class VaultStore extends EventTarget {
   /** Reads everything the screens show. A read overtaken by a newer one is dropped, not applied. */
   async load() {
     const current = this.loads.begin()
-    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory, cases, scales] = await Promise.all([
+    const [subjects, sessions, groups, practitioners, schemes, summary, sessionFields, subjectFields, practitionerFields, backup, sessionHistory, cases, scales, awaiting] = await Promise.all([
       shell.entities('subject'),
       shell.entities('session'),
       shell.entities('group'),
@@ -278,6 +280,7 @@ export class VaultStore extends EventTarget {
       shell.history('session'),
       shell.cases(),
       shell.scales(),
+      shell.awaiting(),
     ])
     if (!current()) return
     // The kinds of record besides sessions come from the packs: what the summary names is read next.
@@ -323,6 +326,7 @@ export class VaultStore extends EventTarget {
     this.subjects = [...subjects].sort(byName)
     this.sessions = sessions
     this.cases = new Map(cases.map((c) => [c.subject, c]))
+    this.awaiting = awaiting
     this.scaleCases = new Map((scales?.subjects ?? []).map((s) => [s.subject, s.cases]))
     this.scaleCodes = (scales?.scales ?? []).map((s) => s.code)
     this.scales = scales?.scales ?? []

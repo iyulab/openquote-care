@@ -122,6 +122,7 @@ export class OcSubjects extends VaultScreen {
     const counts: { filter: CaseFilter; n: number; label: (n: number) => string }[] = [
       { filter: 'overdue', n: all.filter((r) => r.followUp?.followUp === 'overdue').length, label: strings.attentionOverdue },
       { filter: 'unseen', n: all.filter((r) => r.openCase && r.openCase.lastSession === null).length, label: strings.attentionUnseen },
+      { filter: 'awaiting', n: all.filter((r) => r.awaiting !== undefined).length, label: strings.attentionAwaiting },
     ]
     const asking = counts.filter((c) => c.n > 0)
     if (asking.length === 0) return nothing
@@ -140,7 +141,7 @@ export class OcSubjects extends VaultScreen {
   }
 
   /** Words to find a subject by, the cases kept in view — when some subject's cases are shown — and the order. */
-  private listTools(withCases: boolean, withFollowUps: boolean) {
+  private listTools(withCases: boolean, withFollowUps: boolean, withAwaiting: boolean) {
     return html`<div class="list-tools">
       <dc-input
         type="search"
@@ -151,16 +152,21 @@ export class OcSubjects extends VaultScreen {
         @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
       ></dc-input>
       <div class="list-filters">
-        ${withCases
+        ${withCases || withAwaiting
           ? html`<dc-select
               aria-label=${strings.subjectCases}
               data-role="subject-cases"
               .options=${[
                 { value: 'all', label: strings.casesAll },
-                { value: 'open', label: strings.caseOpen },
-                { value: 'closed', label: strings.caseClosed },
-                ...(withFollowUps ? [{ value: 'overdue', label: strings.casesFollowUpOverdue }] : []),
-                { value: 'unseen', label: strings.casesUnseen },
+                ...(withCases
+                  ? [
+                      { value: 'open', label: strings.caseOpen },
+                      { value: 'closed', label: strings.caseClosed },
+                      ...(withFollowUps ? [{ value: 'overdue', label: strings.casesFollowUpOverdue }] : []),
+                      { value: 'unseen', label: strings.casesUnseen },
+                    ]
+                  : []),
+                ...(withAwaiting ? [{ value: 'awaiting', label: strings.casesAwaiting }] : []),
               ]}
               .value=${this.caseFilter}
               @change=${(e: Event) => (this.caseFilter = (e.target as HTMLSelectElement).value as CaseFilter)}
@@ -200,7 +206,13 @@ export class OcSubjects extends VaultScreen {
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>
         ${all.length === 0 ? nothing : this.attention(all)}
-        ${all.length === 0 ? nothing : this.listTools(all.some((r) => r.state !== null), all.some((r) => r.followUp !== null))}`,
+        ${all.length === 0
+          ? nothing
+          : this.listTools(
+              all.some((r) => r.state !== null),
+              all.some((r) => r.followUp !== null),
+              all.some((r) => r.awaiting !== undefined),
+            )}`,
       entries: rows.map((r) => ({
         id: r.id,
         label: r.name,
@@ -216,6 +228,8 @@ export class OcSubjects extends VaultScreen {
           r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '',
           // Only what still asks for something: a follow-up awaited or past its day.
           r.followUp && (r.followUp.followUp === 'waiting' || r.followUp.followUp === 'overdue') ? (followUpWords(r.followUp, (d) => shortDay(d, year)) ?? '') : '',
+          // Narrowed to what waits for an answer: since when the oldest such record has.
+          this.caseFilter === 'awaiting' && r.awaiting ? strings.awaitingSince(shortDay(r.awaiting, year), daysBetween(r.awaiting, day)) : '',
         ]
           .filter(Boolean)
           .join(' · '),
@@ -375,6 +389,9 @@ declare global {
 function subjectRows(store: VaultStore): SubjectRow[] {
   const fields = recordFields(store.fieldsOf('subject')).filter((f) => f.tier !== 'narrative')
   const sessionDays = new Map(store.sessions.map((r) => [r.id, store.dayOf(r)]))
+  // Each subject's oldest record still waiting for an answer: the engine lists them the oldest first.
+  const awaiting = new Map<string, string | null>()
+  for (const w of store.awaiting) for (const id of w.people) if (!awaiting.has(id)) awaiting.set(id, w.day)
   const last = new Map<string, string>()
   for (const kind of store.kinds)
     for (const r of store.recordsOf(kind.type)) {
@@ -392,6 +409,7 @@ function subjectRows(store: VaultStore): SubjectRow[] {
       state: latestCaseState(store.cases.get(s.id)),
       followUp: latestFollowUp(store.cases.get(s.id)),
       openCase: openCaseOf(store, s.id, sessionDays),
+      ...(awaiting.has(s.id) ? { awaiting: awaiting.get(s.id) ?? null } : {}),
     }
   })
 }

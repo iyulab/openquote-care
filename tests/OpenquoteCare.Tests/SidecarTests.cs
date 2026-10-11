@@ -618,6 +618,32 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Lists_the_referrals_still_waiting_for_their_outcome_the_oldest_first()
+    {
+        await Post("/vault/load", Files(GoldenVault.Neutral.Through(1)));
+        var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
+        await Post("/vault/add", new { files = new[] { subjectFile } });
+        var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
+        async Task<string> Add(object fields)
+        {
+            var file = await Post("/changes/in-subject", new { subjectId, type = "referral", fields });
+            await Post("/vault/add", new { files = new[] { file } });
+            return file["path"]!.GetValue<string>().Split('/')[^1].Split('.')[0];
+        }
+        object Code(string code) => new { scheme = "care.referral-outcome", version = 1, code };
+        var service = new { scheme = "care.service", version = 1, code = "mental-health" };
+        var later = await Add(new { date = "2026-04-10", to = service, outcome = Code("waiting") });
+        var earlier = await Add(new { date = "2026-04-03", to = service }); // no outcome yet
+        await Add(new { date = "2026-04-05", to = service, outcome = Code("taken-up") });
+
+        var waiting = (await Get("/awaiting")).AsArray();
+
+        Assert.Equal([earlier, later], waiting.Select(w => w!["record"]!.GetValue<string>()));
+        Assert.All(waiting, w => Assert.Equal(("referral", subjectId), (w!["type"]!.GetValue<string>(), w["people"]!.AsArray().Single()!.GetValue<string>())));
+        Assert.Equal("2026-04-03", waiting[0]!["day"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task Reads_each_cases_first_and_last_scale_score_and_the_change_between_them()
     {
         var scalePack = Path.GetFullPath(Path.Combine(GoldenVault.Neutral.Root, "..", "..", "packs", "care.scale"));

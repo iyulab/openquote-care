@@ -14,6 +14,7 @@ vi.mock('../shell.js', () => ({
     backupStatus: vi.fn(),
     history: vi.fn(),
     cases: vi.fn(),
+    awaiting: vi.fn(),
     scales: vi.fn(),
     setBackup: vi.fn(),
     onVaultChanged: vi.fn(),
@@ -58,6 +59,7 @@ describe('VaultStore', () => {
     vi.mocked(shell.backupStatus).mockResolvedValue({ folder: null })
     vi.mocked(shell.history).mockResolvedValue([])
     vi.mocked(shell.cases).mockResolvedValue([])
+    vi.mocked(shell.awaiting).mockResolvedValue([])
     vi.mocked(shell.scales).mockResolvedValue({ scales: [], subjects: [], issues: [], responses: [] })
   })
 

@@ -146,6 +146,12 @@ impl Engine {
         self.call("GET", "/cases", None)
     }
 
+    /// The records still waiting for an answer, as the packs say each kind does: the oldest first, each
+    /// with its kind, the subjects it is about and its day.
+    pub fn awaiting(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/awaiting", None)
+    }
+
     /// Every subject's scale scores over each of its cases — the baseline, the last available score
     /// and whether they fall on two days — and the scales the vault's packs give.
     pub fn scales(&self) -> Result<Value, EngineError> {

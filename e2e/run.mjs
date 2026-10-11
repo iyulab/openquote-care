@@ -1542,6 +1542,25 @@ const scenarios = {
     assert.ok(provisionRow.includes('Synthetic Counsellor') && provisionRow.includes('Counselling by an outside practitioner'), `who provided it and under what: ${JSON.stringify(provisionRow)}`)
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a provision is not a session')
 
+    // A referral with no outcome yet waits for an answer, as the core pack says referrals do: the list above the people
+    // counts it, and keeps that client in view, saying since when.
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-button[data-attention="awaiting"]')`), false, 'a referral with its outcome waits for nothing')
+    await app.click('dc-button', 'Add a referral')
+    await app.cdp.waitFor(
+      `(() => { const el = ${inReferralForm('input[aria-label="Date"]')}; if (!el) return false; el.value = '2026-04-16'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+      'the second referral date',
+    )
+    await app.choose('Referred to', 'mental-health')
+    await app.click('dc-button', 'Record referral')
+    await app.cdp.waitFor(`${referralRows}.length === 2`, 'the second referral listed')
+    await app.noAlert()
+    await app.cdp.waitFor(`__e2e.one('dc-button[data-attention="awaiting"]')?.textContent.trim() === 'Waiting for an answer: 1'`, 'one client waiting for an answer')
+    await app.click('dc-button[data-attention="awaiting"]')
+    await app.cdp.waitFor(`__e2e.all('.pane.list li').length === 1`, 'the list narrowed to that client')
+    const waitingMeta = await app.cdp.evaluate(`__e2e.one('.pane.list li').textContent.replace(/\\s+/g, ' ').trim()`)
+    assert.match(waitingMeta, /waiting for an answer since 04-16 \(\d+ days\)/, `since when the referral has waited: ${waitingMeta}`)
+    await app.click('dc-button[data-attention="awaiting"]')
+
     // An intake opens the work: when, and who brought the client.
     const inIntakeForm = (selector) =>
       `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'intake'; n = host } })`

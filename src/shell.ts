@@ -143,6 +143,15 @@ export interface CaseView {
 /** Where a case's follow-up stands: came in time, came late, still awaited, overdue, or none expected. */
 export type FollowUp = 'done' | 'late' | 'waiting' | 'overdue' | 'notExpected'
 
+/** A record still waiting for its answer, as the packs say its kind does: the record, its kind, who it is about and its day. */
+export interface WaitingRecord {
+  record: string
+  type: string
+  people: string[]
+  /** `YYYY-MM-DD`, or null when the record has no day. */
+  day: string | null
+}
+
 /** A subject's cases, oldest first, and its records with no date to place them by. */
 export interface SubjectCases {
   subject: string
@@ -300,6 +309,8 @@ export const shell = {
   history: (entityType: string) => invoke<EntityHistory[]>('history', { entityType }),
   /** Every subject's cases, read from its records by the roles the packs give its kinds of record. */
   cases: () => invoke<SubjectCases[]>('cases'),
+  /** The records still waiting for an answer, the oldest first; nothing is stored. */
+  awaiting: () => invoke<WaitingRecord[]>('awaiting'),
   /** What each subject's scale scores say over each of its cases; nothing is stored. */
   scales: () => invoke<ScalesRead>('scales'),
   scaleSummary: (from: string, to: string) => invoke<ScaleSummary>('scale_summary', { from, to }),

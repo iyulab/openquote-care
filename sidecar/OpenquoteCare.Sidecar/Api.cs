@@ -227,6 +227,12 @@ public sealed record CaseView(
 /// <summary>A subject's cases, oldest first, and its records that have no date to place them by.</summary>
 public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Cases, IReadOnlyList<string> Undated);
 
+/// <summary>
+/// A record still waiting for its answer, as <see cref="AwaitingReader"/> reads it: the record and its kind, the subjects
+/// it is about and its day (null when it has none).
+/// </summary>
+public sealed record WaitingView(string Record, string Type, IReadOnlyList<string> People, DateOnly? Day);
+
 /// <summary>A scale the vault's packs give: its code, which way a better score moves, its range and its terms of use.</summary>
 public sealed record ScaleView(string Code, string Direction, decimal Min, decimal Max, ScaleLicenceView? Licence);
 
@@ -359,6 +365,9 @@ internal static class Api
 
         // Every subject's cases, read from its records each time: nothing records which case a record is in.
         app.MapGet("/cases", (VaultSession session) => CasesOf(session.Current, DateOnly.FromDateTime(clock.GetLocalNow().DateTime)));
+
+        // The records still waiting for an answer, as the packs say each kind does — read each time, the oldest first.
+        app.MapGet("/awaiting", (VaultSession session) => AwaitingOf(session.Current));
 
         // What each subject's scale scores say over each of its cases, read like the cases: nothing is stored.
         app.MapGet("/scales", (VaultSession session) => ScalesOf(session.Current));
@@ -693,6 +702,9 @@ internal static class Api
         _ => null,
     };
 
+    private static WaitingView[] AwaitingOf(VaultSession.Snapshot s) =>
+        [.. AwaitingReader.Read(s.Entities.Values, s.Fields).Select(w => new WaitingView(w.Record.Reference.Id, w.Record.Reference.Type, w.People, w.Day))];
+
     private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s, DateOnly today) =>
         [.. CasesBySubject(s).Select(x => new SubjectCasesView(
             x.Subject,
@@ -825,6 +837,7 @@ internal static class Api
 [JsonSerializable(typeof(EntityView[]))]
 [JsonSerializable(typeof(EntityHistoryView[]))]
 [JsonSerializable(typeof(SubjectCasesView[]))]
+[JsonSerializable(typeof(WaitingView[]))]
 [JsonSerializable(typeof(ScalesView))]
 [JsonSerializable(typeof(ScaleSummaryRequest))]
 [JsonSerializable(typeof(ScaleSummaryView))]

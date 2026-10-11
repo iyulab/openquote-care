@@ -16,13 +16,15 @@ export interface SubjectRow {
   followUp: { followUp: FollowUp; followUpDue: string } | null
   /** Its latest case while it is open: the day it began, and the day of its latest session — null when it has had none. */
   openCase?: { start: string; lastSession: string | null } | null
+  /** The day of its oldest record still waiting for an answer (null when that record has none), or undefined when none waits. */
+  awaiting?: string | null
 }
 
 /**
  * Which cases a person keeps in view; `overdue`, those whose latest case's follow-up is past its day; `unseen`, those
- * whose latest case is open and has had no session yet.
+ * whose latest case is open and has had no session yet; `awaiting`, those with a record still waiting for an answer.
  */
-export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue' | 'unseen'
+export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue' | 'unseen' | 'awaiting'
 
 /**
  * How the list is ordered: by name; the latest record first; or `quiet` — the open cases first, the one whose latest
@@ -64,8 +66,22 @@ export function narrowSubjects(
   const named = typed === '' ? [] : rows.filter((r) => fold(r.name).includes(typed))
   const found = named.length > 0 ? named : rows.filter((r) => matches(r, o.query))
   return found
-    .filter((r) => o.cases === 'all' || (o.cases === 'overdue' ? r.followUp?.followUp === 'overdue' : o.cases === 'unseen' ? !!r.openCase && r.openCase.lastSession === null : r.state === o.cases))
+    .filter((r) => o.cases === 'all' || keeps(r, o.cases))
     .sort(o.order === 'recent' ? byRecent : o.order === 'quiet' ? byQuiet : byName)
+}
+
+/** Whether a row is among the cases `filter` keeps in view (anything but `all`). */
+function keeps(r: SubjectRow, filter: Exclude<CaseFilter, 'all'>): boolean {
+  switch (filter) {
+    case 'overdue':
+      return r.followUp?.followUp === 'overdue'
+    case 'unseen':
+      return !!r.openCase && r.openCase.lastSession === null
+    case 'awaiting':
+      return r.awaiting !== undefined
+    default:
+      return r.state === filter
+  }
 }
 
 /** A record's day as the list says it: month and day within `year`, the whole date otherwise. */
