@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- Provisions (제공 기록): a new kind of record under a person or a group for what an outside practitioner or service provided and what it cost — the day, the referral it follows (picked from the person's own referrals, named by its day and where to), the programme (counselling by an outside practitioner, treatment funding, other), the provider, the number of sessions and the amount. Statistics lists "Provision by programme" — a month's provisions, the people they reached, and their sessions and amounts added up — and Record lists has "Provision list". The app keeps no accounts: budgets and payments stay in the systems that hold them.
+
 ## [0.17.0] - 2026-10-10
 
 ### Added

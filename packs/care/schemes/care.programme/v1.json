@@ -1,0 +1,19 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "care.programme",
+  "version": 1,
+  "items": [
+    {
+      "code": "external-counselling",
+      "label": "Counselling by an outside practitioner"
+    },
+    {
+      "code": "treatment-fund",
+      "label": "Treatment funding"
+    },
+    {
+      "code": "other",
+      "label": "Other"
+    }
+  ]
+}

@@ -1510,6 +1510,38 @@ const scenarios = {
     )
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a referral is not a session')
 
+    // What an outside practitioner provided after the referral, and what it cost: a kind of record that points at
+    // the referral it follows, picked from the client's own referrals.
+    const referralId = await app.cdp.evaluate(`${referralRows}[0].dataset.record`)
+    const inProvisionForm = (selector) =>
+      `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'provision'; n = host } })`
+    const provisionRows = `__e2e.all('section[data-kind="provision"] tr[data-record]')`
+    for (const [day, sessions, amount, count] of [['2026-04-08', '3', '150000', 1], ['2026-04-15', '2', '100000', 2]]) {
+      await app.click('dc-button', 'Add a provision')
+      await app.cdp.waitFor(
+        `(() => { const el = ${inProvisionForm('input[aria-label="Date"]')}; if (!el) return false; el.value = '${day}'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,
+        'the provision date',
+      )
+      await app.cdp.waitFor(
+        `(() => { const el = ${inProvisionForm('dc-select[aria-label="Referral"]')}; return !!el && JSON.stringify(el.options.map((o) => o.label).slice(1)) === JSON.stringify(['2026-04-03 · Mental health service']) })()`,
+        'after (None), the client’s one referral offered, by its day and where to',
+      )
+      await app.choose('Referral', referralId)
+      await app.choose('Programme', 'external-counselling')
+      await app.type('Provider', 'Synthetic Counsellor')
+      await app.type('Sessions', sessions)
+      await app.type('Amount', amount)
+      await app.click('dc-button', 'Record provision')
+      await app.cdp.waitFor(`${provisionRows}.length === ${count}`, 'the provision listed')
+      await app.noAlert()
+    }
+    const provisionRow = await app.cdp.evaluate(
+      `${provisionRows}[0] ? [...${provisionRows}[0].children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() }) : []`,
+    )
+    assert.ok(provisionRow.includes('2026-04-03 · Mental health service'), `the referral it follows, named in its row: ${JSON.stringify(provisionRow)}`)
+    assert.ok(provisionRow.includes('Synthetic Counsellor') && provisionRow.includes('Counselling by an outside practitioner'), `who provided it and under what: ${JSON.stringify(provisionRow)}`)
+    assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a provision is not a session')
+
     // An intake opens the work: when, and who brought the client.
     const inIntakeForm = (selector) =>
       `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'intake'; n = host } })`
@@ -1626,6 +1658,16 @@ const scenarios = {
     await app.noAlert()
     const closed = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="lost-contact"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([closed[0], closed.at(-1)], ['Lost contact', '1 (1 person)'], 'the closing counted once, by its reason')
+
+    // Provisions by programme: how many, for how many people, the sessions and the amount added up.
+    await app.click('nav[aria-label="Report forms"] button[data-entry="care.monthly-provision@1"]')
+    await app.choose('Year', '2026')
+    await app.choose('Month', '4')
+    await app.click('dc-button', 'Run')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="external-counselling"]')`, 'the month by programme')
+    await app.noAlert()
+    const provided = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="external-counselling"]').children].map((c) => c.textContent.trim())`)
+    assert.deepEqual([provided[0], provided.at(-1)], ['Counselling by an outside practitioner', '2 (1 person · sessions total 5 · amount total 250,000)'], 'two provisions to one client, their sessions and amounts added up')
 
     // The scale scores of the cases closed in a period: how many have one, how many on two days, and each case's first
     // and last score with the difference — counts and arithmetic, nothing judged.

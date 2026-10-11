@@ -1,0 +1,53 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "provision",
+  "version": 1,
+  "label": "Provision",
+  "under": [
+    "subject",
+    "group"
+  ],
+  "order": 35,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "name": "referral",
+      "kind": "reference",
+      "type": "referral",
+      "label": "Referral"
+    },
+    {
+      "name": "programme",
+      "kind": "coded",
+      "scheme": "care.programme",
+      "label": "Programme"
+    },
+    {
+      "name": "provider",
+      "kind": "text",
+      "label": "Provider"
+    },
+    {
+      "name": "sessions",
+      "kind": "number",
+      "label": "Sessions"
+    },
+    {
+      "name": "amount",
+      "kind": "number",
+      "label": "Amount"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ import { alsoKey, othersOf, recordedValues } from '../several.js'
 import { fieldInput, type Choice, type FieldExtras } from './field-input.js'
 import { StoreElement } from './screen.js'
 import { vaultStyles } from './styles.js'
-import type { Holder } from './session-parts.js'
+import { referenceChoices, type Holder } from './session-parts.js'
 
 /**
  * The form a new record of one kind (`type` — a session unless told otherwise) is recorded with, for a
@@ -650,7 +650,7 @@ export class OcRecordForm extends StoreElement {
     const store = this.store
     const choicesOf = (): Choice[] => {
       if (f.kind === 'coded') return offeredChoices(this.offeredFor(f))
-      if (f.kind === 'reference') return store.entitiesOf(f.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
+      if (f.kind === 'reference') return referenceChoices(store, f, this.holder)
       return []
     }
     const extras: FieldExtras & { below?: unknown } = !this.edit && f.kind === 'coded' ? this.suggestionExtras(f) : {}

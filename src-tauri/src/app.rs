@@ -1729,9 +1729,10 @@ cut off").unwrap();
     /// The core pack's sixth version — a crosswalk from closing reasons into how a closing ended, and the
     /// form counting by it; a crosswalk into another scheme needs format 1 — and its seventh, which places,
     /// dates and gives a role to each kind of record — its eighth, a form counting closings by the intake of
-    /// their case — and its ninth, a goal as a kind of record and a session's next step. A vault made before the
-    /// sixth holds none of them.
-    const CORE_PACK_6: [&str; 16] = [
+    /// their case — its ninth, a goal as a kind of record and a session's next step — and its tenth, a provision
+    /// following a referral with the forms counting it, and a referral waiting for its outcome. A vault made before
+    /// the sixth holds none of them.
+    const CORE_PACK_6: [&str; 22] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
@@ -1748,6 +1749,12 @@ cut off").unwrap();
         "schemes/care.goal-agreement/v1.json.age",
         "fields/care/session/v3.json.age",
         "fields/care/goal/v1.json.age",
+        "packs/care/v10.json.age",
+        "schemes/care.programme/v1.json.age",
+        "fields/care/referral/v3.json.age",
+        "fields/care/provision/v1.json.age",
+        "reports/care.monthly-provision/v1.json.age",
+        "exports/care.provision-list/v1.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
@@ -1956,11 +1963,11 @@ cut off").unwrap();
         assert_eq!((&topic["label"], &topic["required"]), (&json!("주제"), &json!(true)));
         let name = app.fields("subject").unwrap().as_array().unwrap().iter().find(|f| f["name"] == "name").unwrap().clone();
         assert!(name["aliases"].as_array().unwrap().contains(&json!("성명")));
-        // The core's session forms stand on the fields the school track hides: they are not offered. Its closing and intake forms are.
+        // The core's session forms stand on the fields the school track hides: they are not offered. Its closing, intake and provision forms are.
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
         assert_eq!(
             offered,
-            ["care.monthly-closing-by-source", "care.monthly-closing-type", "care.monthly-closing", "care.monthly-intake", "month-assessment-tool", "month-neis", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
+            ["care.monthly-closing-by-source", "care.monthly-closing-type", "care.monthly-closing", "care.monthly-intake", "care.monthly-provision", "month-assessment-tool", "month-neis", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
         );
     }
 

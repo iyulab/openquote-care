@@ -39,6 +39,10 @@ export function subjectPicker(store: VaultStore, label: string, current: () => s
 export function valueText(store: VaultStore, field: FieldView | undefined, value: unknown): string {
   if (value === undefined || value === null) return ''
   if (field?.kind === 'reference' && typeof value === 'string') {
+    if (pointsAtRecords(store, field)) {
+      const record = store.recordById(value)
+      return record ? recordName(store, record) : value
+    }
     const entity = store.entitiesOf(field.refType).find((e) => e.id === value)
     return entity ? text(entity, 'name') : value
   }
@@ -51,6 +55,30 @@ export function valueText(store: VaultStore, field: FieldView | undefined, value
     return primary ? strings.severalValues(labelOf(store.schemes, primary), labels) : labels.join(', ')
   }
   return typeof value === 'string' || typeof value === 'number' ? String(value) : JSON.stringify(value)
+}
+
+/** Whether a reference field points at records of a kind (a provision at the referral it follows), not at people. */
+function pointsAtRecords(store: VaultStore, field: FieldView): boolean {
+  return store.kinds.some((k) => k.type === field.refType)
+}
+
+/** How a record another points at is named: the day it happened and its first classification ("2026-10-01 · Mental health service"). */
+export function recordName(store: VaultStore, record: Entity): string {
+  const field = store.fieldsOf(record.type).find((f) => f.kind === 'coded' && !f.hidden && record.fields[f.name] !== undefined && record.fields[f.name] !== null)
+  return [store.dayOf(record), field ? valueText(store, field, record.fields[field.name]) : ''].filter(Boolean).join(' · ')
+}
+
+/**
+ * What a reference field may point at from a record `holder` keeps: the people of its type, or — when it
+ * points at a kind of record — the holder's own records of that kind, the latest first.
+ */
+export function referenceChoices(store: VaultStore, field: FieldView, holder: Holder | undefined): { value: string; label: string }[] {
+  if (!pointsAtRecords(store, field))
+    return store.entitiesOf(field.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
+  const own = store
+    .recordsOf(field.refType!)
+    .filter((r) => holder !== undefined && (holder.kind === 'subject' ? r.subject === holder.id : r.group === holder.id))
+  return [...own].sort((a, b) => store.dayOf(b).localeCompare(store.dayOf(a))).map((r) => ({ value: r.id, label: recordName(store, r) }))
 }
 
 /** The set with `id` added, or taken out when it is there. */

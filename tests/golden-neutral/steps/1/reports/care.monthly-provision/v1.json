@@ -1,0 +1,28 @@
+{
+  "format": "openquote.report/1",
+  "report": "care.monthly-provision",
+  "version": 1,
+  "label": "Provision by programme",
+  "counts": "provision",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "dimensions": [
+    {
+      "field": "programme",
+      "scheme": "care.programme",
+      "version": 1
+    }
+  ],
+  "measures": [
+    "records",
+    "people",
+    {
+      "sum": "sessions"
+    },
+    {
+      "sum": "amount"
+    }
+  ]
+}
