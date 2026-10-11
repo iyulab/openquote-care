@@ -1801,6 +1801,13 @@ const scenarios = {
     assert.deepEqual(timeline.days, [...timeline.days].sort(), `by day: ${JSON.stringify(timeline.days)}`)
     assert.equal(timeline.types[0] === 'intake' || timeline.types[1] === 'intake', true, `the intake on the first day: ${JSON.stringify(timeline.types)}`)
     assert.equal(timeline.types.filter((t) => t === 'scale-score').length, 4, 'the rating beside the intake and three questionnaires')
+    // A line of the timeline opens its record: the row in its kind's list, brought into view.
+    const intakeId = await app.cdp.evaluate(`__e2e.one('details[data-role="case-timeline"] li[data-type="intake"]').dataset.record`)
+    await app.click(`details[data-role="case-timeline"] button[data-open-record="${intakeId}"]`)
+    await app.cdp.waitFor(
+      `(() => { const row = __e2e.one('section[data-kind="intake"] tr[data-record="${intakeId}"]'); if (!row) return false; const r = row.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight })()`,
+      'the intake’s row in view',
+    )
     await app.click('dc-button', 'Add a closing')
     await app.cdp.waitFor(
       `${inClosingForm('dc-select[data-role="case-scale-pick"]')}?.value === 'problem-severity'`,

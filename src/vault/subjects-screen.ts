@@ -341,7 +341,7 @@ export class OcSubjects extends VaultScreen {
             @oc-edit-cancelled=${() => (this.correctingSubject = false)}
           ></oc-entity-form>`
         : recordFieldList(store, subject)}
-      ${caseSection(store, subject.id)}
+      ${caseSection(store, subject.id, (record) => void this.showSession(subject.id, record))}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
         ? html`<oc-record-form

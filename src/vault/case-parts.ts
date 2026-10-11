@@ -11,8 +11,9 @@ import type { VaultStore } from './store.js'
 /**
  * A subject's cases, newest first: each with its days, its state, its records counted by kind, and what came
  * after it ended. Shown only when some record opened or closed a case, and only when the packs say which kinds do.
+ * A line of a case's timeline opens its record through `open`.
  */
-export function caseSection(store: VaultStore, subject: string) {
+export function caseSection(store: VaultStore, subject: string, open: (record: string) => void) {
   const subjectCases = store.cases.get(subject)
   const { opens, closes } = store.caseKinds()
   if (!opens || !closes || !showsCases(subjectCases)) return nothing
@@ -36,7 +37,7 @@ export function caseSection(store: VaultStore, subject: string) {
             ${c.opening === null ? html`<span class="muted">${strings.caseWithoutOpening(opening)}</span>` : nothing}
             <div class="muted">${caseCounts(c, kinds, typeOf)}${c.afterClosing.length > 0 ? html` · <span data-role="after-closing">${strings.caseAfterClosing(c.afterClosing.length)}</span>` : nothing}</div>
             ${scaleRows(store, subject, n - 1, [...c.records])}
-            ${timeline(store, caseTimeline(c, (id) => { const r = store.recordById(id); return r ? store.dayOf(r) : '' }), n === latest)}
+            ${timeline(store, caseTimeline(c, (id) => { const r = store.recordById(id); return r ? store.dayOf(r) : '' }), n === latest, open)}
           </li>`,
         )}
       </ul>
@@ -145,10 +146,13 @@ function seriesRow(store: VaultStore, scale: string, label: string, points: Scal
   </li>`
 }
 
-/** A case's records by day, each with its kind and its first values; open for the latest case, folded for the others. */
-function timeline(store: VaultStore, entries: ReturnType<typeof caseTimeline>, open: boolean) {
+/**
+ * A case's records by day, each with its kind and its first values; open for the latest case, folded for the others.
+ * Each line opens its record — the row in its kind's list, its written content shown.
+ */
+function timeline(store: VaultStore, entries: ReturnType<typeof caseTimeline>, unfolded: boolean, open: (record: string) => void) {
   if (entries.length === 0) return nothing
-  return html`<details class="timeline" data-role="case-timeline" ?open=${open}>
+  return html`<details class="timeline" data-role="case-timeline" ?open=${unfolded}>
     <summary>${strings.caseTimeline(entries.length)}</summary>
     <ol>
       ${entries.map((e) => {
@@ -161,10 +165,12 @@ function timeline(store: VaultStore, entries: ReturnType<typeof caseTimeline>, o
           .filter(Boolean)
           .slice(0, 2)
         return html`<li data-record=${e.id} data-type=${r.type} data-after=${e.after ? 'yes' : 'no'}>
-          <span class="day">${e.day}</span>
-          <strong>${kind ? store.labelOf(kind) : r.type}</strong>
-          ${values.length > 0 ? html`<span>${values.join(' · ')}</span>` : nothing}
-          ${e.after ? html`<span class="muted">${strings.caseTimelineAfter}</span>` : nothing}
+          <button class="cell" data-open-record=${e.id} title=${strings.openRecord} @click=${() => open(e.id)}>
+            <span class="day">${e.day}</span>
+            <strong>${kind ? store.labelOf(kind) : r.type}</strong>
+            ${values.length > 0 ? html`<span>${values.join(' · ')}</span>` : nothing}
+            ${e.after ? html`<span class="muted">${strings.caseTimelineAfter}</span>` : nothing}
+          </button>
         </li>`
       })}
     </ol>

@@ -154,10 +154,11 @@ export const vaultStyles = [
       margin: var(--dc-space-1, 4px) 0 0;
       padding: 0;
     }
-    details.timeline li {
+    details.timeline li > button.cell {
       display: flex;
       flex-wrap: wrap;
       gap: var(--dc-space-2, 8px);
+      text-align: start;
     }
     details.timeline .day {
       font-variant-numeric: tabular-nums;
