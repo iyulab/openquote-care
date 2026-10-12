@@ -19,6 +19,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Fixed
 - Numbers in the lists of records read as numbers do — an amount of 120000 shows as 120,000 — and their columns line up on the right.
+- A statistics form that counts by one thing (a programme, say) no longer repeats its one column of counts as a total beside it, so its table keeps to the window; the total row stays. Two actions side by side in a list's first cell — correct, show the notes — stand apart.
+- A person's lists of records fit their width: words in a column break onto a second line where the list is narrower than its rows, rather than the list scrolling across. Dates and numbers stay on one line.
 - The two choices above the list of people — which cases to keep in view and the order — stand one under the other when the list is narrow, so a long name such as "Waiting for an answer" is no longer cut short.
 
 ## [0.19.0] - 2026-10-12

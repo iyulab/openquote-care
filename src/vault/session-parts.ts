@@ -123,6 +123,10 @@ export function recordTable(store: VaultStore, t: RecordTable) {
   // Numbers line up by their last digit, as in any table of amounts; the attendees' column is never one.
   const numeric = columns.map((f) => f.kind === 'number')
   if (at >= 0) numeric.splice(at, 0, false)
+  // Words may break onto a second line where the table is narrower than its rows, so it fits its box rather than
+  // scrolling across; a date and a number keep to one line, and so does the first cell, with its buttons.
+  const wraps = columns.map((f, i) => i > 0 && f.kind !== 'date' && f.kind !== 'number')
+  if (at >= 0) wraps.splice(at, 0, true)
   // The fields a form of the vault adds up for this kind — sessions' minutes, a provision's amount — are added up
   // under each case too; a number no form adds up (a scale's score) is not.
   const type = t.records[0]?.type
@@ -169,7 +173,7 @@ export function recordTable(store: VaultStore, t: RecordTable) {
     return html`<tr data-session=${s.type === 'session' ? s.id : nothing} data-record=${s.id}>
         ${cells.map(
           (c, i) =>
-            html`<td class=${i === at ? 'wrap' : numeric[i] ? 'num' : nothing}>
+            html`<td class=${wraps[i] ? 'wrap' : numeric[i] ? 'num' : nothing}>
               ${c}
               ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
               ${i === 0 && t.correct

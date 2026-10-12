@@ -1752,6 +1752,7 @@ const scenarios = {
     await app.noAlert()
     const provided = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="external-counselling"]').children].map((c) => c.textContent.trim())`)
     assert.deepEqual([provided[0], provided.at(-1)], ['Counselling by an outside practitioner', '2 (1 person · Sessions total 5 · Amount total 250,000)'], 'two provisions to one client, their sessions and amounts added up, each named by its field label')
+    assert.equal(provided.length, 2, 'a form of one dimension: its counts, and no column of totals saying them again')
 
     // The scale scores of the cases closed in a period: how many have one, how many on two days, and each case's first
     // and last score with the difference — counts and arithmetic, nothing judged.

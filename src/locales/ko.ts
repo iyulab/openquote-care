@@ -255,7 +255,6 @@ export const ko = {
   reportRow: '분류',
   reportTotal: '계',
 
-  exportTitle: '기록 목록 내보내기',
   exportForms: '목록 양식',
   pickExportForm: '양식을 고르면 그 양식의 기록 목록이 여기에 보입니다.',
   exportLead: '고른 기간의 회기를 양식의 열 순서대로 늘어놓습니다. 표를 복사해 기관 업로드 엑셀이나 다른 양식에 붙여 넣으세요. 기록 폴더에는 아무것도 남지 않습니다.',
@@ -433,6 +432,7 @@ export const ko = {
   noSubjects: '대상자가 없습니다. 「새 대상자」로 추가하세요.',
   newSubject: '＋ 새 대상자',
   findSubjects: '이름이나 대상자 정보로 찾기',
+  findSubjectsShort: '이름·정보로 찾기',
   subjectCases: '사례',
   casesAll: '모두',
   casesFollowUpOverdue: '추수 기한 지남',

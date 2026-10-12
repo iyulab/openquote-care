@@ -279,11 +279,15 @@ export class OcReport extends VaultScreen {
     const blank = blankLabel(store, form)
     const unmapped = unmappedWording(store, form)
     const filters = filterParts(store, form, result)
+    const oneDimension = (form?.dimensions.length ?? 1) < 2
     const sectioned = layout.sections.length > 1
     const active = Math.min(this.section, layout.sections.length - 1)
     const corner = titles.length >= 2 ? strings.reportCorner(titles[0], titles[1]) : (titles[0] ?? strings.reportRow)
     const grid = (section: Section, index: number) => {
       const table = section.table
+      // A form of one dimension counts in one column of its own: its rows' totals would say what it says, so the table
+      // has no column for them. A table of two keeps its totals however few columns a period fills.
+      const single = oneDimension
       const where = (place: string) => (sectioned ? `${section.label} · ${place}` : place)
       const count = (place: string, group: Group) =>
         group.count === 0
@@ -296,7 +300,7 @@ export class OcReport extends VaultScreen {
             <tr>
               <th>${corner}</th>
               ${table.columns.map((c) => html`<th class="num">${c.label}</th>`)}
-              <th class="num">${strings.reportTotal}</th>
+              ${single ? nothing : html`<th class="num">${strings.reportTotal}</th>`}
             </tr>
           </thead>
           <tbody>
@@ -304,15 +308,15 @@ export class OcReport extends VaultScreen {
               (r) => html`<tr data-row=${r.code ?? nothing} class=${r.records.length === 0 ? 'empty' : ''} ?hidden=${this.hideEmpty && r.records.length === 0}>
                 <th>${r.label}</th>
                 ${r.cells.map((cell, i) => count(`${r.label} · ${table.columns[i].label}`, cell))}
-                ${sumCell(r.records)}
+                ${single ? nothing : sumCell(r.records)}
               </tr>`,
             )}
           </tbody>
           <tfoot>
             <tr>
               <th>${strings.reportTotal}</th>
-              ${table.columnRecords.map((records) => sumCell(records))}
-              ${sumCell(table.placedRecords, 'placed')}
+              ${single ? sumCell(table.placedRecords, 'placed') : table.columnRecords.map((records) => sumCell(records))}
+              ${single ? nothing : sumCell(table.placedRecords, 'placed')}
             </tr>
           </tfoot>
         </table>

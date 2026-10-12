@@ -244,7 +244,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.navExport, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar

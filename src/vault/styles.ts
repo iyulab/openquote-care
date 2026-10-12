@@ -359,6 +359,10 @@ export const vaultStyles = [
     button.cell:hover {
       background: var(--dc-color-accent-subtle, #e0e7ff);
     }
+    /* Two actions side by side in a cell read as two: a press's padding reaches past its words, so they stand apart. */
+    td > .cell + .cell {
+      margin-inline-start: var(--dc-space-2, 8px);
+    }
     button.cell:focus-visible {
       outline: 2px solid var(--dc-color-accent, #2563eb);
     }

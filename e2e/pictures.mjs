@@ -7,6 +7,7 @@
 //
 // --theme takes every picture in those colours (the app's own setting, put back to following the
 // system when the run ends); without it, the window follows the system's.
+// The app's language setting is the locale's for the run, and follows the system again after it.
 //
 // Beside each picture goes the text it shows (<scene>.txt). With --compare, the scenes whose text
 // differs from an earlier run's are listed — with the lines added and gone — in <folder>/changes.txt,
@@ -279,6 +280,8 @@ try {
   if (theme && !['light', 'dark'].includes(theme)) throw new Error(`--theme is light or dark, not ${theme}`)
   await frame()
   if (theme) await invoke('set_theme', { theme })
+  // The settings say the language the pictures are in, as a person who chose it sees them, rather than the system's.
+  await invoke('set_language', { language: locale })
   // A vault on the track, as a person makes it; the recovery kit is the first picture.
   await app.click('dc-button', ui.create)
   await app.pickFolder(vault)
@@ -354,7 +357,8 @@ try {
   // The largest count: what one number in the table is made of.
   await app.cdp.evaluate(`(() => { const cells = __e2e.all('tr[data-row] button.cell'); cells.sort((a, b) => parseInt(b.textContent) - parseInt(a.textContent))[0].click(); return true })()`)
   await app.cdp.waitFor(`__e2e.all('tr[data-evidence]').length > 0`, 'the evidence')
-  await app.cdp.evaluate(`(__e2e.one('tr[data-evidence]')?.scrollIntoView({ block: 'center' }), true)`)
+  // The section from its heading, so the table's header row shows above its first records.
+  await app.cdp.evaluate(`(__e2e.one('section[data-role=evidence]')?.scrollIntoView({ block: 'start' }), true)`)
   await shoot('evidence')
 
   // The month's sessions in the export form, ready to paste, before any revision of the topics.
@@ -508,7 +512,7 @@ try {
     await app.choose(ui.compareWith, first)
     await app.click('dc-button', ui.compare)
     await app.cdp.waitFor(`!!__e2e.one('[data-role=comparison-counts]')`, 'the comparison')
-    await app.cdp.evaluate(`(__e2e.one('[data-role=comparison-counts]')?.scrollIntoView({ block: 'start' }), true)`)
+    await app.cdp.evaluate(`(__e2e.one('section[data-role=comparison]')?.scrollIntoView({ block: 'start' }), true)`)
     await shoot('compare')
   }
 
@@ -578,6 +582,7 @@ try {
   }
 } finally {
   if (theme) await invoke('set_theme', { theme: 'system' }).catch(() => {})
+  await invoke('set_language', { language: null }).catch(() => {})
   await app.quit()
   await rm(work, { recursive: true, force: true }).catch(() => {})
 }

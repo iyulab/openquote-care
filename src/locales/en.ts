@@ -258,7 +258,6 @@ export const en: Strings = {
   reportRow: 'Category',
   reportTotal: 'Total',
 
-  exportTitle: 'Export a record list',
   exportForms: 'List forms',
   pickExportForm: 'Choose a form to see its record list here.',
   exportLead: "Lists the sessions of the period you pick in the form's column order. Copy the table and paste it into your organization's upload spreadsheet or another form. Nothing is kept in the vault.",
@@ -441,6 +440,7 @@ export const en: Strings = {
   noSubjects: 'No clients yet. Add one with “New client”.',
   newSubject: '+ New client',
   findSubjects: 'Find by name or details',
+  findSubjectsShort: 'Find a client',
   subjectCases: 'Cases',
   casesAll: 'All',
   casesFollowUpOverdue: 'Follow-up overdue',

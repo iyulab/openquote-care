@@ -149,7 +149,7 @@ export class OcSubjects extends VaultScreen {
         type="search"
         data-role="find-subjects"
         aria-label=${strings.findSubjects}
-        placeholder=${strings.findSubjects}
+        placeholder=${strings.findSubjectsShort}
         .value=${this.query}
         @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
       ></dc-input>
