@@ -132,6 +132,8 @@ export const ko = {
         return holder ? `대상자 ${holder}의 기록` : '이름을 읽지 못한 대상자의 기록'
       case 'group':
         return holder ? `집단 ${holder}의 기록` : '이름을 읽지 못한 집단의 기록'
+      case 'activity':
+        return '활동 기록'
       case 'practitioners':
         return '담당자 기록'
       case 'devices':
@@ -188,9 +190,12 @@ export const ko = {
   navLabel: '탐색',
   navSubjects: '대상자',
   navGroups: '집단',
+  navActivities: '활동',
   navPractitioners: '담당자',
   navSearch: '기록 찾기',
   searchTitle: '기록 찾기',
+  activitiesTitle: '활동',
+  activitiesLead: '대상자가 없는 업무 — 연수 진행·이수, 회의 참여, 행사 운영 — 를 적습니다. 통계와 기록 목록에서 담당자별로 셉니다.',
   searchLabel: '찾을 말',
   searchLead: '회기·접수·종결 같은 모든 기록의 제목·내용·분류·담당자와 대상자·집단 이름에서 찾습니다. 낱말을 여럿 쓰면 모두 들어 있는 기록만 보입니다. 찾는 일은 이 창 안에서만 하고 따로 남기지 않습니다.',
   searchNone: '찾은 기록이 없습니다.',
@@ -296,6 +301,7 @@ export const ko = {
     subjects: '대상자',
     cases: '사례',
     groups: '집단',
+    activities: '활동',
     practitioners: '담당자',
     name: '이름',
     people: '대상자',

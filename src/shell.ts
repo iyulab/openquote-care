@@ -77,7 +77,7 @@ export interface DiagnosticsLines {
 
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
 export interface VaultFileKind {
-  kind: 'subject' | 'group' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'pack' | 'labels' | 'fields' | 'run' | 'other'
+  kind: 'subject' | 'group' | 'activity' | 'practitioners' | 'devices' | 'scheme' | 'crosswalk' | 'report' | 'export' | 'pack' | 'labels' | 'fields' | 'run' | 'other'
   /** The subject's or group's id. */
   id?: string | null
   /** The scheme, report form, export form or pack. */
@@ -129,7 +129,7 @@ export interface TrackView {
 export interface RecordKind {
   type: string
   label: string | null
-  under: ('subject' | 'group')[]
+  under: ('subject' | 'group' | 'activity')[]
   /** Its place among the kinds, a smaller number first; null when the packs give none. */
   order?: number | null
   /** The date field that says when a record of the kind happened (`date` unless the packs say). */

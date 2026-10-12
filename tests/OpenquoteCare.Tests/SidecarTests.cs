@@ -741,6 +741,21 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Records_work_about_no_one_in_the_activity_folder()
+    {
+        await Post("/vault/load", Files(GoldenVault.School.Through(0)));
+
+        var file = await Post("/changes/activity", new { type = "activity", fields = new { date = "2026-04-01", title = "a training" } });
+        await Post("/vault/add", new { files = new[] { file } });
+
+        Assert.StartsWith("activities/", file["path"]!.GetValue<string>(), StringComparison.Ordinal);
+        var activity = (await Get("/entities/activity")).AsArray().Single()!;
+        Assert.Null(activity["subject"]);
+        Assert.Null(activity["group"]);
+        Assert.Empty(activity["people"]!.AsArray());
+    }
+
+    [Fact]
     public async Task Keeps_which_values_were_taken_from_a_suggestion()
     {
         await Post("/vault/load", Files(GoldenVault.School.Through(0)));

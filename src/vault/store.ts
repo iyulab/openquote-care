@@ -173,7 +173,7 @@ export class VaultStore extends EventTarget {
   readonly dayOf = (record: Entity): string => text(record, this.datedOf(record.type))
 
   /** The kinds of record kept under a subject's folder, or a group's. */
-  kindsUnder(holder: 'subject' | 'group'): RecordKind[] {
+  kindsUnder(holder: 'subject' | 'group' | 'activity'): RecordKind[] {
     return this.kinds.filter((k) => k.under.includes(holder))
   }
 

@@ -74,6 +74,8 @@ export interface PlainCopyWords {
   /** The heading over a subject's cases. */
   cases: string
   groups: string
+  /** The heading over the records about no one — work such as a training. */
+  activities: string
   practitioners: string
   name: string
   people: string
@@ -326,6 +328,16 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
         changesTable(source, words, held.flatMap((k) => changesOf(k, ofGroup(k, g)))),
       )
     }
+  }
+  // Work about no one: the records of the activity folder, by kind.
+  const ofNoOne = (k: PlainKind) => k.records.filter((r) => r.people.length === 0 && r.group === null && !r.subject)
+  const activities = inOrderOfFirstRecord(kinds, ofNoOne, source.dayOf).filter((k) => ofNoOne(k).length > 0)
+  if (activities.length) {
+    parts.push(
+      `<h2>${escape(words.activities)}</h2>`,
+      ...activities.map((k) => `<h3>${escape(k.label)}</h3>${recordTable(source, words, k.fields, ofNoOne(k), false)}`),
+      changesTable(source, words, activities.flatMap((k) => changesOf(k, ofNoOne(k)))),
+    )
   }
   if (source.practitioners.length) {
     parts.push(`<h2>${escape(words.practitioners)}</h2>`, `<ul>${byName(source.practitioners, source.names).map((p) => `<li>${escape(text(p, 'name'))}</li>`).join('')}</ul>`)

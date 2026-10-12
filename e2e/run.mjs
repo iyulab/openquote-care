@@ -2152,6 +2152,47 @@ const scenarios = {
     assert.ok(formLabel.includes('— 더한 항목별'), formLabel)
   },
 
+  async 'records work about no one — a training attended — and counts it by practitioner in a month'(app) {
+    // The school pack keeps a kind of record in the activity folder: work that is about no student.
+    await app.click('button', '활동')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=activities-lead]')`, 'the activities screen')
+    await app.click('dc-button', '활동 기록하기')
+    await app.setDate('날짜', '2026-04-10')
+    await app.cdp.waitFor(
+      `(() => { const el = __e2e.one('select[aria-label="담당자"]'); const o = el && [...el.options].find((o) => o.value); if (!o) return false; el.value = o.value; el.dispatchEvent(new Event('change', { bubbles: true, composed: true })); return true })()`,
+      'a practitioner to choose',
+    )
+    await app.choose('구분', 'training-taken')
+    await app.type('이름', '가상 직무 연수')
+    await app.type('시간', '15')
+    await app.click('dc-button', '활동 기록')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="activity"] tr[data-record]').length === 1`, 'the activity listed')
+    await app.noAlert()
+    const row = await app.cdp.evaluate(`[...__e2e.one('section[data-kind="activity"] tr[data-record]').children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() })`)
+    assert.ok(row.includes('연수 이수') && row.includes('가상 직무 연수') && row.includes('15'), `the row: ${JSON.stringify(row)}`)
+    // No student is touched: the record is in no one's list.
+    assert.equal(await app.cdp.evaluate(`__e2e.all('section[data-kind="activity"] tr.case-head').length`), 0, 'no case heads')
+
+    // Found by its words, it opens where it is kept: the activities, not a student.
+    await app.click('button', '기록 찾기')
+    await app.type('찾을 말', '가상 직무 연수')
+    await app.cdp.waitFor(`__e2e.all('tr[data-hit]').length === 1`, 'the activity found')
+    await app.click('[data-role=open-hit]')
+    await app.cdp.waitFor(`__e2e.one('dp-toolbar')?.getAttribute('heading') === '활동'`, 'the activities screen, from the search')
+
+    // The month by kind and practitioner: a form of a format that reads the activity folder.
+    await app.click('button', '통계')
+    await app.click('nav[aria-label="보고 양식"] button[data-entry="month-activity@1"]')
+    await app.choose('연도', '2026')
+    await app.choose('월', '4')
+    await app.click('dc-button', '산출')
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="training-taken"]')`, 'the month by kind of activity')
+    await app.noAlert()
+    const taken = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="training-taken"]').children].map((c) => c.textContent.trim())`)
+    assert.equal(taken[0], '연수 이수')
+    assert.ok(taken.at(-1).startsWith('1') && taken.at(-1).includes('15'), `one record, its hours added up: ${JSON.stringify(taken)}`)
+  },
+
   async 'lists a student whose follow-up after a closing is past its day, and says by when it was due'(app) {
     // The Korean school pack expects a follow-up within 28 days of a closing: a closing in April with nothing after it
     // is past its day now, and the list keeps such students apart — a list, never a judgement.

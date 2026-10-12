@@ -8,8 +8,8 @@ import { strings } from '../strings.js'
 import { deviceLabel } from './parts.js'
 import type { VaultStore } from './store.js'
 
-/** Where a new session is kept: a subject's folder, or a group's (with its attendees). */
-export type Holder = { kind: 'subject'; id: string } | { kind: 'group'; id: string }
+/** Where a new record is kept: a subject's folder, a group's (with its attendees), or the activity folder — about no one. */
+export type Holder = { kind: 'subject'; id: string } | { kind: 'group'; id: string } | { kind: 'activity' }
 
 /** A list of subjects to tick. `current` is read afresh on each tick: two can land before the next render. */
 export function subjectPicker(store: VaultStore, label: string, current: () => string[], set: (ids: string[]) => void) {
@@ -79,7 +79,9 @@ export function referenceChoices(store: VaultStore, field: FieldView, holder: Ho
     return store.entitiesOf(field.refType).map((e) => ({ value: e.id, label: text(e, 'name') }))
   const own = store
     .recordsOf(field.refType!)
-    .filter((r) => holder !== undefined && (holder.kind === 'subject' ? r.subject === holder.id : r.group === holder.id))
+    .filter((r) =>
+      holder === undefined ? false : holder.kind === 'subject' ? r.subject === holder.id : holder.kind === 'group' ? r.group === holder.id : !r.subject && !r.group,
+    )
   return [...own].sort((a, b) => store.dayOf(b).localeCompare(store.dayOf(a))).map((r) => ({ value: r.id, label: recordName(store, r) }))
 }
 

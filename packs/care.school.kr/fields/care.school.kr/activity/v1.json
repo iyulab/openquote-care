@@ -1,0 +1,49 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care.school.kr",
+  "type": "activity",
+  "version": 1,
+  "label": "Activity",
+  "under": [
+    "activity"
+  ],
+  "order": 90,
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Date"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "required": true,
+      "label": "Practitioner"
+    },
+    {
+      "name": "kind",
+      "kind": "coded",
+      "scheme": "activity-kind",
+      "required": true,
+      "label": "Kind"
+    },
+    {
+      "name": "title",
+      "kind": "text",
+      "label": "Title"
+    },
+    {
+      "name": "hours",
+      "kind": "number",
+      "label": "Hours"
+    },
+    {
+      "name": "note",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Notes"
+    }
+  ]
+}

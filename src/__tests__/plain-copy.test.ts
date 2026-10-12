@@ -98,6 +98,18 @@ describe('plain copy', () => {
     expect(page).toContain('Study (study · topic v1)')
   })
 
+  it('lists work about no one under activities, apart from every client and group', () => {
+    const activities = [entity('activity', 'a1', { date: '2026-04-15', title: 'A training attended' })]
+    const page = file(
+      plainCopy({ ...source(false), kinds: [...source(false).kinds, { label: 'Activity', fields: [field('date', 'date'), field('title', 'text')], records: activities }] }, en.plainCopy),
+      'records.html',
+    )
+    const section = page.slice(page.indexOf('<h2>Activities</h2>'))
+    expect(page).toContain('<h2>Activities</h2>')
+    expect(section).toContain('A training attended')
+    expect(page.slice(0, page.indexOf('<h2>Activities</h2>'))).not.toContain('A training attended')
+  })
+
   it('lists subjects by name and each one’s sessions oldest first, group sessions apart', () => {
     const page = file(plainCopy(source(false), en.plainCopy), 'records.html')
     expect(page.indexOf('>1. Ann &lt;b&gt;</h2>')).toBeLessThan(page.indexOf('>2. Zed</h2>'))

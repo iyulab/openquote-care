@@ -427,6 +427,24 @@ try {
   await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="external-counselling"]')`, 'the month by programme')
   await shoot('provided')
 
+  // Work about no one — a school vault keeps trainings, meetings and events in the activity folder.
+  if (locale === 'ko') {
+    const activities = [
+      { date: '2026-04-08', kind: 'training-given', title: '가상 학부모 연수 — 마음 읽기', hours: 2 },
+      { date: '2026-04-15', kind: 'meeting', title: '가상 학교폭력 대책 협의회', hours: 1.5 },
+      { date: '2026-04-22', kind: 'training-taken', title: '가상 위기 개입 직무 연수', hours: 15 },
+      { date: '2026-04-29', kind: 'event', title: '가상 생명 존중 주간 행사', hours: 3 },
+    ]
+    for (const [i, a] of activities.entries()) {
+      await invoke('record', { route: '/changes/activity', request: { type: 'activity', fields: {
+        date: a.date, practitioner: practitioners[i % practitioners.length], kind: coded('activity-kind', a.kind), title: a.title, hours: a.hours } } })
+    }
+    await app.folderAction(ui.refresh)
+    await app.click('button', '활동')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="activity"] tr[data-record]').length === ${4}`, 'the activities listed')
+    await shoot('activities')
+  }
+
   // The month's closings by reason, per practitioner.
   await app.click('button', ui.report)
   await app.click('nav[aria-label] button[data-entry="care.monthly-closing@1"]')

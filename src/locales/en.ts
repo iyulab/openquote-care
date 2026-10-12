@@ -131,6 +131,8 @@ export const en: Strings = {
         return holder ? `Records of client ${holder}` : 'Records of a client whose name could not be read'
       case 'group':
         return holder ? `Records of group ${holder}` : 'Records of a group whose name could not be read'
+      case 'activity':
+        return 'Activity records'
       case 'practitioners':
         return 'Practitioner records'
       case 'devices':
@@ -187,9 +189,12 @@ export const en: Strings = {
   navLabel: 'Navigation',
   navSubjects: 'Clients',
   navGroups: 'Groups',
+  navActivities: 'Activities',
   navPractitioners: 'Practitioners',
   navSearch: 'Find records',
   searchTitle: 'Find records',
+  activitiesTitle: 'Activities',
+  activitiesLead: 'Work about no one in particular — a training given or attended, a meeting, an event. Statistics and record lists count it by practitioner.',
   searchLabel: 'Words to find',
   searchLead: "Looks through every record — sessions, intakes, closings — its title, notes, classifications, practitioner and the names of its clients and group. With several words, only records holding all of them show. The search runs in this window only and keeps nothing.",
   searchNone: 'No record found.',
@@ -301,6 +306,7 @@ export const en: Strings = {
     subjects: 'Clients',
     cases: 'Cases',
     groups: 'Groups',
+    activities: 'Activities',
     practitioners: 'Practitioners',
     name: 'Name',
     people: 'Clients',

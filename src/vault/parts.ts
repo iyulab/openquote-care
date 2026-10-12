@@ -235,15 +235,19 @@ export function formLabel(forms: readonly { name: string; label: string; version
   return versions > 1 ? strings.reportFormOption(form.label, form.version) : form.label
 }
 
-/** Where a record opens: the subject or the group whose records hold it, with the record brought into view. */
+/** Where a record opens: the subject or the group whose records hold it, or the activities, with the record brought into view. */
 export interface OpenSession {
-  holder: 'subject' | 'group'
+  holder: 'subject' | 'group' | 'activity'
   id: string
   session: string
 }
 
-/** Asks the vault's window to open a record where it is kept: its group's records, or its subject's. */
+/** Asks the vault's window to open a record where it is kept: its group's records, its subject's, or the activities — a record about no one. */
 export function openSessionEvent(s: Entity): CustomEvent<OpenSession> {
-  const detail: OpenSession = s.group ? { holder: 'group', id: s.group, session: s.id } : { holder: 'subject', id: s.subject ?? s.people[0], session: s.id }
+  const detail: OpenSession = s.group
+    ? { holder: 'group', id: s.group, session: s.id }
+    : !s.subject && s.people.length === 0
+      ? { holder: 'activity', id: '', session: s.id }
+      : { holder: 'subject', id: s.subject ?? s.people[0], session: s.id }
   return new CustomEvent<OpenSession>('oc-open-session', { detail, bubbles: true, composed: true })
 }

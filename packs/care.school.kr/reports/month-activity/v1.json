@@ -1,0 +1,27 @@
+{
+  "format": "openquote.report/2",
+  "report": "month-activity",
+  "version": 1,
+  "label": "월별 담당자별 활동",
+  "counts": "activity",
+  "period": {
+    "unit": "month",
+    "field": "date"
+  },
+  "dimensions": [
+    {
+      "field": "kind",
+      "scheme": "activity-kind",
+      "version": 1
+    },
+    {
+      "field": "practitioner"
+    }
+  ],
+  "measures": [
+    "records",
+    {
+      "sum": "hours"
+    }
+  ]
+}

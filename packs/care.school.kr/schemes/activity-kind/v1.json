@@ -1,0 +1,15 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "activity-kind",
+  "version": 1,
+  "items": [
+    { "code": "training-given", "label": "연수 진행" },
+    { "code": "training-taken", "label": "연수 이수" },
+    { "code": "meeting", "label": "회의 참여" },
+    { "code": "event", "label": "행사 운영" },
+    { "code": "programme", "label": "프로그램 운영" },
+    { "code": "self-development", "label": "자기 계발" },
+    { "code": "job-development", "label": "직무 계발" },
+    { "code": "other", "label": "기타" }
+  ]
+}

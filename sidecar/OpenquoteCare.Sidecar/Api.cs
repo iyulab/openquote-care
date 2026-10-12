@@ -36,6 +36,9 @@ public sealed record CreateInSubjectRequest(string SubjectId, string Type, Dicti
 /// <param name="Source">As for <see cref="CreateInSubjectRequest"/>.</param>
 public sealed record CreateInGroupRequest(string GroupId, string Type, Dictionary<string, JsonNode?> Fields, Dictionary<string, string>? Source = null);
 
+/// <summary>A record about no subject or group — work such as a training given or attended — kept in the activity folder.</summary>
+public sealed record CreateActivityRequest(string Type, Dictionary<string, JsonNode?> Fields, Dictionary<string, string>? Source = null);
+
 public sealed record DeviceNameRequest(string Name);
 
 public sealed record UpdateRequest(string Type, string Id, Dictionary<string, JsonNode?> Fields);
@@ -502,6 +505,9 @@ internal static class Api
         app.MapPost("/changes/in-group", (CreateInGroupRequest request) =>
             WireFile.From(writer.CreateInGroup(request.GroupId, request.Type, request.Fields, request.Source)));
 
+        app.MapPost("/changes/activity", (CreateActivityRequest request) =>
+            WireFile.From(writer.CreateActivity(request.Type, request.Fields, request.Source)));
+
         // Names this device: renames the device entity it made, or makes one.
         app.MapPost("/changes/device-name", (DeviceNameRequest request, VaultSession session) =>
         {
@@ -827,6 +833,7 @@ internal static class Api
 [JsonSerializable(typeof(CreateSubjectRequest))]
 [JsonSerializable(typeof(CreateInSubjectRequest))]
 [JsonSerializable(typeof(CreateInGroupRequest))]
+[JsonSerializable(typeof(CreateActivityRequest))]
 [JsonSerializable(typeof(DeviceNameRequest))]
 [JsonSerializable(typeof(UpdateRequest))]
 [JsonSerializable(typeof(ReclassifyRequest))]

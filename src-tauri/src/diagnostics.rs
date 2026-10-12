@@ -44,6 +44,7 @@ pub const SCREENS: &[&str] = &[
     "feedback",
     "vault:subjects",
     "vault:groups",
+    "vault:activities",
     "vault:practitioners",
     "vault:search",
     "vault:report",

@@ -32,8 +32,10 @@ export class OcRecordKinds extends StoreElement {
   @state() private settling?: string
 
   private recordsHere(kind: RecordKind): Entity[] {
-    const { kind: holds, id } = this.holder
-    return newestFirst(this.store.recordsOf(kind.type).filter((r) => (holds === 'subject' ? r.subject === id && !r.group : r.group === id)), this.store.dayOf)
+    const holder = this.holder
+    const here = (r: Entity) =>
+      holder.kind === 'subject' ? r.subject === holder.id && !r.group : holder.kind === 'group' ? r.group === holder.id : !r.subject && !r.group
+    return newestFirst(this.store.recordsOf(kind.type).filter(here), this.store.dayOf)
   }
 
   private async settle(record: Entity, field: string, value: unknown) {

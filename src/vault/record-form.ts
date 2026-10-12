@@ -605,7 +605,7 @@ export class OcRecordForm extends StoreElement {
     const filled = await this.filledIn()
     if (!filled) return
     const stale = holder.kind === 'subject' ? this.stale : []
-    if (stale.length > 0) {
+    if (stale.length > 0 && holder.kind === 'subject') {
       // The subject is corrected first, to what the person confirmed, so the session takes values someone gave.
       const corrected = Object.fromEntries(stale.map((c) => [c.subjectField, (this.refreshed[c.subjectField] ?? '').trim() || null]))
       await store.run(async () => {
@@ -629,13 +629,15 @@ export class OcRecordForm extends StoreElement {
     // were written: the opening's score after the opening, so it is in the case it opens; the closing's before the
     // closing, so it is in the case it closes and not taken for a follow-up.
     const writeScore = async () => {
-      if (response && beside) await shell.record('/changes/in-subject', { subjectId: holder.id, type: beside.responses.type, fields: response, source: {} })
+      if (response && beside && holder.kind === 'subject') await shell.record('/changes/in-subject', { subjectId: holder.id, type: beside.responses.type, fields: response, source: {} })
     }
     await store.run(async () => {
       if (beside?.role === 'closes') await writeScore()
       await (holder.kind === 'subject'
         ? shell.record('/changes/in-subject', { subjectId: holder.id, type: this.type, fields, source })
-        : shell.record('/changes/in-group', { groupId: holder.id, type: this.type, fields, source }))
+        : holder.kind === 'group'
+          ? shell.record('/changes/in-group', { groupId: holder.id, type: this.type, fields, source })
+          : shell.record('/changes/activity', { type: this.type, fields, source }))
       if (beside?.role === 'opens') await writeScore()
       this.scaleCode = ''
       this.scaleChosen = false

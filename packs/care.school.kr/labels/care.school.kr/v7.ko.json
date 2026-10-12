@@ -1,0 +1,41 @@
+{
+  "format": "openquote.labels/0",
+  "pack": "care.school.kr",
+  "version": 7,
+  "locale": "ko",
+  "types": {
+    "activity": "활동"
+  },
+  "fields": {
+    "session": {
+      "topic": "주제",
+      "method": "방법",
+      "client_type": "상담 상대",
+      "neis": "NEIS 분류",
+      "assessments": "실시한 검사",
+      "title": "상담 제목",
+      "minutes": "상담 시간(분)"
+    },
+    "practitioner": {
+      "affiliation": "소속"
+    },
+    "subject": {
+      "level": "학교급"
+    },
+    "activity": {
+      "date": "날짜",
+      "practitioner": "담당자",
+      "kind": "구분",
+      "title": "이름",
+      "hours": "시간",
+      "note": "메모"
+    }
+  },
+  "aliases": {
+    "subject": {
+      "name": [
+        "학생명"
+      ]
+    }
+  }
+}
