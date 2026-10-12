@@ -506,6 +506,28 @@ try {
   }
 
 
+  // Who the practitioner meets today: two sessions a week ago set today as the next session's day. Taken after the
+  // forms, so no month or school year they lay out counts these sessions.
+  const here = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const now = new Date()
+  const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7)
+  for (const [i, subject] of [2, 4].entries()) {
+    const topic = L.sequence[i]
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[subject], type: 'session', fields: {
+      date: here(weekAgo), practitioner: practitioners[i % practitioners.length],
+      [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, topic),
+      [locale === 'ko' ? 'method' : 'mode']: coded(L.method, L.methods[0]),
+      note: L.notes[topic][0], ...L.sessionFields(topic, i, subject), next: here(now) } } })
+  }
+  await app.folderAction(ui.refresh)
+  await sleep(1500)
+  await app.click('button', ui.subjects)
+  await app.click('dc-button[data-attention="today"]')
+  await app.cdp.waitFor(`__e2e.all('.pane.list li').length === 2`, 'the list narrowed to who is met today')
+  await app.click('li button .label', L.subjects[2])
+  await shoot('today')
+  await app.click('dc-button[data-attention="today"]')
+
   // The automatic backup, in another folder.
   const copy = join(work, locale === 'ko' ? '백업' : 'Backup')
   await mkdir(copy)
