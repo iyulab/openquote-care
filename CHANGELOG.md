@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- The app is now published as `me.openquote.care`, the name of its own website, in place of an identifier under the company that started it. Updating changes nothing a person sees: the update installs into the same folder, and on its first start the app moves its own data — the computer's name among the devices sharing a records folder, the installation's number, the recent records folders and settings — to the folder the new name gives it. Records folders are not touched.
+
 ### Fixed
 - Record lists opens on the list of sessions again, as Statistics opens on a form counting sessions; since 0.18.0 it opened on the provision list.
 

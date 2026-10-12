@@ -134,6 +134,12 @@ pub fn webview_missing_report() -> Report {
     Report::new(&shell(), "WebviewMissing", "", VERSION)
 }
 
+/// The report of a launch that could not take over the data folder of the identifier the app had before, and
+/// copied only what names the device and the installation — so the publisher sees how often it happens.
+pub fn earlier_data_report() -> Report {
+    Report::new(&shell(), "EarlierDataNotMoved", "", VERSION)
+}
+
 /// The report of an error the window did not handle: its type name and its stack, of which only
 /// the frames in the app's own bundle are kept — never the message.
 pub fn window_report(kind: &str, stack: &str) -> Report {
@@ -438,6 +444,13 @@ pub fn command_failed(code: &str, at: &Location<'_>, status: Option<u16>, fault:
         && is_fault(code)
     {
         diagnostics.record(command_report(code, at, status, fault));
+    }
+}
+
+/// Reports that the earlier identifier's data folder was not taken over whole.
+pub fn earlier_data_not_moved() {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.record(earlier_data_report());
     }
 }
 

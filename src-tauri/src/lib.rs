@@ -3,6 +3,7 @@
 mod app;
 mod bundle;
 mod diagnostics;
+mod earlier;
 mod feedback;
 pub mod locale;
 pub mod runtime;
@@ -378,7 +379,13 @@ const VAULT_CHANGED: &str = "vault-changed";
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
+    // An installation from before the identifier changed keeps its data folder: taken over before anything —
+    // the diagnostics, the web view — makes one of this identifier's.
+    let taken = dirs::data_local_dir().map(|base| earlier::take_over(&base, &context.config().identifier));
     diagnostics::install(&context.config().identifier);
+    if matches!(taken, Some(Ok(earlier::TakeOver::Copied) | Err(_))) {
+        diagnostics::earlier_data_not_moved();
+    }
     // Only the release build carries the updater's key; without it the plugin is not registered.
     let can_update = updates::configured(context.config());
     // Tauri would stop with an English message of its own; say it in the person's language first.

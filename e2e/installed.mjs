@@ -15,11 +15,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import assert from 'node:assert/strict'
-import { findInstaller, startsAndStays, withAppDataSetAside, withInstalled } from '@iyulab/tauri-kit-dev/installer'
+import { findInstaller, startsAndStays, withInstalled } from '@iyulab/tauri-kit-dev/installer'
+import { withInstallationSetAside } from './identity.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = join(here, '..')
-const { version, identifier } = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
+const config = JSON.parse(readFileSync(join(root, 'src-tauri', 'tauri.conf.json'), 'utf8'))
+const { version } = config
 const exe = 'openquote-care.exe'
 
 /**
@@ -33,8 +35,9 @@ function checkEnv() {
 }
 
 const installer = findInstaller(join(root, 'target', 'release', 'bundle', 'nsis'), { version, hint: 'run `npm run bundle` first' })
-// The installed copy keeps its data where this computer's own copy does: set it aside for the check.
-await withAppDataSetAside(join(process.env.LOCALAPPDATA, identifier), () =>
+// The installed copy keeps its data where this computer's own copy does — and takes over the earlier identifier's:
+// set this computer's installation aside for the check.
+await withInstallationSetAside(config, () =>
   withInstalled(
     installer,
     async (target) => {
