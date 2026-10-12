@@ -360,8 +360,8 @@ const scenarios = {
     const [first] = (await app.sessionRows()).slice(-1)
     assert.deepEqual([first[heads.indexOf('다음 회기 날')], first[heads.indexOf('향후계획')]], ['2026-04-09', '계속'], `the next step in its columns: ${JSON.stringify(heads)}`)
     assert.deepEqual((await app.sessionRows()).map((r) => r.filter((_, i) => i !== heads.indexOf('다음 회기 날') && i !== heads.indexOf('향후계획'))), [
-      ['2026-04-09', '', '관계', '', '학생', '', '', '', '상담자 가'],
-      ['2026-04-02', '', '학습', '특별 › 학교폭력', '학생', '개인상담 › 학업', '', '', '상담자 가'],
+      ['2026-04-09', '', '관계', '', '', '학생', '', '', '', '상담자 가'],
+      ['2026-04-02', '', '학습', '특별 › 학교폭력', '', '학생', '개인상담 › 학업', '', '', '상담자 가'],
     ])
     const subjects = await readdir(join(work.vault, 'subjects'))
     assert.equal(subjects.length, 1, 'one subject folder')
@@ -840,7 +840,7 @@ const scenarios = {
     await app.click('dc-button', '회기 기록')
     await app.cdp.waitFor(`__e2e.all('tr[data-session]').length === 1`, 'the group session')
     await app.noAlert()
-    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '', '또래관계', '', '학생', '', '', '', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']]) // the next session's day and the next step, blank
+    assert.deepEqual(await app.sessionRows(), [['2026-04-16', '', '또래관계', '', '', '학생', '', '', '', '', '', '가상 학생 1, 가상 학생 2', '상담자 가']]) // the next session's day and the next step, blank
     const groups = await readdir(join(work.vault, 'groups'))
     assert.equal(groups.length, 1, 'one group folder, apart from the subjects')
     assert.equal((await readdir(join(work.vault, 'groups', groups[0]))).length, 3, 'the group, its members, and the session')

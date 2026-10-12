@@ -94,6 +94,18 @@ public sealed class PackFilesTests
     }
 
     [Fact]
+    public void A_school_session_may_say_where_it_was_held_and_a_month_is_counted_by_place_and_practitioner()
+    {
+        var content = VaultOn("school-kr");
+        var place = content.FieldCatalog().Find("session", "place")!;
+
+        Assert.Equal((FieldKind.Coded, "place", false), (place.Kind, place.Scheme, place.Required));
+        Assert.Equal("상담 장소", content.LabelCatalog().FieldLabel("session", "place", ["ko"]));
+        var form = content.Reports.Single(r => r.Name == "month-practitioner-place");
+        Assert.Equal(["place", "practitioner"], form.Dimensions.Select(d => d.Field));
+    }
+
+    [Fact]
     public void The_school_tracks_list_of_activities_is_asked_for_by_school_year()
     {
         var list = VaultOn("school-kr").Exports.Single(e => e.Name == "activity-list");

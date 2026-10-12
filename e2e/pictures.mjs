@@ -316,6 +316,8 @@ try {
         [locale === 'ko' ? 'topic' : 'concern']: coded(L.topic, topic),
         [locale === 'ko' ? 'method' : 'mode']: coded(L.method, L.methods[(n * 2) % L.methods.length]),
         note: notes[n % notes.length],
+        // Where a school session was held: mostly the school's own room, now and then elsewhere.
+        ...(locale === 'ko' ? { place: coded('place', ['wee-class', 'wee-class', 'wee-class', 'visiting-school', 'wee-center', 'home-visit'][n % 6]) } : {}),
         ...L.sessionFields(topic, n, subject),
       }
       await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[subject], type: 'session', fields } })
@@ -426,6 +428,17 @@ try {
   await app.click('dc-button', ui.run)
   await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="external-counselling"]')`, 'the month by programme')
   await shoot('provided')
+
+  // Where the month's sessions were held, by practitioner.
+  if (locale === 'ko') {
+    await app.click('button', ui.report)
+    await app.click('nav[aria-label] button[data-entry="month-practitioner-place@1"]')
+    await app.choose(ui.year, '2026')
+    await app.choose(ui.month, '4')
+    await app.click('dc-button', ui.run)
+    await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="wee-class"]')`, 'the month by place')
+    await shoot('place')
+  }
 
   // Work about no one — a school vault keeps trainings, meetings and events in the activity folder.
   if (locale === 'ko') {

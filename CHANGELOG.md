@@ -8,6 +8,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Added
 - A provision names its practitioner, as every other kind of record does, and the provision list has a column for it.
+- In school vaults, a session may say where it was held — the school's counselling room, the education office's centre, a school visited on a round, a home visit, online or elsewhere — and a statistics form counts the month's sessions by place and practitioner.
 - Activities (활동), in school vaults: work about no student — a training given or attended, a meeting, an event, a programme — recorded with its day, practitioner, kind, name and hours, on a screen of its own beside the people and groups, a year at a time (a school year from March) and for one practitioner or all. A statistics form counts the month's activities by kind and practitioner with their hours added up, and a record list lists them, for a practitioner's record of trainings. No person's list or count changes.
 
 ### Changed

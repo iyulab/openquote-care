@@ -1702,7 +1702,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school", "care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 14));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 15));
         assert_eq!(summary["packIssues"], json!([]));
         for file in &added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
@@ -1711,11 +1711,11 @@ cut off").unwrap();
         assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("updatedPacks").is_none(), "nothing to take on the next time");
     }
 
-    /// The files the school pack's eighth to fourteenth versions add: a field that takes several values,
+    /// The files the school pack's eighth to fifteenth versions add: a field that takes several values,
     /// and forms reading it, so a vault holding them needs format 1 — a follow-up a closing expects, and an
     /// agency worker among the people a session is with, with a form counting by NEIS category — a session's next step,
-    /// a revision of the session methods leaving out one area's own programme, and work about no one as a kind of record.
-    const SCHOOL_PACK_8: [&str; 29] = [
+    /// a revision of the session methods leaving out one area's own programme, and work about no one as a kind of record, and where a session was held.
+    const SCHOOL_PACK_8: [&str; 34] = [
         "packs/care.school.kr/v8.json.age",
         "schemes/assessment-tool/v1.json.age",
         "fields/care.school.kr/session/v6.json.age",
@@ -1745,6 +1745,11 @@ cut off").unwrap();
         "labels/care.school.kr/v7.ko.json.age",
         "reports/month-activity/v1.json.age",
         "exports/activity-list/v1.json.age",
+        "packs/care.school.kr/v15.json.age",
+        "schemes/place/v1.json.age",
+        "fields/care.school.kr/session/v8.json.age",
+        "labels/care.school.kr/v8.ko.json.age",
+        "reports/month-practitioner-place/v1.json.age",
     ];
 
     /// The core pack's sixth version — a crosswalk from closing reasons into how a closing ended, and the
@@ -1836,7 +1841,7 @@ cut off").unwrap();
         app.close_vault();
         let reopened = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert!(reopened.get("waitingPacks").is_none() && reopened.get("updatedPacks").is_none());
-        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 14));
+        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 15));
     }
 
     #[test]
@@ -1995,7 +2000,7 @@ cut off").unwrap();
         let offered: Vec<&str> = summary["reports"].as_array().unwrap().iter().filter(|r| r["offered"] == true).map(|r| r["name"].as_str().unwrap()).collect();
         assert_eq!(
             offered,
-            ["care.monthly-closing-by-source", "care.monthly-closing-type", "care.monthly-closing", "care.monthly-intake", "care.monthly-provision", "month-activity", "month-assessment-tool", "month-neis", "month-practitioner-minutes", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
+            ["care.monthly-closing-by-source", "care.monthly-closing-type", "care.monthly-closing", "care.monthly-intake", "care.monthly-provision", "month-activity", "month-assessment-tool", "month-neis", "month-practitioner-minutes", "month-practitioner-place", "monthly-topic", "year-assessment-level", "year-client-type", "year-grade-class", "year-grade-gender", "year-practitioner-minutes"]
         );
     }
 

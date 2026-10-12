@@ -1,0 +1,13 @@
+{
+  "format": "openquote.scheme/0",
+  "scheme": "place",
+  "version": 1,
+  "items": [
+    { "code": "wee-class", "label": "Wee클래스(학교)" },
+    { "code": "wee-center", "label": "Wee센터" },
+    { "code": "visiting-school", "label": "순회 지정교" },
+    { "code": "home-visit", "label": "가정 방문" },
+    { "code": "online", "label": "온라인" },
+    { "code": "other", "label": "기타" }
+  ]
+}
