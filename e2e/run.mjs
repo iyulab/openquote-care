@@ -1831,7 +1831,11 @@ const scenarios = {
     // A case rated on two scales: the closing starts from the one given beside the intake, whatever order the case lists its scales in.
     await app.click('button', 'Clients')
     await app.click('dc-button', '+ New client')
+    // A name already here is said while it is typed, with a way to open that person instead — it never stops the adding.
+    await app.type('Client name', 'client one')
+    await app.cdp.waitFor(`__e2e.one('[data-role=already-here] li[data-same=yes] strong')?.textContent.trim() === 'Client One'`, 'the client already here, by the same name')
     await app.type('Client name', 'Client Two')
+    await app.cdp.waitFor(`!__e2e.one('[data-role=already-here]')`, 'no one like the new name')
     await app.click('dc-button', 'Add client')
     await app.click('li button .label', 'Client Two')
     await app.click('dc-button', 'Add an intake')

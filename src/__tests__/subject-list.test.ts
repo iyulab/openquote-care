@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysBetween, matches, narrowSubjects, shortDay, type SubjectRow } from '../subject-list.js'
+import { alreadyHere, daysBetween, matches, narrowSubjects, shortDay, type SubjectRow } from '../subject-list.js'
 
 const names = new Intl.Collator('en')
 const row = (id: string, name: string, words: string, last: string | null, state: SubjectRow['state'], followUp: SubjectRow['followUp'] = null): SubjectRow => ({
@@ -107,5 +107,27 @@ describe('the open cases that ask for a session', () => {
     expect(daysBetween('2026-09-17', '2026-10-09')).toBe(22)
     expect(daysBetween('2026-10-09', '2026-10-09')).toBe(0)
     expect(daysBetween('2026-02-28', '2026-03-01')).toBe(1)
+  })
+})
+
+describe('the people already here a new name may be', () => {
+  const people = [row('k', '김 하늘', '', null, null), row('l', '김하늘', '', null, null), row('m', '김하늘별', '', null, null), row('n', '이하늘', '', null, null), row('o', '하', '', null, null)]
+  const ko = new Intl.Collator('ko')
+
+  it('puts the same name, spaces and case aside, first — then names holding what was typed', () => {
+    expect(alreadyHere(people, '김하늘', ko).map((f) => [f.row.id, f.same])).toEqual([
+      ['k', true],
+      ['l', true],
+      ['m', false],
+    ])
+  })
+
+  it('also finds a name held in what was typed, but not a single letter', () => {
+    expect(alreadyHere(people, '김하늘별님', ko).map((f) => f.row.id).sort()).toEqual(['k', 'l', 'm'])
+  })
+
+  it('says nothing before two letters are typed', () => {
+    expect(alreadyHere(people, '김', ko)).toEqual([])
+    expect(alreadyHere(people, ' ', ko)).toEqual([])
   })
 })

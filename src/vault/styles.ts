@@ -177,6 +177,34 @@ export const vaultStyles = [
     details.timeline .who {
       color: var(--dc-color-text-muted, #8a8a92);
     }
+    /* The people already here a new name may be: one quiet block under the name, its lines sharing their columns. */
+    section.already-here {
+      border: 1px solid var(--dc-color-rule, #e4e4e7);
+      border-radius: var(--dc-radius-md, 6px);
+      padding: var(--dc-space-3, 12px);
+    }
+    section.already-here > p.lead {
+      margin: 0 0 var(--dc-space-2, 8px);
+      color: var(--dc-color-text-secondary, #52525b);
+    }
+    section.already-here > ul {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr) max-content max-content max-content;
+      column-gap: var(--dc-space-3, 12px);
+      row-gap: var(--dc-space-2, 8px);
+      align-items: center;
+    }
+    section.already-here .what {
+      display: flex;
+      flex-wrap: wrap;
+      column-gap: var(--dc-space-3, 12px);
+    }
+    section.already-here li {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: subgrid;
+      align-items: center;
+    }
     /* What asks for something across the subjects: a quiet label and a button for each count. */
     .attention {
       display: flex;

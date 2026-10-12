@@ -95,7 +95,7 @@ const L = {
     track: 'school-kr',
     ui: {
       create: '새 기록 폴더 만들기', passphrase: '암호', again: '암호 다시 입력', track: '분야와 지역', make: '만들기', kit: '복구 키트',
-      kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', subjects: '대상자', date: '날짜', note: '상담 내용',
+      kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', newSubject: '＋ 새 대상자', subjectName: '대상자 이름', subjects: '대상자', date: '날짜', note: '상담 내용',
       report: '통계', year: '연도', month: '월', run: '산출', lists: '기록 목록', makeList: '목록 만들기', refresh: '다시 읽기',
       compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', appSettings: '앱 설정', practitioner: '담당자',
       find: '기록 찾기', findLabel: '찾을 말', choices: '선택 목록', itemName: '항목 이름', countedAs: '통계에서 세는 항목', addToList: '목록에 더하기',
@@ -163,7 +163,7 @@ const L = {
     track: 'care-en',
     ui: {
       create: 'Create a vault', passphrase: 'Passphrase', again: 'Passphrase again', track: 'Field and region', make: 'Create', kit: 'Recovery kit',
-      kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', subjects: 'Clients', date: 'Date',
+      kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', newSubject: '+ New client', subjectName: 'Client name', subjects: 'Clients', date: 'Date',
       note: 'Notes', report: 'Statistics', year: 'Year', month: 'Month', run: 'Run', lists: 'Record lists', makeList: 'Make list', refresh: 'Reload',
       compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', appSettings: 'App settings', practitioner: 'Practitioner',
       find: 'Find records', findLabel: 'Words to find', choices: 'Choice lists', itemName: 'Item name', countedAs: 'Counted in statistics as',
@@ -534,6 +534,12 @@ try {
   await app.click('li button .label', L.subjects[2])
   await shoot('today')
   await app.click('dc-button[data-attention="today"]')
+
+  // Adding a person whose name is already here: who it may be, and a way to open them instead.
+  await app.click('dc-button', ui.newSubject)
+  await app.type(ui.subjectName, L.subjects[1])
+  await app.cdp.waitFor(`!!__e2e.one('[data-role=already-here]')`, 'the person already here')
+  await shoot('already')
 
   // The automatic backup, in another folder.
   const copy = join(work, locale === 'ko' ? '백업' : 'Backup')

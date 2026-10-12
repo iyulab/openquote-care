@@ -98,3 +98,22 @@ export function shortDay(day: string, year: string): string {
 export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 }
+
+/** A name as two are compared to find the same person: letters only, spaces left out, any case. */
+const bare = (s: string) => s.toLocaleLowerCase().replace(/\s+/g, '')
+
+/**
+ * While a new person's name is typed, the people already here who may be the one: the same name, spaces and case
+ * aside, first — then names that hold what was typed or are held in it — by name, at most five. Nothing until two
+ * letters are typed. It only shows; whether it is the same person is the practitioner's to say.
+ */
+export function alreadyHere(rows: readonly SubjectRow[], typed: string, names: Pick<Intl.Collator, 'compare'>): { row: SubjectRow; same: boolean }[] {
+  const t = bare(typed)
+  if (t.length < 2) return []
+  return rows
+    .map((row) => ({ row, name: bare(row.name) }))
+    .filter(({ name }) => name.length >= 2 && (name.includes(t) || t.includes(name)))
+    .map(({ row, name }) => ({ row, same: name === t }))
+    .sort((a, b) => Number(b.same) - Number(a.same) || names.compare(a.row.name, b.row.name))
+    .slice(0, 5)
+}

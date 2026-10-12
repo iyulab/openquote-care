@@ -8,7 +8,7 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
 import { recordFields } from '../fields.js'
 import { today } from '../records.js'
-import { daysBetween, narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
+import { alreadyHere, daysBetween, narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
 import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
@@ -262,6 +262,7 @@ export class OcSubjects extends VaultScreen {
       <dc-card>
         <div class="stack">
           ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
+          ${this.alreadyHereHint()}
           <dc-paste-rows-zone
             placeholder=${strings.importPaste}
             @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
@@ -273,6 +274,39 @@ export class OcSubjects extends VaultScreen {
         <dc-button slot="footer" variant="primary" ?disabled=${busy} @click=${addSubject}>${strings.addSubject}</dc-button>
       </dc-card>
       ${noticeLine(this.store)}`
+  }
+
+  /**
+   * While a new person's name is typed: the people already here by that name or one like it, each with what tells them
+   * apart and a way to open them instead. It never stops the adding — two people may share a name.
+   */
+  private alreadyHereHint() {
+    const found = alreadyHere(subjectRows(this.store), this.subjectName, this.store.names)
+    if (found.length === 0) return nothing
+    const fields = recordFields(this.store.fieldsOf('subject')).filter((f) => f.tier !== 'narrative' && f.name !== 'name')
+    const counts = countBy(this.store.sessions, (s) => s.people)
+    return html`<section class="already-here" data-role="already-here" aria-label=${strings.alreadyHereLead}>
+      <p class="lead">${strings.alreadyHereLead}</p>
+      <ul>
+        ${found.map(({ row, same }) => {
+          const subject = this.store.subjects.find((s) => s.id === row.id)
+          // What tells two people of one name apart: the first few details the pack keeps on a person, each under its own name, as on a person's page.
+          const values = subject
+            ? fields
+                .map((f) => ({ label: f.label, value: valueText(this.store, f, subject.fields[f.name]) }))
+                .filter((v) => v.value)
+                .slice(0, 4)
+            : []
+          return html`<li data-subject=${row.id} data-same=${same ? 'yes' : 'no'}>
+            <strong>${row.name}</strong>
+            <span class="what">${values.map((v) => html`<span class="pair"><span class="muted">${v.label}</span> ${v.value}</span>`)}</span>
+            <span class="muted">${strings.sessionCount(counts.get(row.id) ?? 0)}</span>
+            <span>${same ? html`<dc-badge variant="accent">${strings.sameName}</dc-badge>` : nothing}</span>
+            <dc-button size="sm" variant="secondary" @click=${() => this.pick(row.id)}>${strings.openThisPerson}</dc-button>
+          </li>`
+        })}
+      </ul>
+    </section>`
   }
 
   private importPreview(plan: ImportPlan) {
