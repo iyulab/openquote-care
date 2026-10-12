@@ -124,8 +124,8 @@ export function recordTable(store: VaultStore, t: RecordTable) {
   const numeric = columns.map((f) => f.kind === 'number')
   if (at >= 0) numeric.splice(at, 0, false)
   // Words may break onto a second line where the table is narrower than its rows, so it fits its box rather than
-  // scrolling across; a date and a number keep to one line, and so does the first cell, with its buttons.
-  const wraps = columns.map((f, i) => i > 0 && f.kind !== 'date' && f.kind !== 'number')
+  // scrolling across; a date and a number keep to one line, and so do a person's name and the first cell, with its buttons.
+  const wraps = columns.map((f, i) => i > 0 && f.kind !== 'date' && f.kind !== 'number' && !(f.kind === 'reference' && f.refType === 'practitioner'))
   if (at >= 0) wraps.splice(at, 0, true)
   // The fields a form of the vault adds up for this kind — sessions' minutes, a provision's amount — are added up
   // under each case too; a number no form adds up (a scale's score) is not.
