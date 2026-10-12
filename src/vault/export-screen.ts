@@ -9,7 +9,7 @@ import { plainCopy } from '../plain-copy.js'
 import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth } from './parts.js'
+import { deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth, unitPeriodDays, unitPeriodFields } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -51,19 +51,23 @@ export class OcExport extends VaultScreen {
     if (history) this.changesNow = [...history.values()].reduce((n, c) => n + c.length, 0)
   }
 
+  /** The chosen form; its unit says how its period is picked, as a statistics form's does. */
+  private chosenForm() {
+    return this.store.summary?.exports.find((e) => `${e.name}@${e.version}` === this.store.exportKey)
+  }
+
   private async runExport() {
     const store = this.store
     const [name, version] = store.exportKey.split('@')
     if (!name) return
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const month = `${store.year}-${pad(store.month)}`
-    const [from, to] = this.byRange
-      ? [store.rangeFrom, store.rangeTo]
-      : [`${month}-01`, `${month}-${pad(new Date(store.year, store.month, 0).getDate())}`]
-    if (!from || !to || to < from) {
+    const form = this.chosenForm()
+    // A form naming no unit is picked by a month or any days, as the person chooses.
+    const days = unitPeriodDays(store, form?.unit ?? (this.byRange ? 'range' : 'month'), form?.startMonth ?? 1)
+    if (!days) {
       store.set({ error: { text: strings.rangeMissing } })
       return
     }
+    const { from, to } = days
     store.set({ notice: '' })
     await store.run(async () => {
       this.exportTable = await shell.runExport(name, Number(version), from, to)
@@ -139,9 +143,10 @@ export class OcExport extends VaultScreen {
     if (typeof folder === 'string') await this.makePlainCopy(folder)
   }
 
-  /** Steps the month by `by` while the list is of a month; false while it is of a range or of every record. */
+  /** Steps the month by `by` while the list is of a month; false while it is of another span or of every record. */
   stepPeriod(by: number): boolean {
-    if (this.plainPicked || this.byRange || this.store.busy || !this.store.exportKey) return false
+    const unit = this.chosenForm()?.unit ?? (this.byRange ? 'range' : 'month')
+    if (this.plainPicked || unit !== 'month' || this.store.busy || !this.store.exportKey) return false
     stepMonth(this.store, by)
     return true
   }
@@ -236,16 +241,19 @@ export class OcExport extends VaultScreen {
     const store = this.store
     const busy = store.busy
     const table = this.exportTable && maskNames(this.exportTable, this.exportTable.names, this.nameMask)
+    const form = this.chosenForm()
     return html`<dp-page-header heading=${title} description=${strings.exportLead}></dp-page-header>
       <div class="toolbar no-print">
-        <dc-segmented-control
-          aria-label=${strings.periodKind}
-          .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
-          .value=${this.byRange ? 'range' : 'month'}
-          ?disabled=${busy}
-          @change=${(e: Event) => (this.byRange = (e.target as HTMLInputElement).value === 'range')}
-        ></dc-segmented-control>
-        ${this.byRange ? rangeFields(store) : periodFields(store)}
+        ${form?.unit
+          ? unitPeriodFields(store, form.unit, form.startMonth)
+          : html`<dc-segmented-control
+                aria-label=${strings.periodKind}
+                .options=${[{ value: 'month', label: strings.periodMonth }, { value: 'range', label: strings.periodRange }]}
+                .value=${this.byRange ? 'range' : 'month'}
+                ?disabled=${busy}
+                @change=${(e: Event) => (this.byRange = (e.target as HTMLInputElement).value === 'range')}
+              ></dc-segmented-control>
+              ${this.byRange ? rangeFields(store) : periodFields(store)}`}
         <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
         ${table && table.rows.length > 0 && table.names.length > 0
           ? html`<dc-segmented-control

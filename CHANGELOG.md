@@ -11,6 +11,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - Activities (활동), in school vaults: work about no student — a training given or attended, a meeting, an event, a programme — recorded with its day, practitioner, kind, name and hours, on a screen of its own beside the people and groups. A statistics form counts the month's activities by kind and practitioner with their hours added up, and a record list lists them, for a practitioner's record of trainings. No person's list or count changes.
 
 ### Changed
+- A record list may say the span it is asked for in, as a statistics form does, and is then asked for by that span alone: the list of activities by school year. A list that names none is asked for by a month or any days, as before.
 - In school vaults, the methods of a session no longer list a referral programme that one education office runs on its own. A revision of the methods counts the sessions recorded with it as a referral; an office that runs such a programme adds it to its own choice list, counted as a referral, and its records still name it.
 
 ## [0.20.0] - 2026-10-12

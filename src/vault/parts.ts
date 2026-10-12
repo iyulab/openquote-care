@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit'
-import { yearStart, type FormEntry } from '../forms.js'
+import { yearStart, type FormEntry, type PeriodUnit } from '../forms.js'
 import { today, yearAround, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
@@ -139,6 +139,41 @@ export function periodFields(store: VaultStore) {
     ></dc-select>
     <dc-button variant="ghost" aria-label=${strings.nextMonth} ?disabled=${store.busy} @click=${() => step(1)}>›</dc-button>
   </div>`
+}
+
+/** What a person picks a form's period by, for its unit: a day, a month, a year (named apart when it starts in another month) or any days. */
+export function unitPeriodFields(store: VaultStore, unit: PeriodUnit, startMonth: number) {
+  switch (unit) {
+    case 'day':
+      return html`<dc-field label=${strings.periodDay}>
+        <dc-input type="date" aria-label=${strings.periodDay} .value=${store.day} ?disabled=${store.busy} @input=${(e: Event) => store.set({ day: (e.target as HTMLInputElement).value })}></dc-input>
+      </dc-field>`
+    case 'range':
+      return rangeFields(store)
+    case 'year':
+      return startMonth === 1 ? yearSelect(store, strings.year) : yearSelect(store, strings.schoolYear, strings.schoolYearOption)
+    default:
+      return periodFields(store)
+  }
+}
+
+/** The first and last day of the period picked for a form of `unit`; undefined while a day or a range is not picked. */
+export function unitPeriodDays(store: VaultStore, unit: PeriodUnit, startMonth: number): { from: string; to: string } | undefined {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const last = (year: number, month: number) => `${year}-${pad(month)}-${pad(new Date(year, month, 0).getDate())}`
+  switch (unit) {
+    case 'day':
+      return store.day ? { from: store.day, to: store.day } : undefined
+    case 'range':
+      return store.rangeFrom && store.rangeTo && store.rangeFrom <= store.rangeTo ? { from: store.rangeFrom, to: store.rangeTo } : undefined
+    case 'year': {
+      // The year from its start month to the month before it, a year on: a year from March ends in February.
+      const end = startMonth === 1 ? { year: store.year, month: 12 } : { year: store.year + 1, month: startMonth - 1 }
+      return { from: `${store.year}-${pad(startMonth)}-01`, to: last(end.year, end.month) }
+    }
+    default:
+      return { from: `${store.year}-${pad(store.month)}-01`, to: last(store.year, store.month) }
+  }
 }
 
 /**

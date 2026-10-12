@@ -111,8 +111,10 @@ public sealed record LabelConflictView(string Locale, string Target, IReadOnlyLi
 public sealed record SchemeVersionView(string Scheme, int Version);
 
 /// <param name="Label">What people call the form, in the vault's locale.</param>
+/// <param name="Unit">The span the form is asked for in — <c>day</c>, <c>month</c>, <c>year</c> or <c>range</c> — or null when it names none.</param>
+/// <param name="StartMonth">For a year, the month it starts in; 1 otherwise.</param>
 /// <param name="Offered">False when a column reads a field the vault's packs hide: the form is not offered.</param>
-public sealed record ExportView(string Name, int Version, string Label, string Rows, string PeriodField, IReadOnlyList<SchemeLagView> Behind, bool Offered);
+public sealed record ExportView(string Name, int Version, string Label, string Rows, string PeriodField, string? Unit, int StartMonth, IReadOnlyList<SchemeLagView> Behind, bool Offered);
 
 /// <summary>A scheme a form classifies by, at a version older than the latest one the vault holds.</summary>
 public sealed record SchemeLagView(string Scheme, int Version, int Latest);
@@ -650,6 +652,7 @@ internal static class Api
                 !r.Dimensions.Concat(r.Filters.Select(f => f.On)).Any(d => Hidden(s.Fields, d.OfSubject ? "subject" : r.Counts, d.Field))))],
             [.. s.Content.Exports.Select(e => new ExportView(e.Name, e.Version,
                 s.Labels.ExportLabel(e.Name, e.Version, s.Locales) ?? e.Label, e.Rows, e.PeriodField,
+                e.Unit is { } unit ? UnitOf(unit) : null, e.StartMonth,
                 Behind(e.Columns.OfType<CodedColumn>().Select(c => (c.Scheme, c.Version)), latest),
                 !e.Columns.Any(c => ReadsHidden(s.Fields, e.Rows, c))))],
             Unlinked(s.Content),

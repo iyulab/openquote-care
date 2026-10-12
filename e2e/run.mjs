@@ -2191,6 +2191,15 @@ const scenarios = {
     const taken = await app.cdp.evaluate(`[...__e2e.one('[data-section="0"] tr[data-row="training-taken"]').children].map((c) => c.textContent.trim())`)
     assert.equal(taken[0], '연수 이수')
     assert.ok(taken.at(-1).startsWith('1') && taken.at(-1).includes('15'), `one record, its hours added up: ${JSON.stringify(taken)}`)
+
+    // The list of activities is asked for by school year, as the form says — no month or range to pick.
+    await app.click('button', '기록 목록')
+    await app.click('nav[aria-label="목록 양식"] button[data-entry="activity-list@1"]')
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-segmented-control[aria-label="기간 정하기"]')`), false, 'no month or range to choose')
+    await app.choose('학년도', '2026')
+    await app.click('dc-button', '목록 만들기')
+    await app.cdp.waitFor(`__e2e.all('tr[data-export-row]').length === 1`, 'the activity listed for the school year')
+    assert.ok((await app.cdp.evaluate(`__e2e.one('[data-role=export-period]').textContent`)).includes('2026-03-01'), 'the school year from March')
   },
 
   async 'lists a student whose follow-up after a closing is past its day, and says by when it was due'(app) {

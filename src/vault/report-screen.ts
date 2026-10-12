@@ -7,7 +7,7 @@ import { shell, type ScaleSummary } from '../shell.js'
 import { changeSigns, scaleLine } from '../cases.js'
 import { scaleLabel } from './case-parts.js'
 import { strings } from '../strings.js'
-import { formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
+import { formBehind, formLabel, listDetail, noticeLine, openSessionEvent, stepMonth, raiseFormatCallout, rangeFields, unitPeriodFields } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -226,9 +226,10 @@ export class OcReport extends VaultScreen {
   private formDocument(title: string) {
     const store = this.store
     const busy = store.busy
+    const form = store.summary?.reports.find((r) => `${r.name}@${r.version}` === store.reportKey)
     return html`<dp-page-header heading=${title}></dp-page-header>
       <div class="toolbar no-print">
-        ${chosenPeriodFields(store)}
+        ${unitPeriodFields(store, form?.unit ?? 'month', form?.startMonth ?? 1)}
         <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runReport()}>${strings.runReport}</dc-button>
         ${this.result ? html`<dc-button variant="secondary" data-role="print" ?disabled=${busy} @click=${() => window.print()}>${strings.print}</dc-button>` : nothing}
       </div>
@@ -426,25 +427,6 @@ function periodOf(store: VaultStore, form: ReportEntry): { from: string; to?: st
       return store.rangeFrom && store.rangeTo && store.rangeFrom <= store.rangeTo ? { from: store.rangeFrom, to: store.rangeTo } : undefined
     default:
       return { from: `${store.year}-${pad(store.month)}-01` }
-  }
-}
-
-/** What a person picks the period by, for the chosen form's unit. */
-function chosenPeriodFields(store: VaultStore) {
-  const form = store.summary?.reports.find((r) => `${r.name}@${r.version}` === store.reportKey)
-  const date = (label: string, value: string, set: (v: string) => void) => html`<dc-field label=${label}>
-    <dc-input type="date" aria-label=${label} .value=${value} ?disabled=${store.busy} @input=${(e: Event) => set((e.target as HTMLInputElement).value)}></dc-input>
-  </dc-field>`
-  switch (form?.unit) {
-    case 'day':
-      return date(strings.periodDay, store.day, (day) => store.set({ day }))
-    case 'range':
-      return rangeFields(store)
-    case 'year': {
-      return form.startMonth === 1 ? yearSelect(store, strings.year) : yearSelect(store, strings.schoolYear, strings.schoolYearOption)
-    }
-    default:
-      return periodFields(store)
   }
 }
 

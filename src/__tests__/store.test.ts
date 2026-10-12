@@ -99,7 +99,7 @@ describe('VaultStore', () => {
   })
 
   it('lists the lists of sessions before lists of other kinds of record, and picks one of them first', async () => {
-    const list = (name: string, rows: string) => ({ name, version: 1, label: name, behind: [], offered: true, rows, periodField: 'date' })
+    const list = (name: string, rows: string) => ({ name, version: 1, label: name, behind: [], offered: true, rows, periodField: 'date', unit: null, startMonth: 1 })
     vi.mocked(shell.summary).mockResolvedValue({ ...summary, exports: [list('care.provision-list', 'provision'), list('care.session-list', 'session')] })
     const store = new VaultStore()
 

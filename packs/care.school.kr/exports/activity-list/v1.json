@@ -5,7 +5,9 @@
   "label": "활동 기록 목록",
   "rows": "activity",
   "period": {
-    "field": "date"
+    "field": "date",
+    "unit": "year",
+    "startMonth": 3
   },
   "columns": [
     {

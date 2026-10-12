@@ -93,6 +93,15 @@ public sealed class PackFilesTests
         Assert.Equal(("method", 2), list.Columns.OfType<CodedColumn>().Where(c => c.Field == "method").Select(c => (c.Scheme, c.Version)).Single());
     }
 
+    [Fact]
+    public void The_school_tracks_list_of_activities_is_asked_for_by_school_year()
+    {
+        var list = VaultOn("school-kr").Exports.Single(e => e.Name == "activity-list");
+
+        Assert.True(list.Activities);
+        Assert.Equal((Openquote.Reports.PeriodUnit.Year, 3), (list.Unit, list.StartMonth));
+    }
+
     [Theory]
     [MemberData(nameof(Tracks))]
     public void Every_tracks_provision_names_its_practitioner_as_every_other_kind_of_record_does(string track)

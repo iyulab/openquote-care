@@ -15,10 +15,17 @@ export interface FormEntry {
   offered: boolean
 }
 
-/** An export form: the kind of record its rows are, and the field that places them in a period. */
+/** The span a form is asked for in: a day, a month, a year (from its start month) or any days a person picks. */
+export type PeriodUnit = 'day' | 'month' | 'year' | 'range'
+
+/** An export form: the kind of record its rows are, the field that places them in a period, and the unit it is asked for in. */
 export interface ExportEntry extends FormEntry {
   rows: string
   periodField: string
+  /** The span the form is asked for in, as a report form's; null when it names none, and a person picks a month or any days. */
+  unit: PeriodUnit | null
+  /** The month a year starts in (1–12) for a year; 1 for every other unit. */
+  startMonth: number
 }
 
 /** One way a report form places what it counts: a classified field in a scheme version, or a field's own value. */
@@ -39,7 +46,7 @@ export interface ReportEntry extends FormEntry {
   counts: string
   periodField: string
   /** The period the form is run over: day, month, year or range. */
-  unit: 'day' | 'month' | 'year' | 'range'
+  unit: PeriodUnit
   /** The month a year starts in (1–12), such as 3 for a year from March; 1 for every other unit. */
   startMonth: number
   dimensions: Dimension[]
