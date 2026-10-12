@@ -22,6 +22,8 @@ import type { OcReport } from './vault/report-screen.js'
 import type { OcExport } from './vault/export-screen.js'
 import './vault/groups-screen.js'
 import './vault/activities-screen.js'
+import './vault/calendar-screen.js'
+import type { OcCalendar } from './vault/calendar-screen.js'
 import type { OpenSession } from './vault/parts.js'
 import './vault/search-screen.js'
 import './vault/report-screen.js'
@@ -33,7 +35,7 @@ import './vault/devices-screen.js'
 import './feedback.js'
 import './settings.js'
 
-type View = 'subjects' | 'groups' | 'activities' | 'practitioners' | 'search' | 'report' | 'export' | 'settings' | 'lists' | 'devices' | 'feedback'
+type View = 'subjects' | 'calendar' | 'groups' | 'activities' | 'practitioners' | 'search' | 'report' | 'export' | 'settings' | 'lists' | 'devices' | 'feedback'
 
 /**
  * An open vault: the frame around its screens — the sidebar that switches between them, the
@@ -163,7 +165,14 @@ export class OcVault extends LitElement {
       case 'previous-month':
       case 'next-month': {
         const by = shortcut === 'next-month' ? 1 : -1
-        const stepped = this.view === 'report' ? screen<OcReport>('oc-report')?.stepPeriod(by) : this.view === 'export' ? screen<OcExport>('oc-export')?.stepPeriod(by) : false
+        const stepped =
+          this.view === 'report'
+            ? screen<OcReport>('oc-report')?.stepPeriod(by)
+            : this.view === 'export'
+              ? screen<OcExport>('oc-export')?.stepPeriod(by)
+              : this.view === 'calendar'
+                ? screen<OcCalendar>('oc-calendar')?.stepPeriod(by)
+                : false
         if (stepped) e.preventDefault()
         return
       }
@@ -249,7 +258,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, activities: strings.activitiesTitle, search: strings.searchTitle, report: strings.report, export: strings.navExport, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
+    const heading = { subjects: strings.subjects, calendar: strings.calendarTitle, groups: strings.groups, activities: strings.activitiesTitle, search: strings.searchTitle, report: strings.report, export: strings.navExport, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
@@ -261,6 +270,8 @@ export class OcVault extends LitElement {
           .items=${[
             { id: 'records', label: strings.navGroupRecords, items: [
               { id: 'subjects', icon: '', label: strings.navSubjects },
+              // The days the records name, a month at a glance, beside the people they are about.
+              { id: 'calendar', icon: '', label: strings.navCalendar },
               { id: 'groups', icon: '', label: strings.navGroups },
               // Work about no one, where the vault's packs keep a kind of record for it.
               ...(store.kindsUnder('activity').length > 0 ? [{ id: 'activities', icon: '', label: strings.navActivities }] : []),
@@ -322,6 +333,7 @@ export class OcVault extends LitElement {
           ${this.unreadableView()} ${this.backupCopyHint()} ${packsWaitingCallout(store)} ${this.keyHint()} ${this.nameHint()} ${this.errorLine()}
           <oc-subjects .store=${store} ?active=${view === 'subjects'}></oc-subjects>
           <oc-groups .store=${store} ?active=${view === 'groups'}></oc-groups>
+          <oc-calendar .store=${store} ?active=${view === 'calendar'} @oc-open-session=${(e: CustomEvent<OpenSession>) => void this.openSession(e.detail)}></oc-calendar>
           <oc-activities .store=${store} ?active=${view === 'activities'}></oc-activities>
           <oc-report .store=${store} ?active=${view === 'report'} @oc-open-session=${(e: CustomEvent<OpenSession>) => void this.openSession(e.detail)}></oc-report>
           <oc-export .store=${store} ?active=${view === 'export'}></oc-export>

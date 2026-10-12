@@ -7,7 +7,9 @@ import { html, svg, type SVGTemplateResult } from 'lit'
 const DRAWINGS: Record<string, SVGTemplateResult> = {
   subjects: svg`<circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" />`,
   groups: svg`<circle cx="9" cy="8" r="3.5" /><circle cx="17" cy="9" r="2.5" /><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5" /><path d="M16.5 14.5c2.8 0 5 1.6 5 4.5" />`,
-  activities: svg`<rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16" /><path d="M9 3v4" /><path d="M15 3v4" /><path d="M8 14h3" /><path d="M8 17h6" />`,
+  calendar: svg`<rect x="4" y="5" width="16" height="16" rx="2" /><path d="M4 10h16" /><path d="M9 3v4" /><path d="M15 3v4" /><circle cx="8.5" cy="14" r=".9" fill="currentColor" stroke="none" /><circle cx="12" cy="14" r=".9" fill="currentColor" stroke="none" /><circle cx="15.5" cy="14" r=".9" fill="currentColor" stroke="none" /><circle cx="8.5" cy="17.5" r=".9" fill="currentColor" stroke="none" /><circle cx="12" cy="17.5" r=".9" fill="currentColor" stroke="none" />`,
+  // Work about no one — a training, a meeting, an event: a briefcase, apart from the calendar's days.
+  activities: svg`<rect x="3.5" y="7" width="17" height="13" rx="2" /><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" /><path d="M3.5 12.5h17" /><path d="M11 12.5v1.5h2v-1.5" />`,
   practitioners: svg`<rect x="4" y="3" width="16" height="18" rx="2" /><circle cx="12" cy="10" r="3" /><path d="M8 17c.8-1.8 2.2-2.5 4-2.5s3.2.7 4 2.5" />`,
   search: svg`<circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" />`,
   report: svg`<path d="M3 20h18" /><path d="M6 20v-8" /><path d="M12 20V5" /><path d="M18 20v-5" />`,

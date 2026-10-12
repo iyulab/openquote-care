@@ -2290,6 +2290,43 @@ const scenarios = {
     )
   },
 
+  async 'shows on a calendar the days the records name, and opens who or what falls on a day'(app) {
+    // The follow-up due after the closing of the scenario before, and the intake of the student taken in there: the
+    // calendar puts each on its day, from the records alone — nothing is entered on it.
+    await app.click('button', '달력')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=calendar]')`, 'the calendar')
+    // The month shown is the one its middle day falls in.
+    const shown = () => app.cdp.evaluate(`__e2e.all('button.day')[15].dataset.day.slice(0, 7)`)
+    for (let i = 0; i < 36 && (await shown()) !== '2026-05'; i++) {
+      const before = await shown()
+      await app.click(before > '2026-05' ? '[data-role=calendar-previous]' : '[data-role=calendar-next]')
+      await app.cdp.waitFor(`__e2e.all('button.day')[15].dataset.day.slice(0, 7) !== ${JSON.stringify(before)}`, 'the next month shown')
+    }
+    assert.equal(await app.cdp.evaluate(`__e2e.one('[data-role=calendar-month]').textContent.trim()`), '2026년 5월')
+    const cell = (day) => app.cdp.evaluate(`__e2e.one('button.day[data-day="${day}"]')?.textContent.replace(/\s+/g, ' ').trim() ?? ''`)
+    assert.ok((await cell('2026-05-18')).includes('추수 기한 1'), `the follow-up due on 05-18 on its day: ${await cell('2026-05-18')}`)
+    assert.ok((await cell('2026-05-04')).includes('기록'), `the intake made on 05-04 on its day: ${await cell('2026-05-04')}`)
+    assert.equal(await app.cdp.evaluate(`__e2e.all('button.day').length % 7`), 0, 'whole weeks')
+
+    await app.click('button.day[data-day="2026-05-18"]')
+    await app.cdp.waitFor(`(__e2e.one('[data-role=calendar-day]')?.textContent ?? '').includes('5월 18일 월요일')`, 'the day picked')
+    const followUps = await app.cdp.evaluate(`__e2e.one('[data-role=calendar-follow-ups]')?.textContent.replace(/\s+/g, ' ').trim() ?? ''`)
+    assert.ok(followUps.includes('가상 학생 11') && followUps.includes('지남'), `the student whose follow-up was due, said to be past: ${followUps}`)
+
+    // The arrow keys move between days.
+    await app.cdp.evaluate(`(__e2e.one('button.day[data-day="2026-05-18"]').focus(), true)`)
+    await app.cdp.press('ArrowUp', { keyCode: 38 })
+    await app.cdp.press('ArrowUp', { keyCode: 38 })
+    await app.cdp.waitFor(`__e2e.one('button.day[aria-pressed="true"]')?.dataset.day === '2026-05-04'`, 'two weeks back, by the keys')
+    const records = await app.cdp.evaluate(`__e2e.one('[data-role=calendar-records]')?.textContent.replace(/\s+/g, ' ').trim() ?? ''`)
+    assert.ok(records.includes('가상 학생 12') && records.includes('접수'), `the intake made that day, by whom and what: ${records}`)
+
+    // Who a day names opens where they are kept.
+    await app.click('[data-role=calendar-records] button.open', '가상 학생 12')
+    await app.cdp.waitFor(`__e2e.one('nav[aria-label="대상자"] li button[aria-current="true"] .label')?.textContent.trim() === '가상 학생 12'`, 'the student opened')
+    await app.noAlert()
+  },
+
   async 'leaves no record, key or passphrase outside the vault'(app, work) {
     await app.quit()
     const typedKey = work.key.match(/.{1,6}/g).join(' ').toLowerCase()
