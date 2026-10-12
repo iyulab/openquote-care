@@ -31,7 +31,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ------------------------------------------------------------------------------
-@iyulab/desktop-patterns 0.10.1
+@iyulab/desktop-patterns 0.11.0
 License: MIT
 Upstream: https://github.com/iyulab/desktop-patterns
 
