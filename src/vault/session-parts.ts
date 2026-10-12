@@ -123,6 +123,12 @@ export function recordTable(store: VaultStore, t: RecordTable) {
   // Numbers line up by their last digit, as in any table of amounts; the attendees' column is never one.
   const numeric = columns.map((f) => f.kind === 'number')
   if (at >= 0) numeric.splice(at, 0, false)
+  // The fields a form of the vault adds up for this kind — sessions' minutes, a provision's amount — are added up
+  // under each case too; a number no form adds up (a scale's score) is not.
+  const type = t.records[0]?.type
+  const summed = new Set((store.summary?.reports ?? []).filter((r) => r.offered && r.counts === type).flatMap((r) => r.sums))
+  const totals = columns.map((f) => f.kind === 'number' && summed.has(f.name))
+  if (at >= 0) totals.splice(at, 0, false)
   const span = Math.max(heads.length, 1)
   return html`<table>
     <thead>
@@ -134,10 +140,26 @@ export function recordTable(store: VaultStore, t: RecordTable) {
       ${(t.byCase?.(t.records) ?? [{ n: null, head: '', records: t.records }]).map(
         (g) => html`${g.head
           ? html`<tr class="case-head" data-case-head=${g.n ?? 'none'}><th colspan=${span} scope="colgroup">${g.head}</th></tr>`
-          : nothing}${g.records.map((s) => row(s))}`,
+          : nothing}${g.records.map((s) => row(s))}${total(g.records, g.n)}`,
       )}
     </tbody>
   </table>`
+
+  /** Under two or more records, the sums of the fields a form adds up; nothing when there are none. */
+  function total(records: Entity[], n: number | null) {
+    if (records.length < 2 || !totals.some(Boolean)) return nothing
+    const sums = columns.map((f) => records.reduce((sum, r) => sum + (typeof r.fields[f.name] === 'number' ? (r.fields[f.name] as number) : 0), 0))
+    if (at >= 0) sums.splice(at, 0, 0)
+    return html`<tr class="case-total" data-case-total=${n ?? 'all'}>
+      ${heads.map((_, i) =>
+        i === 0
+          ? html`<td>${strings.caseTotal}</td>`
+          : totals[i]
+            ? html`<td class="num">${strings.number(sums[i])}</td>`
+            : html`<td></td>`,
+      )}
+    </tr>`
+  }
 
   function row(s: Entity) {
     const cells = columns.map((f) => valueText(store, f, s.fields[f.name]))

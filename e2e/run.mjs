@@ -1549,6 +1549,9 @@ const scenarios = {
     assert.ok(provisionRow.includes('2026-04-03 · Mental health service'), `the referral it follows, named in its row: ${JSON.stringify(provisionRow)}`)
     assert.ok(provisionRow.includes('Synthetic Counsellor') && provisionRow.includes('Counselling by an outside practitioner'), `who provided it and under what: ${JSON.stringify(provisionRow)}`)
     assert.equal(await app.cdp.evaluate(`__e2e.all('tr[data-session]').length`), 1, 'still one session: a provision is not a session')
+    // Under the client's provisions, what a form adds up for them: the sessions and the amount, grouped as numbers are.
+    const provisionTotal = await app.cdp.evaluate(`[...(__e2e.one('section[data-kind="provision"] tr.case-total')?.children ?? [])].map((td) => td.textContent.trim()).filter(Boolean)`)
+    assert.deepEqual(provisionTotal, ['Total', '5', '250,000'], `the client's provisions added up: ${JSON.stringify(provisionTotal)}`)
 
     // A referral with no outcome yet waits for an answer, as the core pack says referrals do: the list above the people
     // counts it, and keeps that client in view, saying since when.

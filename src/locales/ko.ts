@@ -514,6 +514,7 @@ export const ko = {
   caseTimelineAfter: '끝난 뒤',
   caseTimelineBy: (name: string) => `담당 ${name}`,
   number: (n: number) => n.toLocaleString('ko'),
+  caseTotal: '합계',
   caseLoose: '날짜가 없어 어느 사례에도 넣지 못한 기록',
   caseUndated: (n: number) => `날짜가 없어 어느 사례에도 넣지 못한 기록 ${n}건`,
   conflict: '동시 수정',

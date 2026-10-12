@@ -9,6 +9,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Added
 - Above the list of people, "Meeting today" (오늘 만날 사람) counts the people whose next session is today — the day their latest session names under "Next session", so a later session takes the place of what an earlier one planned. Pressing it keeps those people in view, and the list says "meeting today" beside each. The app counts dates only and sends no reminders.
 - Each line of a case's timeline says who did it — the practitioner its record names — so a case several people work on shows each one's part. The lines share their columns: day, kind, what, who.
+- Under two or more records of a case, a person's lists add up what the vault's statistics forms add up for that kind of record — a provision's sessions and amount, a school session's minutes — so what was spent on one person reads at a glance. A number no form adds up, such as a scale's score, is not totalled.
 
 ### Changed
 - "Apply a classification revision…" is in the records folder's menu, beside "Reload", in place of a button over the lists of statistics and record list forms. Wherever it is chosen, the app shows the statistics screen, where it says what the revision brought and picks the form it updates.

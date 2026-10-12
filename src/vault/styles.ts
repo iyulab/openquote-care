@@ -278,6 +278,15 @@ export const vaultStyles = [
     td.wrap {
       white-space: normal;
     }
+    /* A case's sums under its records: set off by a rule, the label as quiet as a case's heading. */
+    tr.case-total > td {
+      border-top: 1px solid var(--dc-color-rule, #e4e4e7);
+      font-weight: var(--dc-font-weight-semibold, 600);
+    }
+    tr.case-total > td:first-child {
+      font-size: var(--dc-font-size-sm, 12px);
+      color: var(--dc-color-text-muted, #8a8a92);
+    }
     td.num,
     th.num {
       text-align: end;
