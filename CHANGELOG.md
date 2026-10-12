@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-13
+
 ### Added
 - A provision names its practitioner, as every other kind of record does, and the provision list has a column for it.
 - In school vaults, a session may say where it was held — the school's counselling room, the education office's centre, a school visited on a round, a home visit, online or elsewhere — and a statistics form counts the month's sessions by place and practitioner.
@@ -163,7 +165,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/iyulab/openquote-care/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/iyulab/openquote-care/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/iyulab/openquote-care/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/iyulab/openquote-care/compare/v0.17.0...v0.18.0
