@@ -4,7 +4,7 @@ Openquote Care — third-party notices
 This program includes the following 405 third-party packages.
 
 ------------------------------------------------------------------------------
-@iyulab/desktop-compact 0.12.1
+@iyulab/desktop-compact 0.13.0
 License: MIT
 Upstream: https://github.com/iyulab/desktop-compact
 
@@ -31,11 +31,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ------------------------------------------------------------------------------
-@iyulab/desktop-patterns 0.11.0
+@iyulab/desktop-patterns 0.11.1
 License: MIT
 Upstream: https://github.com/iyulab/desktop-patterns
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 @lit-labs/ssr-dom-shim 1.6.0
@@ -14609,35 +14609,35 @@ tauri-kit-diagnostics 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 tauri-kit-fs 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 tauri-kit-sidecar 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 tauri-kit-watch 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 tauri-kit-webview 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 tauri-macros 2.7.2
@@ -20419,28 +20419,28 @@ Openquote 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 Openquote.Gil 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/openquote
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 TauriKit.Sidecar.Loopback 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 TauriKit.Sidecar.Loopback.AspNetCore 0.16.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
-Same license text as @iyulab/desktop-compact 0.12.1.
+Same license text as @iyulab/desktop-compact 0.13.0.
 
 ------------------------------------------------------------------------------
 YamlDotNet 18.1.0
