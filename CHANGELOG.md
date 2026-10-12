@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-10-12
+
 ### Changed
 - The app is now published as `me.openquote.care`, the name of its own website, in place of an identifier under the company that started it. Updating changes nothing a person sees: the update installs into the same folder, and on its first start the app moves its own data — the computer's name among the devices sharing a records folder, the installation's number, the recent records folders and settings — to the folder the new name gives it. Records folders are not touched.
 
@@ -125,7 +127,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/iyulab/openquote-care/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/iyulab/openquote-care/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/iyulab/openquote-care/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/iyulab/openquote-care/compare/v0.15.0...v0.16.0
