@@ -265,11 +265,14 @@ export class OcVault extends LitElement {
               { id: 'export', icon: '', label: strings.navExport },
             ] },
             { id: 'settings-group', label: strings.navGroupSettings, items: [
-              { id: 'settings', icon: '', label: strings.navAppSettings },
               { id: 'lists', icon: '', label: strings.navLists },
               { id: 'devices', icon: '', label: strings.navDevices },
               ...(this.feedback ? [{ id: 'feedback', icon: '', label: strings.feedbackOpen }] : []),
             ] },
+          ]}
+          .pinnedItems=${[
+            // The app's own settings, not this vault's: kept at the foot of the menu, apart from the vault's places.
+            { id: 'settings', icon: '', label: strings.navAppSettings },
           ]}
           @dp-sidebar-select=${(e: DpSidebarSelectEvent) => {
             this.view = e.itemId as View
