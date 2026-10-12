@@ -72,10 +72,38 @@ public sealed class PackFilesTests
         Assert.Equal(FieldKind.Text, fields.Find("session", "title")!.Kind);
         Assert.Equal(FieldKind.Number, fields.Find("session", "minutes")!.Kind);
         var list = content.Exports.Where(e => e.Name == "session-list").MaxBy(e => e.Version)!;
-        Assert.Equal(4, list.Version);
-        // The fourth version counts the people a session is with in the scheme's second version (an agency worker added).
+        Assert.Equal(5, list.Version);
+        // Since the fourth version it counts the people a session is with in the scheme's second version (an agency worker added).
         Assert.Equal(("client-type", 2), list.Columns.OfType<CodedColumn>().Where(c => c.Field == "client_type").Select(c => (c.Scheme, c.Version)).Single());
         Assert.Equal(["상담 상대", "실시한 검사", "상담 제목", "상담 시간(분)", "담당자"], list.Columns.Select(c => c.Label).TakeLast(5));
+    }
+
+    [Fact]
+    public void The_school_tracks_session_methods_leave_one_areas_own_programme_to_the_vault_and_count_it_as_a_referral()
+    {
+        var content = VaultOn("school-kr");
+        var second = content.Schemes.Single(s => s.Name == "method" && s.Version == 2);
+        var revision = content.Crosswalks.Single(c => c.Scheme == "method" && c.From == 1 && c.To == 2);
+
+        // A programme run by one education office belongs to that office's own list, not to the track (an item a vault adds).
+        Assert.DoesNotContain(second.Items, i => i.Code == "link/hifive");
+        Assert.Contains(("link/hifive", "link"), revision.Links);
+        Assert.All(second.Items, i => Assert.Contains((i.Code, i.Code), revision.Links));
+        var list = content.Exports.Where(e => e.Name == "session-list").MaxBy(e => e.Version)!;
+        Assert.Equal(("method", 2), list.Columns.OfType<CodedColumn>().Where(c => c.Field == "method").Select(c => (c.Scheme, c.Version)).Single());
+    }
+
+    [Theory]
+    [MemberData(nameof(Tracks))]
+    public void Every_tracks_provision_names_its_practitioner_as_every_other_kind_of_record_does(string track)
+    {
+        var content = VaultOn(track);
+        var practitioner = content.FieldCatalog().Find("provision", "practitioner");
+
+        Assert.NotNull(practitioner);
+        Assert.Equal((FieldKind.Reference, "practitioner"), (practitioner.Kind, practitioner.RefType));
+        var list = content.Exports.Where(e => e.Name == "care.provision-list").MaxBy(e => e.Version)!;
+        Assert.Contains(list.Columns, c => c is FieldColumn { Field: "practitioner" });
     }
 
     [Theory]

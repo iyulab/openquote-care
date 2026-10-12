@@ -1221,10 +1221,11 @@ const scenarios = {
     // A relabel-only revision still needs a crosswalk; without one every earlier value is unmapped there.
     const pack = join(dirname(work.vault), 'relabel-pack')
     await mkdir(join(pack, 'schemes', 'method'), { recursive: true })
-    await writeFile(join(pack, 'schemes', 'method', 'v2.json'),
-      JSON.stringify({ format: 'openquote.scheme/0', scheme: 'method', version: 2, items: [{ code: 'interview', label: '개인 면담' }] }))
+    // The school pack's own revisions of the methods go to the second version; this one is a third.
+    await writeFile(join(pack, 'schemes', 'method', 'v3.json'),
+      JSON.stringify({ format: 'openquote.scheme/0', scheme: 'method', version: 3, items: [{ code: 'interview', label: '개인 면담' }] }))
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
-    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류가 있습니다: 방법 분류 2판'))`,
+    await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('대응표가 없는 분류가 있습니다: 방법 분류 3판'))`,
       'the unlinked version named')
     await app.noAlert()
   },

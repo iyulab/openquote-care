@@ -1,0 +1,7 @@
+{
+  "format": "openquote.crosswalk/0",
+  "scheme": "method",
+  "from": 1,
+  "to": 2,
+  "links": [["interview", "interview"], ["crisis", "crisis"], ["phone", "phone"], ["consult", "consult"], ["cyber", "cyber"], ["group", "group"], ["special", "special"], ["special/school-violence", "special/school-violence"], ["special/discipline", "special/discipline"], ["special/teacher-rights", "special/teacher-rights"], ["deliberation", "deliberation"], ["assessment", "assessment"], ["link", "link"], ["link/hifive", "link"], ["link/psychiatrist", "link/psychiatrist"], ["link/treatment-fund", "link/treatment-fund"], ["link/hospital", "link/hospital"], ["link/center", "link/center"], ["link/lecturer", "link/lecturer"], ["visiting", "visiting"]]
+}

@@ -6,6 +6,12 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- A provision names its practitioner, as every other kind of record does, and the provision list has a column for it.
+
+### Changed
+- In school vaults, the methods of a session no longer list a referral programme that one education office runs on its own. A revision of the methods counts the sessions recorded with it as a referral; an office that runs such a programme adds it to its own choice list, counted as a referral, and its records still name it.
+
 ## [0.20.0] - 2026-10-12
 
 ### Added

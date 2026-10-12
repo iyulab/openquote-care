@@ -1702,7 +1702,7 @@ cut off").unwrap();
         let summary = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
 
         assert_eq!(summary["updatedPacks"], json!(["care.school", "care.school.kr"]));
-        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 12));
+        assert!(summary["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 13));
         assert_eq!(summary["packIssues"], json!([]));
         for file in &added {
             assert!(dir.path().join(file).is_file(), "{file} is back");
@@ -1711,10 +1711,11 @@ cut off").unwrap();
         assert!(app.open_vault(dir.path(), "pass".to_owned()).unwrap().get("updatedPacks").is_none(), "nothing to take on the next time");
     }
 
-    /// The files the school pack's eighth to eleventh versions add: a field that takes several values,
+    /// The files the school pack's eighth to thirteenth versions add: a field that takes several values,
     /// and forms reading it, so a vault holding them needs format 1 — a follow-up a closing expects, and an
-    /// agency worker among the people a session is with, with a form counting by NEIS category — and a session's next step.
-    const SCHOOL_PACK_8: [&str; 19] = [
+    /// agency worker among the people a session is with, with a form counting by NEIS category — a session's next step,
+    /// and a revision of the session methods leaving out one area's own programme.
+    const SCHOOL_PACK_8: [&str; 23] = [
         "packs/care.school.kr/v8.json.age",
         "schemes/assessment-tool/v1.json.age",
         "fields/care.school.kr/session/v6.json.age",
@@ -1734,15 +1735,20 @@ cut off").unwrap();
         "exports/session-list/v4.json.age",
         "packs/care.school.kr/v12.json.age",
         "fields/care.school.kr/session/v7.json.age",
+        "packs/care.school.kr/v13.json.age",
+        "schemes/method/v2.json.age",
+        "schemes/method/v1-v2.json.age",
+        "exports/session-list/v5.json.age",
     ];
 
     /// The core pack's sixth version — a crosswalk from closing reasons into how a closing ended, and the
     /// form counting by it; a crosswalk into another scheme needs format 1 — and its seventh, which places,
     /// dates and gives a role to each kind of record — its eighth, a form counting closings by the intake of
-    /// their case — its ninth, a goal as a kind of record and a session's next step — and its tenth, a provision
-    /// following a referral with the forms counting it, and a referral waiting for its outcome — and its eleventh, a
-    /// session setting the next meeting's day. A vault made before the sixth holds none of them.
-    const CORE_PACK_6: [&str; 24] = [
+    /// their case — its ninth, a goal as a kind of record and a session's next step — its tenth, a provision
+    /// following a referral with the forms counting it, and a referral waiting for its outcome — its eleventh, a
+    /// session setting the next meeting's day — and its twelfth, the practitioner of a provision. A vault made before the
+    /// sixth holds none of them.
+    const CORE_PACK_6: [&str; 27] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
@@ -1767,6 +1773,9 @@ cut off").unwrap();
         "exports/care.provision-list/v1.json.age",
         "packs/care/v11.json.age",
         "fields/care/session/v4.json.age",
+        "packs/care/v12.json.age",
+        "fields/care/provision/v2.json.age",
+        "exports/care.provision-list/v2.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";
@@ -1821,7 +1830,7 @@ cut off").unwrap();
         app.close_vault();
         let reopened = app.open_vault(dir.path(), "pass".to_owned()).unwrap();
         assert!(reopened.get("waitingPacks").is_none() && reopened.get("updatedPacks").is_none());
-        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 12));
+        assert!(reopened["packs"].as_array().unwrap().iter().any(|p| p["id"] == "care.school.kr" && p["version"] == 13));
     }
 
     #[test]

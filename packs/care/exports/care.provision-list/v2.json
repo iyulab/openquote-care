@@ -1,0 +1,43 @@
+{
+  "format": "openquote.export/0",
+  "export": "care.provision-list",
+  "version": 2,
+  "label": "Provision list",
+  "rows": "provision",
+  "period": {
+    "field": "date"
+  },
+  "columns": [
+    {
+      "label": "Date",
+      "field": "date"
+    },
+    {
+      "label": "Clients",
+      "person": "name",
+      "all": true
+    },
+    {
+      "label": "Practitioner",
+      "field": "practitioner"
+    },
+    {
+      "label": "Programme",
+      "field": "programme",
+      "scheme": "care.programme",
+      "version": 1
+    },
+    {
+      "label": "Provider",
+      "field": "provider"
+    },
+    {
+      "label": "Sessions",
+      "field": "sessions"
+    },
+    {
+      "label": "Amount",
+      "field": "amount"
+    }
+  ]
+}

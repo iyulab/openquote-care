@@ -396,7 +396,7 @@ try {
   // Provisions following the first referral: the outside counsellor's sessions and what they cost.
   for (const p of L.provisions) {
     await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[L.referrals[0].subject], type: 'provision', fields: {
-      date: p.date, referral: referrals[0], programme: coded('care.programme', 'external-counselling'), provider: p.provider,
+      date: p.date, practitioner: practitioners[0], referral: referrals[0], programme: coded('care.programme', 'external-counselling'), provider: p.provider,
       sessions: p.sessions, amount: p.amount } } })
   }
   await app.folderAction(ui.refresh)
