@@ -19,6 +19,8 @@ export class OcRecordKinds extends StoreElement {
   @property({ attribute: false }) holder!: Holder
   /** For a group: the subjects who take part by default, the group's members. */
   @property({ attribute: false }) members: string[] = []
+  /** The records shown, of those kept here: all of them when not given. */
+  @property({ attribute: false }) only?: (r: Entity) => boolean
 
   /** The kinds whose form is open for adding a record. */
   @state() private adding = new Set<string>()
@@ -35,7 +37,8 @@ export class OcRecordKinds extends StoreElement {
     const holder = this.holder
     const here = (r: Entity) =>
       holder.kind === 'subject' ? r.subject === holder.id && !r.group : holder.kind === 'group' ? r.group === holder.id : !r.subject && !r.group
-    return newestFirst(this.store.recordsOf(kind.type).filter(here), this.store.dayOf)
+    const shown = this.only ?? (() => true)
+    return newestFirst(this.store.recordsOf(kind.type).filter((r) => here(r) && shown(r)), this.store.dayOf)
   }
 
   private async settle(record: Entity, field: string, value: unknown) {

@@ -455,6 +455,11 @@ export const vaultStyles = [
     .toolbar > dc-field {
       flex: 0 1 180px;
     }
+    /* A choice on the line is as wide as its options read, not the line. */
+    .toolbar > dc-select {
+      flex: 0 0 auto;
+      width: 11em;
+    }
     /* A month: a step back, its year and month, a step on. */
     .period {
       display: inline-flex;

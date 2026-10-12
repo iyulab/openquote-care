@@ -2170,6 +2170,10 @@ const scenarios = {
     await app.noAlert()
     const row = await app.cdp.evaluate(`[...__e2e.one('section[data-kind="activity"] tr[data-record]').children].map((td) => { const c = td.cloneNode(true); c.querySelectorAll('.cell').forEach((e) => e.remove()); return c.textContent.trim() })`)
     assert.ok(row.includes('연수 이수') && row.includes('가상 직무 연수') && row.includes('15'), `the row: ${JSON.stringify(row)}`)
+    // Shown by school year from March, the one holding today first; every year shows it too.
+    assert.equal(await app.cdp.evaluate(`__e2e.one('select[aria-label="학년도"]')?.value`), String(new Date().getMonth() >= 2 ? new Date().getFullYear() : new Date().getFullYear() - 1))
+    await app.choose('학년도', '')
+    await app.cdp.waitFor(`__e2e.all('section[data-kind="activity"] tr[data-record]').length === 1`, 'every year: the activity still listed')
     // No student is touched: the record is in no one's list.
     assert.equal(await app.cdp.evaluate(`__e2e.all('section[data-kind="activity"] tr.case-head').length`), 0, 'no case heads')
 
