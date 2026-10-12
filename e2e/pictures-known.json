@@ -2,17 +2,24 @@
   "ko": {
     "kinds": [
       "closing",
+      "goal",
       "intake",
+      "provision",
       "referral",
+      "scale-score",
       "session"
     ],
     "forms": [
       "care.monthly-closing",
+      "care.monthly-closing-by-source",
       "care.monthly-closing-type",
       "care.monthly-intake",
+      "care.monthly-provision",
+      "care.provision-list",
       "local.assessment-tool.month-assessment-tool",
       "local.assessment-tool.year-assessment-level",
       "month-assessment-tool",
+      "month-neis",
       "month-practitioner-minutes",
       "monthly-topic",
       "neis-upload",
@@ -27,15 +34,21 @@
   "en": {
     "kinds": [
       "closing",
+      "goal",
       "intake",
+      "provision",
       "referral",
+      "scale-score",
       "session"
     ],
     "forms": [
       "care.monthly-closing",
+      "care.monthly-closing-by-source",
       "care.monthly-closing-type",
       "care.monthly-concern",
       "care.monthly-intake",
+      "care.monthly-provision",
+      "care.provision-list",
       "care.session-list",
       "local.care.concern.care.monthly-concern"
     ]

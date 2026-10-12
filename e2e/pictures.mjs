@@ -134,6 +134,11 @@ const L = {
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: '가상 정신건강복지센터', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: '가상 소아청소년과의원', outcome: 'waiting' },
     ],
+    // What an outside counsellor provided after the first referral, and what it cost.
+    provisions: [
+      { date: '2026-04-24', provider: '가상 외부 상담 전문가', sessions: 2, amount: 120000 },
+      { date: '2026-04-28', provider: '가상 외부 상담 전문가', sessions: 1, amount: 60000 },
+    ],
     // How each student's work began, and how some of it ended: a closing note says what was done.
     cases: {
       presenting: ['수업 집중이 어렵고 성적이 떨어졌다고 담임이 의뢰', '친구 관계가 힘들다며 직접 찾아옴', '집에서 다툼이 잦다고 보호자가 연락'],
@@ -181,6 +186,10 @@ const L = {
     referrals: [
       { subject: 1, date: '2026-04-20', to: 'mental-health', organisation: 'Synthetic Wellbeing Centre', outcome: 'taken-up' },
       { subject: 1, date: '2026-05-15', to: 'medical', organisation: 'Synthetic Family Practice', outcome: 'waiting' },
+    ],
+    provisions: [
+      { date: '2026-04-24', provider: 'Synthetic Counselling Practice', sessions: 2, amount: 160 },
+      { date: '2026-04-28', provider: 'Synthetic Counselling Practice', sessions: 1, amount: 80 },
     ],
     cases: {
       presenting: ['Finds it hard to concentrate; referred by a teacher', 'Came in on their own about friendships', 'Family called about frequent arguments at home'],
@@ -366,10 +375,18 @@ try {
     await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[c.subject], type: 'closing', fields: {
       date: c.date, practitioner: practitioners[i % practitioners.length], reason: coded('care.closing-reason', c.reason), summary: c.summary } } })
   }
+  const referrals = []
   for (const r of L.referrals) {
-    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[r.subject], type: 'referral', fields: {
+    const path = await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[r.subject], type: 'referral', fields: {
       date: r.date, practitioner: practitioners[0], to: coded('care.service', r.to), organisation: r.organisation,
       outcome: coded('care.referral-outcome', r.outcome) } } })
+    referrals.push(path.split('/').at(-1).split('.')[0])
+  }
+  // Provisions following the first referral: the outside counsellor's sessions and what they cost.
+  for (const p of L.provisions) {
+    await invoke('record', { route: '/changes/in-subject', request: { subjectId: subjects[L.referrals[0].subject], type: 'provision', fields: {
+      date: p.date, referral: referrals[0], programme: coded('care.programme', 'external-counselling'), provider: p.provider,
+      sessions: p.sessions, amount: p.amount } } })
   }
   await app.folderAction(ui.refresh)
   await sleep(1500)
@@ -381,6 +398,23 @@ try {
   // The same page from its first kind of record: the intake, the referrals and the closing together.
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="intake"]')?.scrollIntoView({ block: 'start' }), true)`)
   await shoot('case')
+  await app.cdp.waitFor(`__e2e.all('section[data-kind="provision"] tr[data-record]').length === ${L.provisions.length}`, 'the provisions')
+  await app.cdp.evaluate(`(__e2e.one('section[data-kind="provision"]')?.scrollIntoView({ block: 'center' }), true)`)
+  await shoot('provision')
+  // What asks for something above the list: the people with a referral still waiting for its outcome, and since when.
+  await app.click('dc-button[data-attention="awaiting"]')
+  await app.cdp.waitFor(`__e2e.all('.pane.list li').length === 1`, 'the list narrowed to who waits for an answer')
+  await shoot('waiting')
+  await app.click('dc-button[data-attention="awaiting"]')
+
+  // The month's provisions by programme: how many, for how many people, the sessions and the amount added up.
+  await app.click('button', ui.report)
+  await app.click('nav[aria-label] button[data-entry="care.monthly-provision@1"]')
+  await app.choose(ui.year, '2026')
+  await app.choose(ui.month, '4')
+  await app.click('dc-button', ui.run)
+  await app.cdp.waitFor(`!!__e2e.one('[data-section="0"] tr[data-row="external-counselling"]')`, 'the month by programme')
+  await shoot('provided')
 
   // The month's closings by reason, per practitioner.
   await app.click('button', ui.report)
