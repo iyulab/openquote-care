@@ -13,6 +13,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - "Apply a classification revision…" is in the records folder's menu, beside "Reload", in place of a button over the lists of statistics and record list forms. Wherever it is chosen, the app shows the statistics screen, where it says what the revision brought and picks the form it updates.
 
 ### Fixed
+- Numbers in the lists of records read as numbers do — an amount of 120000 shows as 120,000 — and their columns line up on the right.
 - The two choices above the list of people — which cases to keep in view and the order — stand one under the other when the list is narrow, so a long name such as "Waiting for an answer" is no longer cut short.
 
 ## [0.19.0] - 2026-10-12

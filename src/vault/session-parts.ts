@@ -38,6 +38,8 @@ export function subjectPicker(store: VaultStore, label: string, current: () => s
  */
 export function valueText(store: VaultStore, field: FieldView | undefined, value: unknown): string {
   if (value === undefined || value === null) return ''
+  // A number as people read one: an amount of 120000 is 120,000.
+  if (field?.kind === 'number' && typeof value === 'number') return strings.number(value)
   if (field?.kind === 'reference' && typeof value === 'string') {
     if (pointsAtRecords(store, field)) {
       const record = store.recordById(value)
@@ -118,11 +120,14 @@ export function recordTable(store: VaultStore, t: RecordTable) {
   const at = t.attendees ? attendeesAt(columns) : -1
   const heads = columns.map((f) => f.label)
   if (at >= 0) heads.splice(at, 0, strings.attendees)
+  // Numbers line up by their last digit, as in any table of amounts; the attendees' column is never one.
+  const numeric = columns.map((f) => f.kind === 'number')
+  if (at >= 0) numeric.splice(at, 0, false)
   const span = Math.max(heads.length, 1)
   return html`<table>
     <thead>
       <tr>
-        ${heads.map((h) => html`<th>${h}</th>`)}
+        ${heads.map((h, i) => html`<th class=${numeric[i] ? 'num' : nothing}>${h}</th>`)}
       </tr>
     </thead>
     <tbody>
@@ -142,7 +147,7 @@ export function recordTable(store: VaultStore, t: RecordTable) {
     return html`<tr data-session=${s.type === 'session' ? s.id : nothing} data-record=${s.id}>
         ${cells.map(
           (c, i) =>
-            html`<td class=${i === at ? 'wrap' : nothing}>
+            html`<td class=${i === at ? 'wrap' : numeric[i] ? 'num' : nothing}>
               ${c}
               ${i === 0 && store.corrected.has(s.id) ? html`<dc-badge class="cell" variant="accent" data-role="corrected">${strings.corrected}</dc-badge>` : nothing}
               ${i === 0 && t.correct

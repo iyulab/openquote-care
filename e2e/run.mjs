@@ -1820,6 +1820,9 @@ const scenarios = {
     assert.deepEqual(timeline.days, [...timeline.days].sort(), `by day: ${JSON.stringify(timeline.days)}`)
     assert.equal(timeline.types[0] === 'intake' || timeline.types[1] === 'intake', true, `the intake on the first day: ${JSON.stringify(timeline.types)}`)
     assert.equal(timeline.types.filter((t) => t === 'scale-score').length, 4, 'the rating beside the intake and three questionnaires')
+    // Each line says who did it, as the record names its practitioner.
+    const intakeLine = await app.cdp.evaluate(`__e2e.one('details[data-role="case-timeline"] li[data-type="intake"]').textContent.replace(/\\s+/g, ' ').trim()`)
+    assert.ok(intakeLine.endsWith('by Counselor A'), `the intake's line names its practitioner: ${intakeLine}`)
     // A line of the timeline opens its record: the row in its kind's list, brought into view.
     const intakeId = await app.cdp.evaluate(`__e2e.one('details[data-role="case-timeline"] li[data-type="intake"]').dataset.record`)
     await app.click(`details[data-role="case-timeline"] button[data-open-record="${intakeId}"]`)

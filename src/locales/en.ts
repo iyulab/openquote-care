@@ -521,6 +521,8 @@ export const en: Strings = {
   caseScalePoint: (score: number, day: string) => `${score} (${day})`,
   caseTimeline: (n: number) => `Timeline — ${plural(n, 'record')} by date`,
   caseTimelineAfter: 'after it ended',
+  caseTimelineBy: (name: string) => `by ${name}`,
+  number: (n: number) => n.toLocaleString('en'),
   caseLoose: 'Records with no date, in no case',
   caseUndated: (n: number) => `${plural(n, 'record')} without a date, in no case`,
   conflict: 'Edited on two devices',

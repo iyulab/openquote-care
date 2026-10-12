@@ -147,8 +147,9 @@ function seriesRow(store: VaultStore, scale: string, label: string, points: Scal
 }
 
 /**
- * A case's records by day, each with its kind and its first values; open for the latest case, folded for the others.
- * Each line opens its record — the row in its kind's list, its written content shown.
+ * A case's records by day, each with its kind, its first values and the practitioner it names — who did it, when
+ * several work with one person; open for the latest case, folded for the others. Each line opens its record — the row
+ * in its kind's list, its written content shown.
  */
 function timeline(store: VaultStore, entries: ReturnType<typeof caseTimeline>, unfolded: boolean, open: (record: string) => void) {
   if (entries.length === 0) return nothing
@@ -164,12 +165,14 @@ function timeline(store: VaultStore, entries: ReturnType<typeof caseTimeline>, u
           .map((f) => valueText(store, f, r.fields[f.name]))
           .filter(Boolean)
           .slice(0, 2)
+        const by = store.fieldsOf(r.type).find((f) => f.kind === 'reference' && f.refType === 'practitioner')
+        const who = by ? valueText(store, by, r.fields[by.name]) : ''
         return html`<li data-record=${e.id} data-type=${r.type} data-after=${e.after ? 'yes' : 'no'}>
           <button class="cell" data-open-record=${e.id} title=${strings.openRecord} @click=${() => open(e.id)}>
             <span class="day">${e.day}</span>
-            <strong>${kind ? store.labelOf(kind) : r.type}</strong>
-            ${values.length > 0 ? html`<span>${values.join(' · ')}</span>` : nothing}
-            ${e.after ? html`<span class="muted">${strings.caseTimelineAfter}</span>` : nothing}
+            <strong class="kind">${kind ? store.labelOf(kind) : r.type}</strong>
+            <span class="what">${values.join(' · ')}${e.after ? html` <span class="muted">${strings.caseTimelineAfter}</span>` : nothing}</span>
+            <span class="who">${who ? strings.caseTimelineBy(who) : ''}</span>
           </button>
         </li>`
       })}

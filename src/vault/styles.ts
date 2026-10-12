@@ -151,19 +151,31 @@ export const vaultStyles = [
       cursor: pointer;
       color: var(--dc-color-text-muted, #8a8a92);
     }
+    /* The lines share their columns — day, kind, what, who — so a case reads down as well as across. */
     details.timeline ol {
       list-style: none;
       margin: var(--dc-space-1, 4px) 0 0;
       padding: 0;
+      display: grid;
+      grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+      column-gap: var(--dc-space-3, 12px);
+    }
+    details.timeline li,
+    details.timeline li > button.cell {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: subgrid;
+      align-items: baseline;
     }
     details.timeline li > button.cell {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--dc-space-2, 8px);
       text-align: start;
     }
     details.timeline .day {
       font-variant-numeric: tabular-nums;
+    }
+    /* Who did it: quieter than what was done, so the line still reads by its day and kind first. */
+    details.timeline .who {
+      color: var(--dc-color-text-muted, #8a8a92);
     }
     /* What asks for something across the subjects: a quiet label and a button for each count. */
     .attention {
@@ -265,6 +277,11 @@ export const vaultStyles = [
     }
     td.wrap {
       white-space: normal;
+    }
+    td.num,
+    th.num {
+      text-align: end;
+      font-variant-numeric: tabular-nums;
     }
     fieldset.picker {
       border: none;
