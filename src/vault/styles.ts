@@ -37,12 +37,14 @@ export const vaultStyles = [
       flex-direction: column;
       gap: var(--dc-space-2, 8px);
     }
+    /* Side by side where the list is wide enough for both choices' longest names, one under the other where it is not. */
     .list-filters {
       display: flex;
+      flex-wrap: wrap;
       gap: var(--dc-space-2, 8px);
     }
     .list-filters > dc-select {
-      flex: 1 1 0;
+      flex: 1 1 12rem;
       min-width: 0;
     }
     .pane.list ul {
