@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-10-12
+
 ### Added
 - Above the list of people, "Meeting today" (오늘 만날 사람) counts the people whose next session is today — the day their latest session names under "Next session", so a later session takes the place of what an earlier one planned. Pressing it keeps those people in view, and the list says "meeting today" beside each. The app counts dates only and sends no reminders.
 - Each line of a case's timeline says who did it — the practitioner its record names — so a case several people work on shows each one's part. The lines share their columns: day, kind, what, who.
@@ -144,7 +146,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/iyulab/openquote-care/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/iyulab/openquote-care/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/iyulab/openquote-care/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/iyulab/openquote-care/compare/v0.16.0...v0.17.0
