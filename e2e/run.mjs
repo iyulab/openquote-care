@@ -229,7 +229,7 @@ const scenarios = {
     await app.alert('두 암호가 다릅니다.')
     await app.type('새 암호 다시 입력', NEW_PASSPHRASE)
     await app.click('dc-button', '암호 바꾸기')
-    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed')
+    await app.passphraseChanged('the passphrase changed')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=key-hint]')`), false, 'the offer is gone once taken')
 
     const reopen = async (passphrase) => {
@@ -256,7 +256,7 @@ const scenarios = {
     await app.type('새 암호', PASSPHRASE)
     await app.type('새 암호 다시 입력', PASSPHRASE)
     await app.click('dc-button', '암호 바꾸기')
-    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase changed back')
+    await app.passphraseChanged('the passphrase changed back')
     await reopen()
   },
 
@@ -367,6 +367,14 @@ const scenarios = {
     // The test pack: topic v2 with a v1→v2 crosswalk and the report form in v2. "learning" maps 1:1 to a new code, "academic";
     // "relation" splits in two, so its session waits for a person instead of being guessed.
     const pack = join(root, 'tests', 'golden', 'steps', '2')
+    // Applying one is a rare act on the whole folder: it sits in the folder's menu, not over a list of forms.
+    assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role=apply-pack]')`), false, 'no button over the forms')
+    await app.click('[data-role=folder-menu]')
+    await app.cdp.waitFor(`__e2e.one('[data-role=folder-menu-items]')?.items?.some((i) => i.label === '분류 개정 적용…')`, 'the folder menu offers it')
+    await app.cdp.evaluate(`(__e2e.one('[data-role=folder-menu-items]').dispatchEvent(new CustomEvent('close')), true)`)
+    await app.cdp.waitFor(`!__e2e.one('[data-role=folder-menu-items]')`, 'the menu closed')
+    // Applied from another screen, what it brought is said on the statistics screen, the form it updates picked.
+    await app.click('button', '대상자')
     await app.cdp.evaluate(`__e2e.one('oc-vault').applyPack(${q(pack)}).then(() => true)`)
     await app.cdp.waitFor(`__e2e.all('[role=status]').some((el) => el.textContent.includes('주제 분류 대응표 1판→2판'))`, 'the revision applied')
     await app.noAlert()
@@ -1407,7 +1415,7 @@ const scenarios = {
     await app.type('새 암호', PASSPHRASE)
     await app.type('새 암호 다시 입력', PASSPHRASE)
     await app.click('dc-button', '암호 바꾸기')
-    await app.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, 'the passphrase set')
+    await app.passphraseChanged('the passphrase set')
 
     await app.folderAction('기록 폴더 닫기')
     await app.click('dc-button', '기록 폴더 열기')

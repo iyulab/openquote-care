@@ -130,6 +130,11 @@ export class App {
     if (outcome !== 'open') throw new Error(`the vault did not open: ${outcome}`)
   }
 
+  /** Waits for a passphrase change to be said: it makes the key again as opening does, so it waits as long. */
+  passphraseChanged(what) {
+    return this.cdp.waitFor(`!!__e2e.one('[data-role=passphrase-changed]')`, what, { timeoutMs: 60_000 })
+  }
+
   /** The session rows as their values read: a cell's own buttons and marks (`.cell`) left out. */
   sessionRows() {
     return this.cdp.evaluate(
