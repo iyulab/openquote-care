@@ -1,5 +1,4 @@
 import { html, nothing } from 'lit'
-import { open } from '@tauri-apps/plugin-dialog'
 import { yearStart, type FormEntry } from '../forms.js'
 import { today, yearAround, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
@@ -187,18 +186,6 @@ export function formBehind(forms: FormEntry[], key: string, schemeName: (scheme:
   if (!chosen || chosen.behind.length === 0) return nothing
   const lags = chosen.behind.map((l) => ({ name: schemeName(l.scheme), version: l.version, latest: l.latest }))
   return html`<p class="muted" data-form-behind>${strings.formBehind(lags)}</p>`
-}
-
-/**
- * Offers a folder picker and applies the data pack in the folder chosen. It changes the vault's forms and
- * categories, not one report: it sits with the list of forms, away from the button that counts.
- */
-export function applyPackButton(store: VaultStore) {
-  const pick = async () => {
-    const folder = await open({ directory: true, title: strings.applyPackTitle })
-    if (typeof folder === 'string') await store.applyPack(folder)
-  }
-  return html`<dc-button variant="secondary" size="sm" data-role="apply-pack" ?disabled=${store.busy} @click=${() => void pick()}>${strings.applyPack}</dc-button>`
 }
 
 /** Asks, when the pack just picked needs the vault in a newer format, whether to raise it. */

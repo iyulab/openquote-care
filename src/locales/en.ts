@@ -374,7 +374,7 @@ export const en: Strings = {
   before: 'Earlier',
   after: 'Now',
   nowhere: '—',
-  applyPack: 'Apply classification revision',
+  applyPack: 'Apply a classification revision…',
   applyPackTitle: 'Choose the data pack folder to apply',
   raiseFormatAsk:
     'This data pack counts right only once the vault is raised to a newer format. After that, versions of the app too old to read the newer format no longer open the vault — update the app first on every other computer that uses it.',

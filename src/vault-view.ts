@@ -1,4 +1,5 @@
 import { LitElement, css, html, nothing } from 'lit'
+import { open } from '@tauri-apps/plugin-dialog'
 import { customElement, property, state } from 'lit/decorators.js'
 import { desktopMinWidth } from '@iyulab/desktop-patterns/breakpoints'
 import type { DpSidebarSelectEvent } from '@iyulab/desktop-patterns/sidebar'
@@ -183,9 +184,19 @@ export class OcVault extends LitElement {
     await this.store.setBackup(folder)
   }
 
-  /** Applies the data pack in `folder` (what the folder picker answers). */
+  /**
+   * Applies the data pack in `folder` (what the folder picker answers) on the statistics screen: it changes the
+   * vault's forms and categories, so what it brought is said there, the form it updates picked.
+   */
   async applyPack(folder: string) {
+    this.view = 'report'
     await this.store.applyPack(folder)
+  }
+
+  /** Asks for the folder of a data pack, and applies it. */
+  private async pickPack() {
+    const folder = await open({ directory: true, title: strings.applyPackTitle })
+    if (typeof folder === 'string') await this.applyPack(folder)
   }
 
   private close() {
@@ -327,7 +338,10 @@ export class OcVault extends LitElement {
     `
   }
 
-  /** The folder's rarer actions, apart from the page: read it again, close it. Locking stays one press away. */
+  /**
+   * The folder's rarer actions, apart from the page: read it again, apply a classification revision to it, close it.
+   * Locking stays one press away.
+   */
   private folderMenuView() {
     const at = this.folderMenu
     if (!at) return nothing
@@ -338,6 +352,7 @@ export class OcVault extends LitElement {
       .y=${at.y}
       .items=${[
         { value: 'refresh', label: strings.refresh, disabled: this.store.busy },
+        { value: 'apply-pack', label: strings.applyPack, disabled: this.store.busy },
         { separator: true },
         { value: 'close', label: strings.closeVault },
       ]}
@@ -345,6 +360,7 @@ export class OcVault extends LitElement {
       @select=${(e: CustomEvent<{ item: { value?: string } }>) => {
         this.folderMenu = undefined
         if (e.detail.item.value === 'refresh') void this.refresh()
+        else if (e.detail.item.value === 'apply-pack') void this.pickPack()
         else if (e.detail.item.value === 'close') this.close()
       }}
     ></dc-context-menu>`

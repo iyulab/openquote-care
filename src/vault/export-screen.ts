@@ -9,7 +9,7 @@ import { plainCopy } from '../plain-copy.js'
 import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { applyPackButton, deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth } from './parts.js'
+import { deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -166,7 +166,6 @@ export class OcExport extends VaultScreen {
     return listDetail({
       store: this.store,
       label: strings.exportForms,
-      head: applyPackButton(store),
       entries: [
         ...forms.map((f) => ({ id: `${f.name}@${f.version}`, label: formLabel(forms, f) })),
         { id: PLAIN_COPY, label: strings.plainCopyEntry },

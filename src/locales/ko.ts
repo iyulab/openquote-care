@@ -367,7 +367,7 @@ export const ko = {
   before: '이전',
   after: '지금',
   nowhere: '—',
-  applyPack: '분류 개정 적용',
+  applyPack: '분류 개정 적용…',
   applyPackTitle: '적용할 분류 자료 폴더 선택',
   raiseFormatAsk:
     '이 분류 자료는 기록 폴더를 새 형식으로 올려야 바르게 셉니다. 올리면 새 형식을 읽지 못하는 옛 판의 앱에서는 이 기록 폴더가 열리지 않습니다 — 같은 기록 폴더를 쓰는 다른 컴퓨터도 앱을 먼저 최신 판으로 올려 주세요.',

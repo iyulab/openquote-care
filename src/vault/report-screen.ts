@@ -7,7 +7,7 @@ import { shell, type ScaleSummary } from '../shell.js'
 import { changeSigns, scaleLine } from '../cases.js'
 import { scaleLabel } from './case-parts.js'
 import { strings } from '../strings.js'
-import { applyPackButton, formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
+import { formBehind, formLabel, listDetail, noticeLine, openSessionEvent, periodFields, stepMonth, raiseFormatCallout, rangeFields, yearSelect } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -144,7 +144,6 @@ export class OcReport extends VaultScreen {
     return listDetail({
       store: this.store,
       label: strings.reportForms,
-      head: applyPackButton(store),
       entries: [
         ...byUnit(reports).map((r) => ({ id: `${r.name}@${r.version}`, label: formLabel(reports, r), group: unitGroup(r) })),
         // Not a form: the scale scores of the cases closed in a period, where the packs give scales.
