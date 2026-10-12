@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- Above the list of people, "Meeting today" (오늘 만날 사람) counts the people whose next session is today — the day their latest session names under "Next session", so a later session takes the place of what an earlier one planned. Pressing it keeps those people in view, and the list says "meeting today" beside each. The app counts dates only and sends no reminders.
+
 ## [0.19.0] - 2026-10-12
 
 ### Changed

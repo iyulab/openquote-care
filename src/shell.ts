@@ -152,6 +152,15 @@ export interface WaitingRecord {
   day: string | null
 }
 
+/** A subject's next meeting, as the packs say which kinds of record set one: the day, and the record that set it. */
+export interface PlannedMeeting {
+  subject: string
+  /** `YYYY-MM-DD`. */
+  day: string
+  record: string
+  type: string
+}
+
 /** A subject's cases, oldest first, and its records with no date to place them by. */
 export interface SubjectCases {
   subject: string
@@ -311,6 +320,8 @@ export const shell = {
   cases: () => invoke<SubjectCases[]>('cases'),
   /** The records still waiting for an answer, the oldest first; nothing is stored. */
   awaiting: () => invoke<WaitingRecord[]>('awaiting'),
+  /** Each subject's next meeting, by day — the day its latest record of a kind that sets one names; nothing is stored. */
+  planned: () => invoke<PlannedMeeting[]>('planned'),
   /** What each subject's scale scores say over each of its cases; nothing is stored. */
   scales: () => invoke<ScalesRead>('scales'),
   scaleSummary: (from: string, to: string) => invoke<ScaleSummary>('scale_summary', { from, to }),

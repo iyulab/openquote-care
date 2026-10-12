@@ -93,6 +93,12 @@ describe('the open cases that ask for a session', () => {
     expect(narrowSubjects(waiting, { query: '', cases: 'awaiting', order: 'name' }, names).map((r) => r.id)).toEqual(['g', 'h'])
   })
 
+  it('keeps whoever meets the person today, and no one without the day to compare with', () => {
+    const planned = [...given.slice(0, 3), { ...given[3], planned: '2026-10-12' }, { ...given[4], planned: '2026-10-13' }]
+    expect(narrowSubjects(planned, { query: '', cases: 'today', order: 'name', today: '2026-10-12' }, names).map((r) => r.id)).toEqual(['g'])
+    expect(narrowSubjects(planned, { query: '', cases: 'today', order: 'name' }, names)).toEqual([])
+  })
+
   it('puts the open case whose latest session — or, with none, whose start — lies furthest back first, the rest by name', () => {
     expect(narrowSubjects(given, { query: '', cases: 'all', order: 'quiet' }, names).map((r) => r.id)).toEqual(['e', 'f', 'd', 'g', 'h'])
   })

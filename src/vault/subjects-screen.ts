@@ -115,11 +115,13 @@ export class OcSubjects extends VaultScreen {
   }
 
   /**
-   * What asks for something across the subjects, counted from their records — follow-ups past their day, open cases
-   * with no session yet — each a button that keeps those in view. Nothing when nothing does; no judgement, only dates.
+   * What asks for something across the subjects, counted from their records — those meeting `day`, follow-ups past
+   * their day, open cases with no session yet, records waiting for an answer — each a button that keeps those in view.
+   * Nothing when nothing does; no judgement, only dates.
    */
-  private attention(all: SubjectRow[]) {
+  private attention(all: SubjectRow[], day: string) {
     const counts: { filter: CaseFilter; n: number; label: (n: number) => string }[] = [
+      { filter: 'today', n: all.filter((r) => r.planned === day).length, label: strings.attentionToday },
       { filter: 'overdue', n: all.filter((r) => r.followUp?.followUp === 'overdue').length, label: strings.attentionOverdue },
       { filter: 'unseen', n: all.filter((r) => r.openCase && r.openCase.lastSession === null).length, label: strings.attentionUnseen },
       { filter: 'awaiting', n: all.filter((r) => r.awaiting !== undefined).length, label: strings.attentionAwaiting },
@@ -141,7 +143,7 @@ export class OcSubjects extends VaultScreen {
   }
 
   /** Words to find a subject by, the cases kept in view — when some subject's cases are shown — and the order. */
-  private listTools(withCases: boolean, withFollowUps: boolean, withAwaiting: boolean) {
+  private listTools(withCases: boolean, withFollowUps: boolean, withAwaiting: boolean, withPlanned: boolean) {
     return html`<div class="list-tools">
       <dc-input
         type="search"
@@ -152,7 +154,7 @@ export class OcSubjects extends VaultScreen {
         @input=${(e: Event) => (this.query = (e.target as HTMLInputElement).value)}
       ></dc-input>
       <div class="list-filters">
-        ${withCases || withAwaiting
+        ${withCases || withAwaiting || withPlanned
           ? html`<dc-select
               aria-label=${strings.subjectCases}
               data-role="subject-cases"
@@ -167,6 +169,7 @@ export class OcSubjects extends VaultScreen {
                     ]
                   : []),
                 ...(withAwaiting ? [{ value: 'awaiting', label: strings.casesAwaiting }] : []),
+                ...(withPlanned ? [{ value: 'today', label: strings.casesToday }] : []),
               ]}
               .value=${this.caseFilter}
               @change=${(e: Event) => (this.caseFilter = (e.target as HTMLSelectElement).value as CaseFilter)}
@@ -197,27 +200,29 @@ export class OcSubjects extends VaultScreen {
     const subject = this.adding ? undefined : subjects.find((s) => s.id === this.selected)
     const counts = countBy(this.store.sessions, (s) => s.people)
     const all = subjectRows(this.store)
-    const rows = narrowSubjects(all, { query: this.query, cases: this.caseFilter, order: this.order }, this.store.names)
     const day = today()
+    const rows = narrowSubjects(all, { query: this.query, cases: this.caseFilter, order: this.order, today: day }, this.store.names)
     const year = day.slice(0, 4)
     const bySessions = this.order === 'quiet' || this.caseFilter === 'unseen'
     return listDetail({
       store: this.store,
       label: strings.subjects,
       head: html`<dc-button variant="secondary" size="sm" @click=${() => this.startAdding()}>${strings.newSubject}</dc-button>
-        ${all.length === 0 ? nothing : this.attention(all)}
+        ${all.length === 0 ? nothing : this.attention(all, day)}
         ${all.length === 0
           ? nothing
           : this.listTools(
               all.some((r) => r.state !== null),
               all.some((r) => r.followUp !== null),
               all.some((r) => r.awaiting !== undefined),
+              all.some((r) => r.planned !== undefined),
             )}`,
       entries: rows.map((r) => ({
         id: r.id,
         label: r.name,
         meta: [
           strings.sessionCount(counts.get(r.id) ?? 0),
+          r.planned === day ? strings.meetingToday : '',
           // The day the list is about: when it is ordered or narrowed by sessions, an open case's latest session — or
           // that it has had none, since when — and otherwise the latest record, with an open case not yet seen said so.
           bySessions && r.openCase
@@ -392,6 +397,7 @@ function subjectRows(store: VaultStore): SubjectRow[] {
   // Each subject's oldest record still waiting for an answer: the engine lists them the oldest first.
   const awaiting = new Map<string, string | null>()
   for (const w of store.awaiting) for (const id of w.people) if (!awaiting.has(id)) awaiting.set(id, w.day)
+  const planned = new Map(store.planned.map((p) => [p.subject, p.day]))
   const last = new Map<string, string>()
   for (const kind of store.kinds)
     for (const r of store.recordsOf(kind.type)) {
@@ -410,6 +416,7 @@ function subjectRows(store: VaultStore): SubjectRow[] {
       followUp: latestFollowUp(store.cases.get(s.id)),
       openCase: openCaseOf(store, s.id, sessionDays),
       ...(awaiting.has(s.id) ? { awaiting: awaiting.get(s.id) ?? null } : {}),
+      ...(planned.has(s.id) ? { planned: planned.get(s.id) } : {}),
     }
   })
 }

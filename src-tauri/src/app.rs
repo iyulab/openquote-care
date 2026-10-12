@@ -659,6 +659,11 @@ impl App {
         self.with_open(|open| Ok(open.engine.awaiting()?))
     }
 
+    /// Each subject's next meeting, as the engine reads it from the records.
+    pub fn planned(&self) -> Result<Value, AppError> {
+        self.with_open(|open| Ok(open.engine.planned()?))
+    }
+
     /// What each subject's scale scores say over each of its cases, as the engine reads them.
     pub fn scales(&self) -> Result<Value, AppError> {
         self.with_open(|open| Ok(open.engine.scales()?))
@@ -1735,9 +1740,9 @@ cut off").unwrap();
     /// form counting by it; a crosswalk into another scheme needs format 1 — and its seventh, which places,
     /// dates and gives a role to each kind of record — its eighth, a form counting closings by the intake of
     /// their case — its ninth, a goal as a kind of record and a session's next step — and its tenth, a provision
-    /// following a referral with the forms counting it, and a referral waiting for its outcome. A vault made before
-    /// the sixth holds none of them.
-    const CORE_PACK_6: [&str; 22] = [
+    /// following a referral with the forms counting it, and a referral waiting for its outcome — and its eleventh, a
+    /// session setting the next meeting's day. A vault made before the sixth holds none of them.
+    const CORE_PACK_6: [&str; 24] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
@@ -1760,6 +1765,8 @@ cut off").unwrap();
         "fields/care/provision/v1.json.age",
         "reports/care.monthly-provision/v1.json.age",
         "exports/care.provision-list/v1.json.age",
+        "packs/care/v11.json.age",
+        "fields/care/session/v4.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";

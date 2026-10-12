@@ -233,6 +233,12 @@ public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Ca
 /// </summary>
 public sealed record WaitingView(string Record, string Type, IReadOnlyList<string> People, DateOnly? Day);
 
+/// <summary>
+/// A subject's next meeting, as <see cref="PlannedReader"/> reads it: the subject, the day, and the record that set it
+/// with its kind.
+/// </summary>
+public sealed record PlannedView(string Subject, DateOnly Day, string Record, string Type);
+
 /// <summary>A scale the vault's packs give: its code, which way a better score moves, its range and its terms of use.</summary>
 public sealed record ScaleView(string Code, string Direction, decimal Min, decimal Max, ScaleLicenceView? Licence);
 
@@ -368,6 +374,9 @@ internal static class Api
 
         // The records still waiting for an answer, as the packs say each kind does — read each time, the oldest first.
         app.MapGet("/awaiting", (VaultSession session) => AwaitingOf(session.Current));
+
+        // Each subject's next meeting, as the packs say which records set one — read each time, by day.
+        app.MapGet("/planned", (VaultSession session) => PlannedOf(session.Current));
 
         // What each subject's scale scores say over each of its cases, read like the cases: nothing is stored.
         app.MapGet("/scales", (VaultSession session) => ScalesOf(session.Current));
@@ -705,6 +714,9 @@ internal static class Api
     private static WaitingView[] AwaitingOf(VaultSession.Snapshot s) =>
         [.. AwaitingReader.Read(s.Entities.Values, s.Fields).Select(w => new WaitingView(w.Record.Reference.Id, w.Record.Reference.Type, w.People, w.Day))];
 
+    private static PlannedView[] PlannedOf(VaultSession.Snapshot s) =>
+        [.. PlannedReader.Read(s.Entities.Values, s.Fields).Select(p => new PlannedView(p.Subject, p.Day, p.Record.Reference.Id, p.Record.Reference.Type))];
+
     private static SubjectCasesView[] CasesOf(VaultSession.Snapshot s, DateOnly today) =>
         [.. CasesBySubject(s).Select(x => new SubjectCasesView(
             x.Subject,
@@ -838,6 +850,7 @@ internal static class Api
 [JsonSerializable(typeof(EntityHistoryView[]))]
 [JsonSerializable(typeof(SubjectCasesView[]))]
 [JsonSerializable(typeof(WaitingView[]))]
+[JsonSerializable(typeof(PlannedView[]))]
 [JsonSerializable(typeof(ScalesView))]
 [JsonSerializable(typeof(ScaleSummaryRequest))]
 [JsonSerializable(typeof(ScaleSummaryView))]

@@ -152,6 +152,12 @@ impl Engine {
         self.call("GET", "/awaiting", None)
     }
 
+    /// Each subject's next meeting, as the packs say which kinds of record set one: by day, each with the
+    /// subject, the day and the record that set it.
+    pub fn planned(&self) -> Result<Value, EngineError> {
+        self.call("GET", "/planned", None)
+    }
+
     /// Every subject's scale scores over each of its cases — the baseline, the last available score
     /// and whether they fall on two days — and the scales the vault's packs give.
     pub fn scales(&self) -> Result<Value, EngineError> {

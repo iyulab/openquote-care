@@ -18,13 +18,16 @@ export interface SubjectRow {
   openCase?: { start: string; lastSession: string | null } | null
   /** The day of its oldest record still waiting for an answer (null when that record has none), or undefined when none waits. */
   awaiting?: string | null
+  /** The day of its next meeting, as its latest record of a kind that sets one names; undefined when none does. */
+  planned?: string
 }
 
 /**
  * Which cases a person keeps in view; `overdue`, those whose latest case's follow-up is past its day; `unseen`, those
- * whose latest case is open and has had no session yet; `awaiting`, those with a record still waiting for an answer.
+ * whose latest case is open and has had no session yet; `awaiting`, those with a record still waiting for an answer;
+ * `today`, those whose next meeting is today.
  */
-export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue' | 'unseen' | 'awaiting'
+export type CaseFilter = 'all' | 'open' | 'closed' | 'overdue' | 'unseen' | 'awaiting' | 'today'
 
 /**
  * How the list is ordered: by name; the latest record first; or `quiet` — the open cases first, the one whose latest
@@ -47,11 +50,11 @@ export function matches(row: Pick<SubjectRow, 'words'>, query: string): boolean 
 /**
  * The rows a person sees: those whose name holds what was typed, as typed — or, when no name does, those holding
  * every word typed anywhere in their name and values — and whose latest case is in the state kept (any, when all
- * are; past the day its follow-up was due, for `overdue`), in the order chosen. By the latest record, the newest first and those with none last, each tie by name.
+ * are; past the day its follow-up was due, for `overdue`; meeting on `o.today`, for `today`), in the order chosen. By the latest record, the newest first and those with none last, each tie by name.
  */
 export function narrowSubjects(
   rows: readonly SubjectRow[],
-  o: { query: string; cases: CaseFilter; order: SubjectOrder },
+  o: { query: string; cases: CaseFilter; order: SubjectOrder; today?: string },
   names: Pick<Intl.Collator, 'compare'>,
 ): SubjectRow[] {
   const byName = (a: SubjectRow, b: SubjectRow) => names.compare(a.name, b.name)
@@ -66,12 +69,12 @@ export function narrowSubjects(
   const named = typed === '' ? [] : rows.filter((r) => fold(r.name).includes(typed))
   const found = named.length > 0 ? named : rows.filter((r) => matches(r, o.query))
   return found
-    .filter((r) => o.cases === 'all' || keeps(r, o.cases))
+    .filter((r) => o.cases === 'all' || keeps(r, o.cases, o.today))
     .sort(o.order === 'recent' ? byRecent : o.order === 'quiet' ? byQuiet : byName)
 }
 
-/** Whether a row is among the cases `filter` keeps in view (anything but `all`). */
-function keeps(r: SubjectRow, filter: Exclude<CaseFilter, 'all'>): boolean {
+/** Whether a row is among the cases `filter` keeps in view (anything but `all`); `today` keeps none without the day. */
+function keeps(r: SubjectRow, filter: Exclude<CaseFilter, 'all'>, today: string | undefined): boolean {
   switch (filter) {
     case 'overdue':
       return r.followUp?.followUp === 'overdue'
@@ -79,6 +82,8 @@ function keeps(r: SubjectRow, filter: Exclude<CaseFilter, 'all'>): boolean {
       return !!r.openCase && r.openCase.lastSession === null
     case 'awaiting':
       return r.awaiting !== undefined
+    case 'today':
+      return today !== undefined && r.planned === today
     default:
       return r.state === filter
   }

@@ -644,6 +644,37 @@ public sealed class SidecarTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Gives_each_subject_the_next_meeting_its_latest_session_sets()
+    {
+        await Post("/vault/load", Files(GoldenVault.Neutral.Through(1)));
+        async Task<string> Subject(string name)
+        {
+            var file = await Post("/changes/subject", new { fields = new { name } });
+            await Post("/vault/add", new { files = new[] { file } });
+            return file["path"]!.GetValue<string>().Split('/')[1];
+        }
+        async Task<string> Session(string subjectId, object fields)
+        {
+            var file = await Post("/changes/in-subject", new { subjectId, type = "session", fields });
+            await Post("/vault/add", new { files = new[] { file } });
+            return file["path"]!.GetValue<string>().Split('/')[^1].Split('.')[0];
+        }
+        var one = await Subject("one");
+        var two = await Subject("two");
+        var three = await Subject("three");
+        await Session(one, new { date = "2026-04-02", next = "2026-04-09" });
+        var latest = await Session(one, new { date = "2026-04-09", next = "2026-04-16" }); // takes the place of the plan before it
+        await Session(two, new { date = "2026-04-01", next = "2026-04-08" });
+        await Session(three, new { date = "2026-04-03", next = "2026-04-10" });
+        await Session(three, new { date = "2026-04-10" }); // the latest session names no day: no meeting planned
+
+        var planned = (await Get("/planned")).AsArray();
+
+        Assert.Equal([(two, "2026-04-08"), (one, "2026-04-16")], planned.Select(p => (p!["subject"]!.GetValue<string>(), p["day"]!.GetValue<string>())));
+        Assert.Equal((latest, "session"), (planned[1]!["record"]!.GetValue<string>(), planned[1]!["type"]!.GetValue<string>()));
+    }
+
+    [Fact]
     public async Task Reads_each_cases_first_and_last_scale_score_and_the_change_between_them()
     {
         var scalePack = Path.GetFullPath(Path.Combine(GoldenVault.Neutral.Root, "..", "..", "packs", "care.scale"));
