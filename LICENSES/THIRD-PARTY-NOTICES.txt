@@ -17811,7 +17811,7 @@ Upstream: https://github.com/iyulab/Gil
 Same license text as rustls-platform-verifier 0.7.1.
 
 ------------------------------------------------------------------------------
-Microsoft.AspNetCore.App.Runtime.win-x64 10.0.5
+Microsoft.AspNetCore.App.Runtime.win-x64 10.0.12
 License: MIT
 Upstream: https://github.com/dotnet/dotnet
 
@@ -18981,11 +18981,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ------------------------------------------------------------------------------
-Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.5
+Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.12
 License: MIT
 Upstream: https://github.com/dotnet/dotnet
 
-Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.5.
+Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.12.
 
 .NET Runtime uses third-party libraries or other resources that may be
 distributed under licenses different than the .NET Runtime software.
@@ -20406,13 +20406,13 @@ NIST-developed software is expressly provided "AS IS." NIST MAKES NO WARRANTY OF
 You are solely responsible for determining the appropriateness of using and distributing the software and you assume all risks associated with its use, including but not limited to the risks and costs of program errors, compliance with applicable laws, damage to or loss of data, programs or equipment, and the unavailability or interruption of operation. This software is not intended to be used in any situation where a failure could cause risk of injury or damage to property. The software developed by NIST employees is not subject to copyright protection within the United States.
 
 ------------------------------------------------------------------------------
-Microsoft.NETCore.App.Runtime.win-x64 10.0.5
+Microsoft.NETCore.App.Runtime.win-x64 10.0.12
 License: MIT
 Upstream: https://github.com/dotnet/dotnet
 
-Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.5.
+Same license text as Microsoft.AspNetCore.App.Runtime.win-x64 10.0.12.
 
-Same license text as Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.5.
+Same license text as Microsoft.NETCore.App.Runtime.NativeAOT.win-x64 10.0.12.
 
 ------------------------------------------------------------------------------
 Openquote 0.20.0
