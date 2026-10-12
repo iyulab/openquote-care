@@ -4,7 +4,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { Entity, EntityHistory, PendingChoice, Scheme, Suggestions } from './records.js'
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
-import type { FormEntry, ReportEntry } from './forms.js'
+import type { ExportEntry, ReportEntry } from './forms.js'
 
 /** New versions on this installation: whether it can update itself, and what it found. */
 export interface UpdateStatus {
@@ -214,7 +214,7 @@ export interface VaultSummary {
   /** Files the engine could not use or the vault could not decrypt; the rest is still read. */
   unreadable: { path: string; reason: string; detail: string; kind: VaultFileKind }[]
   reports: ReportEntry[]
-  exports: FormEntry[]
+  exports: ExportEntry[]
   /** Scheme versions no crosswalk leads to from an earlier version. */
   unlinked: { scheme: string; version: number }[]
   /** This computer's device id. */

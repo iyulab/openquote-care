@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Fixed
+- Record lists opens on the list of sessions again, as Statistics opens on a form counting sessions; since 0.18.0 it opened on the provision list.
+
 ## [0.18.0] - 2026-10-12
 
 ### Added

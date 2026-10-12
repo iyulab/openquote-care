@@ -15,6 +15,12 @@ export interface FormEntry {
   offered: boolean
 }
 
+/** An export form: the kind of record its rows are, and the field that places them in a period. */
+export interface ExportEntry extends FormEntry {
+  rows: string
+  periodField: string
+}
+
 /** One way a report form places what it counts: a classified field in a scheme version, or a field's own value. */
 export interface Dimension {
   field: string

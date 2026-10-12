@@ -68,7 +68,7 @@ describe('VaultStore', () => {
       name, version: 1, label: name, behind: [], offered, counts: 'session', periodField: 'date', unit: 'month' as const, startMonth: 1,
       dimensions: [{ field: 'topic', scheme: 'topic', version: 1, ofSubject: false, all: false }], measures: ['records' as const], sums: [], filters: [],
     })
-    vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [form('hidden', false)] })
+    vi.mocked(shell.summary).mockResolvedValue({ ...summary, reports: [form('hidden', false), form('shown', true)], exports: [{ ...form('hidden', false), rows: 'session' }] })
     const store = new VaultStore()
 
     await store.load()
@@ -94,6 +94,17 @@ describe('VaultStore', () => {
 
     expect(store.summary?.reports.map((f) => f.name)).toEqual(['month-topic', 'year-topic', 'care.monthly-closing', 'care.monthly-intake'])
     expect(store.reportKey).toBe('month-topic@1')
+  })
+
+  it('lists the lists of sessions before lists of other kinds of record, and picks one of them first', async () => {
+    const list = (name: string, rows: string) => ({ name, version: 1, label: name, behind: [], offered: true, rows, periodField: 'date' })
+    vi.mocked(shell.summary).mockResolvedValue({ ...summary, exports: [list('care.provision-list', 'provision'), list('care.session-list', 'session')] })
+    const store = new VaultStore()
+
+    await store.load()
+
+    expect(store.summary?.exports.map((f) => f.name)).toEqual(['care.session-list', 'care.provision-list'])
+    expect(store.exportKey).toBe('care.session-list@1')
   })
 
   it('starts the form with today and the only practitioner, and keeps them when it clears', async () => {

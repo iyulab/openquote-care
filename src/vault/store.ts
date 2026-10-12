@@ -305,12 +305,12 @@ export class VaultStore extends EventTarget {
       .map(({ k }) => k)
     this.others = new Map(others.map((o) => [o.type, o.records]))
     this.otherFields = new Map(others.map((o) => [o.type, o.fields]))
-    // A form standing on a hidden field is never shown; the sidecar decides which those are. Forms counting
-    // sessions, the record every vault keeps, are listed before forms of other kinds of record.
+    // A form standing on a hidden field is never shown; the sidecar decides which those are. Forms counting or
+    // listing sessions, the record every vault keeps, are listed before forms of other kinds of record.
     const { reports, exports } = (this.summary = {
       ...summary,
       reports: summary.reports.filter((f) => f.offered).sort((a, b) => Number(b.counts === 'session') - Number(a.counts === 'session')),
-      exports: summary.exports.filter((f) => f.offered),
+      exports: summary.exports.filter((f) => f.offered).sort((a, b) => Number(b.rows === 'session') - Number(a.rows === 'session')),
     })
     if (!this.exportKey && exports.length > 0) this.exportKey = `${exports[0].name}@${exports[0].version}`
     if (!this.reportKey && reports.length > 0) {
