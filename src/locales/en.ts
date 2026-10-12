@@ -197,6 +197,7 @@ export const en: Strings = {
   searchTitle: 'Find records',
   activitiesTitle: 'Activities',
   calendarTitle: 'Calendar',
+  caseNumberHint: "Each new client is given a number: today's date and a tail no one here has. If you number clients your own way, write yours instead.",
   calendarMonth: (year: number, month: number) => `${new Date(year, month - 1, 1).toLocaleString('en', { month: 'long' })} ${year}`,
   calendarPrevious: 'Previous month',
   calendarNext: 'Next month',

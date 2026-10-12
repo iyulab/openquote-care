@@ -2212,8 +2212,13 @@ const scenarios = {
     await app.click('button', '대상자')
     await app.click('dc-button', '＋ 새 대상자')
     await app.type('대상자 이름', '가상 학생 11')
+    // A new person is given a case number — today's date and a short tail — shown in the form, to keep or change.
+    await app.cdp.waitFor(`!!__e2e.one('input[aria-label="관리번호"]')?.value`, 'the case number offered')
+    const caseNumber = await app.cdp.evaluate(`__e2e.one('input[aria-label="관리번호"]').value`)
+    assert.match(caseNumber, /^\d{4}-\d{4}-[0-9A-HJKMNP-TV-Z]{4}$/, 'today and a tail that reads aloud')
     await app.click('dc-button', '대상자 추가')
     await app.click('li button .label', '가상 학생 11')
+    await app.cdp.waitFor(`__e2e.all('dd, td, span, p').some((el) => el.textContent.includes(${JSON.stringify(caseNumber)}))`, 'the case number kept on the person')
     const inClosingForm = (selector) =>
       `__e2e.all(${JSON.stringify(selector)}).find((el) => { let n = el; for (;;) { const host = n.getRootNode().host; if (!host) return false; if (host.localName === 'oc-record-form') return host.getAttribute('type') === 'closing'; n = host } })`
     await app.click('dc-button', '종결 기록하기')

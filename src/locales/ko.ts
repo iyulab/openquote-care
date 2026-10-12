@@ -198,6 +198,7 @@ export const ko = {
   searchTitle: '기록 찾기',
   activitiesTitle: '활동',
   calendarTitle: '달력',
+  caseNumberHint: '새 대상자마다 오늘 날짜와 겹치지 않는 꼬리로 번호를 붙입니다. 학교에서 쓰는 번호가 있으면 고쳐 적으세요.',
   calendarMonth: (year: number, month: number) => `${year}년 ${month}월`,
   calendarPrevious: '지난달',
   calendarNext: '다음 달',

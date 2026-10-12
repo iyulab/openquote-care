@@ -265,6 +265,7 @@ async function shoot(name) {
   const shown = (await app.cdp.evaluate(SHOWN))
     .replaceAll(/AGE-SECRET-KEY-1[0-9A-Z ]+/g, 'AGE-SECRET-KEY-1 …')
     .replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, '(moment)')
+    .replaceAll(/\b\d{4}-\d{4}-[0-9A-Z]{4}\b/g, '(case number)')
     .replaceAll(/\d{4}\. \d{1,2}\. \d{1,2}\.|\d{1,2}\/\d{1,2}\/\d{4}/g, '(day)')
     .replaceAll(/\d{1,2}:\d{2}(:\d{2})?/g, '(time)')
   await writeFile(join(shots, `${name}.txt`), `${shown}\n`)

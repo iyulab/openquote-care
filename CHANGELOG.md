@@ -8,6 +8,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Added
 - Calendar (달력), beside the people: a month at a glance, each day showing how many people a session planned to meet then, the follow-ups after a closing due then, and the records made then — days the records already name; nothing is entered on the calendar. Picking a day lists who and what, each opening where it is kept; the arrow keys move between days and Page Up and Page Down between months. Sundays and Saturdays read in their own colours.
+- A person added by name is given a case number — the day they were added and four characters, such as 2026-1013-7K3Q — shown in the form to keep or change; the people pasted from a spreadsheet without one are given one too. The number is no running count: devices sharing a records folder could hand out the same one; a day and a tail no one here has cannot clash.
 
 ### Changed
 - Activities have an icon of their own in the menu, a briefcase, apart from the calendar's.

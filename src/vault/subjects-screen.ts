@@ -8,6 +8,7 @@ import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-
 import { followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
 import { recordFields } from '../fields.js'
 import { today } from '../records.js'
+import { newCaseNumber } from '../case-number.js'
 import { alreadyHere, daysBetween, narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
 import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
@@ -22,9 +23,14 @@ import type { VaultStore } from './store.js'
 import type { OcRecordForm } from './record-form.js'
 
 /** Subjects: adding them one by one or from pasted rows, and each one's sessions. */
+/** The subject field that holds a person's case number (the core pack's `mgmt_no`). */
+const CASE_NUMBER = 'mgmt_no'
+
 @customElement('oc-subjects')
 export class OcSubjects extends VaultScreen {
   @state() private subjectName = ''
+  /** The case number the next person added is given — drawn when the form opens, as a person may change it. */
+  @state() private caseNumber?: string
   @state() private selected?: string
   /** The document is the form for adding subjects, rather than a subject's records. */
   @state() private adding = false
@@ -59,12 +65,30 @@ export class OcSubjects extends VaultScreen {
     ;(this.renderRoot.querySelector('dc-input[data-role=find-subjects]') as HTMLElement | null)?.focus()
   }
 
+  protected willUpdate() {
+    // Drawn as the form shows, before it draws: a person sees the number they will be given, and may change it.
+    if (this.active && this.adding && this.caseNumber === undefined && this.caseNumberField) this.caseNumber = this.drawCaseNumber()
+  }
+
+  /** The vault's case number field, when its packs give subjects one. */
+  private get caseNumberField() {
+    return this.store.subjectFields.find((f) => f.name === CASE_NUMBER)
+  }
+
+  /** A case number for a person added today that no one here has. */
+  private drawCaseNumber(also: Iterable<string> = []): string {
+    const taken = new Set([...this.store.subjects.map((s) => text(s, CASE_NUMBER)).filter(Boolean), ...also])
+    return newCaseNumber(today(), taken)
+  }
+
   private async addSubject() {
     const name = this.subjectName.trim()
     if (!name) return this.store.problem('no-name')
+    const caseNumber = this.caseNumberField ? (this.caseNumber ?? '').trim() : ''
     await this.store.run(async () => {
-      const path = await shell.record('/changes/subject', { fields: { name } })
+      const path = await shell.record('/changes/subject', { fields: { name, ...(caseNumber ? { [CASE_NUMBER]: caseNumber } : {}) } })
       this.subjectName = ''
+      this.caseNumber = undefined
       await this.store.load()
       this.pick(entityOf(path))
     })
@@ -75,8 +99,14 @@ export class OcSubjects extends VaultScreen {
     const store = this.store
     store.set({ notice: '' })
     await store.run(async () => {
+      // A person pasted without a case number is given one, as one added by name is.
+      const given: string[] = []
       for (const row of plan.rows) {
-        if (row.kind === 'create') await shell.record('/changes/subject', { fields: row.fields })
+        if (row.kind === 'create') {
+          const fields = this.caseNumberField && !row.fields[CASE_NUMBER] ? { ...row.fields, [CASE_NUMBER]: this.drawCaseNumber(given) } : row.fields
+          if (fields[CASE_NUMBER]) given.push(String(fields[CASE_NUMBER]))
+          await shell.record('/changes/subject', { fields })
+        }
         else if (row.kind === 'update') await shell.record('/changes/update', { type: 'subject', id: row.subject, fields: row.fields })
       }
       const counts = tally(plan)
@@ -263,6 +293,18 @@ export class OcSubjects extends VaultScreen {
         <div class="stack">
           ${nameField(busy, strings.subjectName, this.subjectName, (v) => (this.subjectName = v), addSubject)}
           ${this.alreadyHereHint()}
+          ${this.caseNumberField
+            ? html`<dc-field label=${this.caseNumberField.label} hint=${strings.caseNumberHint}>
+                <dc-input
+                  aria-label=${this.caseNumberField.label}
+                  data-role="case-number"
+                  .value=${this.caseNumber ?? ''}
+                  ?disabled=${busy}
+                  @input=${(e: Event) => (this.caseNumber = (e.target as HTMLInputElement).value)}
+                  @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && !busy && addSubject()}
+                ></dc-input>
+              </dc-field>`
+            : nothing}
           <dc-paste-rows-zone
             placeholder=${strings.importPaste}
             @rows=${(e: CustomEvent<{ rows: string[][] }>) => {
