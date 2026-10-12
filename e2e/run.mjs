@@ -53,14 +53,15 @@ const SAFETY_NOTE = 'Synthetic notes: said they want to disappear, made a safety
 const appEnv = (env = {}) => ({ ...process.env, OPENQUOTE_SIDECAR_EXE: sidecar, OPENQUOTE_UI_LOCALE: 'ko', ...env })
 
 const scenarios = {
-  async 'says on the first screen what this installation sends, and shows every line of it'(app) {
+  async 'says on the first screen what this installation sends, and shows every line of it in the settings'(app) {
     // A collector nothing listens on: the notice depends on the configuration, not on delivery.
     await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
     await app.cdp.waitFor(`!!__e2e.one('[data-role="diagnostics"]')`, 'the diagnostics notice')
     // An error the window's code did not catch is written down as its type, never its message.
     await app.cdp.evaluate(`(setTimeout(() => { throw new TypeError('가상 학생 1') }), true)`)
+    await app.click('dc-button[data-role=settings-open]')
     await app.click('dc-button', '보내는 내용 보기')
-    await app.cdp.waitFor(`!!__e2e.one('[data-role="reports"]')`, 'the reports screen')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="reports"]')`, 'the lines in the settings')
     const lines = await app.cdp.waitFor(
       `(() => { const pre = __e2e.one('[data-role="report-lines"]'); return pre && pre.textContent.includes('"webview"') ? pre.textContent : false })()`,
       'the window error among the reports',
@@ -80,6 +81,7 @@ const scenarios = {
     // Ended the hard way (the way a crash or the system ends it), the launch is written as one that
     // did not end when the next one starts.
     await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
+    await app.click('dc-button[data-role=settings-open]')
     await app.click('dc-button', '보내는 내용 보기')
     const after = await app.cdp.waitFor(
       `(() => { const pre = __e2e.one('[data-role="session-lines"]'); return pre && pre.textContent.includes('"unfinished"') ? pre.textContent : false })()`,
@@ -92,7 +94,7 @@ const scenarios = {
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
   },
 
-  async 'says when a new version is out, and stops looking for one when told'(app) {
+  async 'says when a new version is out, stops looking for one when told, and still looks once when asked'(app) {
     // A version description of the kind the release puts next to its installers, served here. Its
     // installer address answers nothing, so the download the app starts in the background fails and
     // the version is offered as found (installing it is `npm run test:update`).
@@ -112,20 +114,72 @@ const scenarios = {
       await app.click('dc-button[aria-label="나중에"]')
       await app.cdp.waitFor(`!__e2e.one('dc-toast[data-role=update]')`, 'the notice set aside for now')
 
-      // Turned off, it stays off on the next launch: the address is not asked, and the first screen says so.
-      await app.click('dc-button', '새 판 확인 끄기')
-      await app.cdp.waitFor(`(__e2e.one('[data-role="update-check"]')?.textContent ?? '').includes('꺼 두었습니다')`, 'the notice that the check is off')
+      // Turned off in the settings, it stays off on the next launch: the address is not asked.
+      await app.click('dc-button[data-role=settings-open]')
+      await app.cdp.waitFor(`(__e2e.one('[data-role="version"]')?.textContent ?? '').includes('새 판(9.9.9)')`, 'the version found, in the settings')
+      await app.click('[data-role="update-check"] dc-checkbox')
+      await app.cdp.waitFor(`(__e2e.one('[data-role="update-check"]')?.textContent ?? '').includes('꺼 두어도')`, 'the line that says the check is off')
       asked.length = 0
       await app.restart(env)
       await app.heading('Openquote Care')
       await new Promise((resolve) => setTimeout(resolve, 1500))
       assert.deepEqual(asked, [], 'nothing asked while turned off')
       assert.equal(await app.cdp.evaluate(`!!__e2e.one('dc-toast[data-role=update]')`), false)
-      await app.click('dc-button', '새 판 확인 켜기')
-      await app.cdp.waitFor(`(__e2e.one('dc-toast[data-role=update]')?.message ?? '').includes('9.9.9')`, 'the new version found again once turned on')
+      // Looking by hand still looks, once, and says what it found.
+      await app.click('dc-button[data-role=settings-open]')
+      await app.click('dc-button', '지금 확인')
+      await app.cdp.waitFor(`(__e2e.one('[data-role="version"]')?.textContent ?? '').includes('새 판(9.9.9)이 있습니다')`, 'the version found by hand')
+      assert.ok(asked.length > 0, 'asked when told to')
+      await app.click('[data-role="update-check"] dc-checkbox')
+      await app.cdp.waitFor(`(__e2e.one('dc-toast[data-role=update]')?.message ?? '').includes('9.9.9')`, 'the new version offered once turned on')
     } finally {
       server.close()
     }
+    // With no answer from the address, looking by hand says so — the app goes on as it was.
+    await app.restart()
+    await app.click('dc-button[data-role=settings-open]')
+    await app.click('dc-button', '지금 확인')
+    await app.cdp.waitFor(`(__e2e.one('[data-role="version"]')?.textContent ?? '').includes('확인하지 못했습니다')`, 'the look that found no answer')
+  },
+
+  async "changes the window's colours when told, and opens in them on the next launch"(app) {
+    await app.restart()
+    await app.heading('Openquote Care')
+    const dark = () => app.cdp.evaluate(`matchMedia('(prefers-color-scheme: dark)').matches`)
+    const background = () => app.cdp.evaluate(`getComputedStyle(document.body).backgroundColor`)
+    const system = await dark()
+    await app.click('dc-button[data-role=settings-open]')
+    await app.click('[role=radio]', '어둡게')
+    await app.cdp.waitFor(`matchMedia('(prefers-color-scheme: dark)').matches`, 'the dark colours')
+    const darkBackground = await background()
+    await app.restart()
+    await app.heading('Openquote Care')
+    assert.equal(await dark(), true, 'dark again on the next launch')
+    await app.click('dc-button[data-role=settings-open]')
+    await app.click('[role=radio]', '밝게')
+    await app.cdp.waitFor(`!matchMedia('(prefers-color-scheme: dark)').matches`, 'the light colours')
+    assert.notEqual(await background(), darkBackground, 'the page itself changes colour')
+    // Following the system again, as every later scenario expects.
+    await app.click('[role=radio]', 'Windows 설정 따름')
+    await app.cdp.waitFor(`matchMedia('(prefers-color-scheme: dark)').matches === ${system}`, "the system's colours")
+  },
+
+  async 'speaks the language chosen in the settings from the next start'(app) {
+    // Nothing fixes the language here but the choice (an empty override is none).
+    await app.restart({ OPENQUOTE_UI_LOCALE: '' })
+    await app.click('dc-button[data-role=settings-open]')
+    const first = await app.cdp.evaluate(`document.documentElement.lang`)
+    const other = first === 'ko' ? 'en' : 'ko'
+    await app.choose(first === 'ko' ? '언어' : 'Language', other)
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="language-restart"]')`, 'the line that says a restart changes it')
+    await app.restart({ OPENQUOTE_UI_LOCALE: '' })
+    await app.heading('Openquote Care')
+    assert.equal(await app.cdp.evaluate(`document.documentElement.lang`), other)
+    await app.click('dc-button[data-role=settings-open]')
+    await app.choose(other === 'ko' ? '언어' : 'Language', 'system')
+    await app.restart()
+    await app.heading('Openquote Care')
+    assert.equal(await app.cdp.evaluate(`document.documentElement.lang`), 'ko')
   },
 
   async 'speaks English when the system language has no table of its own'(app) {

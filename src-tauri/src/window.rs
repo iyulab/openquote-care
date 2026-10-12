@@ -1,5 +1,6 @@
 //! The main window, built here rather than from the configuration so that what the web view may
-//! keep is decided in one place: it keeps nothing typed into it.
+//! keep is decided in one place — it keeps nothing typed into it — and so that it opens in the
+//! colours chosen in the app's settings.
 //!
 //! A web view remembers form entries for autofill in its own profile, outside the vault. What is
 //! typed into this window — names, a recovery key — must stay in the vault, so autofill is off.
@@ -25,7 +26,9 @@ pub fn build_main(app: &App) -> tauri::Result<WebviewWindow> {
     if let Ok(data) = tauri::Manager::path(app).app_local_data_dir() {
         let _ = tauri_kit_webview::remove_profile_snapshots(&data);
     }
-    let window = WebviewWindowBuilder::from_config(app.handle(), &config)?.general_autofill_enabled(false).build()?;
+    // Opened in the colours the person chose, so the window is never seen in the others first.
+    let theme = crate::prefs::load().theme.window();
+    let window = WebviewWindowBuilder::from_config(app.handle(), &config)?.theme(theme).general_autofill_enabled(false).build()?;
     clear_remembered_entries(&window);
     Ok(window)
 }

@@ -10,8 +10,9 @@
 //! the app again; the person can also update now, which closes the vault, installs and starts the
 //! new version.
 //!
-//! Development and test builds carry no key and never ask. A person can turn the check off; no
-//! network, or one that blocks the address, is not an error — the app works the same.
+//! Development and test builds carry no key and never ask. A person can turn the check off (the
+//! app's settings, [`crate::prefs`]) and still look once by hand; no network, or one that blocks
+//! the address, is not an error — the app works the same.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -44,6 +45,18 @@ pub struct Status {
     pub ready: bool,
 }
 
+/// What one look by hand found.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "outcome", content = "version")]
+pub enum Looked {
+    /// No newer version than this one.
+    Latest,
+    /// A newer version, now being downloaded (the window is told when it is ready).
+    Found(String),
+    /// The address did not answer, or its answer did not verify.
+    Unreachable,
+}
+
 /// A newer version found, and its installer once downloaded and checked.
 struct Found {
     update: Update,
@@ -53,18 +66,19 @@ struct Found {
 /// The shell's state for new versions, managed by Tauri.
 pub struct Updates {
     configured: bool,
-    off_marker: PathBuf,
+    /// The app's local data folder, where the settings say whether to look.
+    folder: PathBuf,
     found: Mutex<Option<Found>>,
 }
 
 impl Updates {
-    /// `configured` when the build carries the updater's key; the switch is remembered in `folder`.
+    /// `configured` when the build carries the updater's key; the switch is one of the settings in `folder`.
     pub fn new(configured: bool, folder: &Path) -> Self {
-        Updates { configured, off_marker: folder.join("update-check-off"), found: Mutex::new(None) }
+        Updates { configured, folder: folder.to_path_buf(), found: Mutex::new(None) }
     }
 
     fn checking(&self) -> bool {
-        self.configured && !self.off_marker.exists()
+        self.configured && crate::prefs::read(&self.folder).check_for_updates
     }
 
     pub fn status(&self) -> Status {
@@ -80,19 +94,16 @@ impl Updates {
     /// Turns the check on or off, for this launch and the next ones. Off forgets a version found,
     /// and an installer downloaded for it.
     pub fn set_checking(&self, on: bool) -> std::io::Result<()> {
-        if on {
-            match std::fs::remove_file(&self.off_marker) {
-                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
-                _ => {}
-            }
-        } else {
-            if let Some(dir) = self.off_marker.parent() {
-                std::fs::create_dir_all(dir)?;
-            }
-            std::fs::write(&self.off_marker, b"")?;
+        crate::prefs::change(&self.folder, |p| p.check_for_updates = on)?;
+        if !on {
             *self.found.lock().unwrap() = None;
         }
         Ok(())
+    }
+
+    /// Whether an installer is downloaded and checked, waiting to be installed.
+    pub fn ready(&self) -> bool {
+        self.found.lock().unwrap().as_ref().is_some_and(|f| f.installer.is_some())
     }
 
     /// Keeps a version found. The same version found again keeps the installer already
@@ -154,22 +165,53 @@ pub fn check_now<R: Runtime>(handle: AppHandle<R>) {
     tauri::async_runtime::spawn(async move { check(&handle).await });
 }
 
-/// One look: a newer version found is kept, the window told, and its installer downloaded and
-/// checked against the key in the background, so that it can be installed when the app closes —
-/// the window is told again once it is ready. Any failure — no network, an address that does not
-/// answer, a description or an installer that does not verify — leaves things as they were, and
-/// the next look tries again.
+/// One look, when looking is on: a newer version found is kept, the window told, and its installer
+/// downloaded and checked against the key in the background, so that it can be installed when the
+/// app closes — the window is told again once it is ready. Any failure — no network, an address
+/// that does not answer, a description or an installer that does not verify — leaves things as they
+/// were, and the next look tries again.
 async fn check<R: Runtime>(handle: &AppHandle<R>) {
-    let updates = handle.state::<Updates>();
-    if !updates.checking() {
+    if !handle.state::<Updates>().checking() {
         return;
     }
-    let Ok(updater) = builder(handle).and_then(|b| b.build()) else { return };
-    if let Some(update) = updater.check().await.ok().flatten()
-        && let Some(version) = updates.keep(update)
-    {
-        let _ = handle.emit(AVAILABLE, version);
+    look(handle).await;
+    download(handle).await;
+}
+
+/// One look the person asked for, whether or not the app looks by itself: what it found. A newer
+/// version is downloaded in the background, as when the app finds it by itself. `None` for a build
+/// that carries no key.
+pub async fn look_by_hand<R: Runtime>(handle: AppHandle<R>) -> Option<Looked> {
+    if !handle.state::<Updates>().configured {
+        return None;
     }
+    let looked = look(&handle).await;
+    if matches!(looked, Looked::Found(_)) {
+        tauri::async_runtime::spawn(async move { download(&handle).await });
+    }
+    Some(looked)
+}
+
+/// Asks the address for the newest version's description: a newer version is kept and the window told.
+async fn look<R: Runtime>(handle: &AppHandle<R>) -> Looked {
+    let updates = handle.state::<Updates>();
+    let Ok(updater) = builder(handle).and_then(|b| b.build()) else { return Looked::Unreachable };
+    match updater.check().await {
+        Ok(None) => Looked::Latest,
+        Err(_) => Looked::Unreachable,
+        Ok(Some(update)) => {
+            let version = update.version.clone();
+            if let Some(new) = updates.keep(update) {
+                let _ = handle.emit(AVAILABLE, new);
+            }
+            Looked::Found(version)
+        }
+    }
+}
+
+/// Downloads the installer of the version found, unless it already is; the window is told once it is ready.
+async fn download<R: Runtime>(handle: &AppHandle<R>) {
+    let updates = handle.state::<Updates>();
     let Some(update) = updates.to_download() else { return };
     if let Ok(installer) = update.download(|_, _| {}, || {}).await
         && updates.downloaded(&update.version, installer)
@@ -250,6 +292,13 @@ mod tests {
     }
 
     #[test]
+    fn what_a_look_by_hand_found_reads_as_one_outcome() {
+        assert_eq!(serde_json::to_value(Looked::Latest).unwrap(), serde_json::json!({ "outcome": "latest" }));
+        assert_eq!(serde_json::to_value(Looked::Found("9.9.9".into())).unwrap(), serde_json::json!({ "outcome": "found", "version": "9.9.9" }));
+        assert_eq!(serde_json::to_value(Looked::Unreachable).unwrap(), serde_json::json!({ "outcome": "unreachable" }));
+    }
+
+    #[test]
     fn turning_the_check_off_is_remembered_and_turning_it_on_again_forgets_that() {
         let dir = tempfile::tempdir().unwrap();
         let updates = Updates::new(true, dir.path());
@@ -261,5 +310,14 @@ mod tests {
         updates.set_checking(true).unwrap();
         assert!(Updates::new(true, dir.path()).status().checking);
         assert!(!Updates::new(false, dir.path()).status().checking, "never without the key");
+        assert!(crate::prefs::read(dir.path()).check_for_updates, "kept with the other settings");
+    }
+
+    #[test]
+    fn a_check_turned_off_by_an_earlier_version_stays_off() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("update-check-off"), b"").unwrap();
+        assert!(!Updates::new(true, dir.path()).status().checking);
+        assert!(!dir.path().join("update-check-off").exists());
     }
 }

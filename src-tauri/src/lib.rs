@@ -6,6 +6,7 @@ mod diagnostics;
 mod earlier;
 mod feedback;
 pub mod locale;
+pub mod prefs;
 pub mod runtime;
 mod updates;
 mod window;
@@ -283,6 +284,78 @@ async fn send_feedback(message: String, email: Option<String>) -> CommandResult<
     })
 }
 
+/// The app's settings as the settings screen shows them.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SettingsView {
+    theme: prefs::Theme,
+    /// The language chosen; none follows the system.
+    language: Option<String>,
+    /// The system's display language: what "follow the system" speaks.
+    system_locale: String,
+    /// The language the app speaks once it starts again, as things are set now (an override included).
+    next_locale: String,
+    /// This version of the app.
+    version: String,
+}
+
+#[tauri::command]
+fn settings(handle: tauri::AppHandle) -> SettingsView {
+    let prefs = prefs::load();
+    SettingsView {
+        theme: prefs.theme,
+        language: prefs.language,
+        system_locale: locale::system_locale(),
+        next_locale: locale::ui_locale(),
+        version: handle.package_info().version.to_string(),
+    }
+}
+
+/// Changes the settings kept in the app's local data folder.
+fn change_settings(change: impl FnOnce(&mut prefs::Preferences)) -> Result<prefs::Preferences, AppError> {
+    let folder = prefs::folder().ok_or_else(|| AppError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, "no local data folder")))?;
+    prefs::change(folder, change).map_err(AppError::from)
+}
+
+/// Sets the window's colours, now and for the next launches; the window's own frame follows them.
+#[tauri::command]
+fn set_theme(theme: prefs::Theme, window: tauri::WebviewWindow) -> CommandResult<()> {
+    text(change_settings(|p| p.theme = theme))?;
+    let _ = window.set_theme(theme.window());
+    Ok(())
+}
+
+/// Sets the language the app speaks from its next start; none follows the system.
+#[tauri::command]
+fn set_language(language: Option<String>) -> CommandResult<()> {
+    if language.as_deref().is_some_and(|tag| !prefs::is_language_tag(tag)) {
+        return Err(CommandError { code: "not-a-language", message: "not a language tag".into() });
+    }
+    text(change_settings(|p| p.language = language)).map(|_| ())
+}
+
+/// Starts the app again, as for a new language: the vault is closed first. With a new version's
+/// installer waiting, that version is installed and started instead — in the language now chosen.
+#[tauri::command]
+async fn restart(handle: tauri::AppHandle) -> CommandResult<()> {
+    if handle.state::<updates::Updates>().ready() {
+        return apply_update(handle).await;
+    }
+    handle.state::<App>().close_vault();
+    handle.request_restart();
+    Ok(())
+}
+
+/// The notices of the third-party software the app includes, as shipped beside it; none when the
+/// file is not there.
+#[tauri::command]
+fn notices(handle: tauri::AppHandle) -> Option<String> {
+    const FILE: &str = "THIRD-PARTY-NOTICES.txt";
+    let shipped = handle.path().resource_dir().ok().map(|d| d.join("licenses").join(FILE)).filter(|p| p.is_file());
+    let file = shipped.unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../LICENSES").join(FILE));
+    std::fs::read_to_string(file).ok()
+}
+
 #[tauri::command]
 fn update_status(updates: State<updates::Updates>) -> updates::Status {
     updates.status()
@@ -295,6 +368,12 @@ fn set_update_checking(on: bool, updates: State<updates::Updates>, handle: tauri
         updates::check_now(handle);
     }
     Ok(())
+}
+
+/// Looks for a newer version now, as the person asked; none for a build that cannot update itself.
+#[tauri::command]
+async fn look_for_update(handle: tauri::AppHandle) -> Option<updates::Looked> {
+    updates::look_by_hand(handle).await
 }
 
 /// Installs the newer version found: the vault is closed first, and the app ends and starts
@@ -387,6 +466,10 @@ pub fn run() {
     // An installation from before the identifier changed keeps its data folder: taken over before anything —
     // the diagnostics, the web view — makes one of this identifier's.
     let taken = dirs::data_local_dir().map(|base| earlier::take_over(&base, &context.config().identifier));
+    // The settings are read before anything else asks for the language or the colours.
+    if let Some(folder) = diagnostics::app_local_data(&context.config().identifier) {
+        prefs::install(folder);
+    }
     diagnostics::install(&context.config().identifier);
     if matches!(taken, Some(Ok(earlier::TakeOver::Copied) | Err(_))) {
         diagnostics::earlier_data_not_moved();
@@ -451,7 +534,13 @@ pub fn run() {
             vault_summary,
             update_status,
             set_update_checking,
+            look_for_update,
             apply_update,
+            settings,
+            set_theme,
+            set_language,
+            restart,
+            notices,
             diagnostics_status,
             diagnostics_reports,
             report_window_error,

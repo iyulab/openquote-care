@@ -3,7 +3,10 @@
 // is synthetic.
 //
 //   npm run build:sidecar && npm run build:e2e
-//   node e2e/pictures.mjs <folder> [--locale ko|en] [--root <folder>] [--compare <earlier folder>] [--set-short-date]
+//   node e2e/pictures.mjs <folder> [--locale ko|en] [--theme light|dark] [--root <folder>] [--compare <earlier folder>] [--set-short-date]
+//
+// --theme takes every picture in those colours (the app's own setting, put back to following the
+// system when the run ends); without it, the window follows the system's.
 //
 // Beside each picture goes the text it shows (<scene>.txt). With --compare, the scenes whose text
 // differs from an earlier run's are listed — with the lines added and gone — in <folder>/changes.txt,
@@ -94,7 +97,7 @@ const L = {
       create: '새 기록 폴더 만들기', passphrase: '암호', again: '암호 다시 입력', track: '분야와 지역', make: '만들기', kit: '복구 키트',
       kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', subjects: '대상자', date: '날짜', note: '상담 내용',
       report: '통계', year: '연도', month: '월', run: '산출', lists: '기록 목록', makeList: '목록 만들기', refresh: '다시 읽기',
-      compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', practitioner: '담당자',
+      compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', appSettings: '앱 설정', practitioner: '담당자',
       find: '기록 찾기', findLabel: '찾을 말', choices: '선택 목록', itemName: '항목 이름', countedAs: '통계에서 세는 항목', addToList: '목록에 더하기',
     },
     practitioners: ['상담교사 가', '전문상담사 나'],
@@ -162,7 +165,7 @@ const L = {
       create: 'Create a vault', passphrase: 'Passphrase', again: 'Passphrase again', track: 'Field and region', make: 'Create', kit: 'Recovery kit',
       kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', subjects: 'Clients', date: 'Date',
       note: 'Notes', report: 'Statistics', year: 'Year', month: 'Month', run: 'Run', lists: 'Record lists', makeList: 'Make list', refresh: 'Reload',
-      compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', practitioner: 'Practitioner',
+      compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', appSettings: 'App settings', practitioner: 'Practitioner',
       find: 'Find records', findLabel: 'Words to find', choices: 'Choice lists', itemName: 'Item name', countedAs: 'Counted in statistics as',
       addToList: 'Add to the list',
     },
@@ -270,8 +273,12 @@ const invoke = (command, args) => app.cdp.evaluate(`window.__TAURI_INTERNALS__.i
 // The entity a first change starts: a subject's folder, or the file's id in the flat list of practitioners.
 const idOf = (path) => path.split('/')[1].split('.')[0]
 
+const theme = option('--theme')
+
 try {
+  if (theme && !['light', 'dark'].includes(theme)) throw new Error(`--theme is light or dark, not ${theme}`)
   await frame()
+  if (theme) await invoke('set_theme', { theme })
   // A vault on the track, as a person makes it; the recovery kit is the first picture.
   await app.click('dc-button', ui.create)
   await app.pickFolder(vault)
@@ -538,6 +545,11 @@ try {
   await sleep(1500)
   await shoot('backup')
 
+  // The app's own settings: its colours, language, new versions, the idle lock, what it sends.
+  await app.click('button', ui.appSettings)
+  await app.cdp.waitFor(`!!__e2e.one('[data-role=theme]')`, 'the settings')
+  await shoot('settings')
+
   // What the vault holds that the scenes were not decided over: a kind of record or a form new since.
   const held = await app.cdp.evaluate(
     `(() => { const s = __e2e.one('oc-vault').store; return { kinds: s.kinds.map((k) => k.type), forms: [...s.summary.reports, ...s.summary.exports].map((f) => f.name) } })()`,
@@ -559,6 +571,7 @@ try {
       )
   }
 } finally {
+  if (theme) await invoke('set_theme', { theme: 'system' }).catch(() => {})
   await app.quit()
   await rm(work, { recursive: true, force: true }).catch(() => {})
 }

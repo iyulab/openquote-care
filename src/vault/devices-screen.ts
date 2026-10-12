@@ -3,16 +3,15 @@ import { html, nothing, type PropertyValues } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'
 import { storedBackup } from '../backup.js'
 import { MIN_PASSPHRASE, passphraseProblem } from '../flow.js'
-import { IDLE_CHOICES, idleMinutes, setIdleMinutes } from '../idle.js'
 import { shell, type VaultSummary } from '../shell.js'
 import { strings } from '../strings.js'
 import { deviceLabel, listDetail, nameField, noticeLine } from './parts.js'
 import { VaultScreen } from './screen.js'
 
 /** What the devices screen lists to pick from: its settings, each a document of its own. */
-export type DeviceSection = 'name' | 'idle' | 'backup' | 'passphrase'
+export type DeviceSection = 'name' | 'backup' | 'passphrase'
 
-/** This computer in the vault: its name, the devices writing to the vault, the idle lock, the backup and the passphrase. */
+/** This computer in the vault: its name, the devices writing to the vault, the backup and the passphrase. */
 @customElement('oc-devices')
 export class OcDevices extends VaultScreen {
   /** Opened with the recovery key: the person may have forgotten the passphrase. */
@@ -21,7 +20,6 @@ export class OcDevices extends VaultScreen {
   @property({ type: Boolean }) keyFileLost = false
 
   @state() private deviceName = ''
-  @state() private idleChoice = idleMinutes()
   @state() private newPassphrase = ''
   @state() private newPassphraseAgain = ''
   @state() private passphraseNotice = ''
@@ -71,12 +69,6 @@ export class OcDevices extends VaultScreen {
       this.dispatchEvent(new Event('oc-passphrase-changed'))
       this.passphraseNotice = strings.passphraseChanged
     })
-  }
-
-  private chooseIdle(minutes: number) {
-    setIdleMinutes(minutes)
-    this.idleChoice = minutes
-    this.dispatchEvent(new Event('oc-idle-changed', { bubbles: true, composed: true }))
   }
 
   private async chooseBackup() {
@@ -168,11 +160,10 @@ export class OcDevices extends VaultScreen {
   protected screen() {
     const sections: { id: DeviceSection; label: string }[] = [
       { id: 'name', label: strings.deviceName },
-      { id: 'idle', label: strings.idleLock },
       { id: 'backup', label: strings.backup },
       { id: 'passphrase', label: strings.passphraseSection },
     ]
-    const document = { name: () => this.nameSection(), idle: () => this.idleSection(), backup: () => this.backupSection(), passphrase: () => this.passphraseSection() }
+    const document = { name: () => this.nameSection(), backup: () => this.backupSection(), passphrase: () => this.passphraseSection() }
     return listDetail({
       store: this.store,
       label: strings.settingsList,
@@ -206,19 +197,6 @@ export class OcDevices extends VaultScreen {
           </ul>`}`
   }
 
-  private idleSection() {
-    return html`<dp-page-header heading=${strings.idleLock} description=${strings.idleLockLead}></dp-page-header>
-      <div class="row" data-role="idle-lock">
-        <dc-field label=${strings.idleLock}>
-          <dc-select
-            aria-label=${strings.idleLock}
-            .options=${IDLE_CHOICES.map((m) => ({ value: String(m), label: strings.idleOption(m) }))}
-            .value=${String(this.idleChoice)}
-            @change=${(e: Event) => this.chooseIdle(Number((e.target as HTMLSelectElement).value))}
-          ></dc-select>
-        </dc-field>
-      </div>`
-  }
 
   private passphraseSection() {
     const busy = this.store.busy

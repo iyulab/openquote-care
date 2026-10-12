@@ -4,7 +4,8 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { describeError, isCommandError } from './errors.js'
 import { IdleWatch, idleMinutes } from './idle.js'
 import { createProblem, groupKey, KIT_TAIL, MIN_PASSPHRASE } from './flow.js'
-import { shell, type DiagnosticsLines, type DiagnosticsStatus, type FeedbackStatus, type TrackView, type UpdateStatus } from './shell.js'
+import { shell, type DiagnosticsStatus, type FeedbackStatus, type TrackView, type UpdateStatus } from './shell.js'
+import { shortcutOf } from './shortcuts.js'
 import { showScreen } from './screen-time.js'
 import './quote-state.js'
 import { inAppLanguage, strings } from './strings.js'
@@ -12,6 +13,7 @@ import { dialogueMark, quoteMark } from './brand-mark.js'
 import { errorCallout } from './vault/parts.js'
 import './vault-view.js'
 import './feedback.js'
+import './settings.js'
 
 /**
  * Where the window is. A new vault passes through `kit` before it can be used: the shell keeps it
@@ -19,8 +21,8 @@ import './feedback.js'
  */
 type Screen =
   | { name: 'welcome' }
-  | { name: 'reports' }
-  | { name: 'feedback' }
+  | { name: 'settings' }
+  | { name: 'feedback'; from?: 'settings' }
   | { name: 'create' }
   | { name: 'open'; locked?: boolean }
   | { name: 'kit'; key: string; folder: string }
@@ -64,22 +66,6 @@ export class OcApp extends LitElement {
       font-family: var(--dc-font-mono, ui-monospace, monospace);
       font-size: 12px;
       word-break: break-all;
-    }
-    .stack-tight {
-      display: flex;
-      flex-direction: column;
-      gap: var(--dc-space-1, 4px);
-    }
-    /* The report lines as written: one per line, scrolled sideways rather than wrapped. */
-    .reports {
-      margin: 0;
-      max-height: 40vh;
-      overflow: auto;
-      font-family: var(--dc-font-mono, ui-monospace, monospace);
-      font-size: var(--dc-font-size-sm, 12px);
-      padding: var(--dc-space-3, 12px);
-      border-radius: var(--dc-radius-md, 6px);
-      background: var(--dc-color-surface-hover, #f4f4f5);
     }
     .key {
       font-family: var(--dc-font-mono, ui-monospace, monospace);
@@ -222,8 +208,6 @@ export class OcApp extends LitElement {
   /** The new version's notice: shown, set aside for this run, downloading, or failed to download. */
   @state() private updateNotice: 'shown' | 'later' | 'downloading' | 'failed' = 'shown'
   private unlistenUpdate?: Promise<() => void>
-  /** The reports written so far, as the reports screen shows them. */
-  @state() private reports: DiagnosticsLines = { reports: '', sessions: '' }
   private idle?: IdleWatch
   private readonly touch = () => this.idle?.touch()
 
@@ -241,10 +225,21 @@ export class OcApp extends LitElement {
     void this.loadUpdate()
     this.unlistenUpdate = shell.onUpdateAvailable(() => void this.loadUpdate())
     for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.addEventListener(type, this.touch, { passive: true })
+    window.addEventListener('keydown', this.onKey)
+  }
+
+  /** Ctrl+, opens the settings from any screen before a vault is open, but never from the recovery kit. */
+  private readonly onKey = (e: KeyboardEvent) => {
+    const name = this.screen.name
+    if (e.defaultPrevented || name === 'vault' || name === 'kit' || name === 'settings') return
+    if (shortcutOf(e, false) !== 'settings') return
+    e.preventDefault()
+    this.go({ name: 'settings' })
   }
 
   disconnectedCallback() {
     for (const type of ['pointerdown', 'keydown', 'wheel', 'pointermove']) window.removeEventListener(type, this.touch)
+    window.removeEventListener('keydown', this.onKey)
     this.idle?.stop()
     void this.unlistenUpdate?.then((unlisten) => unlisten())
     super.disconnectedCallback()
@@ -273,7 +268,6 @@ export class OcApp extends LitElement {
 
   private go(screen: Screen) {
     if (screen.name === 'create') void this.loadTracks()
-    if (screen.name === 'reports') void this.loadReports()
     // An open vault tells its own screens apart (vault-view).
     if (screen.name !== 'vault') showScreen(screen.name)
     this.screen = screen
@@ -309,22 +303,8 @@ export class OcApp extends LitElement {
     }
   }
 
-  private async loadReports() {
-    this.reports = { reports: '', sessions: '' }
-    await this.run(async () => {
-      this.reports = await shell.diagnosticsReports()
-    })
-  }
-
   private async loadUpdate() {
     this.versions = await shell.updateStatus().catch(() => this.versions)
-  }
-
-  private async setUpdateChecking(on: boolean) {
-    await this.run(async () => {
-      await shell.setUpdateChecking(on)
-      await this.loadUpdate()
-    })
   }
 
   /** Installs the new version: the app closes the vault, ends and starts again — this returns only when it could not. */
@@ -445,12 +425,25 @@ export class OcApp extends LitElement {
         .packsWaiting=${s.packsWaiting ?? false}
         .backupCopy=${s.backupCopy ?? false}
         .feedback=${this.feedback?.configured ? this.feedback : undefined}
+        @oc-update-changed=${() => void this.loadUpdate()}
+        @oc-update-apply=${() => void this.applyUpdate()}
         @oc-close=${() => void this.closeVault()}
         @oc-lock=${() => void this.lock()}
         @oc-idle-changed=${() => this.armIdle()}
       ></oc-vault>`
     }
     if (s.name === 'welcome') return html`<div class="welcome">${this.welcome()}</div>`
+    if (s.name === 'settings') {
+      return html`<dp-page
+        ><oc-settings
+          @oc-update-changed=${() => void this.loadUpdate()}
+          @oc-update-apply=${() => void this.applyUpdate()}
+          @oc-feedback-open=${() => this.go({ name: 'feedback', from: 'settings' })}
+          @oc-idle-changed=${() => this.armIdle()}
+          ><dc-button slot="actions" variant="ghost" size="sm" @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button></oc-settings
+        ></dp-page
+      >`
+    }
     return html`<dp-page><div class="center">${this.body()}${errorCallout(this.error)}</div></dp-page>`
   }
 
@@ -463,11 +456,10 @@ export class OcApp extends LitElement {
         return this.openForm()
       case 'kit':
         return this.kit(s.key, s.folder)
-      case 'reports':
-        return this.reportsView()
       case 'feedback':
-        return this.feedbackView()
+        return this.feedbackView(s.from)
       case 'welcome':
+      case 'settings':
       case 'vault':
         return nothing
     }
@@ -490,59 +482,24 @@ export class OcApp extends LitElement {
           <dc-button slot="footer" variant="primary" @click=${() => this.go({ name: 'open' })}>${strings.openVault}</dc-button>
         </dc-card>
         <dc-button variant="secondary" @click=${() => this.go({ name: 'create' })}>${strings.createVault}</dc-button>
-        ${this.diagnostics.configured
-          ? html`<div class="stack-tight" data-role="diagnostics">
-              <p class="muted detail">${strings.diagnosticsNotice}</p>
-              <div class="row">
-                <dc-button variant="ghost" size="sm" @click=${() => this.go({ name: 'reports' })}>${strings.diagnosticsView}</dc-button>
-              </div>
-            </div>`
-          : nothing}
-        ${this.feedback?.configured
-          ? html`<div class="row" data-role="feedback-open">
-              <dc-button variant="ghost" size="sm" @click=${() => this.go({ name: 'feedback' })}>${strings.feedbackOpen}</dc-button>
-            </div>`
-          : nothing}
-        ${this.versions.configured
-          ? html`<div class="stack-tight" data-role="update-check">
-              <p class="muted detail">${this.versions.checking ? strings.updateCheckNotice : strings.updateCheckOffNotice}</p>
-              <div class="row">
-                <dc-button variant="ghost" size="sm" ?disabled=${this.busy} @click=${() => void this.setUpdateChecking(!this.versions.checking)}
-                  >${this.versions.checking ? strings.updateCheckTurnOff : strings.updateCheckTurnOn}</dc-button
-                >
-              </div>
-            </div>`
-          : nothing}
+        ${this.diagnostics.configured ? html`<p class="muted detail" data-role="diagnostics">${strings.diagnosticsNotice}</p>` : nothing}
+        <div class="row">
+          <dc-button variant="ghost" size="sm" data-role="settings-open" @click=${() => this.go({ name: 'settings' })}>${strings.settingsOpen}</dc-button>
+          ${this.feedback?.configured
+            ? html`<dc-button variant="ghost" size="sm" data-role="feedback-open" @click=${() => this.go({ name: 'feedback' })}>${strings.feedbackOpen}</dc-button>`
+            : nothing}
+        </div>
       </div>
     `
   }
 
-  /** What this installation writes and sends about itself, line by line, exactly as sent. */
-  private reportsView() {
-    const part = (role: string, heading: string, lines: string, none: string) => html`<section class="stack-tight">
-      <h3>${heading}</h3>
-      ${lines.trim()
-        ? html`<pre class="reports" data-role=${role} tabindex="0">${lines}</pre>`
-        : html`<p class="muted" data-role=${`no-${role}`}>${none}</p>`}
-    </section>`
-    return html`<dc-card data-role="reports">
-      <h2 slot="header">${strings.diagnosticsTitle}</h2>
-      <div class="stack">
-        <p>${strings.diagnosticsLead}</p>
-        ${part('report-lines', strings.diagnosticsReportsHeading, this.reports.reports, strings.diagnosticsNone)}
-        ${part('session-lines', strings.diagnosticsSessionsHeading, this.reports.sessions, strings.diagnosticsNoSessions)}
-      </div>
-      <dc-button slot="footer" variant="ghost" ?disabled=${this.busy} @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button>
-    </dc-card>`
-  }
-
-  /** A message to the publisher, from the first screen. */
-  private feedbackView() {
+  /** A message to the publisher, from the first screen or the settings — back is where it came from. */
+  private feedbackView(from?: 'settings') {
     if (!this.feedback?.configured) return nothing
     return html`<dc-card>
       <h2 slot="header">${strings.feedbackTitle}</h2>
       <oc-feedback .status=${this.feedback}></oc-feedback>
-      <dc-button slot="footer" variant="ghost" @click=${() => this.go({ name: 'welcome' })}>${strings.back}</dc-button>
+      <dc-button slot="footer" variant="ghost" @click=${() => this.go({ name: from ?? 'welcome' })}>${strings.back}</dc-button>
     </dc-card>`
   }
 

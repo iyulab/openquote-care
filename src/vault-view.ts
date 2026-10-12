@@ -30,8 +30,9 @@ import './vault/lists-screen.js'
 import type { DeviceSection, OcDevices } from './vault/devices-screen.js'
 import './vault/devices-screen.js'
 import './feedback.js'
+import './settings.js'
 
-type View = 'subjects' | 'groups' | 'practitioners' | 'search' | 'report' | 'export' | 'lists' | 'devices' | 'feedback'
+type View = 'subjects' | 'groups' | 'practitioners' | 'search' | 'report' | 'export' | 'settings' | 'lists' | 'devices' | 'feedback'
 
 /**
  * An open vault: the frame around its screens — the sidebar that switches between them, the
@@ -165,6 +166,10 @@ export class OcVault extends LitElement {
         if (stepped) e.preventDefault()
         return
       }
+      case 'settings':
+        e.preventDefault()
+        this.view = 'settings'
+        return
       case 'help':
         e.preventDefault()
         this.shortcutsOpen = true
@@ -239,7 +244,7 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
-    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
+    const heading = { subjects: strings.subjects, groups: strings.groups, search: strings.searchTitle, report: strings.report, export: strings.exportTitle, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
         <dp-sidebar
@@ -259,7 +264,8 @@ export class OcVault extends LitElement {
               { id: 'report', icon: '', label: strings.navReport },
               { id: 'export', icon: '', label: strings.navExport },
             ] },
-            { id: 'settings', label: strings.navGroupSettings, items: [
+            { id: 'settings-group', label: strings.navGroupSettings, items: [
+              { id: 'settings', icon: '', label: strings.navAppSettings },
               { id: 'lists', icon: '', label: strings.navLists },
               { id: 'devices', icon: '', label: strings.navDevices },
               ...(this.feedback ? [{ id: 'feedback', icon: '', label: strings.feedbackOpen }] : []),
@@ -319,6 +325,9 @@ export class OcVault extends LitElement {
             @oc-passphrase-changed=${() => ((this.openedWithKey = false), (this.keyFileLost = false))}
           ></oc-devices>
           ${this.feedback ? html`<oc-feedback .status=${this.feedback} ?hidden=${view !== 'feedback'}></oc-feedback>` : nothing}
+          ${view === 'settings'
+            ? html`<oc-settings .titled=${false} @oc-feedback-open=${() => (this.view = this.feedback ? 'feedback' : this.view)}></oc-settings>`
+            : nothing}
         </dp-page>
       </dp-shell>
       ${this.folderMenuView()}
@@ -330,6 +339,7 @@ export class OcVault extends LitElement {
           { combo: 'Ctrl+K', description: strings.shortcutFind },
           { combo: 'Ctrl+N', description: strings.shortcutNewSession },
           { combo: 'Ctrl+Enter', description: strings.shortcutSave },
+          { combo: 'Ctrl+,', description: strings.shortcutSettings },
           { combo: '← →', description: strings.shortcutMonth },
           { combo: '?', description: strings.shortcutHelp },
         ]}

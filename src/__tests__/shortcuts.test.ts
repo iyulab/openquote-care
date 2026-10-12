@@ -10,6 +10,12 @@ describe('the keys the vault answers to', () => {
     expect(shortcutOf(press('n', { ctrlKey: true }), false)).toBe('new-record')
   })
 
+  it('opens the settings with the command key and a comma, as desktop apps do', () => {
+    expect(shortcutOf(press(',', { ctrlKey: true }), true)).toBe('settings')
+    expect(shortcutOf(press(',', { metaKey: true }), false)).toBe('settings')
+    expect(shortcutOf(press(','), false)).toBeUndefined()
+  })
+
   it('steps the month and lists the keys only while nothing is being typed', () => {
     expect(shortcutOf(press('ArrowLeft'), false)).toBe('previous-month')
     expect(shortcutOf(press('ArrowRight'), false)).toBe('next-month')

@@ -27,7 +27,7 @@ pub enum TakeOver {
     /// The earlier folder became this identifier's, everything in it as it was.
     Moved,
     /// The earlier folder could not be moved (a copy of the earlier version still running, say): the device's
-    /// name and the installation's number were copied, the rest stays behind.
+    /// name, the installation's number and a check for new versions turned off were copied, the rest stays behind.
     Copied,
 }
 
@@ -44,7 +44,7 @@ pub fn take_over(base: &Path, identifier: &str) -> io::Result<TakeOver> {
     if fs::rename(&earlier, &now).is_ok() {
         return Ok(TakeOver::Moved);
     }
-    for file in ["device-id", "diagnostics/install-id"] {
+    for file in ["device-id", "diagnostics/install-id", "update-check-off"] {
         let from = earlier.join(file);
         if from.is_file() {
             let to = now.join(file);
@@ -68,6 +68,7 @@ mod tests {
         fs::write(earlier.join("device-id"), "6qrzk5il").unwrap();
         fs::write(earlier.join("diagnostics/install-id"), "install-1").unwrap();
         fs::write(earlier.join("diagnostics/sessions.jsonl"), "{}\n").unwrap();
+        fs::write(earlier.join("update-check-off"), "").unwrap();
     }
 
     #[test]
@@ -99,7 +100,7 @@ mod tests {
 
     #[cfg(windows)]
     #[test]
-    fn a_folder_that_cannot_be_moved_gives_the_device_name_and_installation_number_and_stays() {
+    fn a_folder_that_cannot_be_moved_gives_the_device_name_installation_number_and_update_check_and_stays() {
         let base = tempfile::tempdir().unwrap();
         earlier_folder(base.path());
         // A file open inside the folder keeps Windows from renaming it, as a running earlier version would.
@@ -110,6 +111,7 @@ mod tests {
         let now = base.path().join(NOW);
         assert_eq!(fs::read_to_string(now.join("device-id")).unwrap(), "6qrzk5il");
         assert_eq!(fs::read_to_string(now.join("diagnostics/install-id")).unwrap(), "install-1");
+        assert!(now.join("update-check-off").is_file(), "a check turned off stays off");
         assert!(base.path().join(EARLIER_IDENTIFIER).join("EBWebView").is_dir());
     }
 

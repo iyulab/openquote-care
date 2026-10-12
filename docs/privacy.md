@@ -27,7 +27,7 @@ A report is built only from what is listed here, never by removing what looks pr
 
 **Kept on the device first.** Each report is written as one line to `diagnostics/reports.jsonl` in the app's own data folder on this computer (on Windows, `%LOCALAPPDATA%\me.openquote.care`; an installation from before the identifier changed kept it in `%LOCALAPPDATA%\com.iyulab.openquote-care`, and the app moves it on its first start after the update), outside every vault — exactly what would be sent, readable with any text editor. The same failure is written once per run, at most fifty reports per run, and the file is cut back to its newest reports once it passes 1 MB.
 
-**Seeing it.** The first screen says what a released installer sends and offers *See what is sent*, which shows the lines of both files — these reports and the usage information below — exactly as written. Reporting is not something to turn off in this version; an option to turn it off, with a way to send recent failures by hand, is planned once the app is stable.
+**Seeing it.** The first screen says what a released installer sends, and the settings (from the first screen or an open vault) offer *See what is sent*, which shows the lines of both files — these reports and the usage information below — exactly as written. Reporting is not something to turn off in this version; an option to turn it off, with a way to send recent failures by hand, is planned once the app is stable.
 
 **Where.** What the file gained since the last send goes, in the background when the app opens, after each new report and when the app ends, to an Azure Application Insights resource the publisher owns (Korea Central), over TLS using the operating system's certificate store, and is kept there for 30 days. A report that cannot go out — offline, on a network that blocks it, or while the service is busy — stays in the file and goes the next time; the app works the same either way.
 
@@ -39,7 +39,7 @@ Released installers look for a newer version of the app, so that fixes reach the
 
 **What happens then.** When the description names a newer version, the app says so and downloads the new installer from the same place in the background, checked against the publisher's key the app carries (an installer that does not verify is not run). When you close the app, the open vault is closed and the installer replaces the app, without starting it again. You can also choose *Update now*: the vault is closed, the installer replaces the app and starts it again. Your vaults and settings are not touched. Downloading the installer sends nothing the app adds either.
 
-**Stopping it.** The first screen says that the app looks for new versions and offers *Stop looking for new versions*; turned off, it asks nothing until turned on again. New versions can always be downloaded from the website instead. No network, or one that blocks the address, is not an error: the app works the same.
+**Stopping it.** The settings (from the first screen or an open vault) say that the app looks for new versions, with a box to turn it off; turned off, it asks nothing by itself until turned on again — *Check now* there asks once, only when pressed. New versions can always be downloaded from the website instead. No network, or one that blocks the address, is not an error: the app works the same.
 
 ## Feedback
 
@@ -67,6 +67,6 @@ Released installers tell the publisher when the app starts and ends and how long
 
 The installation's number is not made from anything about the computer, the account or the person: it is random, and deleting the file that keeps it makes a new one. Screens are counted under a fixed list of the app's own names (`welcome`, `vault:report`, …), never by what a screen showed — no record, name, search or value a person typed or opened is in any line, and there is no field for one.
 
-**Kept on the device first, and seen.** The lines are written to `diagnostics/sessions.jsonl` beside the error reports, in the same folder outside every vault, and *See what is sent* on the first screen shows them exactly as written. They go to the same place as the error reports, the same way.
+**Kept on the device first, and seen.** The lines are written to `diagnostics/sessions.jsonl` beside the error reports, in the same folder outside every vault, and *See what is sent* in the settings shows them exactly as written. They go to the same place as the error reports, the same way.
 
 **Turning it off.** Not in this version: like error reports, usage information is part of how the app is kept working while it is young. An option to turn both off is planned once the app is stable.

@@ -11,6 +11,7 @@ const DRAWINGS: Record<string, SVGTemplateResult> = {
   search: svg`<circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4.2-4.2" />`,
   report: svg`<path d="M3 20h18" /><path d="M6 20v-8" /><path d="M12 20V5" /><path d="M18 20v-5" />`,
   export: svg`<rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8" /><path d="M8 12h8" /><path d="M8 16h5" />`,
+  settings: svg`<path d="M4 6h9" /><path d="M17 6h3" /><circle cx="15" cy="6" r="2" /><path d="M4 12h3" /><path d="M11 12h9" /><circle cx="9" cy="12" r="2" /><path d="M4 18h11" /><path d="M19 18h1" /><circle cx="17" cy="18" r="2" />`,
   lists: svg`<path d="M9 6h11" /><path d="M9 12h11" /><path d="M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" />`,
   devices: svg`<rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8" /><path d="M12 16v4" />`,
   feedback: svg`<path d="M4 5h16v11H9l-5 4z" />`,

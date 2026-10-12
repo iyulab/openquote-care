@@ -18,6 +18,25 @@ export interface UpdateStatus {
   ready: boolean
 }
 
+/** What one look for a new version, asked for by hand, found. */
+export type Looked = { outcome: 'latest' } | { outcome: 'found'; version: string } | { outcome: 'unreachable' }
+
+/** The window's colours: the system's choice, or always light, or always dark. */
+export type Theme = 'system' | 'light' | 'dark'
+
+/** The app's settings on this computer, as the settings screen shows them. */
+export interface Settings {
+  theme: Theme
+  /** The language chosen, as a language tag; null follows the system. */
+  language: string | null
+  /** The system's display language: what following the system speaks. */
+  systemLocale: string
+  /** The language the app speaks once it starts again, as things are set now. */
+  nextLocale: string
+  /** This version of the app. */
+  version: string
+}
+
 /**
  * A value a record about to be written takes from its subject (`subjectField`), as it stands for the record's date:
  * the subject's value, the day it was written, the years passed since, and what the record would take (null when
@@ -288,8 +307,18 @@ export const shell = {
   /** Sets a new passphrase for the open vault; the old one stops opening it on every device. */
   changePassphrase: (passphrase: string) => invoke<void>('change_passphrase', { passphrase }),
   closeVault: () => invoke<void>('close_vault'),
-  /** The app's language as a language tag: the system's display language, or `OPENQUOTE_UI_LOCALE` when set. */
+  /** The app's language as a language tag: the one chosen in the settings, else the system's display language; `OPENQUOTE_UI_LOCALE` overrides both. */
   uiLocale: () => invoke<string>('ui_locale'),
+  /** The app's settings on this computer. */
+  settings: () => invoke<Settings>('settings'),
+  /** Sets the window's colours, now and for the next launches. */
+  setTheme: (theme: Theme) => invoke<void>('set_theme', { theme }),
+  /** Sets the language the app speaks from its next start; null follows the system. */
+  setLanguage: (language: string | null) => invoke<void>('set_language', { language }),
+  /** Starts the app again (the vault closed first); with a new version downloaded, installs and starts that instead. */
+  restart: () => invoke<void>('restart'),
+  /** The notices of the third-party software the app includes; null when the file is not there. */
+  notices: () => invoke<string | null>('notices'),
   /** Whether this installation sends what it writes about itself (content-free; see docs/privacy.md). */
   diagnosticsStatus: () => invoke<DiagnosticsStatus>('diagnostics_status'),
   /** What has been written to send so far. */
@@ -304,6 +333,8 @@ export const shell = {
   updateStatus: () => invoke<UpdateStatus>('update_status'),
   /** Turns looking for new versions on or off, remembered for the next launches. */
   setUpdateChecking: (on: boolean) => invoke<void>('set_update_checking', { on }),
+  /** Looks for a new version now, as the person asked; null for a build that cannot update itself. */
+  lookForUpdate: () => invoke<Looked | null>('look_for_update'),
   /** Downloads and installs the newer version found: the vault is closed and the app starts again. Returns only on failure. */
   applyUpdate: () => invoke<void>('apply_update'),
   /** Calls `f` with the version when a newer one is found. */

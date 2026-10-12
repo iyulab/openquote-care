@@ -1,18 +1,24 @@
-//! The language the app speaks. The window and the shell's own messages follow the system's display
-//! language; `OPENQUOTE_UI_LOCALE` overrides it (tests and support use it to fix the language). What a
-//! vault's data packs name — classifications, fields, forms — follows the vault, not this.
+//! The language the app speaks. The window and the shell's own messages speak the language the
+//! person chose in the app's settings, else the system's display language; `OPENQUOTE_UI_LOCALE`
+//! overrides both (tests and support use it to fix the language). What a vault's data packs name —
+//! classifications, fields, forms — follows the vault, not this.
 
 /// The environment variable that fixes the app's language, as a language tag such as `en` or `fr-CA`.
 pub const OVERRIDE: &str = "OPENQUOTE_UI_LOCALE";
 
-/// The app's language as a BCP 47 tag: the override when set, else the system's display language,
-/// else `en`.
+/// The app's language as a BCP 47 tag: the override when set, else the language chosen in the
+/// settings, else the system's display language, else `en`.
 pub fn ui_locale() -> String {
-    choose(std::env::var(OVERRIDE).ok(), system())
+    choose(std::env::var(OVERRIDE).ok(), crate::prefs::load().language, system())
 }
 
-fn choose(overridden: Option<String>, system: Option<String>) -> String {
-    [overridden, system]
+/// The system's display language as a BCP 47 tag, else `en` — what the app speaks when nothing is chosen.
+pub fn system_locale() -> String {
+    choose(None, None, system())
+}
+
+fn choose(overridden: Option<String>, chosen: Option<String>, system: Option<String>) -> String {
+    [overridden, chosen, system]
         .into_iter()
         .flatten()
         .map(|tag| tag.trim().to_owned())
@@ -54,11 +60,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_override_names_the_ui_language() {
-        assert_eq!(choose(Some("en".into()), Some("ko-KR".into())), "en");
-        assert_eq!(choose(Some("  ".into()), Some("ko-KR".into())), "ko-KR");
-        assert_eq!(choose(None, Some("ko-KR".into())), "ko-KR");
-        assert_eq!(choose(None, None), "en");
+    fn the_override_then_the_choice_then_the_system_name_the_ui_language() {
+        assert_eq!(choose(Some("en".into()), Some("ko".into()), Some("ko-KR".into())), "en");
+        assert_eq!(choose(Some("  ".into()), None, Some("ko-KR".into())), "ko-KR");
+        assert_eq!(choose(None, Some("en".into()), Some("ko-KR".into())), "en");
+        assert_eq!(choose(Some("".into()), Some("en".into()), Some("ko-KR".into())), "en", "an empty override is none");
+        assert_eq!(choose(None, None, Some("ko-KR".into())), "ko-KR");
+        assert_eq!(choose(None, None, None), "en");
     }
 
     #[test]
