@@ -3,7 +3,7 @@
 // is synthetic.
 //
 //   npm run build:sidecar && npm run build:e2e
-//   node e2e/pictures.mjs <folder> [--locale ko|en] [--root <folder>] [--compare <earlier folder>]
+//   node e2e/pictures.mjs <folder> [--locale ko|en] [--root <folder>] [--compare <earlier folder>] [--set-short-date]
 //
 // Beside each picture goes the text it shows (<scene>.txt). With --compare, the scenes whose text
 // differs from an earlier run's are listed — with the lines added and gone — in <folder>/changes.txt,
@@ -18,16 +18,22 @@
 // Korean pictures are of the Korean school track, English ones of the neutral English track.
 // Date fields show in Windows' regional format, which neither a browser argument nor the devtools
 // locale override changes: the script takes Korean pictures only where that format is the Korean one.
+// With --set-short-date it sets Windows' short date format to the locale's for the run (the window,
+// started after, reads it) and puts the person's own back when the run ends, however it ends. A run
+// that could not put it back leaves a note in the temporary folder, and the next run refuses to start
+// until the format is mended by hand and the note removed.
 
 import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { App, q, root } from './window.mjs'
 
 const args = process.argv.slice(2)
-const out = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'))
+// The options that take a value; the others (--set-short-date, --update-known) stand alone.
+const VALUED = ['--locale', '--root', '--compare']
+const out = args.find((a, i) => !a.startsWith('--') && !VALUED.includes(args[i - 1]))
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined)
 const locale = option('--locale') ?? 'ko'
 if (!out || !['ko', 'en'].includes(locale)) {
@@ -37,11 +43,35 @@ if (!out || !['ko', 'en'].includes(locale)) {
 // Date fields show in Windows' short date format, which the pictures cannot change: a Korean picture
 // taken under another format shows dates no Korean installation shows. Take them where it is Korean.
 const SHORT_DATE = { ko: 'yyyy-MM-dd' }
+const SHORT_DATE_NOTE = join(tmpdir(), 'openquote-pictures-short-date.txt')
+/** Sets Windows' short date format for this user the way Region settings does, so processes started after read it. */
+function setShortDate(format) {
+  const set = `Add-Type -Namespace W -Name L -MemberDefinition '[DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern bool SetLocaleInfo(uint l, uint t, string d);'; if (-not [W.L]::SetLocaleInfo(0x400, 0x1F, '${format.replaceAll("'", "''")}')) { exit 1 }`
+  execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', set], { stdio: 'inherit' })
+}
 if (process.platform === 'win32' && SHORT_DATE[locale]) {
+  if (existsSync(SHORT_DATE_NOTE)) {
+    console.error(`An earlier run may have left Windows' short date format changed; it was ${readFileSync(SHORT_DATE_NOTE, 'utf8').trim()}. Set it back in Region settings, then delete ${SHORT_DATE_NOTE}.`)
+    process.exit(2)
+  }
   const set = execFileSync('reg', ['query', 'HKCU\\Control Panel\\International', '/v', 'sShortDate'], { encoding: 'utf8' }).match(/sShortDate\s+REG_SZ\s+(\S+)/)?.[1]
   if (set !== SHORT_DATE[locale]) {
-    console.error(`Windows shows short dates as ${set ?? 'unknown'} here; ${locale} pictures need ${SHORT_DATE[locale]} (Region settings).`)
-    process.exit(2)
+    if (!args.includes('--set-short-date') || !set) {
+      console.error(`Windows shows short dates as ${set ?? 'unknown'} here; ${locale} pictures need ${SHORT_DATE[locale]} (Region settings, or --set-short-date for this run).`)
+      process.exit(2)
+    }
+    writeFileSync(SHORT_DATE_NOTE, `${set}\n`)
+    setShortDate(SHORT_DATE[locale])
+    let restored = false
+    // Put back on every way out: the end, an error, Ctrl+C.
+    process.on('exit', () => {
+      if (restored) return
+      restored = true
+      setShortDate(set)
+      unlinkSync(SHORT_DATE_NOTE)
+      console.log(`Windows' short date format is ${set} again.`)
+    })
+    process.on('SIGINT', () => process.exit(130))
   }
 }
 const PASSPHRASE = 'picture vault 2026'
