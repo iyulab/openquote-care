@@ -2408,6 +2408,9 @@ process.exitCode = await runScenarios(scenarios, {
       const alerts = text('[role=alert]')
       const headings = seen('dp-page-header').map((el) => el.getAttribute('heading')).filter(Boolean)
       const rest = [...headings, ...text('[role=status]')].map((t) => t.slice(0, 160))
-      return [...alerts, ...(rest.length ? ['(on screen) ' + rest.join(' / ')] : [])].join(' / ')
+      // Which screen the open vault is on, and which the menu marks: a press on the menu that did not take shows here.
+      const vault = __e2e.one('oc-vault')
+      const where = vault ? ['(vault) view ' + vault.view + ', menu ' + (__e2e.one('dp-sidebar')?.activeId ?? '?')] : []
+      return [...alerts, ...(rest.length ? ['(on screen) ' + rest.join(' / ')] : []), ...where].join(' / ')
     })()`),
 })
