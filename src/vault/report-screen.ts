@@ -256,7 +256,7 @@ export class OcReport extends VaultScreen {
       // Each field the form adds up: its sum, and how many records hold no number there.
       for (const field of form?.sums ?? []) {
         const s = sumOf(result, records, field)
-        if (s) parts.push(strings.sumPart(labelOfField(store.sessionFields, field), s.sum, s.missing))
+        if (s) parts.push(strings.sumPart(labelOfField(store.fieldsOf(form?.counts ?? 'session'), field), s.sum, s.missing))
       }
       return parts.length === 0 ? nothing : html`<span class="people" data-role="measures">${strings.measureNote(parts)}</span>`
     }
