@@ -254,6 +254,13 @@ export function today(now = new Date()): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
+/** A moment as the app shows one — `YYYY-MM-DD HH:mm` on this computer's clock, the day as every record's day reads. */
+export function moment(at: number | Date): string {
+  const d = new Date(at)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${today(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /**
  * The first and last day of the year that starts in `startMonth` (1–12) and holds `day`, or of the
  * year before it when `back` — a year from March holds the next January and February.

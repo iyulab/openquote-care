@@ -63,6 +63,8 @@
   --dc-field-label-size: 13px;
   /* Controls on the raised ground of the cards they sit on, not the paper of the page: on paper they read as disabled. */
   --dc-control-bg: var(--dc-color-surface-raised);
+  /* Controls keep a visible edge on the card they sit on: 3:1 against their ground (WCAG 1.4.11). */
+  --dc-control-border: #958f83;
   /* Notes and errors read at the body size, not the small one. */
   --dc-callout-size: var(--dc-font-size-md);
   --dc-field-hint-color: var(--dc-color-text-muted);
@@ -80,6 +82,7 @@
     --dc-color-surface-raised: #2b2927;
     --dc-color-surface-hover: #2f2c29;
     --dc-color-border: #3d3a36;
+    --dc-control-border: #7a756d;
     --dc-color-rule: #34312e;
     --dc-color-text: #f1ede6;
     --dc-color-text-secondary: #c2bbb1;
@@ -118,6 +121,7 @@
   --dc-color-surface-raised: #2b2927;
   --dc-color-surface-hover: #2f2c29;
   --dc-color-border: #3d3a36;
+  --dc-control-border: #7a756d;
   --dc-color-rule: #34312e;
   --dc-color-text: #f1ede6;
   --dc-color-text-secondary: #c2bbb1;

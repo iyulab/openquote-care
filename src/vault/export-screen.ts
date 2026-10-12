@@ -198,7 +198,6 @@ export class OcExport extends VaultScreen {
       <dc-callout variant="warning" data-role="plain-copy-warning"><p>${strings.plainCopyWarning}</p></dc-callout>
       <div class="row">
         <dc-segmented-control
-          size="sm"
           aria-label=${strings.plainCopyScope}
           data-role="plain-copy-scope"
           .options=${[{ value: 'all', label: strings.plainCopyAll }, { value: 'range', label: strings.periodRange }]}
@@ -257,7 +256,6 @@ export class OcExport extends VaultScreen {
         <dc-button variant="primary" ?disabled=${busy} @click=${() => void this.runExport()}>${strings.makeExport}</dc-button>
         ${table && table.rows.length > 0 && table.names.length > 0
           ? html`<dc-segmented-control
-              size="sm"
               data-role="name-mask"
               aria-label=${strings.nameMask}
               .options=${[

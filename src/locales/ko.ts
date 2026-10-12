@@ -1,6 +1,7 @@
 // The app's words in Korean. Every table in this folder has the same keys (a test holds them to it);
 // what a data pack names — scheme items, fields, forms — comes from the vault, not from here.
 import native from '../native-strings.json'
+import { moment } from '../records.js'
 import type { VaultFileKind } from '../shell.js'
 
 // 을 after a final consonant, 를 after a vowel; a word that does not end in Hangul gets both.
@@ -285,7 +286,7 @@ export const ko = {
   plainCopyDone: (folder: string) => `사본을 만들었습니다: ${folder}`,
   plainCopyNever: '이 컴퓨터에서 만든 사본이 없습니다.',
   plainCopyLast: (at: number, folder: string, withNarrative: boolean) =>
-    `마지막 사본: ${new Date(at).toLocaleString('ko', { dateStyle: 'medium', timeStyle: 'short' })} · ${folder}${withNarrative ? ' · 상담 내용 포함' : ''}`,
+    `마지막 사본: ${moment(at)} · ${folder}${withNarrative ? ' · 상담 내용 포함' : ''}`,
   plainCopyStale: (n: number) => `그 뒤 바뀐 기록이 ${n}건 있어 사본에는 없습니다. 사본을 다시 만들면 최신이 됩니다.`,
   plainCopyFresh: '그 뒤 바뀐 기록은 없습니다.',
   plainCopy: {
@@ -369,6 +370,8 @@ export const ko = {
   listColumnItem: '항목',
   listItemName: '항목 이름',
   listCountedAs: '통계에서 세는 항목',
+  /** What a select shows while nothing is chosen; its field's label already says what it is. */
+  choose: '고르세요',
   listCountedAsHint: '공식 통계는 더한 항목을 이 항목으로 셉니다.',
   listAdd: '목록에 더하기',
   listAdded: (label: string) => `「${label}」을(를) 목록에 더했습니다.`,
@@ -467,7 +470,7 @@ export const ko = {
   subjectName: '대상자 이름',
   addSubject: '대상자 추가',
   pickSubject: '대상자를 고르면 회기가 여기에 보입니다.',
-  importPaste: '📋 엑셀의 대상자 표(제목 행 포함)를 복사해 여기에 붙여 넣으면 여러 명을 한 번에 추가합니다',
+  importPaste: '엑셀의 대상자 표(제목 행 포함)를 복사해 여기에 붙여 넣으면 여러 명을 한 번에 추가합니다',
   importTitle: '붙여 넣은 대상자',
   importTally: (create: number, update: number, same: number, problem: number) =>
     `추가 ${create} · 고침 ${update} · 그대로 ${same} · 문제 ${problem}`,
@@ -605,7 +608,7 @@ export const ko = {
   backupWriteDown: '복구 키트의 「백업 위치」 칸에 이 위치를 적어 두세요.',
   backupCopyHint:
     '이 폴더는 자동 백업 사본입니다. 여기에 쓴 기록은 원래 기록 폴더에 들어가지 않습니다. 원래 기록 폴더를 쓸 수 없을 때만 여기서 이어 가고, 다시 쓸 수 있게 되면 원래 기록 폴더를 여세요.',
-  backupDone: (at: number, copied: number) => `마지막 백업 ${new Date(at).toLocaleString('ko', { dateStyle: 'medium', timeStyle: 'short' })} · 새 파일 ${copied}개`,
+  backupDone: (at: number, copied: number) => `마지막 백업 ${moment(at)} · 새 파일 ${copied}개`,
   backupFailed: (reason: string) => `백업이 되지 않았습니다. ${reason} 기록은 이 기록 폴더에 그대로 저장됩니다.`,
   backupMissing: (n: number) => `기록 폴더에서 없어진 기록 파일이 ${n}개 있습니다. 백업에 그대로 남아 있어 되살릴 수 있습니다.`,
   backupRestore: '백업에서 되살리기',

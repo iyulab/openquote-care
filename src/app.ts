@@ -63,8 +63,8 @@ export class OcApp extends LitElement {
       flex-wrap: wrap;
     }
     .folder {
-      font-family: var(--dc-font-mono, ui-monospace, monospace);
-      font-size: 12px;
+      /* A folder's name is words, often Korean: the body font, not the key's fixed width. */
+      font-size: var(--dc-font-size-sm, 12px);
       word-break: break-all;
     }
     .key {

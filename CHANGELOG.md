@@ -14,6 +14,14 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - A record list may say the span it is asked for in, as a statistics form does, and is then asked for by that span alone: the list of activities by school year. A list that names none is asked for by a month or any days, as before.
 - In school vaults, the methods of a session no longer list a referral programme that one education office runs on its own. A revision of the methods counts the sessions recorded with it as a referral; an office that runs such a programme adds it to its own choice list, counted as a referral, and its records still name it.
+- The last backup and the last plain copy say when as every day in the app reads — `2026-10-13 14:05` — rather than in Windows' own format.
+- Fields, choices and buttons in a row stand at one height, so a toolbar lines up; the outline of a field is darker, light or dark, so it reads as a place to type on the card it sits on.
+
+### Fixed
+- The line under a person's name in the list breaks between its parts — a count, a day, a state — and no longer inside a day such as 10-05.
+- A choice nothing has been chosen in yet says "Choose…" in a lighter colour, rather than repeating its own label as if it were the chosen value.
+- In Search, the number of records found stands apart from the search box above it, and the box's clear button is in the app's colours.
+- The recovery kit shows the records folder's name in the app's own type, not a fixed-width one.
 
 ## [0.20.0] - 2026-10-12
 

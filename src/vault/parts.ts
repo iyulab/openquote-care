@@ -29,16 +29,20 @@ export function countBy(sessions: Entity[], ids: (s: Entity) => readonly string[
 export interface ListEntry {
   id: string
   label: string
-  meta?: string
+  /** A line about it; given as parts, the line breaks between them — a day or a count stays whole. */
+  meta?: string | string[]
   /** The heading the entry is listed under; entries under one heading come together, in the order given. */
   group?: string
 }
 
 /** One entry of a list: its name, and a line about it under the name when there is one. */
 export function listEntry(e: ListEntry, selected: string | undefined, select: (id: string) => void) {
+  const parts = (Array.isArray(e.meta) ? e.meta : [e.meta ?? '']).filter(Boolean)
   return html`<li>
     <button data-entry=${e.id} aria-current=${e.id === selected ? 'true' : 'false'} @click=${() => select(e.id)}
-      ><span class="label">${e.label}</span>${e.meta ? html`<span class="meta">${e.meta}</span>` : nothing}</button
+      ><span class="label">${e.label}</span>${parts.length
+        ? html`<span class="meta">${parts.map((p, i) => html`<span class="part">${p}${i < parts.length - 1 ? ' ·' : ''}</span> `)}</span>`
+        : nothing}</button
     >
   </li>`
 }

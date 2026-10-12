@@ -260,10 +260,11 @@ async function shoot(name) {
   await sleep(600) // transitions and fonts settle
   const { data } = await app.cdp.send('Page.captureScreenshot', { format: 'png' })
   await writeFile(join(shots, `${name}.png`), Buffer.from(data, 'base64'))
-  // The recovery key and the moments the app shows in the system's format (the last backup, say) are new on
-  // every run: they would read as a change each time. The records' own dates are YYYY-MM-DD and stay.
+  // The recovery key and the moments the app shows (the last backup, say — a day and a time) are new on every
+  // run: they would read as a change each time. The records' own dates are days alone and stay.
   const shown = (await app.cdp.evaluate(SHOWN))
     .replaceAll(/AGE-SECRET-KEY-1[0-9A-Z ]+/g, 'AGE-SECRET-KEY-1 …')
+    .replaceAll(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/g, '(moment)')
     .replaceAll(/\d{4}\. \d{1,2}\. \d{1,2}\.|\d{1,2}\/\d{1,2}\/\d{4}/g, '(day)')
     .replaceAll(/\d{1,2}:\d{2}(:\d{2})?/g, '(time)')
   await writeFile(join(shots, `${name}.txt`), `${shown}\n`)

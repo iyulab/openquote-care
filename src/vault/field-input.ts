@@ -53,7 +53,7 @@ export function fieldInput(f: FieldView, value: string, set: (v: string) => void
           data-field=${f.name}
           .options=${f.required ? choices : [{ value: '', label: strings.none }, ...choices]}
           .value=${value}
-          placeholder=${f.label}
+          placeholder=${strings.choose}
           ?disabled=${busy}
           @change=${(e: Event) => set((e.target as HTMLSelectElement).value)}
         ></dc-select>

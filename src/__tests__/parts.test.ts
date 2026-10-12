@@ -17,7 +17,12 @@ describe('list entries', () => {
   it('reads as the label, with the meta line under it', () => {
     const m = flat(listEntry({ id: 'a', label: 'Ada', meta: '9 sessions' }, undefined, () => {}))
     expect(m).toContain('<span class="label">Ada</span>')
-    expect(m).toContain('<span class="meta">9 sessions</span>')
+    expect(m).toContain('<span class="meta"><span class="part">9 sessions</span> </span>')
+  })
+
+  it('breaks its meta line between parts only, each kept whole and joined by a dot', () => {
+    const m = flat(listEntry({ id: 'a', label: 'Ada', meta: ['9 sessions', '', 'last 10-05'] }, undefined, () => {}))
+    expect(m).toContain('<span class="part">9 sessions ·</span> <span class="part">last 10-05</span> ')
   })
 
   it('has no meta line when there is none', () => {

@@ -229,15 +229,15 @@ export class OcSubjects extends VaultScreen {
             ? r.openCase.lastSession
               ? strings.lastSessionOn(shortDay(r.openCase.lastSession, year), daysBetween(r.openCase.lastSession, day))
               : strings.noSessionSince(shortDay(r.openCase.start, year), daysBetween(r.openCase.start, day))
-            : [r.last ? strings.lastOn(shortDay(r.last, year)) : '', r.openCase && r.openCase.lastSession === null ? strings.noSession : ''].filter(Boolean).join(' · '),
+            : [r.last ? strings.lastOn(shortDay(r.last, year)) : '', r.openCase && r.openCase.lastSession === null ? strings.noSession : ''],
           r.state ? (r.state === 'open' ? strings.caseOpen : strings.caseClosed) : '',
           // Only what still asks for something: a follow-up awaited or past its day.
           r.followUp && (r.followUp.followUp === 'waiting' || r.followUp.followUp === 'overdue') ? (followUpWords(r.followUp, (d) => shortDay(d, year)) ?? '') : '',
           // Narrowed to what waits for an answer: since when the oldest such record has.
           this.caseFilter === 'awaiting' && r.awaiting ? strings.awaitingSince(shortDay(r.awaiting, year), daysBetween(r.awaiting, day)) : '',
         ]
-          .filter(Boolean)
-          .join(' · '),
+          .flat()
+          .filter(Boolean),
       })),
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),

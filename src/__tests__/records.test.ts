@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { choices, conflictsOf, definitionOf, entityOf, extensionsOf, inOrderOfFirstRecord, labelOf, latest, namesOf, newestFirst, offeredChoices, ownerOf, today, yearAround, type Entity, type Scheme } from '../records.js'
+import { choices, conflictsOf, definitionOf, entityOf, extensionsOf, inOrderOfFirstRecord, labelOf, latest, namesOf, newestFirst, offeredChoices, ownerOf, today, moment, yearAround, type Entity, type Scheme } from '../records.js'
 
 const method: Scheme = {
   scheme: 'method',
@@ -80,6 +80,13 @@ describe('conflictsOf', () => {
       { field: 'topic', heads: [{ changeId: 'a', device: 'pc01', value: topic('anxiety') }, { changeId: 'b', device: 'pc02', value: topic('learning') }] },
     ])
     expect(conflictsOf({ ...e, conflicts: {} })).toEqual([])
+  })
+})
+
+describe('moment', () => {
+  it('is the day as a record reads it and the time to the minute, on this clock', () => {
+    expect(moment(new Date(2026, 9, 3, 8, 5, 59))).toBe('2026-10-03 08:05')
+    expect(moment(new Date(2026, 0, 1, 23, 0).getTime())).toBe('2026-01-01 23:00')
   })
 })
 

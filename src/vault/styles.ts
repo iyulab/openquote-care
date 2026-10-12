@@ -111,6 +111,10 @@ export const vaultStyles = [
     .fields > .wide {
       grid-column: 1 / -1;
     }
+    /* What a screen says under a card about what the card asked for (how many were found): apart from it. */
+    .after-card {
+      margin-top: var(--dc-space-4, 16px);
+    }
     /* The body of a card or callout: its parts one under another. */
     .stack {
       display: flex;
@@ -244,6 +248,11 @@ export const vaultStyles = [
     li button .meta {
       font-size: var(--dc-font-size-sm, 12px);
       color: var(--dc-color-text-muted, #8a8a92);
+    }
+    /* Each part of the line is a unit: the line breaks between parts, not inside a day such as 10-05. */
+    li button .meta .part {
+      display: inline-block;
+      max-width: 100%;
     }
     li button:hover {
       background: var(--dc-color-surface-hover, #ececed);

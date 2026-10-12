@@ -1,5 +1,6 @@
 // The app's words in English — the table used when the system language has no table of its own.
 import native from '../native-strings.json'
+import { moment } from '../records.js'
 import type { VaultFileKind } from '../shell.js'
 import type { Strings } from './index.js'
 
@@ -288,7 +289,7 @@ export const en: Strings = {
   plainCopyDone: (folder: string) => `Copy made: ${folder}`,
   plainCopyNever: 'No copy has been made on this computer.',
   plainCopyLast: (at: number, folder: string, withNarrative: boolean) =>
-    `Last copy: ${new Date(at).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · ${folder}${withNarrative ? ' · with session content' : ''}`,
+    `Last copy: ${moment(at)} · ${folder}${withNarrative ? ' · with session content' : ''}`,
   plainCopyStale: (n: number) => `${plural(n, 'change')} to the records came after it and ${n === 1 ? 'is' : 'are'} not in the copy. Making the copy again brings it up to date.`,
   plainCopyFresh: 'No record changed after it.',
   plainCopy: {
@@ -375,6 +376,8 @@ export const en: Strings = {
   listColumnItem: 'Item',
   listItemName: 'Item name',
   listCountedAs: 'Counted in statistics as',
+  /** What a select shows while nothing is chosen; its field's label already says what it is. */
+  choose: 'Choose…',
   listCountedAsHint: 'Official statistics count the added item as this one.',
   listAdd: 'Add to the list',
   listAdded: (label: string) => `Added “${label}” to the list.`,
@@ -475,7 +478,7 @@ export const en: Strings = {
   subjectName: 'Client name',
   addSubject: 'Add client',
   pickSubject: 'Choose a client to see their sessions here.',
-  importPaste: '📋 Copy a table of clients from a spreadsheet (with its heading row) and paste it here to add many at once',
+  importPaste: 'Copy a table of clients from a spreadsheet (with its heading row) and paste it here to add many at once',
   importTitle: 'Pasted clients',
   importTally: (create: number, update: number, same: number, problem: number) =>
     `New ${create} · Updated ${update} · Unchanged ${same} · Problems ${problem}`,
@@ -617,7 +620,7 @@ export const en: Strings = {
   backupWriteDown: 'Write this location in the “Backup location” space of the recovery kit.',
   backupCopyHint:
     'This folder is a backup copy. Records written here do not reach the original vault. Carry on here only while the original cannot be used, and open the original again once it can.',
-  backupDone: (at: number, copied: number) => `Last backup ${new Date(at).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' })} · ${plural(copied, 'new file')}`,
+  backupDone: (at: number, copied: number) => `Last backup ${moment(at)} · ${plural(copied, 'new file')}`,
   backupFailed: (reason: string) => `The backup did not go through. ${reason} Records are still saved in this vault.`,
   backupMissing: (n: number) => `${plural(n, 'record file')} went missing from this vault. The backup still holds them, so they can be restored.`,
   backupRestore: 'Restore from the backup',

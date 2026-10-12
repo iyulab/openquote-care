@@ -67,8 +67,8 @@ export class OcSearch extends VaultScreen {
       </dc-card>
       ${asked
         ? hits.length === 0
-          ? html`<p class="muted" data-role="search-none">${strings.searchNone}</p>`
-          : html`<p data-role="search-count">${strings.searchCount(hits.length, Math.min(hits.length, SHOWN))}</p>
+          ? html`<p class="muted after-card" data-role="search-none">${strings.searchNone}</p>`
+          : html`<p class="after-card" data-role="search-count">${strings.searchCount(hits.length, Math.min(hits.length, SHOWN))}</p>
               <table data-role="search-results">
                 <thead>
                   <tr>

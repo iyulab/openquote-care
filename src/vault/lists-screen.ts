@@ -124,7 +124,7 @@ export class OcLists extends VaultScreen {
             aria-label=${strings.listCountedAs}
             .options=${anchors}
             .value=${this.countedAs}
-            placeholder=${strings.listCountedAs}
+            placeholder=${strings.choose}
             ?disabled=${busy}
             @change=${(e: Event) => (this.countedAs = (e.target as HTMLSelectElement).value)}
           ></dc-select>
