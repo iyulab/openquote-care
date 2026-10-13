@@ -224,9 +224,15 @@ if (existsSync(work)) throw new Error(`${work} exists — remove it or give anot
 await mkdir(work)
 const vault = join(work, locale === 'ko' ? '2026 상담 기록' : 'Counseling records 2026')
 await mkdir(vault)
-// A destination for feedback, as a released installer has (its public key), so the screens show what people see.
-// Nothing is sent: the scene writes a message and never presses Send, and the address answers nothing.
-const app = await App.launch({ OPENQUOTE_UI_LOCALE: locale, OPENQUOTE_FEEDBACK_KEY: 'pk_pictures', OPENQUOTE_FEEDBACK_URL: 'http://127.0.0.1:9/api/t/openquote/feedback' })
+// The destinations a released installer has — for feedback (its public key) and for what it sends about itself —
+// so the screens show what people see. Nothing arrives anywhere: both addresses answer nothing, and the
+// feedback scene writes a message and never presses Send.
+const app = await App.launch({
+  OPENQUOTE_UI_LOCALE: locale,
+  OPENQUOTE_FEEDBACK_KEY: 'pk_pictures',
+  OPENQUOTE_FEEDBACK_URL: 'http://127.0.0.1:9/api/t/openquote/feedback',
+  OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/',
+})
 const ui = L.ui
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
