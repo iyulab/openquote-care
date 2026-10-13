@@ -524,6 +524,7 @@ export const ko = {
   noRecordsOf: (kind: string) => `${kind} 기록이 없습니다.`,
   recordCountOf: (kind: string, n: number) => `${kind} ${n}건`,
   openRecordForm: (kind: string) => `${kind} 기록하기`,
+  otherRecords: '다른 기록',
   staleSubject: (labels: string[], writtenOn: string) =>
     `대상자의 ${labels.map((l) => `「${l}」`).join('·')} 값은 ${writtenOn}에 적은 것이라 이 회기 날짜에는 맞지 않을 수 있습니다. 아래 값으로 대상자 정보를 고친 뒤 회기를 기록합니다. 비운 칸은 지웁니다.`,
   staleSubjectWas: (value: string) => `지금: ${value}`,

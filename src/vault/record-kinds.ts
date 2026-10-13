@@ -12,7 +12,8 @@ import { conflictPanel, recordTable, subjectPicker, toggled, type Holder } from 
 /**
  * The kinds of record besides sessions that the vault's packs keep under a subject or a group — a referral, say —
  * in the order their first record here happened, each with its records, newest first, and a form a person opens to add one. A record's concurrent changes are
- * shown for a person to settle, and a record can be corrected, as a session can.
+ * shown for a person to settle, and a record can be corrected, as a session can. Under a subject or a group, the kinds
+ * with no record here yet are not a section each saying so: they are one row of buttons, each opening its kind's form.
  */
 @customElement('oc-record-kinds')
 export class OcRecordKinds extends StoreElement {
@@ -56,7 +57,28 @@ export class OcRecordKinds extends StoreElement {
 
   render() {
     const kinds = this.store.kindsUnder(this.holder.kind).filter((k) => k.type !== 'session')
-    return inOrderOfFirstRecord(kinds, (kind) => this.recordsHere(kind), this.store.dayOf).map((kind) => this.section(kind))
+    // The activities screen is one kind's own page, so its section stays even with nothing in it.
+    const gathers = this.holder.kind === 'subject' || this.holder.kind === 'group'
+    const shown = gathers ? kinds.filter((k) => this.recordsHere(k).length > 0 || this.adding.has(k.type)) : kinds
+    const empty = kinds.filter((k) => !shown.includes(k))
+    return html`${inOrderOfFirstRecord(shown, (kind) => this.recordsHere(kind), this.store.dayOf).map((kind) => this.section(kind))}
+    ${empty.length > 0 ? this.otherKinds(empty) : nothing}`
+  }
+
+  /** The kinds with no record here yet, as buttons that open each one's form in a section of its own. */
+  private otherKinds(kinds: RecordKind[]) {
+    const store = this.store
+    return html`<section data-role="other-kinds">
+      <dc-section-heading marker size="lg" heading=${strings.otherRecords}></dc-section-heading>
+      <div class="row">
+        ${kinds.map(
+          (kind) => html`<dc-button variant="secondary" size="sm" data-role="add-record" data-kind=${kind.type} ?disabled=${store.busy} @click=${() => {
+            store.set({ notice: '' })
+            this.adding = toggled(this.adding, kind.type)
+          }}>${strings.openRecordForm(store.labelOf(kind))}</dc-button>`,
+        )}
+      </div>
+    </section>`
   }
 
   private section(kind: RecordKind) {

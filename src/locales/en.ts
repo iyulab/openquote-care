@@ -529,6 +529,7 @@ export const en: Strings = {
   noRecordsOf: (kind: string) => `No ${lower(kind)} recorded.`,
   recordCountOf: (kind: string, n: number) => `${kind}: ${n}`,
   openRecordForm: (kind: string) => `Add ${aOrAn(kind)}`,
+  otherRecords: 'Other records',
   staleSubject: (labels: string[], writtenOn: string) =>
     `The client's ${labels.map((l) => `“${l}”`).join(' and ')} ${labels.length === 1 ? 'was' : 'were'} written on ${writtenOn}, and may no longer hold on this session's date. Recording the session first corrects the client's record to the values below; a field left empty is cleared.`,
   staleSubjectWas: (value: string) => `Now: ${value}`,

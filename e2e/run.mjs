@@ -1840,6 +1840,9 @@ const scenarios = {
     await app.cdp.waitFor(`!__e2e.one('[data-role=already-here]')`, 'no one like the new name')
     await app.click('dc-button', 'Add client')
     await app.click('li button .label', 'Client Two')
+    // A new client has no record of any other kind yet: one row offers each kind, rather than a section each saying it is empty.
+    await app.cdp.waitFor(`!!__e2e.one('[data-role=other-kinds] dc-button[data-kind=intake]')`, 'the other kinds offered in one row')
+    assert.equal(await app.cdp.evaluate(`__e2e.all('section[data-kind]').length`), 0, 'no empty section for a kind')
     await app.click('dc-button', 'Add an intake')
     await app.cdp.waitFor(
       `(() => { const el = ${inIntakeForm('input[aria-label="Taken on"]')}; if (!el) return false; el.value = '2026-06-01'; el.dispatchEvent(new Event('input', { bubbles: true, composed: true })); return true })()`,

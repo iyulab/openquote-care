@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- A person's or a group's page no longer shows a section for each kind of record it has none of, each saying so: those kinds are one row of buttons under "Other records", and a kind's section appears once its form is opened or it has a record.
+
 ## [0.22.0] - 2026-10-13
 
 ### Added
