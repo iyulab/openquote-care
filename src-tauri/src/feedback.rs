@@ -9,7 +9,7 @@
 //! Sending is possible only where the build carries the destination's public key — the release
 //! build, or a test through `OPENQUOTE_FEEDBACK_KEY`. Development and test builds without it do
 //! not offer feedback at all. The destination is the publisher's own records service; it keeps
-//! the time and the sender's IP address with each record.
+//! the time with each record, and not the sender's network address.
 
 use std::time::Duration;
 
