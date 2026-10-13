@@ -10,6 +10,17 @@ export function showsCases(cases: SubjectCases | undefined): cases is SubjectCas
   return !!cases?.cases.some((c) => c.opening !== null || c.closing !== null)
 }
 
+/**
+ * A case's place in its life, as the brand's quote draws it: opened with no session yet, under way, or ended — and
+ * nothing for a case another opening followed before anything ended it. Every ending is drawn alike (the closing's
+ * reason says nothing to this mark), so an ending is never celebrated over another.
+ */
+export function caseMark(c: Pick<CaseView, 'open' | 'closing' | 'records'>, typeOf: (id: string) => string | undefined): 'opening' | 'ongoing' | 'done' | null {
+  if (c.closing !== null) return 'done'
+  if (!c.open) return null
+  return c.records.some((id) => typeOf(id) === 'session') ? 'ongoing' : 'opening'
+}
+
 /** The state of a case in words: open, ended on a day, or followed by another opening before anything ended it. */
 export function caseState(c: CaseView, opening: string): string {
   if (c.open) return strings.caseOpen

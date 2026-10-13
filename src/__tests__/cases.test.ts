@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseState, changeSigns, followUpWords, latestCaseState, caseTimeline, latestFollowUp, openingScale, scaleLine, scaleSeries, showsCases, signed } from '../cases.js'
+import { byCase, caseCounts, caseHead, caseMark, caseState, changeSigns, followUpWords, latestCaseState, caseTimeline, latestFollowUp, openingScale, scaleLine, scaleSeries, showsCases, signed } from '../cases.js'
 import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
@@ -140,5 +140,24 @@ describe('cases', () => {
     const series = scaleSeries(['s1', 'x', 's2', 's3', 's4', 's5'], (id) => read[id], (scale) => (scale === 'phq9' ? { min: 0, max: 27 } : { min: 0, max: 21 }))
     expect(series.get('phq9')!.map((p) => p.score)).toEqual([18, 14, 16])
     expect(series.get('gad7')!.map((p) => p.record)).toEqual(['s5'])
+  })
+})
+
+describe('caseMark', () => {
+  const types: Record<string, string> = { i: 'intake', s1: 'session', sc: 'scale-score', c: 'closing' }
+  const typeOf = (id: string) => types[id]
+
+  it('draws a case opened with no session yet as the open quote, whatever else it holds', () => {
+    expect(caseMark({ open: true, closing: null, records: ['i'] }, typeOf)).toBe('opening')
+    expect(caseMark({ open: true, closing: null, records: ['i', 'sc'] }, typeOf)).toBe('opening')
+  })
+
+  it('draws a case with a session as under way', () => {
+    expect(caseMark({ open: true, closing: null, records: ['i', 's1'] }, typeOf)).toBe('ongoing')
+  })
+
+  it('draws every ended case alike, and nothing for one another opening followed', () => {
+    expect(caseMark({ open: false, closing: 'c', records: ['i', 's1', 'c'] }, typeOf)).toBe('done')
+    expect(caseMark({ open: false, closing: null, records: ['i', 's1'] }, typeOf)).toBeNull()
   })
 })

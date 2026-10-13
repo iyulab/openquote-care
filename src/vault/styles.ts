@@ -135,6 +135,11 @@ export const vaultStyles = [
       align-items: baseline;
       gap: var(--dc-space-1, 4px) var(--dc-space-3, 12px);
     }
+    /* The case's quote mark: centred on the title's line, which the row otherwise aligns by baseline, and close to it. */
+    ul.cases li > oq-quote-state {
+      align-self: center;
+      margin-inline-end: calc(var(--dc-space-2, 8px) - var(--dc-space-3, 12px));
+    }
     ul.cases li > div,
     ul.cases li > ul.scales,
     ul.cases li > details.timeline {

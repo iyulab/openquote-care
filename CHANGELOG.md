@@ -8,6 +8,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Changed
 - A person's or a group's page no longer shows a section for each kind of record it has none of, each saying so: those kinds are one row of buttons under "Other records", and a kind's section appears once its form is opened or it has a record.
+- A case's title carries the app's quote mark for where the case stands: the open quote while it has no session yet, the three dots while it is under way, and the closed quotes, in the colour of the words, once it has ended — every ending alike.
 
 ## [0.22.0] - 2026-10-13
 

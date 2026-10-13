@@ -29,6 +29,10 @@ export type QuoteState = 'opening' | 'ongoing' | 'done'
 export class OqQuoteState extends LitElement {
   @property({ reflect: true }) state: QuoteState = 'opening'
   @property({ type: Number }) size = 18
+  /** Drawn as its last frame, without moving or waiting to appear: a state that stays on screen, such as a case's. */
+  @property({ type: Boolean, reflect: true }) still = false
+  /** Done in the ink of the words beside it, without the two voices' colours: ended, not celebrated. */
+  @property({ type: Boolean, reflect: true }) mono = false
 
   static styles = css`
     :host {
@@ -112,6 +116,21 @@ export class OqQuoteState extends LitElement {
     @keyframes meet {
       0%, 70% { opacity: 0; }
       100% { opacity: 1; }
+    }
+    :host([still]) {
+      opacity: 1;
+      animation: none;
+    }
+    :host([still]) svg * {
+      animation: none;
+      opacity: 1;
+    }
+    :host([mono]) .done .a,
+    :host([mono]) .done .b {
+      fill: currentColor;
+    }
+    :host([mono]) .done .meet {
+      display: none;
     }
     @media (prefers-reduced-motion: reduce) {
       :host([state='opening']),
