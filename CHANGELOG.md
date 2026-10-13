@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-10-13
+
 ### Added
 - Calendar (달력), beside the people: a month at a glance, each day showing how many people a session planned to meet then, the follow-ups after a closing due then, and the records made then — days the records already name; nothing is entered on the calendar. Picking a day lists who and what, each opening where it is kept; the arrow keys move between days and Page Up and Page Down between months. Sundays and Saturdays read in their own colours.
 - A person added by name is given a case number — the day they were added and four characters, such as 2026-1013-7K3Q — shown in the form to keep or change; the people pasted from a spreadsheet without one are given one too. The number is no running count: devices sharing a records folder could hand out the same one; a day and a tail no one here has cannot clash.
@@ -173,7 +175,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/iyulab/openquote-care/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/iyulab/openquote-care/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/iyulab/openquote-care/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/iyulab/openquote-care/compare/v0.18.0...v0.19.0
