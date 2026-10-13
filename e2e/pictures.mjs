@@ -94,9 +94,10 @@ const TITLES = { learning: '학업 고민 상담', relation: '교우 관계 상�
 const L = {
   ko: {
     track: 'school-kr',
+    feedbackMessage: '통계에서 이번 달 옆에 지난달 숫자도 함께 보면 좋겠습니다. 담당자 회의 때 비교해서 봅니다.',
     ui: {
       create: '새 기록 폴더 만들기', passphrase: '암호', again: '암호 다시 입력', track: '분야와 지역', make: '만들기', kit: '복구 키트',
-      kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', newSubject: '＋ 새 대상자', subjectName: '대상자 이름', subjects: '대상자', calendar: '달력', date: '날짜', note: '상담 내용',
+      kitTail: '보관했는지 확인: 복구 키의 마지막 묶음(6자)을 입력하세요', confirm: '확인', newSubject: '＋ 새 대상자', subjectName: '대상자 이름', subjects: '대상자', calendar: '달력', feedback: '의견 보내기', feedbackMessage: '보낼 글', date: '날짜', note: '상담 내용',
       report: '통계', year: '연도', month: '월', run: '산출', lists: '기록 목록', makeList: '목록 만들기', refresh: '다시 읽기',
       compareWith: '이전 산출과 비교', compare: '비교', devices: '기기', backup: '자동 백업', appSettings: '앱 설정', practitioner: '담당자',
       find: '기록 찾기', findLabel: '찾을 말', choices: '선택 목록', itemName: '항목 이름', countedAs: '통계에서 세는 항목', addToList: '목록에 더하기',
@@ -162,9 +163,10 @@ const L = {
   },
   en: {
     track: 'care-en',
+    feedbackMessage: "It would help to see last month's figures beside this month's in the statistics — we compare them at team meetings.",
     ui: {
       create: 'Create a vault', passphrase: 'Passphrase', again: 'Passphrase again', track: 'Field and region', make: 'Create', kit: 'Recovery kit',
-      kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', newSubject: '+ New client', subjectName: 'Client name', subjects: 'Clients', calendar: 'Calendar', date: 'Date',
+      kitTail: 'To confirm you kept it, type the last group of the recovery key (6 characters)', confirm: 'Confirm', newSubject: '+ New client', subjectName: 'Client name', subjects: 'Clients', calendar: 'Calendar', feedback: 'Send feedback', feedbackMessage: 'Message', date: 'Date',
       note: 'Notes', report: 'Statistics', year: 'Year', month: 'Month', run: 'Run', lists: 'Record lists', makeList: 'Make list', refresh: 'Reload',
       compareWith: 'Compare with an earlier run', compare: 'Compare', devices: 'Devices', backup: 'Automatic backup', appSettings: 'App settings', practitioner: 'Practitioner',
       find: 'Find records', findLabel: 'Words to find', choices: 'Choice lists', itemName: 'Item name', countedAs: 'Counted in statistics as',
@@ -222,7 +224,9 @@ if (existsSync(work)) throw new Error(`${work} exists — remove it or give anot
 await mkdir(work)
 const vault = join(work, locale === 'ko' ? '2026 상담 기록' : 'Counseling records 2026')
 await mkdir(vault)
-const app = await App.launch({ OPENQUOTE_UI_LOCALE: locale })
+// A destination for feedback, as a released installer has (its public key), so the screens show what people see.
+// Nothing is sent: the scene writes a message and never presses Send, and the address answers nothing.
+const app = await App.launch({ OPENQUOTE_UI_LOCALE: locale, OPENQUOTE_FEEDBACK_KEY: 'pk_pictures', OPENQUOTE_FEEDBACK_URL: 'http://127.0.0.1:9/api/t/openquote/feedback' })
 const ui = L.ui
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -606,6 +610,13 @@ try {
   await app.click('button', ui.appSettings)
   await app.cdp.waitFor(`!!__e2e.one('[data-role=theme]')`, 'the settings')
   await shoot('settings')
+
+  // Feedback, written and not sent: the screen lists what would go with it before Send.
+  await app.click('button', ui.feedback)
+  await app.cdp.waitFor(`(() => { const el = __e2e.one('[data-role=feedback]'); return !!el && el.getBoundingClientRect().width > 0 })()`, 'the feedback screen')
+  await app.write(ui.feedbackMessage, L.feedbackMessage)
+  await sleep(300)
+  await shoot('feedback')
 
   // What the vault holds that the scenes were not decided over: a kind of record or a form new since.
   const held = await app.cdp.evaluate(
