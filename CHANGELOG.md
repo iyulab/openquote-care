@@ -10,6 +10,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - Where nothing has been written yet — a new records folder's list of people or groups, a person or group with no session — the empty space shows the app's open quote with a caret blinking after it, beside the words that say what to do first. With reduced motion the caret holds still.
 - A printed statistics form or record list, and the plain copy's page, end with the app's two quotes facing, in the colour of the words.
 - The installer's first and last pages show the app's two quotes facing, on the warm ground of its colours.
+- The installer speaks Korean where Windows does, and English elsewhere.
 
 ### Fixed
 - Opening a records folder no longer shows its menu a moment before the places its kind of work adds (Activities, in a school folder) join it, moving every item below by a row as one is about to be clicked: the folder's screens appear once it has been read, and until then the window says it is opening the folder.

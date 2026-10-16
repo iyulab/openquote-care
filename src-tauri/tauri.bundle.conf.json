@@ -10,7 +10,8 @@
       "nsis": {
         "installMode": "currentUser",
         "installerHooks": "windows/installer-hooks.nsh",
-        "sidebarImage": "windows/installer-sidebar.bmp"
+        "sidebarImage": "windows/installer-sidebar.bmp",
+        "languages": ["English", "Korean"]
       }
     }
   }
