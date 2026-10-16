@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-10-16
+
 ### Changed
 - A person's or a group's page no longer shows a section for each kind of record it has none of, each saying so: those kinds are one row of buttons under "Other records", and a kind's section appears once its form is opened or it has a record.
 - A case's title carries the app's quote mark for where the case stands: the open quote while it has no session yet, the three dots while it is under way, and the closed quotes, in the colour of the words, once it has ended — every ending alike.
@@ -182,7 +184,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/iyulab/openquote-care/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/iyulab/openquote-care/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/iyulab/openquote-care/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/iyulab/openquote-care/compare/v0.19.0...v0.20.0
