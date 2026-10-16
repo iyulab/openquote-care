@@ -592,15 +592,16 @@ public sealed class SidecarTests : IAsyncLifetime
         var subjectFile = await Post("/changes/subject", new { fields = new { name = "someone" } });
         await Post("/vault/add", new { files = new[] { subjectFile } });
         var subjectId = subjectFile["path"]!.GetValue<string>().Split('/')[1];
-        async Task<string> Add(string type, string date)
+        async Task<string> Add(string type, string date, string? reason = null)
         {
-            var file = await Post("/changes/in-subject", new { subjectId, type, fields = new { date } });
+            object fields = reason is null ? new { date } : new { date, reason = new { scheme = "care.closing-reason", version = 1, code = reason } };
+            var file = await Post("/changes/in-subject", new { subjectId, type, fields });
             await Post("/vault/add", new { files = new[] { file } });
             return file["path"]!.GetValue<string>();
         }
         await Add("intake", "2026-03-02");
         await Add("session", "2026-03-09");
-        await Add("closing", "2026-04-20");
+        await Add("closing", "2026-04-20", reason: "completed");
         await Add("session", "2026-05-11"); // a follow-up
         await Add("intake", "2026-09-01");
 
@@ -615,6 +616,9 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.True(cases[1]!["open"]!.GetValue<bool>());
         Assert.Null(cases[1]!["end"]);
         Assert.Empty(mine["undated"]!.AsArray());
+        // The core pack says a closing that gives its reason as completed ended the work as planned; an open case tells nothing.
+        Assert.True(cases[0]!["completed"]!.GetValue<bool>());
+        Assert.Null(cases[1]!["completed"]);
     }
 
     [Fact]

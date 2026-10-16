@@ -7,6 +7,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ## [Unreleased]
 
 ### Changed
+- A case that ended as planned has its closed quotes in the two voices' colours again; a case that ended early or for another reason keeps them in the colour of the words. Which closings end the work as planned is the core pack's to say — its thirteenth version names the closing reasons "completed" and "moved to another service".
 - Where nothing has been written yet — a new records folder's list of people or groups, a person or group with no session — the empty space shows the app's open quote with a caret blinking after it, beside the words that say what to do first. With reduced motion the caret holds still.
 
 ## [0.23.0] - 2026-10-16

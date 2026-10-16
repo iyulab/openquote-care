@@ -215,7 +215,8 @@ public sealed record HeadView(string ChangeId, string Device, JsonElement Value)
 
 /// <summary>
 /// One of a subject's cases, as <see cref="CaseReader"/> reads it: its records by id, in time order — and, when its
-/// closing expects a follow-up, the day it is due and where it stands today (<see cref="FollowUp"/>, camel-cased).
+/// closing expects a follow-up, the day it is due and where it stands today (<see cref="FollowUp"/>, camel-cased) —
+/// and whether its closing ended the work as planned, as the packs say of the closing's type (null when they say nothing).
 /// </summary>
 public sealed record CaseView(
     string? Opening,
@@ -227,7 +228,8 @@ public sealed record CaseView(
     bool FollowedByOpening,
     bool Open,
     DateOnly? FollowUpDue,
-    string FollowUp);
+    string FollowUp,
+    bool? Completed);
 
 /// <summary>A subject's cases, oldest first, and its records that have no date to place them by.</summary>
 public sealed record SubjectCasesView(string Subject, IReadOnlyList<CaseView> Cases, IReadOnlyList<string> Undated);
@@ -739,7 +741,8 @@ internal static class Api
                 c.FollowedByOpening,
                 c.IsOpen,
                 c.FollowUpDue,
-                FollowUpWord(c.FollowUpOn(today))))],
+                FollowUpWord(c.FollowUpOn(today)),
+                c.Completed))],
             [.. x.Cases.Undated.Select(r => r.Reference.Id)]))];
 
     private static ScalesView ScalesOf(VaultSession.Snapshot s)

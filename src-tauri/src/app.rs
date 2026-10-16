@@ -1757,9 +1757,9 @@ cut off").unwrap();
     /// dates and gives a role to each kind of record — its eighth, a form counting closings by the intake of
     /// their case — its ninth, a goal as a kind of record and a session's next step — its tenth, a provision
     /// following a referral with the forms counting it, and a referral waiting for its outcome — its eleventh, a
-    /// session setting the next meeting's day — and its twelfth, the practitioner of a provision. A vault made before the
-    /// sixth holds none of them.
-    const CORE_PACK_6: [&str; 27] = [
+    /// session setting the next meeting's day — its twelfth, the practitioner of a provision — and its thirteenth, the
+    /// closings that end the work as planned. A vault made before the sixth holds none of them.
+    const CORE_PACK_6: [&str; 29] = [
         "packs/care/v6.json.age",
         "schemes/care.closing-type/v1.json.age",
         "schemes/care.closing-reason/v1-care.closing-type.v1.json.age",
@@ -1787,6 +1787,8 @@ cut off").unwrap();
         "packs/care/v12.json.age",
         "fields/care/provision/v2.json.age",
         "exports/care.provision-list/v2.json.age",
+        "packs/care/v13.json.age",
+        "fields/care/closing/v3.json.age",
     ];
 
     const FORMAT_0_DECLARATION: &str = "{\n  \"format\": \"openquote.vault/0\",\n  \"encryption\": \"age\"\n}\n";

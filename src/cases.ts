@@ -12,13 +12,20 @@ export function showsCases(cases: SubjectCases | undefined): cases is SubjectCas
 
 /**
  * A case's place in its life, as the brand's quote draws it: opened with no session yet, under way, or ended — and
- * nothing for a case another opening followed before anything ended it. Every ending is drawn alike (the closing's
- * reason says nothing to this mark), so an ending is never celebrated over another.
+ * nothing for a case another opening followed before anything ended it. How an ending is drawn is `caseEndedAsPlanned`.
  */
 export function caseMark(c: Pick<CaseView, 'open' | 'closing' | 'records'>, typeOf: (id: string) => string | undefined): 'opening' | 'ongoing' | 'done' | null {
   if (c.closing !== null) return 'done'
   if (!c.open) return null
   return c.records.some((id) => typeOf(id) === 'session') ? 'ongoing' : 'opening'
+}
+
+/**
+ * Whether an ended case's mark may take the two voices' colours: only when the packs say its closing ended the work as
+ * planned. An ending they say nothing of, or one that came early, is drawn in the ink of the words — never celebrated.
+ */
+export function caseEndedAsPlanned(c: Pick<CaseView, 'completed'>): boolean {
+  return c.completed === true
 }
 
 /** The state of a case in words: open, ended on a day, or followed by another opening before anything ended it. */

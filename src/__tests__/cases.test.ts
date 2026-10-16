@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { byCase, caseCounts, caseHead, caseMark, caseState, changeSigns, followUpWords, latestCaseState, caseTimeline, latestFollowUp, openingScale, scaleLine, scaleSeries, showsCases, signed } from '../cases.js'
+import { byCase, caseCounts, caseEndedAsPlanned, caseHead, caseMark, caseState, changeSigns, followUpWords, latestCaseState, caseTimeline, latestFollowUp, openingScale, scaleLine, scaleSeries, showsCases, signed } from '../cases.js'
 import type { CaseScale, CaseView, SubjectCases } from '../shell.js'
 import { strings } from '../strings.js'
 
 const aCase = (patch: Partial<CaseView>): CaseView => ({
   opening: 'i1', closing: null, start: '2026-03-02', end: null, records: ['i1'], afterClosing: [], followedByOpening: false, open: true,
-  followUpDue: null, followUp: 'notExpected', ...patch,
+  followUpDue: null, followUp: 'notExpected', completed: null, ...patch,
 })
 const of = (...cases: CaseView[]): SubjectCases => ({ subject: 's1', cases, undated: [] })
 
@@ -156,8 +156,14 @@ describe('caseMark', () => {
     expect(caseMark({ open: true, closing: null, records: ['i', 's1'] }, typeOf)).toBe('ongoing')
   })
 
-  it('draws every ended case alike, and nothing for one another opening followed', () => {
+  it('draws an ended case as ended, and nothing for one another opening followed', () => {
     expect(caseMark({ open: false, closing: 'c', records: ['i', 's1', 'c'] }, typeOf)).toBe('done')
     expect(caseMark({ open: false, closing: null, records: ['i', 's1'] }, typeOf)).toBeNull()
+  })
+
+  it('colours an ending only when the packs say it ended the work as planned', () => {
+    expect(caseEndedAsPlanned({ completed: true })).toBe(true)
+    expect(caseEndedAsPlanned({ completed: false })).toBe(false) // came early, or for another reason
+    expect(caseEndedAsPlanned({ completed: null })).toBe(false) // the packs say nothing of the closing's kind
   })
 })

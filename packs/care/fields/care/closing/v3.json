@@ -1,0 +1,46 @@
+{
+  "format": "openquote.fields/0",
+  "pack": "care",
+  "type": "closing",
+  "version": 3,
+  "label": "Closing",
+  "under": [
+    "subject"
+  ],
+  "order": 40,
+  "role": "closes",
+  "completes": {
+    "field": "reason",
+    "codes": [
+      "completed",
+      "referred"
+    ]
+  },
+  "fields": [
+    {
+      "name": "date",
+      "kind": "date",
+      "required": true,
+      "label": "Closed on"
+    },
+    {
+      "name": "practitioner",
+      "kind": "reference",
+      "type": "practitioner",
+      "label": "Practitioner"
+    },
+    {
+      "name": "reason",
+      "kind": "coded",
+      "scheme": "care.closing-reason",
+      "required": true,
+      "label": "Why it closed"
+    },
+    {
+      "name": "summary",
+      "kind": "text",
+      "tier": "narrative",
+      "label": "Closing summary"
+    }
+  ]
+}
