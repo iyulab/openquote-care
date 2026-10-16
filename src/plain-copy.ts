@@ -2,6 +2,7 @@
 // a spreadsheet, and a note on what the copy is. Made here from what the window already holds; the
 // shell only decides where it may be written.
 
+import { endMarkMarkup } from './brand-mark.js'
 import { listColumns, recordFields, type FieldView } from './fields.js'
 import { dayByDate, inOrderOfFirstRecord, text, type ChangeEntry, type Classified, type DayOf, type Entity } from './records.js'
 
@@ -236,6 +237,7 @@ h1{font-size:1.5rem}h2{font-size:1.2rem;margin-top:2.5rem;border-bottom:1px soli
 table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:.3rem .5rem;border-bottom:1px solid #ddd;vertical-align:top}
 th{color:#555}dl{display:grid;grid-template-columns:max-content 1fr;gap:.2rem 1rem}dt{color:#555}dd{margin:0}
 .note{white-space:pre-wrap}.warn{border:1px solid #b00020;padding:.5rem 1rem;color:#b00020}
+.end{text-align:center;margin:3rem 0 1rem}
 @media print{h2{break-before:page}a{color:inherit;text-decoration:none}tr{break-inside:avoid}}`
 
 function recordTable(source: PlainCopySource, words: PlainCopyWords, columns: FieldView[], records: Entity[], people: boolean): string {
@@ -342,6 +344,8 @@ function page(source: PlainCopySource, words: PlainCopyWords, subjectFields: Fie
   if (source.practitioners.length) {
     parts.push(`<h2>${escape(words.practitioners)}</h2>`, `<ul>${byName(source.practitioners, source.names).map((p) => `<li>${escape(text(p, 'name'))}</li>`).join('')}</ul>`)
   }
+  // The last page ends with the brand's two commas facing, in ink: the copy is whole to here.
+  parts.push(`<p class="end">${endMarkMarkup(28)}</p>`)
   return `<!doctype html>\n<html><head><meta charset="utf-8"><title>${escape(words.title)}</title><style>${STYLE}</style></head><body>\n${parts.filter(Boolean).join('\n')}\n</body></html>\n`
 }
 

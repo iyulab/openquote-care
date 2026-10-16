@@ -393,6 +393,11 @@ export const vaultStyles = [
     .section[hidden] {
       display: none;
     }
+    /* The last thing on paper: the two commas facing, in ink, where the printed form or list ends. */
+    .print-end {
+      margin-top: var(--dc-space-6, 24px);
+      text-align: center;
+    }
     .section-label {
       margin: var(--dc-space-3, 12px) 0 var(--dc-space-1, 4px);
       font-weight: var(--dc-font-weight-semibold, 600);

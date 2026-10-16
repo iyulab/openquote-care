@@ -53,6 +53,11 @@ export function listEntry(e: ListEntry, selected: string | undefined, select: (i
  * that adds to it is a button above it, opening its form as the document), and each side scrolls on
  * its own. While the window is narrow one side shows at a time, and the document has a way back.
  */
+/** The end of a printed form or list: the two commas facing, in ink, on paper only — an ending marked, never celebrated. */
+export function printEnd() {
+  return html`<p class="print-only print-end"><oq-quote-state state="done" still mono size="20"></oq-quote-state></p>`
+}
+
 /** In an empty state, where nothing has been written yet: the open quote with the caret after it, as the word mark begins. */
 export function startMark() {
   return html`<oq-quote-state slot="icon" state="opening" caret size="26"></oq-quote-state>`

@@ -7,7 +7,7 @@ import { shell, type ScaleSummary } from '../shell.js'
 import { changeSigns, scaleLine } from '../cases.js'
 import { scaleLabel } from './case-parts.js'
 import { strings } from '../strings.js'
-import { formBehind, formLabel, listDetail, noticeLine, openSessionEvent, stepMonth, raiseFormatCallout, rangeFields, unitPeriodFields } from './parts.js'
+import { formBehind, formLabel, listDetail, noticeLine, openSessionEvent, printEnd, stepMonth, raiseFormatCallout, rangeFields, unitPeriodFields } from './parts.js'
 import type { ReportEntry } from '../forms.js'
 import { axesOf, blankLabel, comparisonView, dimensionTitles, evidenceList, filterParts, formOf, pendingList, unmappedWording, type PendingEntry } from './report-parts.js'
 import { VaultScreen } from './screen.js'
@@ -236,7 +236,7 @@ export class OcReport extends VaultScreen {
       ${raiseFormatCallout(store)}
       ${formBehind(store.summary?.reports ?? [], store.reportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
-      ${this.result ? this.reportTable(this.result) : nothing}`
+      ${this.result ? html`${this.reportTable(this.result)}${printEnd()}` : nothing}`
   }
 
   private reportTable(result: RunRecord) {

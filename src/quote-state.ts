@@ -191,9 +191,15 @@ export class OqQuoteState extends LitElement {
       return [PEACH, RAPPORT, PERIWINKLE].map((fill, i) => svg`<circle class=${`d d${i}`} cx=${256 + (i - 1) * gap} cy="256" r=${r} fill=${fill} />`)
     }
     if (this.state === 'done') {
+      // In ink alone the two commas would run into one shape where they overlap: as the brand's mono mark does, the
+      // second cuts a thin gap out of the first.
       return svg`<g transform=${FRAME[cut]}>
         <mask id="meet"><path d=${COMMA} fill="#fff" transform="translate(14 0)" /></mask>
-        <path class="a" d=${COMMA} />
+        <mask id="cut" maskUnits="userSpaceOnUse" x="-20" y="-20" width="180" height="140">
+          <rect x="-20" y="-20" width="180" height="140" fill="#fff" />
+          <path d=${COMMA} fill="#000" stroke="#000" stroke-width="7" stroke-linejoin="round" transform="translate(126 0) scale(-1 1)" />
+        </mask>
+        <g mask=${this.mono ? 'url(#cut)' : nothing}><path class="a" d=${COMMA} /></g>
         <path class="b" d=${COMMA} />
         <g class="meet" mask="url(#meet)"><path d=${COMMA} fill=${RAPPORT} transform="translate(126 0) scale(-1 1)" /></g>
       </g>`

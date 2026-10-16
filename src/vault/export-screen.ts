@@ -9,7 +9,7 @@ import { plainCopy } from '../plain-copy.js'
 import { plainCases } from './case-parts.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, raiseFormatCallout, rangeFields, stepMonth, unitPeriodDays, unitPeriodFields } from './parts.js'
+import { deviceLabel, formBehind, formLabel, listDetail, noticeLine, periodFields, printEnd, raiseFormatCallout, rangeFields, stepMonth, unitPeriodDays, unitPeriodFields } from './parts.js'
 import { valueText } from './session-parts.js'
 import { VaultScreen } from './screen.js'
 
@@ -276,7 +276,7 @@ export class OcExport extends VaultScreen {
       ${raiseFormatCallout(store)}
       ${formBehind(store.summary?.exports ?? [], store.exportKey, (s) => store.schemeName(s))}
       ${noticeLine(store)}
-      ${table ? this.tableView(table) : nothing}`
+      ${table ? html`${this.tableView(table)}${printEnd()}` : nothing}`
   }
 
   /** Keeps the pinned columns' offsets — the widths of the columns before each — as the table lays them out. */

@@ -24,3 +24,12 @@ export function quoteMark(size: number) {
     </g>
   </svg>`
 }
+
+/**
+ * The dialogue mark in ink alone, as markup — for documents written to be read without the app (the plain copy),
+ * where it closes the last page: two commas facing, no colours, so an ending is marked and never celebrated.
+ */
+export function endMarkMarkup(size: number): string {
+  // As the brand's mono mark: the second comma cuts a thin gap out of the first, or in one ink they would run together.
+  return `<svg viewBox="0 0 512 512" width="${size}" height="${size}" aria-hidden="true"><g transform="translate(-19.25 96.09) scale(3.2768)" fill="currentColor"><mask id="end-cut" maskUnits="userSpaceOnUse" x="-20" y="-20" width="180" height="140"><rect x="-20" y="-20" width="180" height="140" fill="#fff"/><path d="${COMMA}" fill="#000" stroke="#000" stroke-width="7" stroke-linejoin="round" transform="translate(140 0) scale(-1 1)"/></mask><g mask="url(#end-cut)"><path d="${COMMA}" transform="translate(28 0)"/></g><path d="${COMMA}" transform="translate(140 0) scale(-1 1)"/></g></svg>`
+}

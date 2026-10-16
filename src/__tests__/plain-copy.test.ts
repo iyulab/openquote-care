@@ -152,6 +152,14 @@ describe('plain copy', () => {
     expect(page.indexOf('Clients 2')).toBeLessThan(page.indexOf('<h2>Clients</h2>'))
   })
 
+  it('ends its last page with the two commas facing, in ink and hidden from screen readers', () => {
+    const page = file(plainCopy(source(false), en.plainCopy), 'records.html')
+    const end = page.lastIndexOf('<p class="end">')
+    expect(end).toBeGreaterThan(page.lastIndexOf('</ul>'))
+    expect(page.slice(end)).toMatch(/^<p class="end"><svg [^>]*aria-hidden="true"><g [^>]*fill="currentColor">/)
+    expect(page.slice(end)).not.toMatch(/#[0-9a-f]{6}/) // no colours: an ending is marked, never celebrated
+  })
+
   it('puts names in the vault’s order, the same as the app', () => {
     const korean = [entity('subject', 'k2', { name: '나영' }), entity('subject', 'k1', { name: '가람' }), entity('subject', 'k3', { name: 'Bo' })]
     const order = (names: Intl.Collator) =>
