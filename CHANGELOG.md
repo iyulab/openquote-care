@@ -11,6 +11,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - A printed statistics form or record list, and the plain copy's page, end with the app's two quotes facing, in the colour of the words.
 
 ### Fixed
+- Opening a records folder no longer shows its menu a moment before the places its kind of work adds (Activities, in a school folder) join it, moving every item below by a row as one is about to be clicked: the folder's screens appear once it has been read, and until then the window says it is opening the folder.
 - An ended case's quotes in the colour of the words no longer run together where they meet: as in the brand's own mark, a thin gap parts them.
 
 ## [0.23.0] - 2026-10-16

@@ -303,6 +303,10 @@ const scenarios = {
     await app.click('dc-button', '열기')
     await app.vaultOpen()
     await app.noAlert()
+    // The menu is drawn as it stays: the places the school packs add are there the moment it shows, so nothing a
+    // person is about to click moves under the pointer (it once gained 활동 a moment later, pushing 기기 down a row).
+    const menu = await app.cdp.evaluate(`[...__e2e.one('dp-sidebar').shadowRoot.querySelectorAll('.item')].map((b) => b.textContent.trim())`)
+    assert.ok(menu.includes('활동') && menu.includes('기기'), `the whole menu at once: ${menu.join(' | ')}`)
 
     // Changed back while open with a passphrase, for the scenarios that follow.
     await app.click('button', '기기')

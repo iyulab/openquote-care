@@ -120,10 +120,13 @@ export class App {
     )
   }
 
-  /** Waits for the open vault; an alert shown instead (the engine did not start, say) fails at once, naming it. */
+  /**
+   * Waits for the open vault, its screens drawn (its first read ended — `dp-shell` replaces the opening line); an
+   * alert shown instead (the engine did not start, say) fails at once, naming it.
+   */
   async vaultOpen() {
     const outcome = await this.cdp.waitFor(
-      `__e2e.one('oc-vault') ? 'open' : __e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`,
+      `__e2e.one('oc-vault') && __e2e.one('dp-shell') ? 'open' : __e2e.all('[role=alert]').map((el) => el.textContent.trim()).filter(Boolean).join(' / ')`,
       'the open vault',
       { timeoutMs: 60_000 },
     )

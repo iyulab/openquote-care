@@ -54,6 +54,13 @@ export class OcVault extends LitElement {
       dp-shell {
         height: 100%;
       }
+      /* Until the first read ends: the same words the open card said, in the middle of the window. */
+      .opening {
+        height: 100%;
+        display: grid;
+        place-content: center;
+        color: var(--dc-color-text-muted, #686870);
+      }
       oc-feedback {
         max-width: 44rem;
         padding: var(--dc-space-5, 20px) var(--dc-space-6, 24px);
@@ -134,6 +141,7 @@ export class OcVault extends LitElement {
   /** The vault's screen, by its fixed name, for the time kept on each screen. */
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has('view')) showScreen(`vault:${this.view}`)
+    this.whenFirstDrawn()
   }
 
   disconnectedCallback() {
@@ -228,9 +236,22 @@ export class OcVault extends LitElement {
     setSidebarRail(this.rail)
   }
 
-  /** Goes to the devices screen, with one of its settings open. */
-  protected firstUpdated() {
-    // With the key file lost, setting a new passphrase is where the vault opens.
+  /**
+   * The vault's first read has ended (or failed, to be said): only then are its menu and screens drawn, as they
+   * will stay. Drawn before, the menu would gain the places the vault's packs add — activities, say — a moment
+   * after it appeared, moving what a person was about to click.
+   */
+  private get ready() {
+    return this.store.summary !== undefined || this.store.error !== undefined
+  }
+
+  /** Whether the vault's screens have been drawn once. */
+  private drawn = false
+
+  /** Once the screens are first drawn: with the key file lost, setting a new passphrase is where the vault opens. */
+  private whenFirstDrawn() {
+    if (this.drawn || !this.ready) return
+    this.drawn = true
     if (this.keyFileLost) this.goToDevices('passphrase')
   }
 
@@ -258,6 +279,9 @@ export class OcVault extends LitElement {
   render() {
     const store = this.store
     const view = this.view
+    if (!this.ready) {
+      return html`<div class="opening"><oq-quote-state state="opening" size="18" role="status" data-role="opening">${strings.openingVault}</oq-quote-state></div>`
+    }
     const heading = { subjects: strings.subjects, calendar: strings.calendarTitle, groups: strings.groups, activities: strings.activitiesTitle, search: strings.searchTitle, report: strings.report, export: strings.navExport, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
       <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
