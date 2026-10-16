@@ -10,6 +10,7 @@ import { setSidebarRail, sidebarRail } from './sidebar-rail.js'
 import { showScreen } from './screen-time.js'
 import { writes, type WriteState } from './writes.js'
 import './quote-state.js'
+import { firstRecordMoment, type FirstMoment } from './first-moment.js'
 import type { FeedbackStatus, VaultFileKind } from './shell.js'
 import { strings } from './strings.js'
 import { errorCallout, packsWaitingCallout } from './vault/parts.js'
@@ -142,6 +143,7 @@ export class OcVault extends LitElement {
   protected updated(changed: Map<PropertyKey, unknown>) {
     if (changed.has('view')) showScreen(`vault:${this.view}`)
     this.whenFirstDrawn()
+    this.watchFirstRecord()
   }
 
   disconnectedCallback() {
@@ -247,6 +249,17 @@ export class OcVault extends LitElement {
 
   /** Whether the vault's screens have been drawn once. */
   private drawn = false
+  /** How many records the folder held at the last look, for its first record: none until it has been read. */
+  private records?: number
+
+  /** Marks the folder's first record when a change brings it from none — after the first read, not by it. */
+  private watchFirstRecord() {
+    if (!this.ready) return
+    const now = this.store.recordCount
+    const moment = this.records === undefined ? null : firstRecordMoment(this.records, now)
+    this.records = now
+    if (moment) this.renderRoot.querySelector('oc-first-moment')?.play(moment)
+  }
 
   /** Once the screens are first drawn: with the key file lost, setting a new passphrase is where the vault opens. */
   private whenFirstDrawn() {
@@ -284,7 +297,11 @@ export class OcVault extends LitElement {
     }
     const heading = { subjects: strings.subjects, calendar: strings.calendarTitle, groups: strings.groups, activities: strings.activitiesTitle, search: strings.searchTitle, report: strings.report, export: strings.navExport, practitioners: strings.practitioners, settings: strings.navAppSettings, lists: strings.lists, devices: strings.devices, feedback: strings.feedbackTitle }[view]
     return html`
-      <dp-shell ?sidebar-open=${this.sidebarOpen} @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}>
+      <dp-shell
+        ?sidebar-open=${this.sidebarOpen}
+        @dp-shell-sidebar-close=${() => (this.sidebarOpen = false)}
+        @oc-first-moment=${(e: CustomEvent<FirstMoment>) => this.renderRoot.querySelector('oc-first-moment')?.play(e.detail)}
+      >
         <dp-sidebar
           slot="sidebar"
           ?collapsed=${this.rail && this.wide}
@@ -377,6 +394,7 @@ export class OcVault extends LitElement {
             : nothing}
         </dp-page>
       </dp-shell>
+      <oc-first-moment></oc-first-moment>
       ${this.folderMenuView()}
       <dp-shortcut-overlay
         ?open=${this.shortcutsOpen}

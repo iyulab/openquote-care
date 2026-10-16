@@ -54,6 +54,10 @@ export class OcReport extends VaultScreen {
       await store.load()
       await this.loadRuns()
     })
+    // The first statistics this folder keeps: a moment it has once.
+    if (this.result && this.keptRuns.length === 1) {
+      this.dispatchEvent(new CustomEvent('oc-first-moment', { detail: 'first-report', bubbles: true, composed: true }))
+    }
   }
 
   private async loadRuns() {

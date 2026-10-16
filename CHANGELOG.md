@@ -11,6 +11,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - A printed statistics form or record list, and the plain copy's page, end with the app's two quotes facing, in the colour of the words.
 - The installer's first and last pages show the app's two quotes facing, on the warm ground of its colours.
 - The installer speaks Korean where Windows does, and English elsewhere.
+- A records folder's first record, and the first statistics it keeps, are marked once: the app's two quotes turn to face each other in the middle of the window over a warmth that comes and goes, without taking a click. It is the folder's first, on whichever computer it happens.
 
 ### Fixed
 - Opening a records folder no longer shows its menu a moment before the places its kind of work adds (Activities, in a school folder) join it, moving every item below by a row as one is about to be clicked: the folder's screens appear once it has been read, and until then the window says it is opening the folder.
