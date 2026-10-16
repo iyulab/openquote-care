@@ -17,6 +17,12 @@ describe('quote states', () => {
     expect(stateSource).toContain('prefers-reduced-motion')
   })
 
+  it('blinks the caret as the word mark does, and holds it still where motion is reduced', () => {
+    expect(stateSource).toMatch(/\.caret \{\s*fill: currentColor;\s*animation: blink 1\.06s step-end infinite;/)
+    const reduced = stateSource.slice(stateSource.indexOf('prefers-reduced-motion'))
+    expect(reduced).toMatch(/\.caret \{\s*animation: none;\s*opacity: 1;/)
+  })
+
   it('waits a moment before getting ready or in progress shows, so a quick action does not flash it', () => {
     expect(stateSource).toMatch(/:host\(\[state='opening'\]\),\s*:host\(\[state='ongoing'\]\) \{\s*opacity: 0;\s*animation: appear 0s linear 0\.4s forwards;/)
   })

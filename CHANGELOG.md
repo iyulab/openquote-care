@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- Where nothing has been written yet — a new records folder's list of people or groups, a person or group with no session — the empty space shows the app's open quote with a caret blinking after it, beside the words that say what to do first. With reduced motion the caret holds still.
+
 ## [0.23.0] - 2026-10-16
 
 ### Changed

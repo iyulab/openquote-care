@@ -307,6 +307,12 @@ try {
   await app.type(ui.kitTail, key.slice(-6))
   await app.click('dc-button', ui.confirm)
   await app.vaultOpen()
+  // The new vault before anything is written in it: the empty list starts with the open quote and its caret.
+  // The caret blinks; with motion reduced it holds still, so the picture always has it.
+  await app.cdp.waitFor(`!!__e2e.one('dc-empty-state oq-quote-state[caret]')`, 'the empty list of a new vault')
+  await app.cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+  await shoot('start')
+  await app.cdp.send('Emulation.setEmulatedMedia', { features: [] })
 
   // Made-up records, through the same commands the screens use.
   const practitioners = []

@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit'
+import '../quote-state.js'
 import { yearStart, type FormEntry, type PeriodUnit } from '../forms.js'
 import { today, yearAround, type Entity } from '../records.js'
 import type { VaultSummary } from '../shell.js'
@@ -52,6 +53,11 @@ export function listEntry(e: ListEntry, selected: string | undefined, select: (i
  * that adds to it is a button above it, opening its form as the document), and each side scrolls on
  * its own. While the window is narrow one side shows at a time, and the document has a way back.
  */
+/** In an empty state, where nothing has been written yet: the open quote with the caret after it, as the word mark begins. */
+export function startMark() {
+  return html`<oq-quote-state slot="icon" state="opening" caret size="26"></oq-quote-state>`
+}
+
 export function listDetail(o: {
   store: VaultStore
   label: string
@@ -60,6 +66,8 @@ export function listDetail(o: {
   selected?: string
   select: (id: string) => void
   empty: string
+  /** The list is empty because nothing has been written yet — not because a search found nothing. */
+  emptyStart?: boolean
   document: unknown
   open: boolean
   back: () => void
@@ -73,7 +81,7 @@ export function listDetail(o: {
         <dc-button class="fold no-print" variant="ghost" size="sm" data-role="fold-list" @click=${() => fold(true)}>« ${strings.foldList}</dc-button>
       </div>
       ${o.entries.length === 0
-        ? html`<dc-empty-state description=${o.empty}></dc-empty-state>`
+        ? html`<dc-empty-state description=${o.empty}>${o.emptyStart ? startMark() : nothing}</dc-empty-state>`
         : html`<ul>
             ${o.entries.map((e, i) => html`${e.group && e.group !== o.entries[i - 1]?.group
               ? html`<li class="list-group" role="presentation">${e.group}</li>`

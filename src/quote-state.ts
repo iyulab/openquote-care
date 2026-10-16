@@ -1,4 +1,4 @@
-import { LitElement, css, html, svg, unsafeCSS } from 'lit'
+import { LitElement, css, html, nothing, svg, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 // The brand's comma and its three states — the same geometry, colours and timing as the brand's
@@ -17,6 +17,8 @@ const FRAME = { regular: 'translate(76.8 131.07) scale(2.56)', small: 'translate
 const DOTS = { regular: { r: 34, gap: 116 }, small: { r: 48.88, gap: 166.75 } }
 /** At or under this size the small cut is drawn. */
 const SMALL_AT = 24
+/** The caret after the open quote, in the 512 square's units: the drawing widens to hold it. */
+const CARET = { x: 476, y: 112, w: 30, h: 294, width: 512 + 48 }
 
 export type QuoteState = 'opening' | 'ongoing' | 'done'
 
@@ -33,6 +35,11 @@ export class OqQuoteState extends LitElement {
   @property({ type: Boolean, reflect: true }) still = false
   /** Done in the ink of the words beside it, without the two voices' colours: ended, not celebrated. */
   @property({ type: Boolean, reflect: true }) mono = false
+  /**
+   * The open quote with the brand's caret blinking after it, as the word mark starts before a letter is
+   * typed: a place where nothing has been written yet.
+   */
+  @property({ type: Boolean, reflect: true }) caret = false
 
   static styles = css`
     :host {
@@ -132,6 +139,23 @@ export class OqQuoteState extends LitElement {
     :host([mono]) .done .meet {
       display: none;
     }
+    /* With the caret the quote is already typed and stays; only the caret blinks, waiting for words. */
+    :host([caret]) {
+      opacity: 1;
+      animation: none;
+    }
+    :host([caret]) .opening .a,
+    :host([caret]) .opening .b {
+      animation: none;
+      opacity: 1;
+    }
+    .caret {
+      fill: currentColor;
+      animation: blink 1.06s step-end infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
       :host([state='opening']),
       :host([state='ongoing']) {
@@ -143,7 +167,8 @@ export class OqQuoteState extends LitElement {
       .ongoing .d,
       .done .a,
       .done .b,
-      .done .meet {
+      .done .meet,
+      .caret {
         animation: none;
         opacity: 1;
       }
@@ -152,8 +177,11 @@ export class OqQuoteState extends LitElement {
 
   render() {
     const cut = this.size <= SMALL_AT ? 'small' : 'regular'
-    return html`<svg class=${this.state} viewBox="0 0 512 512" width=${this.size} height=${this.size} aria-hidden="true">
-        ${this.mark(cut)}</svg
+    // The caret stands after the open quote, a gap past it, as tall as a capital beside the quote.
+    const caret = this.caret && this.state === 'opening'
+    const width = caret ? CARET.width : 512
+    return html`<svg class=${this.state} viewBox="0 0 ${width} 512" width=${(this.size * width) / 512} height=${this.size} aria-hidden="true">
+        ${this.mark(cut)}${caret ? svg`<rect class="caret" x=${CARET.x} y=${CARET.y} width=${CARET.w} height=${CARET.h} rx=${CARET.w / 2} />` : nothing}</svg
       ><slot></slot>`
   }
 

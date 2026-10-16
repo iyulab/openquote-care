@@ -3,7 +3,7 @@ import { customElement, state } from 'lit/decorators.js'
 import { entityOf, newestFirst, text, type Entity } from '../records.js'
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
-import { countBy, listDetail, nameField, noticeLine } from './parts.js'
+import { countBy, listDetail, nameField, noticeLine, startMark } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './record-form.js'
 import './record-kinds.js'
@@ -96,6 +96,7 @@ export class OcGroups extends VaultScreen {
       selected: this.adding ? undefined : this.selectedGroup,
       select: (id) => this.selectGroup(id),
       empty: strings.noGroups,
+      emptyStart: true,
       document: this.adding ? this.addForm() : group ? this.groupDetail(group) : html`<p class="muted">${strings.pickGroup}</p>`,
       open: this.documentOpen,
       back: () => (this.documentOpen = false),
@@ -147,7 +148,7 @@ export class OcGroups extends VaultScreen {
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
         ${sessions.length === 0
-          ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
+          ? html`<dc-empty-state description=${strings.noSessions}>${startMark()}</dc-empty-state>`
           : html`<dc-card
               ><div class="scroll">
                 ${recordTable(store, {

@@ -13,7 +13,7 @@ import { alreadyHere, daysBetween, narrowSubjects, shortDay, type CaseFilter, ty
 import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
 import { recordFieldList } from './entity-parts.js'
-import { countBy, listDetail, nameField, noticeLine } from './parts.js'
+import { countBy, listDetail, nameField, noticeLine, startMark } from './parts.js'
 import { VaultScreen } from './screen.js'
 import './record-form.js'
 import './record-kinds.js'
@@ -272,6 +272,7 @@ export class OcSubjects extends VaultScreen {
       selected: this.adding ? undefined : this.selected,
       select: (id) => this.pick(id),
       empty: all.length === 0 ? strings.noSubjects : strings.noSubjectsFound,
+      emptyStart: all.length === 0,
       document: this.adding
         ? this.importPlan
           ? this.importPreview(this.importPlan)
@@ -437,7 +438,7 @@ export class OcSubjects extends VaultScreen {
       <section>
         <dc-section-heading marker size="lg" heading=${strings.sessionHistory}></dc-section-heading>
         ${sessions.length === 0
-          ? html`<dc-empty-state description=${strings.noSessions}></dc-empty-state>`
+          ? html`<dc-empty-state description=${strings.noSessions}>${startMark()}</dc-empty-state>`
           : html`<dc-card
               ><div class="scroll">
                 ${recordTable(store, {
