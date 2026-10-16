@@ -95,6 +95,17 @@ jobs:
       - name: Write the third-party notices for what this build ships
         run: npm run notices
 
+      # The release notes may name the .NET runtime the engine is built on (a security update, say): the run's
+      # summary says which one it was, read from the notices just written from what this build ships.
+      - name: Name the .NET runtime the engine sidecar is built on
+        shell: pwsh
+        run: |
+          $pack = Select-String -Path LICENSES/THIRD-PARTY-NOTICES.txt -Pattern '^Microsoft\.NETCore\.App\.Runtime\.NativeAOT\.win-x64 (\S+)$' | Select-Object -First 1
+          if (-not $pack) { throw 'The notices name no Native AOT runtime pack for the engine sidecar.' }
+          $version = $pack.Matches[0].Groups[1].Value
+          Write-Output "The engine sidecar is built on the .NET runtime $version."
+          "The engine sidecar is built on the .NET runtime **$version**." >> $env:GITHUB_STEP_SUMMARY
+
       # Prepares the job for Tauri's sign hook (`code-sign-file.cmd %1` in tauri.sign.conf.json), which
       # signs every binary Tauri bundles one at a time with the action's own Key Vault settings: the
       # app, the engine sidecar (a bundle resource), the installer's plugins, the uninstaller and the
