@@ -426,6 +426,9 @@ try {
   await app.cdp.waitFor(`__e2e.all('section[data-kind="referral"] tr[data-record]').length === ${L.referrals.length}`, 'the referrals')
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="referral"]')?.scrollIntoView({ block: 'center' }), true)`)
   await shoot('referral')
+  // The same page's cases: one ended, its quotes facing beside its title.
+  await app.cdp.evaluate(`(__e2e.one('section[data-role="cases"]')?.scrollIntoView({ block: 'start' }), true)`)
+  await shoot('ended')
   // The same page from its first kind of record: the intake, the referrals and the closing together.
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="intake"]')?.scrollIntoView({ block: 'start' }), true)`)
   await shoot('case')
