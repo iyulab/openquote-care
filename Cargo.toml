@@ -6,14 +6,14 @@ members = ["crates/vault", "crates/engine", "crates/test-support", "src-tauri"]
 edition = "2024"
 license = "AGPL-3.0-only"
 repository = "https://github.com/iyulab/openquote-care"
-rust-version = "1.90"
+rust-version = "1.98"
 
 [workspace.dependencies]
-tauri-kit-diagnostics = "0.16.0"
-tauri-kit-fs = "0.16.0"
-tauri-kit-sidecar = "0.16.0"
-tauri-kit-watch = "0.16.0"
-tauri-kit-webview = "0.16.0"
+tauri-kit-diagnostics = "0.18.0"
+tauri-kit-fs = "0.18.0"
+tauri-kit-sidecar = "0.18.0"
+tauri-kit-watch = "0.18.0"
+tauri-kit-webview = "0.18.0"
 
 # The vault key is wrapped with scrypt at a fixed cost; unoptimized, one unlock takes minutes, so
 # development builds optimize the password-hashing crates the way release builds do.
