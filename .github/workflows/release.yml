@@ -87,7 +87,8 @@ jobs:
             Where-Object { $_.Include -eq 'Openquote' } | Select-Object -ExpandProperty Version
           $pubkey = (Get-Content src-tauri/tauri.updater.conf.json -Raw | ConvertFrom-Json).plugins.updater.pubkey
           # The bundler runs the very CLI this repository builds with.
-          $cli = (Get-Content package-lock.json -Raw | ConvertFrom-Json).packages.'node_modules/@tauri-apps/cli'.version
+          # The lock file keys its own package by an empty name, which only a hash table reads.
+          $cli = (Get-Content package-lock.json -Raw | ConvertFrom-Json -AsHashtable).packages['node_modules/@tauri-apps/cli'].version
           if (-not $app -or -not $engine -or -not $pubkey -or -not $cli) { throw "Could not read the app or engine version, the updater key or the Tauri CLI" }
           "app=$app" >> $env:GITHUB_OUTPUT
           "engine=$engine" >> $env:GITHUB_OUTPUT
