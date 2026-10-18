@@ -1,6 +1,7 @@
 // The app's window for scripts that drive it: the e2e scenarios and the website pictures. The debug
 // build with the e2e configuration (`npm run build:e2e`) opens a debugging port of its own.
 
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -66,6 +67,39 @@ export class App {
 
   async quit() {
     await this.kit?.quit()
+  }
+
+  /**
+   * Ends the app the way Windows does at shutdown, restart or sign-out: every top-level window of its
+   * process is asked `WM_QUERYENDSESSION`, then told `WM_ENDSESSION`, and the process is waited for.
+   */
+  async endSession() {
+    const child = this.child
+    assert.equal(process.platform, 'win32', 'the session-ending messages are Windows ones')
+    const script = `
+Add-Type @'
+using System; using System.Runtime.InteropServices; using System.Collections.Generic;
+public static class SessionEnd {
+  delegate bool EnumProc(IntPtr h, IntPtr l);
+  [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc f, IntPtr l);
+  [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll")] static extern IntPtr SendMessageTimeout(IntPtr h, uint m, IntPtr w, IntPtr l, uint f, uint t, out IntPtr r);
+  public static int Send(uint pid) {
+    var windows = new List<IntPtr>();
+    EnumWindows((h, l) => { uint p; GetWindowThreadProcessId(h, out p); if (p == pid) windows.Add(h); return true; }, IntPtr.Zero);
+    IntPtr r;
+    foreach (var h in windows) SendMessageTimeout(h, 0x11, IntPtr.Zero, IntPtr.Zero, 2, 5000, out r);
+    foreach (var h in windows) SendMessageTimeout(h, 0x16, (IntPtr)1, IntPtr.Zero, 2, 5000, out r);
+    return windows.Count;
+  }
+}
+'@
+[SessionEnd]::Send(${child.pid})`
+    const exited = new Promise((done) => (child.exitCode !== null ? done() : child.once('exit', done)))
+    const sent = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8' })
+    assert.equal(sent.status, 0, `the session-ending messages were not sent: ${sent.stderr}`)
+    assert.ok(Number(sent.stdout.trim()) > 0, 'the app has top-level windows to tell')
+    await Promise.race([exited, new Promise((_, fail) => setTimeout(() => fail(new Error('the app did not exit when the session ended')), 15_000))])
   }
 
   /** Clicks the element matching `selector` (and `text`, if given) with the mouse. */

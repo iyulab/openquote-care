@@ -89,6 +89,19 @@ const scenarios = {
     )
     const unfinished = after.trim().split('\n').map((l) => JSON.parse(l)).find((l) => l.event === 'unfinished' && l.session === start.session)
     assert.ok(unfinished, `the hard-ended launch is named: ${after}`)
+    // Ended by the system (shutdown, restart, sign-out), the launch ends as itself — not as one that did not end.
+    const ending = after.trim().split('\n').map((l) => JSON.parse(l)).findLast((l) => l.event === 'start')
+    await app.endSession()
+    await app.restart({ OPENQUOTE_DIAGNOSTICS_CONNECTION: 'InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://127.0.0.1:9/' })
+    await app.click('dc-button[data-role=settings-open]')
+    await app.click('dc-button', '보내는 내용 보기')
+    const ended = await app.cdp.waitFor(
+      `(() => { const pre = __e2e.one('[data-role="session-lines"]'); return pre && pre.textContent.includes(${q(ending.session)}) && pre.textContent.includes('"start"') ? pre.textContent : false })()`,
+      'the launch the system ended',
+    )
+    const itsLines = ended.trim().split('\n').map((l) => JSON.parse(l)).filter((l) => l.session === ending.session)
+    assert.ok(itsLines.some((l) => l.event === 'end'), `the system-ended launch has its end: ${ended}`)
+    assert.ok(!itsLines.some((l) => l.event === 'unfinished'), `the system-ended launch is not read as unfinished: ${ended}`)
     await app.restart()
     await app.heading('Openquote Care')
     assert.equal(await app.cdp.evaluate(`!!__e2e.one('[data-role="diagnostics"]')`), false, 'no notice without a collector')
