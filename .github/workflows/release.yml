@@ -223,8 +223,11 @@ jobs:
   offline:
     needs: build
     uses: iyulab/tauri-release/.github/workflows/windows.yml@50e2039d1ba7bd8c371de6ca56dd3be51d95a546 # main, 2026-10-19
+    # A called workflow's jobs get no more than this, and a run with a job asking for more does not start: its
+    # draft job asks for contents: write even when it does not run.
     permissions:
       id-token: write      # its three signing jobs
+      contents: write      # its draft job (not run here) — and contents: read for the signing jobs
     with:
       unsigned-artifact: unsigned-binaries
       files: ${{ needs.build.outputs.sign-files }}
