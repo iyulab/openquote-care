@@ -444,6 +444,7 @@ export class OcSettings extends LitElement {
                     <p class="hint">${strings.diagnosticsLead}</p>
                     ${part('report-lines', strings.diagnosticsReportsHeading, lines.reports, strings.diagnosticsNone)}
                     ${part('session-lines', strings.diagnosticsSessionsHeading, lines.sessions, strings.diagnosticsNoSessions)}
+                    ${part('event-lines', strings.diagnosticsEventsHeading, lines.events, strings.diagnosticsNoSessions)}
                   </div>
                 </div>`
               : nothing}`

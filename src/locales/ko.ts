@@ -20,7 +20,7 @@ export const ko = {
   /** Shown by the shell, not the window: the web view runtime the window needs is missing. */
   webviewMissing: native.ko.webviewMissing,
   diagnosticsNotice:
-    '이 설치본은 앱을 켜고 끈 때와 화면별로 쓴 시간, 앱 자체 오류(오류 종류·코드 위치)를 앱 판·운영체제와 함께 발행자에게 보냅니다. 설치본은 이 컴퓨터에서 만든 무작위 번호로만 구별하고, 기록 내용·파일 경로·폴더 이름·대상자는 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
+    '이 설치본은 앱을 켜고 끈 때와 화면별로 쓴 시간, 앱 자체 오류(오류 종류·코드 위치), 그리고 앱이 내놓은 제안을 받았는지·고쳤는지를 칸 이름별 횟수로 주마다 모아 앱 판·운영체제와 함께 발행자에게 보냅니다. 설치본은 이 컴퓨터에서 만든 무작위 번호로만 구별하고, 기록 내용·파일 경로·폴더 이름·대상자는 보내지 않습니다. 보낼 내용은 먼저 이 컴퓨터의 앱 폴더(기록 폴더 밖)에 적어 두고, 인터넷이 없으면 다음에 앱을 열 때 보냅니다.',
   diagnosticsView: '보내는 내용 보기',
   updateCheckNotice: '새 판이 나오면 받아 두었다가 앱을 닫을 때 설치합니다. 새 판을 확인할 때 기록이나 이 컴퓨터에 대한 정보는 보내지 않습니다.',
   updateAvailable: (version: string) => `새 판(${version})이 나왔습니다. 지금 업데이트하면 기록 폴더를 닫고 앱을 다시 시작합니다.`,
@@ -70,6 +70,7 @@ export const ko = {
     '아래 줄이 이 컴퓨터의 앱 폴더에 적혔다가 발행자에게 가는 내용 전부입니다. 한 줄이 하나입니다.',
   diagnosticsReportsHeading: '앱 자체 오류',
   diagnosticsSessionsHeading: '앱을 켜고 끈 때·화면별로 쓴 시간',
+  diagnosticsEventsHeading: '제안을 받고 고친 횟수(주마다 모은 것)',
   diagnosticsNone: '아직 적힌 오류 보고가 없습니다.',
   diagnosticsNoSessions: '아직 적힌 줄이 없습니다.',
   feedbackOpen: '의견 보내기',

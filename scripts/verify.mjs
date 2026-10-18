@@ -40,6 +40,7 @@ const steps = [
   ['repository scripts', 'npm run test:scripts'],
   ['core names no field or region', 'npm run check:core'],
   ['design tokens read are defined', 'npm run check:tokens'],
+  ['the diagnostics registry names every coded field of the packs', 'node scripts/check-diagnostics-registry.mjs'],
   ['typecheck', 'npm run typecheck'],
   ['screens', 'npm test'],
   ['sidecar build', 'npm run build:sidecar'],

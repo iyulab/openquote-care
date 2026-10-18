@@ -213,6 +213,7 @@ export class OcRecordForm extends StoreElement {
   }
 
   private setValue(name: string, value: string) {
+    if (!this.edit) this.store.watchOf(this.type).valued(name, value)
     if (this.edit) this.corrected = { ...this.corrected, [name]: value }
     else this.store.editDraft({ [name]: value }, 'person', this.type)
   }
@@ -403,7 +404,11 @@ export class OcRecordForm extends StoreElement {
         // Suggestions are a help, never in the way: none are offered when they cannot be read.
       }
     }
-    if (current()) this.suggestions = found
+    if (current()) {
+      this.suggestions = found
+      // What a field first shows is what a decision about it is counted against (names and a time, never values).
+      this.store.watchOf(this.type).show(found.filter((s) => s.codes.length > 0 && !this.draft[s.field]).map((s) => ({ field: s.field, top: s.codes[0].code })))
+    }
   }
 
   /** Reads what the session would take from its subject; a stale value is offered for the person to confirm. */
@@ -453,6 +458,7 @@ export class OcRecordForm extends StoreElement {
 
   private take(f: FieldView, code: string) {
     this.whyOpen = ''
+    this.store.watchOf(this.type).valued(f.name, code)
     this.store.editDraft({ [f.name]: code }, 'suggestion', this.type)
   }
 
@@ -642,10 +648,22 @@ export class OcRecordForm extends StoreElement {
       this.scaleCode = ''
       this.scaleChosen = false
       this.scaleScore = ''
+      this.countSuggestionUse(filled)
       store.clearDraft(this.type)
       this.dispatchEvent(new Event('oc-record-recorded'))
       await store.load()
     })
+  }
+
+  /** Tells the shell how the suggestions of the record just saved were used, and starts the form's watch over. */
+  private countSuggestionUse(filled: Record<string, unknown>) {
+    const watch = this.store.watchOf(this.type)
+    const coded = this.fields.filter((f) => f.kind === 'coded').map((f) => f.name)
+    // The codes as the form holds them, of the fields the record kept (one whose code was not offered is not saved).
+    const codes = Object.fromEntries(coded.filter((name) => name in filled).map((name) => [name, this.draft[name] ?? '']))
+    const uses = watch.finish(this.type, coded, codes).filter((u) => u.shown || u.decision !== 'none')
+    watch.reset()
+    if (uses.length > 0) void shell.suggestionUse(uses)
   }
 
   private input(f: FieldView) {

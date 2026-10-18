@@ -30,9 +30,11 @@ use std::time::Duration;
 
 use openquote_care_engine::Fault;
 use tauri_kit_diagnostics::{
-    FrameRule, InstallId, Layer, MAX_STREAM_BYTES, Registry, Report, Reporter, RustSource, Screens, Segment, Session, SessionEvent, Sink,
-    WebBundle, adopt, segments, tidy,
+    Events, FrameRule, InstallId, Layer, MAX_STREAM_BYTES, Registry, Report, Reporter, RustSource, Screens, Segment, Session, SessionEvent,
+    Sink, WebBundle, adopt, segments, tidy,
 };
+
+use crate::suggestion_use::{self, Counter, Names, Use};
 
 /// The app's screens, by the names the window gives them: its own screens before a vault is open,
 /// and the screens of an open vault under `vault:`. Time on any other name is not kept apart.
@@ -68,6 +70,10 @@ pub const OFF: &str = "off";
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// How many times one declared event may be written in a launch: a week of a few dozen fields writes a few
+/// events for each, so the crate's default hundred would cut a busy device's weeks short.
+const MOST_EVENTS: usize = 1000;
+
 /// The configured destination: the environment variable first, then the build-time value. Anything
 /// partial or malformed gives `None`, which turns sending off rather than sending elsewhere.
 pub fn configured_sink() -> Option<Sink> {
@@ -82,24 +88,14 @@ fn sink_from(variable: Option<String>, built: Option<&str>) -> Option<Sink> {
     }
 }
 
-/// What a report may carry besides its kind and frames, declared per layer: the shell's failure code
-/// (one of the codes [`is_fault`] names) and the engine's HTTP status. A detail not declared here, or
-/// not of the declared kind, never reaches a report — and a line edited into a file is passed over
-/// when it is sent.
-const REGISTRY: &str = r#"{
-  "reports": {
-    "shell": {
-      "code": { "kind": "choice", "values": ["engine-start", "engine", "io", "feedback-refused"] },
-      "status": { "kind": "count", "max": 599 }
-    },
-    "host": {
-      "code": { "kind": "choice", "values": ["engine-start", "engine", "io", "feedback-refused"] },
-      "status": { "kind": "count", "max": 599 }
-    }
-  }
-}"#;
+/// What the app may send besides its reports' kinds and frames, declared (see `diagnostics-registry.json`):
+/// the details a report of each layer may carry — the shell's failure code (one of the codes [`is_fault`]
+/// names) and the engine's HTTP status — and the events of how suggestions were used. A detail or field not
+/// declared there, or not of the declared kind, never reaches a line, and a line edited into a file is passed
+/// over when it is sent.
+pub(crate) const REGISTRY: &str = include_str!("../diagnostics-registry.json");
 
-fn registry() -> &'static Registry {
+pub(crate) fn registry() -> &'static Registry {
     static REGISTRY_ONCE: OnceLock<Registry> = OnceLock::new();
     REGISTRY_ONCE.get_or_init(|| Registry::from_json(REGISTRY).expect("the app's report registry is well formed"))
 }
@@ -190,6 +186,10 @@ pub struct Diagnostics {
     /// segment per launch, so two instances never rewrite each other's lines.
     _reports: Segment,
     sessions: Segment,
+    events: Segment,
+    /// How suggestions were used, counted per week; a week that has ended is written to `events`.
+    counter: Counter,
+    event_writer: OnceLock<Events>,
     sender: Option<Sender>,
     session: OnceLock<Session>,
     shown: Mutex<Shown>,
@@ -214,6 +214,7 @@ pub struct Status {
 pub struct Lines {
     pub reports: String,
     pub sessions: String,
+    pub events: String,
 }
 
 /// The marker earlier versions kept while a person had turned reporting off. Reporting is not
@@ -225,20 +226,24 @@ impl Diagnostics {
     /// versions kept in one file each, and tidies the folders first: they are evidence of the recent
     /// past, not an archive.
     pub fn new(folder: &Path, sink: Option<Sink>) -> std::io::Result<Diagnostics> {
-        let (reports, sessions) = (stream(folder, "reports"), stream(folder, "sessions"));
+        let (reports, sessions, events) = (stream(folder, "reports"), stream(folder, "sessions"), stream(folder, "events"));
         for (dir, name) in [(&reports, "reports"), (&sessions, "sessions")] {
             let _ = adopt(dir, &folder.join(format!("{name}.jsonl")), &folder.join(format!("{name}.sent")));
             let _ = tidy(dir, MAX_STREAM_BYTES);
         }
+        let _ = tidy(&events, MAX_STREAM_BYTES);
         let _ = std::fs::remove_file(folder.join(RETIRED_OFF_MARKER));
-        let (own_reports, own_sessions) = (Segment::open(&reports)?, Segment::open(&sessions)?);
+        let (own_reports, own_sessions, own_events) = (Segment::open(&reports)?, Segment::open(&sessions)?, Segment::open(&events)?);
         let reporter = Reporter::new(own_reports.file());
-        let sender = sink.map(|sink| Sender::new(sink, reports, sessions));
+        let sender = sink.map(|sink| Sender::new(sink, reports, sessions, events));
         Ok(Diagnostics {
             folder: folder.to_path_buf(),
             reporter,
             _reports: own_reports,
             sessions: own_sessions,
+            events: own_events,
+            counter: Counter::new(suggestion_use::file_in(folder), Names::of(REGISTRY)),
+            event_writer: OnceLock::new(),
             sender,
             session: OnceLock::new(),
             shown: Mutex::default(),
@@ -257,7 +262,11 @@ impl Diagnostics {
     /// What the two streams hold, every launch's part of each in the order they were begun; one not
     /// written yet is an empty text.
     pub fn lines(&self) -> std::io::Result<Lines> {
-        Ok(Lines { reports: read_stream(&stream(&self.folder, "reports"))?, sessions: read_stream(&stream(&self.folder, "sessions"))? })
+        Ok(Lines {
+            reports: read_stream(&stream(&self.folder, "reports"))?,
+            sessions: read_stream(&stream(&self.folder, "sessions"))?,
+            events: read_stream(&stream(&self.folder, "events"))?,
+        })
     }
 
     /// Sends what the files hold that has not gone out yet, in the background.
@@ -287,9 +296,26 @@ impl Diagnostics {
             .track(track)
             .screens(Screens::new(SCREENS.iter().copied()))
             .start(self.sessions.file(), self.folder.join("session.running"))?;
+        // The events share the session's launch: written to this launch's own segment of their stream.
+        if let Ok(writer) = Events::open(&session, registry().clone(), self.events.file()) {
+            let _ = self.event_writer.set(writer.max_per_event(MOST_EVENTS));
+        }
         let _ = self.session.set(session);
+        self.flush_suggestion_use();
         self.send_pending();
         Ok(())
+    }
+
+    /// Counts how suggestions were used in a record just saved, into this week's tally.
+    pub fn suggestion_use(&self, uses: &[Use]) {
+        let _ = self.counter.add(&suggestion_use::this_week(), uses);
+    }
+
+    /// Writes the weeks that have ended as events (those of the running week wait for it to end).
+    fn flush_suggestion_use(&self) {
+        if let Some(writer) = self.event_writer.get() {
+            let _ = self.counter.flush(&suggestion_use::this_week(), writer, registry());
+        }
     }
 
     /// The screen open now, by the window's name for it, or `None` while the window is hidden.
@@ -327,6 +353,7 @@ impl Diagnostics {
     pub fn end_session(&self) -> Option<mpsc::Receiver<()>> {
         let session = self.session.get()?;
         session.end().ok()?;
+        self.flush_suggestion_use();
         self.send_pending()
     }
 }
@@ -355,6 +382,7 @@ struct Sender {
     sink: Sink,
     reports: PathBuf,
     sessions: PathBuf,
+    events: PathBuf,
     state: Arc<Mutex<SendState>>,
 }
 
@@ -366,8 +394,8 @@ struct SendState {
 }
 
 impl Sender {
-    fn new(sink: Sink, reports: PathBuf, sessions: PathBuf) -> Sender {
-        Sender { sink, reports, sessions, state: Arc::default() }
+    fn new(sink: Sink, reports: PathBuf, sessions: PathBuf, events: PathBuf) -> Sender {
+        Sender { sink, reports, sessions, events, state: Arc::default() }
     }
 
     /// Starts a send, or asks the running one to go round again. The receiver hears when the files
@@ -382,7 +410,8 @@ impl Sender {
         }
         state.running = true;
         drop(state);
-        let (sink, reports, sessions, state) = (self.sink.clone(), self.reports.clone(), self.sessions.clone(), self.state.clone());
+        let (sink, reports, sessions, events, state) =
+            (self.sink.clone(), self.reports.clone(), self.sessions.clone(), self.events.clone(), self.state.clone());
         let spawned = std::thread::Builder::new().name("diagnostics".into()).spawn(move || {
             let agent = Sink::agent();
             loop {
@@ -394,6 +423,7 @@ impl Sender {
                 // What could not go out stays in its file for a later send.
                 let _ = sink.send_pending(&agent, registry(), &reports);
                 let _ = sink.send_pending_of::<SessionEvent>(&agent, &sessions);
+                let _ = sink.send_pending_events(&agent, registry(), &events);
                 for done in waiting {
                     let _ = done.send(());
                 }
@@ -426,7 +456,14 @@ pub fn status() -> Status {
 
 /// What the files hold (see [`Diagnostics::lines`]).
 pub fn lines() -> std::io::Result<Lines> {
-    DIAGNOSTICS.get().map_or(Ok(Lines { reports: String::new(), sessions: String::new() }), Diagnostics::lines)
+    DIAGNOSTICS.get().map_or(Ok(Lines { reports: String::new(), sessions: String::new(), events: String::new() }), Diagnostics::lines)
+}
+
+/// How suggestions were used in a record just saved (see [`Diagnostics::suggestion_use`]).
+pub fn suggestion_use(uses: &[Use]) {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.suggestion_use(uses);
+    }
 }
 
 /// The app is handing over to an installer (see [`Diagnostics::updating`]).

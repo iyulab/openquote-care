@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- Once a week the app sends how often the suggestions it offered for a field were kept, changed, or not shown — counted by the field's name, nothing about a record or a person (see the privacy page). It is listed under *What is sent* in the settings, nothing waits for it when there is no network, and the app works the same either way.
+
 ### Changed
 - Where nothing has been written yet — a new records folder's list of people or groups, a person or group with no session — the empty space shows the app's open quote with a caret blinking after it, beside the words that say what to do first. With reduced motion the caret holds still.
 - A printed statistics form or record list, and the plain copy's page, end with the app's two quotes facing, in the colour of the words.

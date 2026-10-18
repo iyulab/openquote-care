@@ -10,6 +10,7 @@ import { storeBackup, storedBackup } from '../backup.js'
 import { storeReportForm, storedReportForm } from '../report-form.js'
 import { shell, type BackupStatus, type CaseScales, type RecordKind, type ScaleView, type PlannedMeeting, type SubjectCases, type VaultSummary, type WaitingRecord } from '../shell.js'
 import { strings } from '../strings.js'
+import { SuggestionWatch } from './suggestion-watch.js'
 import { pickLocale, tables } from '../locales/index.js'
 
 export type Problem = keyof typeof strings.problems
@@ -64,6 +65,7 @@ export class VaultStore extends EventTarget {
   private otherFields = new Map<string, FieldView[]>()
   /** The forms of every kind but sessions as being filled in, by kind. */
   private otherDrafts = new Map<string, Draft>()
+  private readonly watches = new Map<string, SuggestionWatch>()
   summary?: VaultSummary
   /** How names are ordered in this vault: by the locales its packs label things in. */
   names = nameCollator()
@@ -118,6 +120,13 @@ export class VaultStore extends EventTarget {
   /** The form of a kind of record as being filled in. */
   draftOf(type: string): SessionDraft {
     return type === 'session' ? this.draft : (this.otherDrafts.get(type)?.values ?? {})
+  }
+
+  /** What a person does with the suggestions the form of a kind of record shows; lives as long as the draft does. */
+  watchOf(type: string): SuggestionWatch {
+    let watch = this.watches.get(type)
+    if (!watch) this.watches.set(type, (watch = new SuggestionWatch()))
+    return watch
   }
 
   /** The fields of a kind of record's form whose value a person took from a suggestion, and has not changed since. */

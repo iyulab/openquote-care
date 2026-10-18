@@ -69,4 +69,14 @@ The installation's number is not made from anything about the computer, the acco
 
 **Kept on the device first, and seen.** The lines are written to files in the `diagnostics/sessions` folder beside the error reports, in the same folder outside every vault, and *See what is sent* in the settings shows them exactly as written. They go to the same place as the error reports, the same way.
 
-**Turning it off.** Not in this version: like error reports, usage information is part of how the app is kept working while it is young. An option to turn both off is planned once the app is stable.
+**Turning it off.** Not in this version: like error reports, usage information and how suggestions are used (below) is part of how the app is kept working while it is young. An option to turn them off is planned once the app is stable.
+
+## How suggestions are used
+
+Released installers also tell the publisher, once a week, how the suggestions the app offers for a coded field (a topic, a mode, …) were used, so that the suggestions can be made better. This is a count, not a record: nothing about a person, a session or what was written is in it.
+
+**What.** When a record is saved, the app notes for each of its coded fields whether suggestions were shown, whether the person kept the first one, chose another value or filled the field in with none shown, and how long the suggestions were looked at before the field got a value. These are added up on this computer, in `diagnostics/suggestion-use.json`, per week and per field. When a week has ended it is written as a few lines in the `diagnostics/events` folder and sent, the same way as the other items above. Each line holds only: a random number for the lines of that run (not the installation's number and not the run's number above), the app version, operating system, architecture and time, the number of the week in the year, the field's name from a closed list of the app's own (`session.topic`, …; any other is counted as `other`), and counts — how many times suggestions were shown, kept, changed, or the field was filled in without any, and how many times the wait fell in each of eight ranges (under half a second, a second, 2, 4, 8, 16, 32 seconds, longer). No value, no code, no record, person, group, folder or file name is in a line, and the field has no place for one.
+
+**Kept on the device first, and seen.** *See what is sent* in the settings shows these lines too, exactly as written. With no network, nothing is shown and nothing waits: the lines stay in their folder and go out the next time the app opens; the app works the same either way.
+
+**Turning it off.** Not in this version, like the usage information above.

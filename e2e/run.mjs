@@ -1130,6 +1130,13 @@ const scenarios = {
     const taken = changes.find((c) => c.fields.date === '2026-05-21')
     assert.deepEqual(taken.source, { topic: 'suggestion' }, 'the session keeps that its topic came from a suggestion')
     assert.deepEqual(changes.find((c) => c.fields.date === '2026-05-12').source, {}, 'a topic a person picked is not marked')
+
+    // The shell counted how the suggestions were used — names and counts only, kept for the week.
+    const tallyFile = join(process.env.LOCALAPPDATA, E2E_IDENTIFIER, 'diagnostics', 'suggestion-use.json')
+    const raw = await readFile(tallyFile, 'utf8')
+    const topic = Object.values(JSON.parse(raw)).map((week) => week['session.topic']).find(Boolean)
+    assert.ok(topic && topic.presented >= 1 && topic.accepted >= 1, `the topic's suggestions were shown and one was taken: ${raw}`)
+    for (const leaked of ['family', 'academic', '다툼', 'FAMILY', '가상']) assert.ok(!raw.includes(leaked), `the counts name no value: ${leaked}`)
   },
 
   async 'leaves a copy of every record that reads without the app, apart from the vault, content only when asked'(app, work) {

@@ -8,6 +8,7 @@ mod feedback;
 pub mod locale;
 pub mod prefs;
 pub mod runtime;
+mod suggestion_use;
 mod updates;
 mod window;
 
@@ -250,6 +251,14 @@ fn diagnostics_reports() -> CommandResult<diagnostics::Lines> {
 #[tauri::command]
 fn screen_shown(name: Option<String>) {
     diagnostics::screen(name.as_deref());
+}
+
+/// How the suggestions of a record just saved were used: which coded fields showed them and what the
+/// person did with the first (counts only, kept per week — see `suggestion_use.rs`). Never an error:
+/// whatever cannot be counted is dropped without a word.
+#[tauri::command]
+fn suggestion_use(uses: Vec<suggestion_use::Use>) {
+    diagnostics::suggestion_use(&uses);
 }
 
 /// An error the window did not handle: its type name and stack, of which the report keeps only
@@ -547,6 +556,7 @@ pub fn run() {
             notices,
             diagnostics_status,
             diagnostics_reports,
+            suggestion_use,
             report_window_error,
             screen_shown,
             feedback_status,

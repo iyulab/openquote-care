@@ -5,6 +5,7 @@ import type { Entity, EntityHistory, PendingChoice, Scheme, Suggestions } from '
 import type { ExportTable } from './export.js'
 import type { Comparison, KeptRun, RunRecord } from './report.js'
 import type { ExportEntry, ReportEntry } from './forms.js'
+import type { FieldUse } from './vault/suggestion-watch.js'
 
 /** New versions on this installation: whether it can update itself, and what it found. */
 export interface UpdateStatus {
@@ -73,6 +74,8 @@ export interface DiagnosticsLines {
   reports: string
   /** When the app started and ended, and the time on each screen. */
   sessions: string
+  /** How often suggestions were kept or changed, by week and field name (counts only). */
+  events: string
 }
 
 /** What a vault file was for, as the engine reads it from the path; only the fields that apply are set. */
@@ -407,6 +410,11 @@ export const shell = {
   carry: (entityType: string, subject: string, date: string) => invoke<CarryView[]>('carry', { entityType, subject, date }),
   suggestions: (entityType: string, date: string, fields: Record<string, unknown>) =>
     invoke<Suggestions>('suggestions', { entityType, date, fields }),
+  /**
+   * How the suggestions of a record just saved were used, by field: counts kept on this computer per week and sent
+   * as declared events (see docs/privacy.md). Never in the person's way: a failure is dropped.
+   */
+  suggestionUse: (uses: FieldUse[]) => invoke<void>('suggestion_use', { uses }).catch(() => undefined),
   /**
    * Runs a report form from `from` to `to` (`YYYY-MM-DD`), or — without `to` — over the period of the
    * form's unit that holds `from` (its day, month or year; a range form needs both). The engine keeps

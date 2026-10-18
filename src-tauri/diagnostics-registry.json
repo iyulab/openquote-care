@@ -1,0 +1,173 @@
+{
+  "events": {
+    "suggestion.use": {
+      "fields": {
+        "week": {
+          "kind": "count",
+          "max": 53
+        },
+        "field": {
+          "kind": "choice",
+          "values": [
+            "closing.reason",
+            "goal.agreement",
+            "intake.source",
+            "provision.programme",
+            "referral.outcome",
+            "referral.to",
+            "session.assessments",
+            "session.client_type",
+            "session.concern",
+            "session.method",
+            "session.mode",
+            "session.neis",
+            "session.place",
+            "session.plan",
+            "session.topic",
+            "scale-score.scale",
+            "activity.kind",
+            "subject.level",
+            "other"
+          ]
+        },
+        "presented": {
+          "kind": "count",
+          "max": 1000
+        },
+        "accepted": {
+          "kind": "count",
+          "max": 1000
+        },
+        "corrected": {
+          "kind": "count",
+          "max": 1000
+        },
+        "entered": {
+          "kind": "count",
+          "max": 1000
+        }
+      }
+    },
+    "suggestion.trust": {
+      "fields": {
+        "week": {
+          "kind": "count",
+          "max": 53
+        },
+        "field": {
+          "kind": "choice",
+          "values": [
+            "closing.reason",
+            "goal.agreement",
+            "intake.source",
+            "provision.programme",
+            "referral.outcome",
+            "referral.to",
+            "session.assessments",
+            "session.client_type",
+            "session.concern",
+            "session.method",
+            "session.mode",
+            "session.neis",
+            "session.place",
+            "session.plan",
+            "session.topic",
+            "scale-score.scale",
+            "activity.kind",
+            "subject.level",
+            "other"
+          ]
+        },
+        "shown": {
+          "kind": "count",
+          "max": 1000
+        },
+        "taken": {
+          "kind": "count",
+          "max": 1000
+        }
+      }
+    },
+    "suggestion.dwell": {
+      "fields": {
+        "week": {
+          "kind": "count",
+          "max": 53
+        },
+        "field": {
+          "kind": "choice",
+          "values": [
+            "closing.reason",
+            "goal.agreement",
+            "intake.source",
+            "provision.programme",
+            "referral.outcome",
+            "referral.to",
+            "session.assessments",
+            "session.client_type",
+            "session.concern",
+            "session.method",
+            "session.mode",
+            "session.neis",
+            "session.place",
+            "session.plan",
+            "session.topic",
+            "scale-score.scale",
+            "activity.kind",
+            "subject.level",
+            "other"
+          ]
+        },
+        "wait": {
+          "kind": "choice",
+          "values": [
+            "lt0_5",
+            "lt1",
+            "lt2",
+            "lt4",
+            "lt8",
+            "lt16",
+            "lt32",
+            "more"
+          ]
+        },
+        "times": {
+          "kind": "count",
+          "max": 1000
+        }
+      }
+    }
+  },
+  "reports": {
+    "shell": {
+      "code": {
+        "kind": "choice",
+        "values": [
+          "engine-start",
+          "engine",
+          "io",
+          "feedback-refused"
+        ]
+      },
+      "status": {
+        "kind": "count",
+        "max": 599
+      }
+    },
+    "host": {
+      "code": {
+        "kind": "choice",
+        "values": [
+          "engine-start",
+          "engine",
+          "io",
+          "feedback-refused"
+        ]
+      },
+      "status": {
+        "kind": "count",
+        "max": 599
+      }
+    }
+  }
+}
