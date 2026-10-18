@@ -6,6 +6,11 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-10-19
+
+### Changed
+- Nothing changes in the app itself. Its installers are now built, signed and checked by a shared release process, which checks on an installed copy that every program and library the installer puts on the computer carries the signature — the uninstaller and the installer's own helpers included.
+
 ## [0.25.0] - 2026-10-18
 
 ### Changed
