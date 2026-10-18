@@ -407,7 +407,7 @@ export class OcRecordForm extends StoreElement {
     if (current()) {
       this.suggestions = found
       // What a field first shows is what a decision about it is counted against (names and a time, never values).
-      this.store.watchOf(this.type).show(found.filter((s) => s.codes.length > 0 && !this.draft[s.field]).map((s) => ({ field: s.field, top: s.codes[0].code })))
+      this.store.watchOf(this.type).show(found.filter((s) => s.codes.length > 0 && !this.draft[s.field]).map((s) => ({ field: s.field, top: s.codes[0].code, trusted: s.codes[0].trusted })))
     }
   }
 

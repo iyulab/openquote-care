@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Builder;
 using Openquote.Vault;
@@ -542,6 +543,7 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.All(codes, c => Assert.Contains(c!["code"]!.GetValue<string>(), allowed));
         Assert.All(codes.SelectMany(c => c!["similar"]!.AsArray()), id => Assert.Contains(id!.GetValue<string>(), sessions));
         Assert.Contains(codes, c => c!["similar"]!.AsArray().Count > 0);
+        Assert.All(codes, c => Assert.Contains(c!["trusted"]!.GetValueKind(), new[] { JsonValueKind.True, JsonValueKind.False }));
     }
 
     [Fact]

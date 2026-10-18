@@ -1,6 +1,6 @@
 /**
  * What a person does with the suggestions a record's form shows, kept apart from the form so the form's
- * own flow is unchanged. It sees only fields' names, the first suggested code and the time — never a
+ * own flow is unchanged. It sees only fields' names, the first suggested code, whether the suggester stood behind it, and the time — never a
  * record's content beyond that, and it reports counts, not values (see docs/privacy.md).
  *
  * For each coded field of a new record it learns, as the form is filled in:
@@ -19,7 +19,7 @@ export interface FieldUse {
   field: string
   shown: boolean
   decision: Decision
-  /** The first suggestion was one the suggester stood behind; not known to the window yet, so never set. */
+  /** The first suggestion shown was one the suggester stood behind rather than guessed. */
   trusted: boolean
   /** From the suggestions first showing to the field getting a value; null when not known. */
   waitMs: number | null
@@ -27,6 +27,7 @@ export interface FieldUse {
 
 interface Seen {
   top: string
+  trusted: boolean
   at: number
   decidedAt?: number
 }
@@ -37,13 +38,13 @@ export class SuggestionWatch {
   constructor(private readonly now: () => number = Date.now) {}
 
   /**
-   * The fields that show suggestions now (a field with a value shows none), each with its first code.
-   * A field already seen keeps the time and the code it was first seen with: what the person first read is
+   * The fields that show suggestions now (a field with a value shows none), each with its first code and
+   * whether the suggester stood behind it. A field already seen keeps the time and the code it was first seen with: what the person first read is
    * what the decision is counted against.
    */
-  show(offered: { field: string; top: string }[]) {
-    for (const { field, top } of offered) {
-      if (!this.seen.has(field)) this.seen.set(field, { top, at: this.now() })
+  show(offered: { field: string; top: string; trusted: boolean }[]) {
+    for (const { field, top, trusted } of offered) {
+      if (!this.seen.has(field)) this.seen.set(field, { top, trusted, at: this.now() })
     }
   }
 
@@ -60,7 +61,7 @@ export class SuggestionWatch {
       const value = primary(filled[name])
       const decision: Decision = value === '' ? 'none' : seen ? (value === seen.top ? 'accepted' : 'corrected') : 'entered'
       const waitMs = seen?.decidedAt === undefined ? null : Math.max(0, seen.decidedAt - seen.at)
-      return { field: `${kind}.${name}`, shown: seen !== undefined, decision, trusted: false, waitMs }
+      return { field: `${kind}.${name}`, shown: seen !== undefined, decision, trusted: seen?.trusted ?? false, waitMs }
     })
   }
 

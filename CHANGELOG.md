@@ -8,6 +8,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ### Changed
 - The list of people shows where each one's latest case stands as the app's quote mark before the name: the open quote while the case has no session yet, three dots while it goes on, the closed quote once it ended — in the two voices' colours only when the work ended as planned.
+- The weekly count of how suggestions are used also says how often the first suggestion shown was one the app stood behind rather than a guess, and how often that one was kept (see the privacy page). It now runs on version 0.24.0 of the engine.
 
 ## [0.24.0] - 2026-10-18
 

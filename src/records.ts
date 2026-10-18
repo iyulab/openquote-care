@@ -19,7 +19,8 @@ export interface FieldSuggestions {
  * A suggested code, why it is suggested and the settled records it rests on (ids): the records most like
  * the one being entered that hold it (`similarRecords`, nearest first), the latest records sharing the
  * value of `field` with it (`sameValue`), or none for a code chosen often (`frequent`). A code to
- * `confirm` is one the vault's packs set apart: a person has to look at it with particular care.
+ * `confirm` is one the vault's packs set apart: a person has to look at it with particular care. A
+ * `trusted` code is one the suggester stood behind rather than guessed.
  */
 export interface SuggestedCode {
   code: string
@@ -28,6 +29,8 @@ export interface SuggestedCode {
   confirm: boolean
   basis: 'similarRecords' | 'sameValue' | 'frequent'
   field: string | null
+  /** The layer that ranked it answered — met its threshold — rather than guessed. */
+  trusted: boolean
 }
 
 /** What the engine suggests for a record being entered, and how many settled records it learned from. */
