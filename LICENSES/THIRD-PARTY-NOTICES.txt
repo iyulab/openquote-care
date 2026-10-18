@@ -14606,35 +14606,35 @@ Same license text as @tauri-apps/api 2.12.4.
 Same license text as @tauri-apps/api 2.12.4.
 
 ------------------------------------------------------------------------------
-tauri-kit-diagnostics 0.18.0
+tauri-kit-diagnostics 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-fs 0.18.0
+tauri-kit-fs 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-sidecar 0.18.0
+tauri-kit-sidecar 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-watch 0.18.0
+tauri-kit-watch 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-tauri-kit-webview 0.18.0
+tauri-kit-webview 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 

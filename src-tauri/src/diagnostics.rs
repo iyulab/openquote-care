@@ -30,7 +30,8 @@ use std::time::Duration;
 
 use openquote_care_engine::Fault;
 use tauri_kit_diagnostics::{
-    FrameRule, InstallId, Layer, MAX_FILE_BYTES, Report, Reporter, RustSource, Screens, Session, SessionEvent, Sink, WebBundle, trim,
+    FrameRule, InstallId, Layer, MAX_STREAM_BYTES, Registry, Report, Reporter, RustSource, Screens, Segment, Session, SessionEvent, Sink,
+    WebBundle, adopt, segments, tidy,
 };
 
 /// The app's screens, by the names the window gives them: its own screens before a vault is open,
@@ -81,22 +82,44 @@ fn sink_from(variable: Option<String>, built: Option<&str>) -> Option<Sink> {
     }
 }
 
+/// What a report may carry besides its kind and frames, declared per layer: the shell's failure code
+/// (one of the codes [`is_fault`] names) and the engine's HTTP status. A detail not declared here, or
+/// not of the declared kind, never reaches a report — and a line edited into a file is passed over
+/// when it is sent.
+const REGISTRY: &str = r#"{
+  "reports": {
+    "shell": {
+      "code": { "kind": "choice", "values": ["engine-start", "engine", "io", "feedback-refused"] },
+      "status": { "kind": "count", "max": 599 }
+    },
+    "host": {
+      "code": { "kind": "choice", "values": ["engine-start", "engine", "io", "feedback-refused"] },
+      "status": { "kind": "count", "max": 599 }
+    }
+  }
+}"#;
+
+fn registry() -> &'static Registry {
+    static REGISTRY_ONCE: OnceLock<Registry> = OnceLock::new();
+    REGISTRY_ONCE.get_or_init(|| Registry::from_json(REGISTRY).expect("the app's report registry is well formed"))
+}
+
 /// The shell's own Rust code. A panic or call site is a path relative to the workspace root, in
 /// `src-tauri` or in one of the workspace's `crates`; anything else (a dependency, whose path
 /// is absolute on the build machine) keeps no frame.
 fn shell() -> Layer {
-    Layer::new("shell", RustSource::default().roots(["src-tauri", "crates"]))
+    registry().layer("shell", RustSource::default().roots(["src-tauri", "crates"]))
 }
 
 /// The window: scripts of the app's own bundle. A page served by a development server counts only
 /// in a development build.
 fn webview() -> Layer {
-    Layer::new("webview", WebBundle::default().dev_server(cfg!(debug_assertions)))
+    registry().layer("webview", WebBundle::default().dev_server(cfg!(debug_assertions)))
 }
 
 /// The engine sidecar: its own .NET methods, by name only.
 fn host() -> Layer {
-    Layer::new("host", FrameRule::dotnet_method())
+    registry().layer("host", FrameRule::dotnet_method())
 }
 
 /// A place in the shell's source, as a stack line its layer reads.
@@ -115,14 +138,11 @@ pub fn is_fault(code: &str) -> bool {
 /// it is the shell's, at the command's call site. Either way the shell's code and the engine's
 /// HTTP status, when it answered with one, go along as details.
 pub fn command_report(code: &str, at: &Location<'_>, status: Option<u16>, fault: Option<&Fault>) -> Report {
-    let report = match fault {
-        Some(fault) => Report::new(&host(), &fault.kind, &fault.frames.join("\n"), VERSION),
-        None => Report::new(&shell(), "CommandFailed", &place(at), VERSION),
-    };
-    let report = report.detail("code", code);
-    match status {
-        Some(status) => report.detail("status", &status.to_string()),
-        None => report,
+    let status = status.map(|status| status.to_string());
+    let details: Vec<(&str, &str)> = std::iter::once(("code", code)).chain(status.as_deref().map(|status| ("status", status))).collect();
+    match fault {
+        Some(fault) => host().report(&fault.kind, &fault.frames.join("\n"), VERSION, &details),
+        None => shell().report("CommandFailed", &place(at), VERSION, &details),
     }
 }
 
@@ -166,6 +186,10 @@ pub fn app_local_data(identifier: &str) -> Option<PathBuf> {
 pub struct Diagnostics {
     folder: PathBuf,
     reporter: Reporter,
+    /// This launch's part of each stream, held for as long as anything writes it: the folders hold one
+    /// segment per launch, so two instances never rewrite each other's lines.
+    _reports: Segment,
+    sessions: Segment,
     sender: Option<Sender>,
     session: OnceLock<Session>,
     shown: Mutex<Shown>,
@@ -197,18 +221,28 @@ pub struct Lines {
 const RETIRED_OFF_MARKER: &str = "reporting-off";
 
 impl Diagnostics {
-    /// Reports and sessions kept in `folder`, sent to `sink` when there is one. Trims the files
-    /// first: they are evidence of the recent past, not an archive.
-    pub fn new(folder: &Path, sink: Option<Sink>) -> Diagnostics {
-        let reports = Files::in_folder(folder, "reports");
-        let sessions = Files::in_folder(folder, "sessions");
-        for files in [&reports, &sessions] {
-            let _ = trim(&files.file, &files.sent, MAX_FILE_BYTES);
+    /// Reports and sessions kept in `folder`, sent to `sink` when there is one. Takes in what earlier
+    /// versions kept in one file each, and tidies the folders first: they are evidence of the recent
+    /// past, not an archive.
+    pub fn new(folder: &Path, sink: Option<Sink>) -> std::io::Result<Diagnostics> {
+        let (reports, sessions) = (stream(folder, "reports"), stream(folder, "sessions"));
+        for (dir, name) in [(&reports, "reports"), (&sessions, "sessions")] {
+            let _ = adopt(dir, &folder.join(format!("{name}.jsonl")), &folder.join(format!("{name}.sent")));
+            let _ = tidy(dir, MAX_STREAM_BYTES);
         }
         let _ = std::fs::remove_file(folder.join(RETIRED_OFF_MARKER));
-        let reporter = Reporter::new(reports.file.clone());
+        let (own_reports, own_sessions) = (Segment::open(&reports)?, Segment::open(&sessions)?);
+        let reporter = Reporter::new(own_reports.file());
         let sender = sink.map(|sink| Sender::new(sink, reports, sessions));
-        Diagnostics { folder: folder.to_path_buf(), reporter, sender, session: OnceLock::new(), shown: Mutex::default() }
+        Ok(Diagnostics {
+            folder: folder.to_path_buf(),
+            reporter,
+            _reports: own_reports,
+            sessions: own_sessions,
+            sender,
+            session: OnceLock::new(),
+            shown: Mutex::default(),
+        })
     }
 
     /// Whether reports and sessions leave this device.
@@ -220,13 +254,10 @@ impl Diagnostics {
         Status { configured: self.sends() }
     }
 
-    /// What the two files hold; one not written yet is an empty text.
+    /// What the two streams hold, every launch's part of each in the order they were begun; one not
+    /// written yet is an empty text.
     pub fn lines(&self) -> std::io::Result<Lines> {
-        let read = |file: &Path| match std::fs::read_to_string(file) {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
-            read => read,
-        };
-        Ok(Lines { reports: read(self.reporter.file())?, sessions: read(&Files::in_folder(&self.folder, "sessions").file)? })
+        Ok(Lines { reports: read_stream(&stream(&self.folder, "reports"))?, sessions: read_stream(&stream(&self.folder, "sessions"))? })
     }
 
     /// Sends what the files hold that has not gone out yet, in the background.
@@ -255,7 +286,7 @@ impl Diagnostics {
             .locale(locale)
             .track(track)
             .screens(Screens::new(SCREENS.iter().copied()))
-            .start(Files::in_folder(&self.folder, "sessions").file, self.folder.join("session.running"))?;
+            .start(self.sessions.file(), self.folder.join("session.running"))?;
         let _ = self.session.set(session);
         self.send_pending();
         Ok(())
@@ -284,6 +315,14 @@ impl Diagnostics {
         }
     }
 
+    /// Says the app is handing over to an installer, which ends this process without the session's own end:
+    /// the next start then reads the session as ended by an update, not as a crash.
+    pub fn updating(&self) {
+        if let Some(session) = self.session.get() {
+            let _ = session.updating();
+        }
+    }
+
     /// Ends the session, once, and starts sending it.
     pub fn end_session(&self) -> Option<mpsc::Receiver<()>> {
         let session = self.session.get()?;
@@ -292,25 +331,30 @@ impl Diagnostics {
     }
 }
 
-/// A file of lines and the record of how far it has been sent.
-#[derive(Clone)]
-struct Files {
-    file: PathBuf,
-    sent: PathBuf,
+/// The folder one stream is kept in.
+fn stream(folder: &Path, name: &str) -> PathBuf {
+    folder.join(name)
 }
 
-impl Files {
-    fn in_folder(folder: &Path, name: &str) -> Files {
-        Files { file: folder.join(format!("{name}.jsonl")), sent: folder.join(format!("{name}.sent")) }
+/// Every segment of a stream, one after another; a stream not written yet is an empty text.
+fn read_stream(dir: &Path) -> std::io::Result<String> {
+    let mut text = String::new();
+    for segment in segments(dir)? {
+        match std::fs::read_to_string(&segment.file) {
+            Ok(lines) => text.push_str(&lines),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
     }
+    Ok(text)
 }
 
-/// Sends the files' new lines, one send at a time: a send asked for while one runs makes that one
-/// go round again rather than racing it over the record of how far has been sent.
+/// Sends the streams' new lines, one send at a time: a send asked for while one runs makes that one
+/// go round again rather than racing it over the record of how far each segment has been sent.
 struct Sender {
     sink: Sink,
-    reports: Files,
-    sessions: Files,
+    reports: PathBuf,
+    sessions: PathBuf,
     state: Arc<Mutex<SendState>>,
 }
 
@@ -322,7 +366,7 @@ struct SendState {
 }
 
 impl Sender {
-    fn new(sink: Sink, reports: Files, sessions: Files) -> Sender {
+    fn new(sink: Sink, reports: PathBuf, sessions: PathBuf) -> Sender {
         Sender { sink, reports, sessions, state: Arc::default() }
     }
 
@@ -348,8 +392,8 @@ impl Sender {
                     std::mem::take(&mut s.waiting)
                 };
                 // What could not go out stays in its file for a later send.
-                let _ = sink.send_pending_of::<Report>(&agent, &reports.file, &reports.sent);
-                let _ = sink.send_pending_of::<SessionEvent>(&agent, &sessions.file, &sessions.sent);
+                let _ = sink.send_pending(&agent, registry(), &reports);
+                let _ = sink.send_pending_of::<SessionEvent>(&agent, &sessions);
                 for done in waiting {
                     let _ = done.send(());
                 }
@@ -383,6 +427,13 @@ pub fn status() -> Status {
 /// What the files hold (see [`Diagnostics::lines`]).
 pub fn lines() -> std::io::Result<Lines> {
     DIAGNOSTICS.get().map_or(Ok(Lines { reports: String::new(), sessions: String::new() }), Diagnostics::lines)
+}
+
+/// The app is handing over to an installer (see [`Diagnostics::updating`]).
+pub fn updating() {
+    if let Some(diagnostics) = DIAGNOSTICS.get() {
+        diagnostics.updating();
+    }
 }
 
 /// Starts this launch's session (see [`Diagnostics::start_session`]).
@@ -426,7 +477,8 @@ pub fn window_failed(kind: &str, stack: &str) {
 /// data folder cannot be found.
 pub fn install(identifier: &str) {
     let Some(data) = app_local_data(identifier) else { return };
-    if DIAGNOSTICS.set(Diagnostics::new(&folder(&data), configured_sink())).is_err() {
+    let Ok(diagnostics) = Diagnostics::new(&folder(&data), configured_sink()) else { return };
+    if DIAGNOSTICS.set(diagnostics).is_err() {
         return;
     }
     if let Some(diagnostics) = DIAGNOSTICS.get() {
@@ -470,8 +522,9 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
-    fn line(file: &Path) -> Vec<serde_json::Value> {
-        std::fs::read_to_string(file).unwrap().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
+    /// The lines of a stream, every launch's segment of it.
+    fn line(folder: &Path, name: &str) -> Vec<serde_json::Value> {
+        read_stream(&stream(folder, name)).unwrap().lines().map(|l| serde_json::from_str(l).unwrap()).collect()
     }
 
     #[test]
@@ -576,7 +629,7 @@ mod tests {
         std::fs::create_dir_all(&folder).unwrap();
         std::fs::write(folder.join("reporting-off"), b"").unwrap();
         let sink = Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/");
-        let diagnostics = Diagnostics::new(&folder, sink);
+        let diagnostics = Diagnostics::new(&folder, sink).unwrap();
         assert_eq!(diagnostics.status(), Status { configured: true });
         assert!(!folder.join("reporting-off").exists(), "the retired marker is removed");
         let heard = diagnostics.record(webview_missing_report()).expect("written and being sent");
@@ -587,7 +640,7 @@ mod tests {
     #[test]
     fn without_a_destination_nothing_is_configured() {
         let data = tempfile::tempdir().unwrap();
-        let diagnostics = Diagnostics::new(&folder(data.path()), None);
+        let diagnostics = Diagnostics::new(&folder(data.path()), None).unwrap();
         assert_eq!(diagnostics.status(), Status { configured: false });
     }
 
@@ -595,7 +648,7 @@ mod tests {
     fn a_session_starts_once_keeps_time_under_the_fixed_screen_names_and_ends_in_its_own_file() {
         let data = tempfile::tempdir().unwrap();
         let folder = folder(data.path());
-        let diagnostics = Diagnostics::new(&folder, None);
+        let diagnostics = Diagnostics::new(&folder, None).unwrap();
         diagnostics.start_session("ko-KR", "care-school-kr").unwrap();
         diagnostics.start_session("en", "other").unwrap();
         diagnostics.screen(Some("vault:report"));
@@ -603,7 +656,7 @@ mod tests {
         diagnostics.screen(None);
         assert!(diagnostics.end_session().is_none(), "no destination: nothing to wait for");
         assert!(diagnostics.end_session().is_none(), "a second end writes nothing");
-        let lines = line(&folder.join("sessions.jsonl"));
+        let lines = line(&folder, "sessions");
         assert_eq!(lines.iter().map(|l| l["event"].as_str().unwrap()).collect::<Vec<_>>(), ["start", "end"]);
         assert_eq!((lines[0]["locale"].as_str(), lines[0]["track"].as_str()), (Some("ko-KR"), Some("care-school-kr")));
         let screens = lines[1]["screens"].as_object().unwrap();
@@ -615,17 +668,54 @@ mod tests {
         }
         let install = std::fs::read_to_string(folder.join("install-id")).unwrap();
         assert_eq!(lines[0]["install"].as_str(), Some(install.trim()));
-        assert!(!folder.join("session.running").exists(), "an ended session leaves no marker");
+        let markers = |folder: &Path| {
+            std::fs::read_dir(folder.join("session.running")).unwrap().filter_map(Result::ok).filter(|e| e.path().extension().is_some_and(|x| x == "json")).count()
+        };
+        assert_eq!(markers(&folder), 0, "an ended session leaves no marker");
+    }
+
+    #[test]
+    fn a_session_that_handed_over_to_an_installer_is_told_apart_from_a_crash() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        let first = Diagnostics::new(&folder, None).unwrap();
+        first.start_session("ko-KR", "care-school-kr").unwrap();
+        first.updating();
+        drop(first);
+        Diagnostics::new(&folder, None).unwrap().start_session("ko-KR", "care-school-kr").unwrap();
+        let lines = line(&folder, "sessions");
+        assert_eq!(lines.iter().map(|l| l["event"].as_str().unwrap()).collect::<Vec<_>>(), ["start", "unfinished", "start"]);
+        assert_eq!(lines[1]["how"], "updated", "{}", lines[1]);
+    }
+
+    #[test]
+    fn what_earlier_versions_kept_in_one_file_each_is_taken_in_and_not_sent_twice() {
+        let data = tempfile::tempdir().unwrap();
+        let folder = folder(data.path());
+        std::fs::create_dir_all(&folder).unwrap();
+        let sent = "{\"layer\":\"shell\"}
+";
+        std::fs::write(folder.join("reports.jsonl"), format!("{sent}{{\"layer\":\"host\"}}
+")).unwrap();
+        std::fs::write(folder.join("reports.sent"), sent.len().to_string()).unwrap();
+        std::fs::write(folder.join("session.running"), b"{}").unwrap();
+        let diagnostics = Diagnostics::new(&folder, None).unwrap();
+        assert!(!folder.join("reports.jsonl").exists() && !folder.join("reports.sent").exists(), "the old files are taken in");
+        assert_eq!(line(&folder, "reports").len(), 2, "both lines are kept");
+        let adopted = &segments(&stream(&folder, "reports")).unwrap()[0];
+        assert_eq!(std::fs::read_to_string(&adopted.sent).unwrap().trim(), sent.len().to_string(), "what was sent is still recorded as sent");
+        diagnostics.start_session("ko", "other").unwrap();
+        assert!(folder.join("session.running").is_dir(), "the old marker file becomes the folder of running sessions");
     }
 
     #[test]
     fn a_launch_that_did_not_end_is_written_at_the_next_start_under_the_same_installation() {
         let data = tempfile::tempdir().unwrap();
         let folder = folder(data.path());
-        Diagnostics::new(&folder, None).start_session("ko-KR", "care-school-kr").unwrap();
+        Diagnostics::new(&folder, None).unwrap().start_session("ko-KR", "care-school-kr").unwrap();
         // The process ended without `end_session` — a crash, or the system ending it.
-        Diagnostics::new(&folder, None).start_session("ko-KR", "care-school-kr").unwrap();
-        let lines = line(&folder.join("sessions.jsonl"));
+        Diagnostics::new(&folder, None).unwrap().start_session("ko-KR", "care-school-kr").unwrap();
+        let lines = line(&folder, "sessions");
         assert_eq!(lines.iter().map(|l| l["event"].as_str().unwrap()).collect::<Vec<_>>(), ["start", "unfinished", "start"]);
         assert_eq!(lines[0]["install"], lines[2]["install"]);
         assert_eq!(lines[0]["session"], lines[1]["session"], "the unfinished line names the session that did not end");
@@ -635,7 +725,7 @@ mod tests {
     fn a_minimised_window_keeps_no_screen_time_and_picks_up_the_same_screen_when_back() {
         let data = tempfile::tempdir().unwrap();
         let folder = folder(data.path());
-        let diagnostics = Diagnostics::new(&folder, None);
+        let diagnostics = Diagnostics::new(&folder, None).unwrap();
         diagnostics.start_session("ko", "school-kr").unwrap();
         diagnostics.screen(Some("vault:subjects"));
         diagnostics.minimised(true);
@@ -644,7 +734,7 @@ mod tests {
         diagnostics.screen(Some("vault:report"));
         diagnostics.minimised(false);
         diagnostics.end_session();
-        let end = line(&folder.join("sessions.jsonl")).pop().unwrap();
+        let end = line(&folder, "sessions").pop().unwrap();
         let screens = end["screens"].as_object().unwrap();
         assert_eq!(screens.keys().collect::<Vec<_>>(), ["vault:report", "vault:subjects"]);
         assert_eq!(screens["vault:report"]["opened"], 1, "brought back to the screen named meanwhile");
@@ -661,15 +751,15 @@ mod tests {
     #[test]
     fn reports_stay_in_the_app_folder_and_without_a_destination_nothing_is_sent() {
         let data = tempfile::tempdir().unwrap();
-        let diagnostics = Diagnostics::new(&folder(data.path()), None);
+        let diagnostics = Diagnostics::new(&folder(data.path()), None).unwrap();
         assert!(!diagnostics.sends());
         assert!(diagnostics.record(webview_missing_report()).is_none(), "nothing to wait for");
         // The same failure again is the same report.
         assert!(diagnostics.record(webview_missing_report()).is_none());
-        let lines = line(&data.path().join("diagnostics").join("reports.jsonl"));
+        let lines = line(&folder(data.path()), "reports");
         assert_eq!(lines.len(), 1);
         assert_eq!(lines[0]["kind"], "WebviewMissing");
-        assert!(!data.path().join("diagnostics").join("reports.sent").exists());
+        assert!(segments(&stream(&folder(data.path()), "reports")).unwrap().iter().all(|s| !s.sent.exists()), "nothing was recorded as sent");
     }
 
     #[test]
@@ -685,12 +775,12 @@ mod tests {
         let data = tempfile::tempdir().unwrap();
         // Nothing listens on port 9 of the loopback address: the send fails fast and gives up.
         let sink = Sink::parse("InstrumentationKey=k;IngestionEndpoint=https://127.0.0.1:9/").unwrap();
-        let diagnostics = Diagnostics::new(&folder(data.path()), Some(sink));
+        let diagnostics = Diagnostics::new(&folder(data.path()), Some(sink)).unwrap();
         assert!(diagnostics.sends());
         let heard = diagnostics.record(panic_report(Location::caller())).expect("a send started");
         heard.recv_timeout(Duration::from_secs(30)).expect("the send finished");
         let folder = folder(data.path());
-        assert_eq!(line(&folder.join("reports.jsonl")).len(), 1, "the report stays for a later launch");
-        assert!(!folder.join("reports.sent").exists(), "nothing was recorded as sent");
+        assert_eq!(line(&folder, "reports").len(), 1, "the report stays for a later launch");
+        assert!(segments(&stream(&folder, "reports")).unwrap().iter().all(|s| !s.sent.exists()), "nothing was recorded as sent");
     }
 }

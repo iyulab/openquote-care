@@ -14,6 +14,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - A records folder's first record, and the first statistics it keeps, are marked once: the app's two quotes turn to face each other in the middle of the window over a warmth that comes and goes, without taking a click. It is the folder's first, on whichever computer it happens.
 
 ### Fixed
+- Updating from the settings no longer shows up in the error reports as a launch that ended badly: the next start knows the update ended it.
 - Opening a records folder no longer shows its menu a moment before the places its kind of work adds (Activities, in a school folder) join it, moving every item below by a row as one is about to be clicked: the folder's screens appear once it has been read, and until then the window says it is opening the folder.
 - An ended case's quotes in the colour of the words no longer run together where they meet: as in the brand's own mark, a thin gap parts them.
 

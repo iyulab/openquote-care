@@ -381,7 +381,11 @@ async fn look_for_update(handle: tauri::AppHandle) -> Option<updates::Looked> {
 #[tauri::command]
 async fn apply_update(handle: tauri::AppHandle) -> CommandResult<()> {
     let closing = handle.clone();
-    updates::apply(&handle, move || closing.state::<App>().close_vault())
+    updates::apply(&handle, move || {
+        // The installer ends this process without the app's own end: say so, or the next start reads it as a crash.
+        diagnostics::updating();
+        closing.state::<App>().close_vault();
+    })
         .await
         .map_err(|message| CommandError { code: "update", message })
 }
