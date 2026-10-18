@@ -1,7 +1,6 @@
 // Checks that an installer's updater signature verifies against the public key the app carries — the
-// check the installed app makes before it installs a new version. The release runs it on the final,
-// Authenticode-signed installer, so a signature made over other bytes fails here, not on people's
-// computers.
+// check the installed app makes before it installs a new version. The update check on this computer
+// (`npm run test:update`) uses it; the release makes the same check in its own workflow.
 //
 //   node scripts/verify-update-signature.mjs <installer> <installer.sig> [<tauri conf with the pubkey>]
 //

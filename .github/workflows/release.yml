@@ -1,19 +1,36 @@
 name: Release
 
-# Builds the signed Windows installer and attaches it to a draft release.
-# Run by hand after the full local verification (tests, window e2e, installed-app check) passes;
-# this workflow only builds, signs and checks the signatures.
+# Builds the signed Windows installers and attaches them to a draft release.
+# Run by hand after the full local verification (tests, window e2e, installed-app check) passes.
+#
+# The build runs here, without the signing credential. Signing, bundling, the installed-copy check, the
+# updater signature and latest.json are iyulab/tauri-release's reusable Windows workflow (pinned to a
+# commit): it signs exactly the two built executables, bundles twice so the uninstaller and the NSIS
+# plugins are signed too, signs the installer and checks every installed file's signature. Only its
+# signing jobs hold the signing credential — they are iyulab/code-sign's reusable workflow, which runs
+# nothing of this repository.
+#
+#   ci → build (no credential) → offline: the installer with WebView2 inside, signed and checked
+#      → release: the standard installer, signed and checked, its updater signature and latest.json,
+#        and the draft → offline-assets: the offline installer added to the draft
+#
+# The offline installer goes first so the draft is made only once both installers passed; the two calls
+# run one after another because tauri-release's intermediate artifacts share names.
 on:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-  actions: read
+permissions: {}
 
 concurrency:
   group: release
   cancel-in-progress: false
+
+env:
+  # Exactly the files the installer carries that we build, relative to the repository root — the signing
+  # job refuses an artifact holding any other set.
+  SIGN_FILES: |
+    target/release/openquote-care.exe
+    sidecar/publish/openquote-care-sidecar.exe
 
 jobs:
   # The commit being released passed CI: a test that fails only sometimes, or a check that only CI
@@ -22,6 +39,8 @@ jobs:
     name: CI passed for this commit
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      actions: read
     steps:
       - name: Wait for the CI run of this commit and require success
         env:
@@ -38,16 +57,26 @@ jobs:
           done
           echo "::error::No finished CI run for ${{ github.sha }} after 18 minutes"; exit 1
 
-  release:
+  build:
     needs: ci
-    # Windows runner: the installer, the shell and the ahead-of-time compiled engine sidecar are
-    # Windows binaries, and Authenticode signing runs on Windows.
+    # Windows runner: the shell and the ahead-of-time compiled engine sidecar are Windows binaries.
     runs-on: windows-latest
-    # The signing credential is federated to this environment.
+    # Only for the diagnostics connection the build embeds (an environment secret). No id-token: this job
+    # cannot sign.
     environment: production
-    timeout-minutes: 90
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.versions.outputs.app }}
+      sign-files: ${{ steps.versions.outputs.sign-files }}
+      updater-pubkey: ${{ steps.versions.outputs.updater-pubkey }}
+      tauri-cli: ${{ steps.versions.outputs.tauri-cli }}
+      notes: ${{ steps.notes.outputs.notes }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Read versions
         id: versions
@@ -56,9 +85,18 @@ jobs:
           $app = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
           $engine = ([xml](Get-Content Directory.Packages.props -Raw)).Project.ItemGroup.PackageVersion |
             Where-Object { $_.Include -eq 'Openquote' } | Select-Object -ExpandProperty Version
-          if (-not $app -or -not $engine) { throw "Could not read the app or engine version" }
+          $pubkey = (Get-Content src-tauri/tauri.updater.conf.json -Raw | ConvertFrom-Json).plugins.updater.pubkey
+          # The bundler runs the very CLI this repository builds with.
+          $cli = (Get-Content package-lock.json -Raw | ConvertFrom-Json).packages.'node_modules/@tauri-apps/cli'.version
+          if (-not $app -or -not $engine -or -not $pubkey -or -not $cli) { throw "Could not read the app or engine version, the updater key or the Tauri CLI" }
           "app=$app" >> $env:GITHUB_OUTPUT
           "engine=$engine" >> $env:GITHUB_OUTPUT
+          "updater-pubkey=$pubkey" >> $env:GITHUB_OUTPUT
+          "tauri-cli=@tauri-apps/cli@$cli" >> $env:GITHUB_OUTPUT
+          # The signing workflow is called with `with:`, which cannot read `env` — hand it the list as an output.
+          "sign-files<<EOF" >> $env:GITHUB_OUTPUT
+          @($env:SIGN_FILES -split "`n" | ForEach-Object Trim | Where-Object { $_ }) >> $env:GITHUB_OUTPUT
+          "EOF" >> $env:GITHUB_OUTPUT
 
       # The sidecar restores the engine from nuget.org: the installer carries the very package that was
       # published and tested against, at the version Directory.Packages.props names.
@@ -71,7 +109,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      # Pinned to a commit like every third-party action in this job: it holds the signing token.
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
@@ -106,124 +143,163 @@ jobs:
           Write-Output "The engine sidecar is built on the .NET runtime $version."
           "The engine sidecar is built on the .NET runtime **$version**." >> $env:GITHUB_STEP_SUMMARY
 
-      # Prepares the job for Tauri's sign hook (`code-sign-file.cmd %1` in tauri.sign.conf.json), which
-      # signs every binary Tauri bundles one at a time with the action's own Key Vault settings: the
-      # app, the engine sidecar (a bundle resource), the installer's plugins, the uninstaller and the
-      # installer. Run just before the builds: its sign-in lasts about an hour.
-      - name: Prepare the sign hook
-        # Pinned to a commit: this job holds an OIDC token that can sign as iyulab.
-        uses: iyulab/code-sign@c4c68c25295ce0010a396d54cdb017fd248c5cce # main, 2026-10-17
-        with:
-          description: Openquote Care
-          description-url: https://openquote.me
-
-      - name: Build and sign the installer
+      # Built, not bundled: tauri-release bundles from the signed files. The updater overlay is part of the
+      # build (the app carries its public key and where to look); its artifacts are made after signing.
+      - name: Build the app
         env:
           # Error diagnostics are embedded only in this build (see docs/architecture.md).
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
           # Feedback: the records service's public key (public by design, so a variable). Without
           # it the installer offers no feedback (see docs/privacy.md).
           OPENQUOTE_FEEDBACK_KEY: ${{ vars.OPENQUOTE_FEEDBACK_KEY }}
-          # The updater's key: only this build carries the public half and looks for new versions,
-          # and its installer gets an updater signature, made after the Authenticode signing.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri build --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json --config src-tauri/tauri.updater.conf.json
+        run: npx tauri build --no-bundle --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.updater.conf.json
 
-      # Tauri signs the app it puts in the installer and then restores the unsigned build output,
-      # so the signatures are checked on an installed copy.
-      - name: Check signatures and diagnostics
-        id: installer
+      # Error diagnostics are on only when the build embedded the collector's connection string; a missing
+      # secret would leave every installation silent, with nothing to say so. Embedded is not enough: a
+      # malformed or wrong value is embedded just as silently. One check report (version `<app>-check`, no
+      # content) must be taken by the collector the app sends to.
+      - name: Check the diagnostics connection the app embeds
         shell: pwsh
         env:
           OPENQUOTE_DIAGNOSTICS_CONNECTION: ${{ secrets.OPENQUOTE_DIAGNOSTICS_CONNECTION }}
         run: |
-          $installer = Get-Item "target/release/bundle/nsis/*_${{ steps.versions.outputs.app }}_x64-setup.exe"
-          $target = Join-Path $env:RUNNER_TEMP 'installed'
-          # NSIS: /S is silent, /D= must come last and unquoted.
-          $process = Start-Process -FilePath $installer.FullName -ArgumentList '/S', "/D=$target" -Wait -PassThru
-          if ($process.ExitCode -ne 0) { throw "The installer exited with $($process.ExitCode)" }
-          # The uninstaller too: makensis ignores a failing sign command for it and still succeeds.
-          $files = @($installer.FullName, (Join-Path $target 'openquote-care.exe'), (Join-Path $target 'uninstall.exe'), (Join-Path $target 'sidecar/openquote-care-sidecar.exe'))
-          foreach ($file in $files) {
-            $signature = Get-AuthenticodeSignature $file
-            if ($signature.Status -ne 'Valid') { throw "$file is not validly signed: $($signature.Status)" }
-            Write-Host "$file — $($signature.SignerCertificate.Subject)"
-          }
-          # Error diagnostics are on only when the build embedded the collector's connection string; a
-          # missing secret would leave every installation silent, with nothing to say so.
-          $app = [IO.File]::ReadAllBytes((Join-Path $target 'openquote-care.exe'))
+          $app = [IO.File]::ReadAllBytes('target/release/openquote-care.exe')
           if ([Text.Encoding]::ASCII.GetString($app).IndexOf('IngestionEndpoint=') -lt 0) { throw 'the app does not embed the error diagnostics connection' }
-          # Embedded is not enough: a malformed or wrong value is embedded just as silently. One check
-          # report (version `<app>-check`, no content) must be taken by the collector the app sends to.
           node scripts/check-diagnostics-connection.mjs ${{ steps.versions.outputs.app }}
           if ($LASTEXITCODE -ne 0) { throw 'the collector does not take reports over the embedded connection' }
-          # The updater signature: over the final, Authenticode-signed bytes, and with the key the app carries.
-          node scripts/verify-update-signature.mjs $installer.FullName "$($installer.FullName).sig"
-          if ($LASTEXITCODE -ne 0) { throw 'the updater signature does not verify' }
-          # Moved aside: the offline installer below is written under the same names.
-          $out = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'installers')
-          $kept = Move-Item $installer.FullName (Join-Path $out $installer.Name) -PassThru
-          Move-Item "$($installer.FullName).sig" (Join-Path $out "$($installer.Name).sig")
-          "path=$($kept.FullName)" >> $env:GITHUB_OUTPUT
 
-      # The same signed app, with the WebView2 installer inside (about 200 MB more), for computers
-      # that have no WebView2 runtime and no internet connection. `tauri bundle` reuses the build.
-      - name: Bundle and sign the offline installer
-        id: offline
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      # The notes are this version's section of CHANGELOG.md.
+      - name: Read the release notes
+        id: notes
         shell: pwsh
         run: |
-          npx tauri bundle --config src-tauri/tauri.bundle.conf.json --config src-tauri/tauri.sign.conf.json --config src-tauri/tauri.updater.conf.json --config src-tauri/tauri.offline.conf.json
-          if ($LASTEXITCODE -ne 0) { throw "tauri bundle exited with $LASTEXITCODE" }
-          $installer = Get-Item "target/release/bundle/nsis/*_${{ steps.versions.outputs.app }}_x64-setup.exe"
-          $signature = Get-AuthenticodeSignature $installer.FullName
-          if ($signature.Status -ne 'Valid') { throw "$($installer.FullName) is not validly signed: $($signature.Status)" }
-          if ($installer.Length -lt 100MB) { throw "the offline installer is $($installer.Length) bytes — the WebView2 installer is not inside" }
-          $name = $installer.Name -replace '_x64-setup\.exe$', '_x64-offline-setup.exe'
-          $kept = Move-Item $installer.FullName (Join-Path $env:RUNNER_TEMP "installers/$name") -PassThru
-          "path=$($kept.FullName)" >> $env:GITHUB_OUTPUT
+          $notes = node scripts/release-notes.mjs ${{ steps.versions.outputs.app }} ${{ steps.versions.outputs.engine }}
+          if ($LASTEXITCODE -ne 0) { throw "CHANGELOG.md has no notes for ${{ steps.versions.outputs.app }}" }
+          $end = "NOTES_$([guid]::NewGuid().ToString('N'))"
+          "notes<<$end" >> $env:GITHUB_OUTPUT
+          $notes >> $env:GITHUB_OUTPUT
+          $end >> $env:GITHUB_OUTPUT
 
-      # What the sign hook did, file by file, when a later step failed.
-      - name: Show the signing log
-        if: failure()
-        shell: pwsh
-        run: if ($env:CODE_SIGN_LOG -and (Test-Path $env:CODE_SIGN_LOG)) { Get-Content $env:CODE_SIGN_LOG } else { 'No signing log' }
-
-      - name: Create a draft release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The signing job gets exactly the files to sign; bundling gets the tracked sources, the built app and
+      # what the build wrote that the installer carries (the sidecar, the notices).
+      - name: Stage for signing and bundling
         shell: pwsh
         run: |
-          $version = "${{ steps.versions.outputs.app }}"
-          $tag = "v$version"
-          $installer = Get-Item "${{ steps.installer.outputs.path }}"
-          $offline = Get-Item "${{ steps.offline.outputs.path }}"
-          # GitHub names a release asset with its spaces turned into dots.
-          $asset = $installer.Name -replace ' ', '.'
-          # Names without the version, so the newest is always at the same address (the website links
-          # these through releases/latest/download/).
-          $latest = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'latest')
-          $stable = Copy-Item $installer.FullName (Join-Path $latest 'Openquote.Care_x64-setup.exe') -PassThru
-          $stableOffline = Copy-Item $offline.FullName (Join-Path $latest 'Openquote.Care_x64-offline-setup.exe') -PassThru
-          # What an installed app reads to find a newer version: this version, the standard installer and its updater signature.
-          $description = [ordered]@{
-            version = $version
-            pub_date = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-            platforms = [ordered]@{
-              'windows-x86_64' = [ordered]@{
-                signature = (Get-Content "$($installer.FullName).sig" -Raw).Trim()
-                url = "https://github.com/${{ github.repository }}/releases/download/$tag/$asset"
-              }
-            }
+          $files = @($env:SIGN_FILES -split "`n" | ForEach-Object Trim | Where-Object { $_ })
+          $unsigned = Join-Path $env:RUNNER_TEMP 'unsigned-binaries'
+          foreach ($f in $files) {
+            $to = Join-Path $unsigned $f
+            New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null
+            Copy-Item $f $to
           }
-          $json = Join-Path $latest 'latest.json'
-          $description | ConvertTo-Json -Depth 5 | Set-Content -Path $json -Encoding utf8NoBOM
-          # The notes are this version's section of CHANGELOG.md.
-          $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
-          node scripts/release-notes.mjs $version "${{ steps.versions.outputs.engine }}" > $notes
-          if ($LASTEXITCODE -ne 0) { throw "CHANGELOG.md has no notes for $version" }
-          gh release create $tag $installer.FullName $offline.FullName $stable.FullName $stableOffline.FullName $json --draft --target $env:GITHUB_SHA `
-            --title "Openquote Care $tag" --notes-file $notes
+          $bundleIn = New-Item -ItemType Directory -Force (Join-Path $env:RUNNER_TEMP 'bundle-input')
+          $tar = Join-Path $env:RUNNER_TEMP 'sources.tar'
+          git archive --format=tar -o $tar HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'git archive failed' }
+          tar -xf $tar -C $bundleIn
+          if ($LASTEXITCODE -ne 0) { throw 'tar failed' }
+          foreach ($f in $files) {
+            $to = Join-Path $bundleIn $f
+            New-Item -ItemType Directory -Force (Split-Path $to) | Out-Null
+            Copy-Item $f $to
+          }
+          Copy-Item LICENSES/* (Join-Path $bundleIn 'LICENSES') -Force
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-binaries
+          path: ${{ runner.temp }}/unsigned-binaries
+          if-no-files-found: error
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        with:
+          name: bundle-input
+          path: ${{ runner.temp }}/bundle-input
+          if-no-files-found: error
+          retention-days: 1
+
+  # The same signed app, with the WebView2 installer inside (about 200 MB more), for computers that have
+  # no WebView2 runtime and no internet connection.
+  offline:
+    needs: build
+    uses: iyulab/tauri-release/.github/workflows/windows.yml@50e2039d1ba7bd8c371de6ca56dd3be51d95a546 # main, 2026-10-19
+    permissions:
+      id-token: write      # its three signing jobs
+    with:
+      unsigned-artifact: unsigned-binaries
+      files: ${{ needs.build.outputs.sign-files }}
+      bundle-artifact: bundle-input
+      app-dir: .
+      tauri-cli: ${{ needs.build.outputs.tauri-cli }}
+      node-version: '22'
+      config: |
+        src-tauri/tauri.bundle.conf.json
+        src-tauri/tauri.updater.conf.json
+        src-tauri/tauri.offline.conf.json
+      description: Openquote Care
+      description-url: https://openquote.me
+      installer-artifact: signed-offline-installer
+
+  release:
+    needs: [build, offline]
+    uses: iyulab/tauri-release/.github/workflows/windows.yml@50e2039d1ba7bd8c371de6ca56dd3be51d95a546 # main, 2026-10-19
+    permissions:
+      id-token: write      # its three signing jobs
+      contents: write      # its draft job
+    with:
+      unsigned-artifact: unsigned-binaries
+      files: ${{ needs.build.outputs.sign-files }}
+      bundle-artifact: bundle-input
+      app-dir: .
+      tauri-cli: ${{ needs.build.outputs.tauri-cli }}
+      node-version: '22'
+      config: |
+        src-tauri/tauri.bundle.conf.json
+        src-tauri/tauri.updater.conf.json
+      description: Openquote Care
+      description-url: https://openquote.me
+      draft: true
+      tag: v${{ needs.build.outputs.version }}
+      title: Openquote Care v${{ needs.build.outputs.version }}
+      notes: ${{ needs.build.outputs.notes }}
+      # The newest is always at the same address: the website links it through releases/latest/download/.
+      alias: Openquote.Care_x64-setup.exe
+      # What an installed app reads to find a newer version (latest.json) and the installer's updater signature.
+      updater: true
+      version: ${{ needs.build.outputs.version }}
+      updater-pubkey: ${{ needs.build.outputs.updater-pubkey }}
+      updater-environment: production
+    secrets:
+      updater-key: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      updater-key-password: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+  offline-assets:
+    needs: [build, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: signed-offline-installer
+          path: offline
+      - name: Add the offline installer to the draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          found=(offline/*_x64-setup.exe)
+          [ "${#found[@]}" -eq 1 ] || { echo "expected one offline installer, found ${#found[@]}" >&2; exit 1; }
+          installer="${found[0]}"
+          size=$(stat -c %s "$installer")
+          # The WebView2 installer is about 200 MB: a smaller file has not got it inside.
+          [ "$size" -ge $((100 * 1024 * 1024)) ] || { echo "the offline installer is $size bytes — the WebView2 installer is not inside" >&2; exit 1; }
+          name="$(basename "$installer")"
+          mkdir out
+          cp "$installer" "out/${name%_x64-setup.exe}_x64-offline-setup.exe"
+          # The newest is always at the same address, like the standard installer's alias.
+          cp "$installer" out/Openquote.Care_x64-offline-setup.exe
+          gh release upload "$TAG" out/* --repo "$GITHUB_REPOSITORY"
