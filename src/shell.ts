@@ -160,6 +160,11 @@ export interface CaseView {
   followUpDue: string | null
   /** Where that follow-up stands today — any record of the subject after the closing counts. */
   followUp: FollowUp
+  /**
+   * Whether its closing ended the work as planned, as the packs say of the closing's kind; null when the case has not
+   * closed or the packs say nothing of that kind.
+   */
+  completed: boolean | null
 }
 
 /** Where a case's follow-up stands: came in time, came late, still awaited, overdue, or none expected. */

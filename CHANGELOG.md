@@ -10,6 +10,7 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 - Once a week the app sends how often the suggestions it offered for a field were kept, changed, or not shown — counted by the field's name, nothing about a record or a person (see the privacy page). It is listed under *What is sent* in the settings, nothing waits for it when there is no network, and the app works the same either way.
 
 ### Changed
+- A case that ended as planned has its closed quotes in the two voices' colours again; a case that ended early or for another reason keeps them in the colour of the words. Which closings end the work as planned is the core pack's to say — its thirteenth version names the closing reasons "completed" and "moved to another service".
 - Where nothing has been written yet — a new records folder's list of people or groups, a person or group with no session — the empty space shows the app's open quote with a caret blinking after it, beside the words that say what to do first. With reduced motion the caret holds still.
 - A printed statistics form or record list, and the plain copy's page, end with the app's two quotes facing, in the colour of the words.
 - The installer's first and last pages show the app's two quotes facing, on the warm ground of its colours.

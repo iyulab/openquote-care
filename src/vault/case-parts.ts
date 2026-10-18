@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit'
-import { byCase, caseCounts, caseDays, caseHead, caseMark, caseStateBesideDays, caseTimeline, followUpWords, scaleLine, scaleSeries, showsCases, type CaseGroup, type ScalePoint } from '../cases.js'
+import { byCase, caseCounts, caseDays, caseEndedAsPlanned, caseHead, caseMark, caseStateBesideDays, caseTimeline, followUpWords, scaleLine, scaleSeries, showsCases, type CaseGroup, type ScalePoint } from '../cases.js'
 import { listColumns } from '../fields.js'
 import { labelOf } from '../records.js'
 import type { PlainCase } from '../plain-copy.js'
@@ -31,7 +31,7 @@ export function caseSection(store: VaultStore, subject: string, open: (record: s
       <ul class="cases">
         ${numbered.map(
           ({ c, n }) => html`<li data-case=${n} data-open=${c.open ? 'yes' : 'no'}>
-            ${mark(caseMark(c, typeOf))}<strong>${strings.caseTitle(n)}</strong>
+            ${mark(caseMark(c, typeOf), caseEndedAsPlanned(c))}<strong>${strings.caseTitle(n)}</strong>
             <span>${caseDays(c)}</span>
             <span>${caseStateBesideDays(c, opening)}</span>
             ${followUpWords(c) ? html`<span data-role="follow-up" data-follow-up=${c.followUp}>${followUpWords(c)}</span>` : nothing}
@@ -47,9 +47,12 @@ export function caseSection(store: VaultStore, subject: string, open: (record: s
   </section>`
 }
 
-/** A case's place in its life beside its title, still — the words beside it say the state; the mark is decoration. */
-function mark(state: ReturnType<typeof caseMark>) {
-  return state ? html`<oq-quote-state still ?mono=${state === 'done'} state=${state} size="20"></oq-quote-state>` : nothing
+/**
+ * A case's place in its life beside its title, still — the words beside it say the state; the mark is decoration. An
+ * ending takes the two voices' colours only when it ended the work as planned.
+ */
+function mark(state: ReturnType<typeof caseMark>, asPlanned: boolean) {
+  return state ? html`<oq-quote-state still ?mono=${state === 'done' && !asPlanned} state=${state} size="20"></oq-quote-state>` : nothing
 }
 
 /**
