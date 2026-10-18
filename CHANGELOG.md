@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-10-18
+
 ### Changed
 - The list of people shows where each one's latest case stands as the app's quote mark before the name: the open quote while the case has no session yet, three dots while it goes on, the closed quote once it ended — in the two voices' colours only when the work ended as planned.
 - The weekly count of how suggestions are used also says how often the first suggestion shown was one the app stood behind rather than a guess, and how often that one was kept (see the privacy page). It now runs on version 0.24.0 of the engine.
@@ -206,7 +208,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/iyulab/openquote-care/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/iyulab/openquote-care/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/iyulab/openquote-care/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/iyulab/openquote-care/compare/v0.21.0...v0.22.0
