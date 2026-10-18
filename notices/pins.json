@@ -51,12 +51,8 @@
     "source": "https://raw.githubusercontent.com/wravery/webview2-rs/edc2caf886175ccaebe86078c9cfe1ae2a187328/LICENSE",
     "sha256": "0dcf41516e608bbcb6cdc5229feb7b86fe4a643b85e7df251133c93408fdac73"
   },
-  "Microsoft.Extensions.AI.Abstractions@10.10.1": {
-    "source": "https://raw.githubusercontent.com/dotnet/extensions/v10.10.1/LICENSE",
+  "Microsoft.Extensions.AI.Abstractions@10.11.0": {
+    "source": "https://raw.githubusercontent.com/dotnet/extensions/25f07afa51034e37b334210642d7dc5f191c142d/LICENSE",
     "sha256": "47f0ad8ba753eae5de6178291cd8f38bbb42d2368b177f8e11714ad17c701275"
-  },
-  "YamlDotNet@18.1.0": {
-    "source": "https://raw.githubusercontent.com/aaubry/YamlDotNet/v18.1.0/LICENSE.txt",
-    "sha256": "daea8b7f1b2bab48ea12ad50b0ce91634669d99d7dd0cb64aed8dffeeef69ed3"
   }
 }

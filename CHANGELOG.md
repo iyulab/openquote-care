@@ -6,6 +6,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-18
+
 ### Added
 - Once a week the app sends how often the suggestions it offered for a field were kept, changed, or not shown — counted by the field's name, nothing about a record or a person (see the privacy page). It is listed under *What is sent* in the settings, nothing waits for it when there is no network, and the app works the same either way.
 
@@ -200,7 +202,8 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Changed
 - In an English copy, each kind's table is named in the plural: intakes.csv, referrals.csv, closings.csv (sessions.csv as before).
 
-[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/iyulab/openquote-care/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/iyulab/openquote-care/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/iyulab/openquote-care/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/iyulab/openquote-care/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/iyulab/openquote-care/compare/v0.20.0...v0.21.0
