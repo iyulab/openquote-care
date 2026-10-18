@@ -247,6 +247,16 @@ export const vaultStyles = [
       border-radius: var(--dc-radius-md, 6px);
       cursor: pointer;
     }
+    li button .head {
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-2, 8px);
+      min-width: 0;
+    }
+    li button .lead {
+      flex: none;
+      display: inline-flex;
+    }
     li button .label {
       font-weight: var(--dc-font-weight-medium, 500);
     }

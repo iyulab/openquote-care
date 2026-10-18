@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Changed
+- The list of people shows where each one's latest case stands as the app's quote mark before the name: the open quote while the case has no session yet, three dots while it goes on, the closed quote once it ended — in the two voices' colours only when the work ended as planned.
+
 ## [0.24.0] - 2026-10-18
 
 ### Added

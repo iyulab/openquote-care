@@ -5,7 +5,7 @@ import { conflictsOf, entityOf, newestFirst, text, type Entity } from '../record
 import { shell } from '../shell.js'
 import { strings } from '../strings.js'
 import { planImport, tally, type ImportPlan, type PlannedRow } from '../subject-import.js'
-import { followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
+import { caseEndedAsPlanned, caseMark, followUpWords, latestCaseState, latestFollowUp } from '../cases.js'
 import { recordFields } from '../fields.js'
 import { today } from '../records.js'
 import { newCaseNumber } from '../case-number.js'
@@ -149,6 +149,20 @@ export class OcSubjects extends VaultScreen {
    * their day, open cases with no session yet, records waiting for an answer — each a button that keeps those in view.
    * Nothing when nothing does; no judgement, only dates.
    */
+  /**
+   * Where a subject's latest case stands, as the app's quote mark before its name in the list: the open quote while the
+   * case has no session yet, the three dots while it goes on, the closed quote once it ended — in the two voices' colours
+   * only when the work ended as planned. Still, small, and nothing the words do not also say on its page; none for a
+   * subject whose cases are not shown.
+   */
+  private caseLead(row: SubjectRow) {
+    const latest = row.state === null ? undefined : this.store.cases.get(row.id)?.cases.at(-1)
+    const state = latest && caseMark(latest, (id) => this.store.recordById(id)?.type)
+    return latest && state
+      ? html`<oq-quote-state still ?mono=${state === 'done' && !caseEndedAsPlanned(latest)} state=${state} size="14"></oq-quote-state>`
+      : undefined
+  }
+
   private attention(all: SubjectRow[], day: string) {
     const counts: { filter: CaseFilter; n: number; label: (n: number) => string }[] = [
       { filter: 'today', n: all.filter((r) => r.planned === day).length, label: strings.attentionToday },
@@ -250,6 +264,7 @@ export class OcSubjects extends VaultScreen {
       entries: rows.map((r) => ({
         id: r.id,
         label: r.name,
+        lead: this.caseLead(r),
         meta: [
           strings.sessionCount(counts.get(r.id) ?? 0),
           r.planned === day ? strings.meetingToday : '',
