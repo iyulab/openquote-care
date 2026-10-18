@@ -112,7 +112,7 @@ jobs:
       # installer. Run just before the builds: its sign-in lasts about an hour.
       - name: Prepare the sign hook
         # Pinned to a commit: this job holds an OIDC token that can sign as iyulab.
-        uses: iyulab/code-sign@ad912c9656a20729c7891c0e9b6b4857164efee9 # main, 2026-10-04
+        uses: iyulab/code-sign@c4c68c25295ce0010a396d54cdb017fd248c5cce # main, 2026-10-17
         with:
           description: Openquote Care
           description-url: https://openquote.me
