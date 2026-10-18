@@ -3191,13 +3191,13 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-kit-diagnostics",
+ "tauri-kit-locale",
  "tauri-kit-webview",
  "tauri-plugin-dialog",
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "tempfile",
  "tokio",
- "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4868,6 +4868,15 @@ dependencies = [
  "dunce",
  "libc",
  "tempfile",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tauri-kit-locale"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c0e4753f09585824ae96021f91840bd4abf0dc15c76d68319b5f24eaf970567"
+dependencies = [
  "windows-sys 0.61.2",
 ]
 

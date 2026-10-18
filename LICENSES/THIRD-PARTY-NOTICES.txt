@@ -1,7 +1,7 @@
 Openquote Care — third-party notices
 ====================================
 
-This program includes the following 404 third-party packages.
+This program includes the following 405 third-party packages.
 
 ------------------------------------------------------------------------------
 @iyulab/desktop-compact 0.14.0
@@ -14614,6 +14614,13 @@ Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
 tauri-kit-fs 0.22.0
+License: MIT
+Upstream: https://github.com/iyulab/tauri-kit
+
+Same license text as @iyulab/desktop-compact 0.14.0.
+
+------------------------------------------------------------------------------
+tauri-kit-locale 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 

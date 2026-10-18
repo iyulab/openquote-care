@@ -31,28 +31,10 @@ pub fn language(tag: &str) -> String {
     tag.split('-').next().unwrap_or_default().to_ascii_lowercase()
 }
 
-/// The first of the person's preferred display languages, from Windows.
-#[cfg(windows)]
+/// The first of the person's preferred display languages, as the platform lists them (Windows: the display
+/// languages; elsewhere the language environment variables).
 fn system() -> Option<String> {
-    use windows_sys::Win32::Globalization::{GetUserPreferredUILanguages, MUI_LANGUAGE_NAME};
-    let (mut count, mut size) = (0u32, 0u32);
-    // SAFETY: a null buffer asks only for the size, written to `size`.
-    if unsafe { GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &mut count, std::ptr::null_mut(), &mut size) } == 0 {
-        return None;
-    }
-    let mut buffer = vec![0u16; size as usize];
-    // SAFETY: the buffer holds `size` UTF-16 units, as the first call asked for.
-    if unsafe { GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &mut count, buffer.as_mut_ptr(), &mut size) } == 0 {
-        return None;
-    }
-    // A list of NUL-terminated names, ending with an empty one: the first is the preferred language.
-    let first = buffer.split(|&c| c == 0).next()?;
-    Some(String::from_utf16_lossy(first)).filter(|tag| !tag.is_empty())
-}
-
-#[cfg(not(windows))]
-fn system() -> Option<String> {
-    std::env::var("LANG").ok().map(|lang| lang.split(['.', '@']).next().unwrap_or_default().replace('_', "-"))
+    tauri_kit_locale::preferred_languages().into_iter().next().filter(|tag| !tag.is_empty())
 }
 
 #[cfg(test)]
