@@ -223,7 +223,7 @@ jobs:
   # no WebView2 runtime and no internet connection.
   offline:
     needs: build
-    uses: iyulab/tauri-release/.github/workflows/windows.yml@50e2039d1ba7bd8c371de6ca56dd3be51d95a546 # main, 2026-10-19
+    uses: iyulab/tauri-release/.github/workflows/windows.yml@95d848dbb6099d7d5c88b87f022364fea9480190 # main, 2026-10-19
     # A called workflow's jobs get no more than this, and a run with a job asking for more does not start: its
     # draft job asks for contents: write even when it does not run.
     permissions:
@@ -246,7 +246,7 @@ jobs:
 
   release:
     needs: [build, offline]
-    uses: iyulab/tauri-release/.github/workflows/windows.yml@50e2039d1ba7bd8c371de6ca56dd3be51d95a546 # main, 2026-10-19
+    uses: iyulab/tauri-release/.github/workflows/windows.yml@95d848dbb6099d7d5c88b87f022364fea9480190 # main, 2026-10-19
     permissions:
       id-token: write      # its three signing jobs
       contents: write      # its draft job
