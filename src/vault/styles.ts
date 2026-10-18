@@ -145,6 +145,105 @@ export const vaultStyles = [
     ul.cases li > details.timeline {
       flex-basis: 100%;
     }
+    /* A case's report: at the end of the case's heading line, before what the case holds. */
+    ul.cases li > .case-report-open {
+      margin-inline-start: auto;
+      align-self: center;
+    }
+    /* A case report: the choices on screen, then a document that reads like a page — headed, in sections, with room to write. */
+    .report-choices {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--dc-space-2, 8px) var(--dc-space-5, 20px);
+      margin: var(--dc-space-3, 12px) 0 var(--dc-space-4, 16px);
+    }
+    .report-pick {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--dc-space-2, 8px) var(--dc-space-4, 16px);
+      flex-basis: 100%;
+    }
+    article.case-report {
+      max-width: 46rem;
+      padding: var(--dc-space-6, 24px);
+      border: 1px solid var(--dc-color-border, #e5e7eb);
+      border-radius: var(--dc-radius-lg, 10px);
+      background: var(--dc-color-surface, #fff);
+      line-height: 1.6;
+    }
+    article.case-report header {
+      padding-bottom: var(--dc-space-4, 16px);
+      margin-bottom: var(--dc-space-4, 16px);
+      border-bottom: 1px solid var(--dc-color-border, #e5e7eb);
+    }
+    article.case-report header p {
+      margin: var(--dc-space-1, 4px) 0 0;
+    }
+    .report-eyebrow {
+      color: var(--dc-color-text-muted, #6b7280);
+      font-size: var(--dc-font-size-sm, 12px);
+      letter-spacing: 0.04em;
+    }
+    article.case-report h2 {
+      margin: var(--dc-space-1, 4px) 0 0;
+      font-size: var(--dc-font-size-xl, 20px);
+    }
+    article.case-report h3 {
+      margin: var(--dc-space-5, 20px) 0 var(--dc-space-2, 8px);
+      font-size: var(--dc-font-size-md, 15px);
+      font-weight: var(--dc-font-weight-semibold, 600);
+    }
+    article.case-report dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: var(--dc-space-1, 4px) var(--dc-space-4, 16px);
+      margin: 0;
+    }
+    article.case-report dt {
+      color: var(--dc-color-text-muted, #6b7280);
+    }
+    article.case-report dd {
+      margin: 0;
+    }
+    article.case-report ol,
+    article.case-report ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: var(--dc-space-2, 8px);
+    }
+    article.case-report ol > li {
+      display: grid;
+      grid-template-columns: 6.5rem 1fr;
+      gap: 0 var(--dc-space-3, 12px);
+    }
+    article.case-report ol > li > .day {
+      font-variant-numeric: tabular-nums;
+      color: var(--dc-color-text-muted, #6b7280);
+    }
+    .report-content {
+      grid-column: 2;
+      margin: var(--dc-space-1, 4px) 0 0;
+      white-space: pre-wrap;
+    }
+    .report-mark {
+      margin-inline-end: var(--dc-space-2, 8px);
+      padding: 0 var(--dc-space-1, 4px);
+      border: 1px solid var(--dc-color-border, #e5e7eb);
+      border-radius: var(--dc-radius-sm, 4px);
+      font-size: var(--dc-font-size-sm, 12px);
+    }
+    .report-note {
+      color: var(--dc-color-warning-text, #92400e);
+    }
+    .report-blank {
+      min-height: 7rem;
+      padding: var(--dc-space-2, 8px);
+      border: 1px dashed var(--dc-color-border, #e5e7eb);
+      border-radius: var(--dc-radius-md, 6px);
+    }
     /* A scale's every score: a small line over the scale's whole range beside the scores in words. */
     ul.scales li.series {
       display: flex;
@@ -573,6 +672,16 @@ export const vaultStyles = [
       table.export td,
       table.export th {
         white-space: normal;
+      }
+      /* A case report is the page itself: no frame, and the room to write keeps its height. */
+      article.case-report {
+        max-width: none;
+        padding: 0;
+        border: none;
+        background: none;
+      }
+      .report-blank {
+        min-height: 9rem;
       }
     }
   `,

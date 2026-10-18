@@ -432,6 +432,18 @@ try {
   // The same page from its first kind of record: the intake, the referrals and the closing together.
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="intake"]')?.scrollIntoView({ block: 'start' }), true)`)
   await shoot('case')
+  // The case's report for supervision: the name covered, nothing written that names the person — then with the
+  // written content and the consent mark, the way a counsellor would print it.
+  await app.click('dc-button[data-role="case-report-open"]')
+  await app.cdp.waitFor(`!!__e2e.one('article[data-role="case-report"]')`, 'the case report')
+  await shoot('case-report')
+  await app.click('dc-checkbox[data-role="case-report-consent"]')
+  await app.click('dc-checkbox[data-role="case-report-content"]')
+  await app.cdp.waitFor(`!!__e2e.one('[data-role="case-report-content-note"]')`, 'the content in the case report')
+  await app.cdp.evaluate(`(__e2e.one('article[data-role="case-report"] section[data-section="person"]')?.scrollIntoView({ block: 'start' }), true)`)
+  await shoot('case-report-content')
+  await app.click('dc-button[data-role="case-report-back"]')
+  await app.cdp.waitFor(`!!__e2e.one('section[data-role="cases"]')`, 'back to the person')
   await app.cdp.waitFor(`__e2e.all('section[data-kind="provision"] tr[data-record]').length === ${L.provisions.length}`, 'the provisions')
   await app.cdp.evaluate(`(__e2e.one('section[data-kind="provision"]')?.scrollIntoView({ block: 'center' }), true)`)
   await shoot('provision')

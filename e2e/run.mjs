@@ -2320,6 +2320,23 @@ const scenarios = {
       await app.cdp.evaluate(`[...__e2e.one('details[data-role="case-timeline"]').querySelectorAll('li[data-record]')].some((li) => li.dataset.type === 'goal' && li.textContent.includes('수업 시간에 교실에 머무르기'))`),
       'the goal in the case’s timeline',
     )
+
+    // The case's report for supervision: the name covered, the goal in it, no written content until asked for, and
+    // the name as it is only when chosen.
+    await app.click('dc-button[data-role="case-report-open"]')
+    await app.cdp.waitFor(`!!__e2e.one('article[data-role="case-report"]')`, 'the case report')
+    const reportText = () => app.cdp.evaluate(`__e2e.one('article[data-role="case-report"]').textContent`)
+    let report = await reportText()
+    assert.ok(report.includes('가○ ○○ ○○') && !report.includes('가상 학생 12'), `the name covered: ${report.slice(0, 200)}`)
+    assert.ok(report.includes('수업 시간에 교실에 머무르기'), 'the goal in the report')
+    assert.ok(report.includes('사례지도 활용 동의 — 표시하지 않음') && !report.includes('넣은 상담 내용에 적힌 이름'), 'no consent mark and no content until asked')
+    await app.click('dc-checkbox[data-role="case-report-content"]')
+    await app.cdp.waitFor(`!!__e2e.one('[data-role="case-report-content-note"]')`, 'the content in the report, and the word about names in it')
+    await app.cdp.evaluate(`(() => { [...__e2e.one('dc-segmented-control[data-role=case-report-mask]').shadowRoot.querySelectorAll('[role=radio]')].find((r) => r.textContent.trim() === '이름 그대로').click(); return true })()`)
+    await app.cdp.waitFor(`__e2e.one('[data-role="case-report-person"]')?.textContent.trim() === '가상 학생 12'`, 'the name as it is, when chosen')
+    await app.click('dc-button[data-role="case-report-back"]')
+    await app.cdp.waitFor(`!!__e2e.one('section[data-role="cases"]') && !__e2e.one('article[data-role="case-report"]')`, 'back to the student')
+    await app.noAlert()
   },
 
   async 'shows on a calendar the days the records name, and opens who or what falls on a day'(app) {

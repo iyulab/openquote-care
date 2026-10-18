@@ -6,6 +6,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 
 ## [Unreleased]
 
+### Added
+- A case report for supervision or a case conference, from each case on a person's page: the case on one page — its records kind by kind, its scale scores, and room to write the understanding of the case and the questions to bring — with the name covered (or as it is, when chosen) and none of the person's written fields such as a school or a phone number. Their codes and numbers (a grade, say) go in only when picked, the written content only when asked for — the names in it are not covered, and the report says so — and a line says whether the person agreed to the case being used. Print it, or print it to PDF.
+
 ## [0.25.1] - 2026-10-19
 
 ### Changed

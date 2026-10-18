@@ -12,6 +12,7 @@ import { newCaseNumber } from '../case-number.js'
 import { alreadyHere, daysBetween, narrowSubjects, shortDay, type CaseFilter, type SubjectOrder, type SubjectRow } from '../subject-list.js'
 import { valueText } from './session-parts.js'
 import { caseSection, recordsByCase } from './case-parts.js'
+import { caseReportDocument, defaultReportChoices, type CaseReportChoices } from './case-report-parts.js'
 import { recordFieldList } from './entity-parts.js'
 import { countBy, listDetail, nameField, noticeLine, startMark } from './parts.js'
 import { VaultScreen } from './screen.js'
@@ -46,6 +47,9 @@ export class OcSubjects extends VaultScreen {
   @state() private correcting?: string
   /** The subject's own record is open for correcting. */
   @state() private correctingSubject = false
+  /** The case whose report is on screen instead of the subject (its index, oldest first), and what the report shows. */
+  @state() private reporting?: number
+  @state() private reportChoices: CaseReportChoices = defaultReportChoices
   /** What narrows the list: words typed, the cases kept in view, the order. */
   @state() private query = ''
   @state() private caseFilter: CaseFilter = 'all'
@@ -128,6 +132,7 @@ export class OcSubjects extends VaultScreen {
   private pick(id: string) {
     this.correcting = undefined
     this.correctingSubject = false
+    this.reporting = undefined
     this.selected = id
     this.adding = false
     this.documentOpen = true
@@ -293,7 +298,16 @@ export class OcSubjects extends VaultScreen {
           ? this.importPreview(this.importPlan)
           : this.addForm()
         : subject
-          ? this.subjectDetail(subject)
+          ? this.reporting !== undefined
+            ? caseReportDocument(
+                this.store,
+                subject,
+                this.reporting,
+                this.reportChoices,
+                (next) => (this.reportChoices = { ...this.reportChoices, ...next }),
+                () => (this.reporting = undefined),
+              )
+            : this.subjectDetail(subject)
           : html`<p class="muted">${strings.pickSubject}</p>${noticeLine(this.store)}`,
       open: this.documentOpen,
       back: () => (this.documentOpen = false),
@@ -438,7 +452,15 @@ export class OcSubjects extends VaultScreen {
             @oc-edit-cancelled=${() => (this.correctingSubject = false)}
           ></oc-entity-form>`
         : recordFieldList(store, subject)}
-      ${caseSection(store, subject.id, (record) => void this.showSession(subject.id, record))}
+      ${caseSection(
+        store,
+        subject.id,
+        (record) => void this.showSession(subject.id, record),
+        (index) => {
+          this.reportChoices = defaultReportChoices
+          this.reporting = index
+        },
+      )}
       ${open ? conflictPanel(store, open, (field, value) => void this.settle(open, field, value)) : nothing}
       ${correcting
         ? html`<oc-record-form

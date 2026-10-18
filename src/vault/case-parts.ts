@@ -12,9 +12,9 @@ import '../quote-state.js'
 /**
  * A subject's cases, newest first: each with its days, its state, its records counted by kind, and what came
  * after it ended. Shown only when some record opened or closed a case, and only when the packs say which kinds do.
- * A line of a case's timeline opens its record through `open`.
+ * A line of a case's timeline opens its record through `open`; a case's report (its index, oldest first) opens through `report`.
  */
-export function caseSection(store: VaultStore, subject: string, open: (record: string) => void) {
+export function caseSection(store: VaultStore, subject: string, open: (record: string) => void, report: (index: number) => void) {
   const subjectCases = store.cases.get(subject)
   const { opens, closes } = store.caseKinds()
   if (!opens || !closes || !showsCases(subjectCases)) return nothing
@@ -36,6 +36,7 @@ export function caseSection(store: VaultStore, subject: string, open: (record: s
             <span>${caseStateBesideDays(c, opening)}</span>
             ${followUpWords(c) ? html`<span data-role="follow-up" data-follow-up=${c.followUp}>${followUpWords(c)}</span>` : nothing}
             ${c.opening === null ? html`<span class="muted">${strings.caseWithoutOpening(opening)}</span>` : nothing}
+            <dc-button class="case-report-open" variant="ghost" size="sm" data-role="case-report-open" @click=${() => report(n - 1)}>${strings.caseReport}</dc-button>
             <div class="muted">${caseCounts(c, kinds, typeOf)}${c.afterClosing.length > 0 ? html` · <span data-role="after-closing">${strings.caseAfterClosing(c.afterClosing.length)}</span>` : nothing}</div>
             ${scaleRows(store, subject, n - 1, [...c.records])}
             ${timeline(store, caseTimeline(c, (id) => { const r = store.recordById(id); return r ? store.dayOf(r) : '' }), n === latest, open)}
@@ -119,6 +120,24 @@ function scaleRows(store: VaultStore, subject: string, index: number, records: s
     })}
     ${caseScales.unusable.length > 0 ? html`<li class="muted" data-role="unusable">${strings.caseScaleUnusable(caseScales.unusable.length)}</li>` : nothing}
   </ul>`
+}
+
+/**
+ * A case's scale scores in words, a line to a scale — its first and last score with the change, and every score by day
+ * when it has more than those two — then how many responses gave no score: what the case line shows, for a report.
+ */
+export function caseScaleWords(store: VaultStore, subject: string, index: number, records: readonly string[]): string[] {
+  const caseScales = store.scaleCases.get(subject)?.[index]
+  if (!caseScales) return []
+  const series = caseScaleSeries(store, records)
+  return [
+    ...caseScales.scales.flatMap((s) => {
+      const label = scaleLabel(store, s.baseline.record, s.scale)
+      const points = series.get(s.scale) ?? []
+      return [scaleLine(s, label), ...(points.length >= 3 ? [strings.caseScaleSeries(label, points.map((p) => strings.caseScalePoint(p.score, p.day)).join(' → '))] : [])]
+    }),
+    ...(caseScales.unusable.length > 0 ? [strings.caseScaleUnusable(caseScales.unusable.length)] : []),
+  ]
 }
 
 /** Every score each scale has among a case's records, by day — read from the records the vault keeps scale scores in. */
