@@ -350,10 +350,10 @@ export class OcSubjects extends VaultScreen {
 
   /**
    * While a new person's name is typed: the people already here by that name or one like it, each with what tells them
-   * apart and a way to open them instead. It never stops the adding — two people may share a name.
+   * apart and a way to open them instead, and how many more there are. It never stops the adding — two people may share a name.
    */
   private alreadyHereHint() {
-    const found = alreadyHere(subjectRows(this.store), this.subjectName, this.store.names)
+    const { found, more } = alreadyHere(subjectRows(this.store), this.subjectName, this.store.names)
     if (found.length === 0) return nothing
     const fields = recordFields(this.store.fieldsOf('subject')).filter((f) => f.tier !== 'narrative' && f.name !== 'name')
     const counts = countBy(this.store.sessions, (s) => s.people)
@@ -378,6 +378,7 @@ export class OcSubjects extends VaultScreen {
           </li>`
         })}
       </ul>
+      ${more > 0 ? html`<p class="muted" data-role="already-here-more">${strings.alreadyHereMore(more)}</p>` : nothing}
     </section>`
   }
 

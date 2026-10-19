@@ -102,18 +102,26 @@ export function daysBetween(from: string, to: string): number {
 /** A name as two are compared to find the same person: letters only, spaces left out, any case. */
 const bare = (s: string) => s.toLocaleLowerCase().replace(/\s+/g, '')
 
+/** What `alreadyHere` found: the people to show, and how many more it matched beyond them. */
+export interface AlreadyHere {
+  found: { row: SubjectRow; same: boolean }[]
+  more: number
+}
+
 /**
  * While a new person's name is typed, the people already here who may be the one: the same name, spaces and case
- * aside, first — then names that hold what was typed or are held in it — by name, at most five. Nothing until two
- * letters are typed. It only shows; whether it is the same person is the practitioner's to say.
+ * aside, first — then names that hold what was typed or are held in it — at most five, with how many more matched,
+ * so a sixth person of one name is never silently left out. Among one name, the person with the latest record comes
+ * first; otherwise by name. Nothing until two letters are typed. It only shows; whether it is the same person is the
+ * practitioner's to say.
  */
-export function alreadyHere(rows: readonly SubjectRow[], typed: string, names: Pick<Intl.Collator, 'compare'>): { row: SubjectRow; same: boolean }[] {
+export function alreadyHere(rows: readonly SubjectRow[], typed: string, names: Pick<Intl.Collator, 'compare'>): AlreadyHere {
   const t = bare(typed)
-  if (t.length < 2) return []
-  return rows
+  if (t.length < 2) return { found: [], more: 0 }
+  const matched = rows
     .map((row) => ({ row, name: bare(row.name) }))
     .filter(({ name }) => name.length >= 2 && (name.includes(t) || t.includes(name)))
     .map(({ row, name }) => ({ row, same: name === t }))
-    .sort((a, b) => Number(b.same) - Number(a.same) || names.compare(a.row.name, b.row.name))
-    .slice(0, 5)
+    .sort((a, b) => Number(b.same) - Number(a.same) || names.compare(a.row.name, b.row.name) || (b.row.last ?? '').localeCompare(a.row.last ?? ''))
+  return { found: matched.slice(0, 5), more: Math.max(0, matched.length - 5) }
 }

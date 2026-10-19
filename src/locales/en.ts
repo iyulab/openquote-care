@@ -610,6 +610,7 @@ export const en: Strings = {
   number: (n: number) => n.toLocaleString('en'),
   caseTotal: 'Total',
   alreadyHereLead: 'Already here? If it is the same person, open them rather than adding them again.',
+  alreadyHereMore: (n: number) => `${plural(n, 'more person', 'more people')} by this name or one like it — type more to narrow it, or find them in the list.`,
   sameName: 'Same name',
   openThisPerson: 'Open',
   caseLoose: 'Records with no date, in no case',

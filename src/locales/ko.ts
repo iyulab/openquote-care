@@ -604,6 +604,7 @@ export const ko = {
   number: (n: number) => n.toLocaleString('ko'),
   caseTotal: '합계',
   alreadyHereLead: '이미 있는 사람인가요? 같은 사람이면 새로 만들지 말고 그 사람을 여세요.',
+  alreadyHereMore: (n: number) => `이 이름이나 비슷한 이름이 ${n}명 더 있습니다 — 더 쳐서 좁히거나 목록에서 찾아보세요.`,
   sameName: '같은 이름',
   openThisPerson: '이 사람 열기',
   caseLoose: '날짜가 없어 어느 사례에도 넣지 못한 기록',

@@ -115,7 +115,7 @@ describe('the people already here a new name may be', () => {
   const ko = new Intl.Collator('ko')
 
   it('puts the same name, spaces and case aside, first — then names holding what was typed', () => {
-    expect(alreadyHere(people, '김하늘', ko).map((f) => [f.row.id, f.same])).toEqual([
+    expect(alreadyHere(people, '김하늘', ko).found.map((f) => [f.row.id, f.same])).toEqual([
       ['k', true],
       ['l', true],
       ['m', false],
@@ -123,11 +123,20 @@ describe('the people already here a new name may be', () => {
   })
 
   it('also finds a name held in what was typed, but not a single letter', () => {
-    expect(alreadyHere(people, '김하늘별님', ko).map((f) => f.row.id).sort()).toEqual(['k', 'l', 'm'])
+    expect(alreadyHere(people, '김하늘별님', ko).found.map((f) => f.row.id).sort()).toEqual(['k', 'l', 'm'])
   })
 
   it('says nothing before two letters are typed', () => {
-    expect(alreadyHere(people, '김', ko)).toEqual([])
-    expect(alreadyHere(people, ' ', ko)).toEqual([])
+    expect(alreadyHere(people, '김', ko)).toEqual({ found: [], more: 0 })
+    expect(alreadyHere(people, ' ', ko)).toEqual({ found: [], more: 0 })
+  })
+
+  it('shows five and says how many more, the latest seen of one name first', () => {
+    const many = ['2026-03-02', null, '2026-09-30', '2026-05-11', '2026-01-20', '2026-07-07', null].map((last, i) => row(`p${i}`, '박서준', '', last, null))
+    const { found, more } = alreadyHere([...many, row('q', '박서준희', '', null, null)], '박서준', ko)
+
+    expect(found.map((f) => f.row.id)).toEqual(['p2', 'p5', 'p3', 'p0', 'p4'])
+    expect(found.every((f) => f.same)).toBe(true)
+    expect(more).toBe(3) // two more of the name and one name holding it
   })
 })
