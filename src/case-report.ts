@@ -3,9 +3,9 @@ import type { FieldView } from './shell.js'
 
 /**
  * A report of one case for supervision or a case conference: what its records hold, kind by kind, with the person's
- * name covered and nothing else that names them. The person's written fields (a school, a phone number, a guardian)
+ * name covered and nothing else that names them. The person's written fields (an address, a phone number)
  * never appear; of their other fields, only the ones the counsellor picks. A record's fields copied from the person
- * (a grade, a class) are left out with them. Written content appears only when the counsellor asks for it, and the
+ * (a year or a group they belong to) are left out with them. Written content appears only when the counsellor asks for it, and the
  * names it holds are not covered — the report says so. Scores are shown as written; the report judges nothing.
  */
 

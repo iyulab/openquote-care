@@ -10,7 +10,7 @@ export type NameMask = 'none' | 'initial' | 'number'
 const COVER = '○'
 
 /**
- * A name as its first letter and two covering marks, whatever its length: Ana → A○○, Kim Ana → K○○, 가 → 가○○.
+ * A name as its first letter and two covering marks, whatever its length: Ana → A○○, Kim Ana → K○○, Bo → B○○.
  * The marks are always two, so the covered name does not tell how long the name was.
  */
 export function initialOf(name: string): string {
