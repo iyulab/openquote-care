@@ -9,6 +9,9 @@ Versions before 0.11.1 are described in their [release notes](https://github.com
 ### Added
 - A case report for supervision or a case conference, from each case on a person's page: the case on one page — its records kind by kind, its scale scores, and room to write the understanding of the case and the questions to bring — with the name covered (or as it is, when chosen) and none of the person's written fields such as a school or a phone number. Their codes and numbers (a grade, say) go in only when picked, the written content only when asked for — the names in it are not covered, and the report says so — and a line says whether the person agreed to the case being used. Print it, or print it to PDF.
 
+### Changed
+- A name hidden down to its first letter shows that letter and two marks, whatever the name's length (Christopher → C○○, not C○○○○○○○○○○), so a printed or copied list no longer tells how long a hidden name was. Exported lists and the case report hide names the same way.
+
 ## [0.25.1] - 2026-10-19
 
 ### Changed

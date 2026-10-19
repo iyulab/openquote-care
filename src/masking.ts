@@ -9,10 +9,13 @@ export type NameMask = 'none' | 'initial' | 'number'
 
 const COVER = '○'
 
-/** A name with all but its first letter covered, one mark per letter: Ana → A○○, Kim Ana → K○○ ○○○. */
+/**
+ * A name as its first letter and two covering marks, whatever its length: Ana → A○○, Kim Ana → K○○, 가 → 가○○.
+ * The marks are always two, so the covered name does not tell how long the name was.
+ */
 export function initialOf(name: string): string {
-  const letters = [...name.trim()]
-  return letters.map((c, i) => (i === 0 || /\s/.test(c) ? c : COVER)).join('')
+  const first = [...name.trim()][0]
+  return first === undefined ? '' : first + COVER + COVER
 }
 
 /**

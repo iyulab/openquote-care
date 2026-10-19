@@ -21,10 +21,12 @@ const table: ExportTable = {
 }
 
 describe('hiding names', () => {
-  it('keeps the first letter and covers each other one', () => {
+  it('keeps the first letter and two marks, whatever the length of the name', () => {
     expect(initialOf('가나다')).toBe('가○○')
-    expect(initialOf('Kim Ana')).toBe('K○○ ○○○')
-    expect(initialOf('가')).toBe('가')
+    expect(initialOf('Kim Ana')).toBe('K○○')
+    expect(initialOf('가')).toBe('가○○')
+    expect(initialOf('Christopher')).toBe('C○○')
+    expect(initialOf('  ')).toBe('')
   })
 
   it('hides only the name columns, each name of a cell on its own', () => {
@@ -32,7 +34,7 @@ describe('hiding names', () => {
 
     expect(hidden.rows.map((r) => r.cells)).toEqual([
       ['2026-04-02', '가○○', '상담사 갑'],
-      ['2026-04-09', '라○, 가○○', '상담사 갑'],
+      ['2026-04-09', '라○○, 가○○', '상담사 갑'],
       ['2026-04-10', '', '상담사 을'],
     ])
     expect(table.rows[0].cells[1]).toBe('가나다') // the table read stays as it was
