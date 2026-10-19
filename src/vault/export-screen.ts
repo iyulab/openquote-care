@@ -239,7 +239,7 @@ export class OcExport extends VaultScreen {
   private formDocument(title: string) {
     const store = this.store
     const busy = store.busy
-    const table = this.exportTable && maskNames(this.exportTable, this.exportTable.names, this.nameMask)
+    const table = this.exportTable && maskNames(this.exportTable, this.exportTable.names, this.nameMask, strings.nameCover)
     const form = this.chosenForm()
     return html`<dp-page-header heading=${title} description=${strings.exportLead}></dp-page-header>
       <div class="toolbar no-print">

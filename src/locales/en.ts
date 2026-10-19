@@ -564,6 +564,8 @@ export const en: Strings = {
   nameMask: 'Names',
   nameMaskNone: 'Names as written',
   nameMaskInitial: 'First letters only',
+  // The mark that covers the rest of a name. Not ○, which beside Latin letters reads as an O: C○○ looks like a word.
+  nameCover: '•',
   nameMaskNumber: 'Numbers for names',
   namesHidden: 'Names are hidden in the list shown, printed and copied. The records are unchanged.',
   cases: 'Cases',

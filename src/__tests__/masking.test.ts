@@ -27,6 +27,7 @@ describe('hiding names', () => {
     expect(initialOf('가')).toBe('가○○')
     expect(initialOf('Christopher')).toBe('C○○')
     expect(initialOf('  ')).toBe('')
+    expect(initialOf('Christopher', '•')).toBe('C••')
   })
 
   it('hides only the name columns, each name of a cell on its own', () => {

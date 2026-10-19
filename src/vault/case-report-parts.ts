@@ -43,6 +43,7 @@ export function caseReportDocument(
   const report = caseReport({
     name: text(subject, 'name'),
     mask: choices.mask,
+    cover: strings.nameCover,
     subject: subjectFields.map((f) => ({ field: f, text: valueText(store, f, subject.fields[f.name]) })),
     chosen: choices.fields,
     withContent: choices.withContent,

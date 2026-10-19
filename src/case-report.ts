@@ -35,6 +35,8 @@ export interface ReportRecord {
 export interface CaseReportInput {
   name: string
   mask: ReportNameMask
+  /** The mark that covers the rest of the name (see `initialOf`); a hollow circle when not given. */
+  cover?: string
   /** The person's fields and their values in words, and the ones the counsellor picked for the report. */
   subject: { field: FieldView; text: string }[]
   chosen: ReadonlySet<string>
@@ -97,7 +99,7 @@ export function caseReport(input: CaseReportInput): CaseReport {
       lines: input.records.filter((r) => r.type === k.type).map((r) => line(r, k.dated, input)),
     }))
     .filter((s) => s.lines.length > 0)
-  return { person: input.mask === 'initial' ? initialOf(input.name) : input.name, personFields, sections }
+  return { person: input.mask === 'initial' ? initialOf(input.name, input.cover) : input.name, personFields, sections }
 }
 
 /**

@@ -559,6 +559,8 @@ export const ko = {
   nameMask: '이름',
   nameMaskNone: '이름 그대로',
   nameMaskInitial: '이름 첫 글자만',
+  // The mark that covers the rest of a name: 김○○.
+  nameCover: '○',
   nameMaskNumber: '이름 대신 번호',
   namesHidden: '보이는 목록과 인쇄·복사하는 목록에서 이름을 가렸습니다. 기록은 그대로입니다.',
   cases: '사례',
