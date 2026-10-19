@@ -20437,14 +20437,14 @@ Upstream: https://github.com/iyulab/openquote
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-TauriKit.Sidecar.Loopback 0.18.0
+TauriKit.Sidecar.Loopback 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 
 Same license text as @iyulab/desktop-compact 0.14.0.
 
 ------------------------------------------------------------------------------
-TauriKit.Sidecar.Loopback.AspNetCore 0.18.0
+TauriKit.Sidecar.Loopback.AspNetCore 0.22.0
 License: MIT
 Upstream: https://github.com/iyulab/tauri-kit
 

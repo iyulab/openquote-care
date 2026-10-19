@@ -847,7 +847,9 @@ public sealed class SidecarTests : IAsyncLifetime
         Assert.Equal("System.FormatException", answer["fault"]!["type"]!.GetValue<string>());
         Assert.StartsWith("OpenquoteCare.Sidecar.", answer["fault"]!["at"]!.GetValue<string>());
         Assert.DoesNotContain("가상", answer.ToJsonString());
-        Assert.Equal(["fault"], answer.AsObject().Select(p => p.Key));
+        // A problem (RFC 9457) with only the status's own words beside the fault: no detail, nothing from the message.
+        Assert.Equal(["fault", "status", "title", "type"], answer.AsObject().Select(p => p.Key).Order(StringComparer.Ordinal));
+        Assert.Equal(500, answer["status"]!.GetValue<int>());
     }
 
     [Fact]

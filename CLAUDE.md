@@ -41,6 +41,6 @@ The installer ships `LICENSES/THIRD-PARTY-NOTICES.txt`, generated from what ship
 
 A change people using the app would notice goes under `[Unreleased]` in `CHANGELOG.md`, in their words, with the commit that makes it. Raising the version moves those entries under a section for it, and that section is the release's notes: the release workflow writes them with `scripts/release-notes.mjs`, and a scripts test fails while the app's version has no section.
 
-Before the checks, `verify` checks the machine: Rust on the MSVC toolchain, a `dotnet` on PATH, and — when `DOTNET_ROOT` is unset and .NET is a per-user install — it points `DOTNET_ROOT` at that `dotnet` for the sidecar. The first check is that every file naming the app version names the same one (`node scripts/check-versions.mjs`).
+Before the checks, `verify` checks the machine: Rust on the MSVC toolchain, a `dotnet` on PATH, and — when `DOTNET_ROOT` is unset and .NET is a per-user install — it points `DOTNET_ROOT` at that `dotnet` for the sidecar. The first check is that every file naming the app version names the same one, and that the tauri-kit crates and the TauriKit packages are one release (`node scripts/check-versions.mjs`).
 
 A window scenario that fails only sometimes: `npm run test:e2e -- --through <part of its name> --repeat <n>` runs the scenarios up to it n times, each in a fresh folder and window.
